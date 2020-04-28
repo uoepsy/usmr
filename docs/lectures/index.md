@@ -1,3 +1,3 @@
-# DAPR2 Lecture slides  
+# USMR - Lecture slides  
 
 [lecture1](lecture1.html)
