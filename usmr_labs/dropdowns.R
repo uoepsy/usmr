@@ -107,15 +107,15 @@ generate_idq2 <- function() {
 
 # Optional
 
-optbegin<-function(label=NULL,slabel=TRUE,show=TRUE){
+optbegin<-function(label=NULL,olabel=TRUE,show=TRUE){
     if(!is.null(label)){label = as.character(label)}
-    if(slabel){slab = "Optional "}else{slab = ""}
+    if(olabel){olab = "Optional "}else{olab = ""}
     if(show){
         if (knitr::is_html_output()) {
             id <- generate_id2()
             id1 <- paste0("opt-start-", id)
             id2 <- paste0("opt-body-", id)
-            part1 <- paste0("<div class=\"optional-begin\">",slab,label,
+            part1 <- paste0("<div class=\"optional-begin\">",olab,label,
                             sprintf("<span id='%s' class=\"fa fa-plus optional-icon clickable\" onclick=\"toggle_visibility('%s', '%s')\"></span>",id1, id2, id1),
                             "</div>",
                             paste0("<div class=\"optional-body\" id = \"",id2, "\" style=\"display: none;\">")
@@ -124,7 +124,7 @@ optbegin<-function(label=NULL,slabel=TRUE,show=TRUE){
         }
         if(knitr::is_latex_output()){
             id <- generate_id2()
-            part1 <- paste0("\\textbf{",slab,label,"}")
+            part1 <- paste0("\\textbf{",olab,label,"}")
             output <- part1
         }
     } else {
