@@ -31,7 +31,7 @@ qend<-function(){
     return(output)
 }
 
-solbegin<-function(label=NULL,slabel=TRUE,show=TRUE){
+solbegin<-function(label=NULL,slabel=TRUE,show=TRUE,toggle=TRUE){
     if(!is.null(label)){label = as.character(label)}
     if(slabel){slab = "Solution "}else{slab = ""}
     if(show){
@@ -40,9 +40,9 @@ solbegin<-function(label=NULL,slabel=TRUE,show=TRUE){
             id1 <- paste0("sol-start-", id)
             id2 <- paste0("sol-body-", id)
             part1 <- paste0("<div class=\"solution-begin\">",slab,label,
-                            sprintf("<span id='%s' class=\"fa fa-plus solution-icon clickable\" onclick=\"toggle_visibility('%s', '%s')\"></span>",id1, id2, id1),
+                            ifelse(toggle, sprintf("<span id='%s' class=\"fa fa-plus solution-icon clickable\" onclick=\"toggle_visibility('%s', '%s')\"></span>",id1, id2, id1),""),
                             "</div>",
-                            paste0("<div class=\"solution-body\" id = \"",id2, "\" style=\"display: none;\">")
+                            ifelse(toggle, paste0("<div class=\"solution-body\" id = \"",id2, "\" style=\"display: none;\">"), "<div class=\"solution-body\">")
             )
             output <- structure(part1, format = "HTML", class = "knitr_kable")
         }
@@ -107,7 +107,7 @@ generate_idq2 <- function() {
 
 # Optional
 
-optbegin<-function(label=NULL,olabel=TRUE,show=TRUE){
+optbegin<-function(label=NULL,olabel=TRUE,show=TRUE, toggle=TRUE){
     if(!is.null(label)){label = as.character(label)}
     if(olabel){olab = "Optional "}else{olab = ""}
     if(show){
@@ -116,9 +116,9 @@ optbegin<-function(label=NULL,olabel=TRUE,show=TRUE){
             id1 <- paste0("opt-start-", id)
             id2 <- paste0("opt-body-", id)
             part1 <- paste0("<div class=\"optional-begin\">",olab,label,
-                            sprintf("<span id='%s' class=\"fa fa-plus optional-icon clickable\" onclick=\"toggle_visibility('%s', '%s')\"></span>",id1, id2, id1),
+                            ifelse(toggle, sprintf("<span id='%s' class=\"fa fa-plus optional-icon clickable\" onclick=\"toggle_visibility('%s', '%s')\"></span>",id1, id2, id1),""),
                             "</div>",
-                            paste0("<div class=\"optional-body\" id = \"",id2, "\" style=\"display: none;\">")
+                            ifelse(toggle, paste0("<div class=\"optional-body\" id = \"",id2, "\" style=\"display: none;\">"), "<div class=\"optional-body\">")
             )
             output <- structure(part1, format = "HTML", class = "knitr_kable")
         }
