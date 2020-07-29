@@ -1,0 +1,703 @@
+---
+title: "Categorical Distributions"
+bibliography: references.bib
+biblio-style: apalike
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: FALSE
+---
+
+```{r setup, include=FALSE}
+source('assets/setup.R')
+```
+
+
+:::red
+**Prerequisites**
+
+Please ensure you have successfully installed R and RStudio, or are working on RStudio Cloud, and that you have completed the tasks on the [Getting started in R & RStudio](00_intro.html) page, which introduced the basics of a) how to navigate around Rstudio, b) how to create a Rmarkdown document, c) how to read data into R, and d) how to use R to do basic arithmetic.  
+:::
+
+# Exercises: Rolling Dice
+
+`r qbegin(1)`
+Open Rstudio, and make sure you have your USMR course project open.  
+
+Open a new Rmarkdown document:    
+__File > New File > R Markdown..__  
+
+And in your first code-chunk, copy the code from the lecture which creates a custom function called `dice()` (copied below). Be sure to run the code-chunk.  
+```{r}
+dice <- function(num = 1) {
+  sample(1:6, num, replace=TRUE)
+}
+```
+
+Remember, you can add a code-chunk with the "Insert" button in the top right of your Rmarkdown document, and clicking R. Or you can use a shortcut of **Ctrl + Alt + i**.   
+```{r echo=FALSE}
+knitr::include_graphics("images/categorical/freshrmd2.png")
+```
+`r qend()`
+
+`r qbegin(2)`
+Roll the dice 100 times.  
+Store the results in an object in your environment.  
+Create a barplot showing the frequency with which each number was landed on in the 100 rolls. 
+`r qend()`
+`r solbegin(2, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+roll100 <- dice(100)
+```
+
+We can get the frequency table using `table()`
+```{r}
+table(roll100)
+```
+Which we can then pass to the `barplot()` function:
+```{r}
+barplot(table(roll100))
+```
+`r solend()`
+
+`r qbegin(3)`
+Do the same for 1000 rolls, and then for 10,000.  
+What do you notice?  
+`r qend()`
+`r solbegin(3, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+barplot(table(dice(1000)))
+
+barplot(table(dice(10000)))
+```
+
+gets flatter - uniform probability! 
+`r solend()`
+
+`r qbegin(4)`
+Copy the code below into a code-chunk and run it. 
+It creates a new function called `wdice()` which simulates the rolling of a die which is slightly weighted. 
+
+Roll the weighted die 100 times and plot the frequency distribution. Do the same for 1000 and 10,000 rolls.  
+Does a pattern emerge? At how many rolls? 
+
+```{r}
+wdice <- function(num = 1){
+    sample(1:6, num, replace=TRUE, prob = c(0.15,0.15,0.15,0.15,0.15,0.25))
+}
+```
+
+`r qend()`
+`r solbegin(4, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+barplot(table(wdice(100)))
+barplot(table(wdice(1000)))
+barplot(table(wdice(10000)))
+```
+
+100 rolls is not enough to reliably perceive the weighting of the die. 
+1000 is though!
+
+`r solend()`
+
+`r qbegin(5)`
+Take another loook at the `wdice()` function. Try modifying it so that 50% of the time it lands on number 6.  
+**Hint:** The `prob` bit is what was different from the original `dice()` function, and it looks like it takes a set of probabilities `prob = c(.....)`. Be careful to remember that the probability of these different outcomes must sum to 1 (i.e., it's not possible to land on 6 50% of the time as well as land on 5 60% of the time).  
+  
+**To test out your modified function, you will need to re-run code which defines the function.**
+
+:::frame
+__Think of it as "overwriting", "replacing", or "reassigning"__
+
+```{r}
+# define an object called "x" which has the value 3
+x <- 3
+# print the object x
+x 
+# reassign the name "x" to the value 5
+x <- 5
+```
+
+When you use the assignment operator `<-` we assign a name to a value and store in R's memory. To edit any of these things, we simply _reassign_ the name to with the edited value. This applies to functions, to dataframes, and to specific observations in dataframes etc.  
+:::
+`r qend()`
+`r solbegin(5, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+wdice <- function(num = 1){
+    sample(1:6, num, replace=TRUE, prob = c(0.1,0.1,0.1,0.1,0.1,0.5))
+}
+```
+`r solend()`
+
+`r qbegin(6)`
+Can you detect the weighting in your new die (the one which 50% of the time lands on number 6) in only 100 rolls?  
+
+Conceptually, what can we learn from this toy example.  
+**Hint:** Think of how strongly weighted the die is as an **effect size**, and the number of rolls as the **sample size**.  
+`r qend()`
+`r solbegin(6, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+barplot(table(wdice(100)))
+```
+
+the bigger effect size/difference, the smaller the sample size required to observe it. 
+
+`r solend()` 
+
+# Reading: Accessing Data in R  
+
+Now that we've played with a toy example for a bit, we're going to read in some data, and look at some of the variables 
+
+Let's read some data into R. 
+First we'll load the **tidyverse** package, so that we can use the `read_csv()` function.  
+```{r}
+library(tidyverse)
+starwars2 <- read_csv("https://uoepsy.github.io/data/starwars2.csv")
+```
+
+:::yellow
+__Reading data from a URL__ 
+
+Note that when you have a url for some data, such as [this](https://raw.githubusercontent.com/uoepsy/dapr1/master/dapr1_labs/data/starwars2.csv), you can read it in directly by giving functions like `read_csv()` the url inside quotation marks. 
+:::
+
+The data contains information on various characteristics of characters from Star Wars.
+We can print out the top of the data by using the `head()` function which displays the first six rows of the data by default. You could change this by saying, for example, `head(data, n = 10)`:
+```{r}
+head(starwars2, n = 10)
+```
+
+_(Don't worry about the_ <NA>s _for now, they are just how R tells you an entry is missing, i.e. Not Available.)_  
+
+:::green
+__Tip:__ Try clicking on the data in your __environment__ (the top right window of RStudio). It will open the data in a tab in the editor window - this is another way of looking at the data, more like you would in spreadsheet software like Microsoft Excel.
+This can be time-consuming if your data file is big.
+:::
+
+We can take a look at how big the data is (the dimensions), using `dim()`
+```{r}
+dim(starwars2)
+```
+
+There's a reasonable amount of data in there - `r nrow(starwars2)` rows and `r ncol(starwars2)` columns.  
+In the __starwars2__ data, each character is an __observational unit__, and there are 6 __variables__ (things which vary between units) such as their _height_, _species_, _homeworld_, etc.  
+
+:::yellow  
+__Units and variables__
+
+The individual entities on which data are collected are called __observational units__ or __cases__. Often (but not always), these equate to the rows of a dataset.  
+
+A __variable__ is any characteristic that varies from observational unit to observational unit (these are often the columns of the dataset)
+:::
+
+What if we want to extract certain subsections of our dataset, such as specific observational units or variables? 
+This is where we learn about two important bits of R code used to access parts of data - the dollar sign `$`, and the square brackets `[]`.
+
+:::frame
+__The dollar sign $__  
+  
+The dollar sign allows us to extract a specific variable from a dataframe.
+For instance, we can pull out the variable named "eye_color" in the data, by using `$eye_color` after the name that we gave our dataframe: 
+```{r}
+starwars2$eye_color
+```
+:::
+
+Each variable in a dataframe is a vector (a set of values). Once extracted, we will have a vector and not a dataframe.
+
+
+:::frame
+__The square brackets []__  
+  
+Square brackets are used to do what is known as __indexing__ (finding specific entries in your data).  
+We can retrieve bits of data by identifying the $i^{th}$ entry(s) inside the square brackets, for instance: 
+
+```{r}
+# assign the numbers 10, 20 ... 100 to the name "somevalues"
+somevalues <- c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+
+# pull out the 3rd entry
+somevalues[3]
+```
+
+In the above example, we have a __vector__ (a single sequence of values), and so we can retrieve entries with the syntax:
+<center> 
+**vector[entry]**
+</center>
+<br>
+In a __dataframe__ we have an extra dimension - we have rows _and_ columns. Using square brackets with a dataframe needs us to specify both:  
+<center>
+**dataframe[rows, columns]**
+</center>
+:::
+
+Let's look at some examples: 
+```{r}
+# first row, fourth column:
+starwars2[1, 4]
+
+# tenth row, first column:
+starwars2[10, 1]
+```
+
+<br>
+
+If we leave either rows or columns blank, then we will get out __all__ of them: 
+```{r}
+# tenth row, all columns:
+starwars2[10, ]
+
+# all rows, 2nd column:
+starwars2[ , 2]
+```
+
+<br>
+
+There are is another way to identify column - we can use the name in quotation marks:
+```{r}
+# first row, "species" column
+starwars2[1, "species"]
+```
+<br>
+Finally, we can also ask for multiple rows, or multiple columns, or both! To do that, we use the combine function `c()`:
+```{r}
+# the 1st AND the 6th row, 
+# and the 1st AND 3rd columns:
+starwars2[c(1,6), c(1,3)]
+```
+<br>
+And we can specify a sequence using the colon, `from:to`:  
+```{r}
+# FROM the 1st TO the 6th row, all columns:
+starwars2[1:6, ]
+```
+
+Why? Because the colon operator, `from:to`, creates a vector from the value `from` to the value `to` in steps of 1.
+```{r}
+1:6
+```
+`r optbegin(label="Extra: Combining $ and []", olabel=FALSE)`
+We can use the two accessors in combination: 
+
+```{r}
+# extract the variable called "name" and show the 20th entry 
+starwars2$name[20]
+```
+
+This represents the 20th name in the data.
+
+__Note:__ When we do this, we don't have the comma inside the square brackets.  
+When we use the `$` to pull out a variable, such as `starwars2$name`, we no longer have a dataframe - `starwars2$name` doesn't have rows and columns, it just has a series of values - _it's a vector!_.   
+So when you are using `[]` with a __vector__ (1 dimension) rather than a __dataframe__ (2 dimensions), you don't specify `[rows, columns]`, but simply `[entry]`. 
+`r optend()`
+
+
+:::yellow
+__The dollar sign $__ 
+
+Used to extract a variable from a dataframe:   
+
++ `dataframe$variable`
+
+__The square brackets []__
+
+Used to extract parts of an R object by identifying rows and/or columns, or more generally, "entries". Left blank will return all. 
+
++ `vector[entries]`
++ `dataframe[rows, columns]`
+:::
+
+## Accessing by a condition {-}  
+
+We can also do something really useful, which is to access all the entries in the data for which _a specific condition_ is true.  
+
+Let's take a simple example to start:
+```{r}
+somevalues <- c(10, 10, 0, 20, 15, 40, 10, 40, 50, 35)
+```
+
+To only select values which are greater than 20, we can use:
+```{r}
+somevalues[somevalues > 20]
+```
+
+Let's unpack what this is doing..  
+
+<div style="margin-left:15px">
+First, let's look at what `somevalues > 20` does. It returns TRUE for the entries of `somevalues` which are greater than 20, and FALSE for the entries of `somevalues` that are not (that is, which are less than, or equal to, 20. 
+
+This statement `somevalues > 20` is called the __condition__.    
+```{r}
+somevalues > 20
+```
+
+We can give a name to this sequence of TRUEs and FALSEs
+```{r}
+condition <- somevalues > 20
+condition
+```
+
+Now consider putting the sequence of TRUEs and FALSEs inside the square brackets in `somevalues[]`.
+This returns only the entries of `somevalues` for which the condition is `TRUE`.  
+```{r}
+somevalues[condition]
+```
+
+So what we can do is use a __condition__ inside the square brackets to return all the values for which that condition is TRUE.
+
+Note that you don't have to always give a name to the condition. This works too:
+```{r}
+somevalues[somevalues > 20]
+```
+
+</div>
+<br>
+We can extend this same logic to a dataframe.
+Let's suppose we want to access all the entries in our Star Wars data who have the value "Droid" in the _species_ variable.
+To work out how to do this, we first need a line of code which defines our __condition__ - one which returns `TRUE` for each entry of the _species_ variable which is "Droid", and `FALSE` for those that are not "Droid".  
+
+We can use the dollar sign to pull out the _species_ variable: 
+```{r}
+starwars2$species
+```
+
+And we can ask R whether each value __is equal to__ "Droid" (*Remember:* in R, we ask whether something __is equal to__ something else by using a double-equals, `==`). A single equal sign would be wrong, as it denotes assignment.
+```{r}
+starwars2$species == "Droid"
+```
+
+Finally, we can use this condition inside our square brackets to access the entries of the data for which this condition is TRUE:
+```{r}
+# I would read the code below as: 
+
+# "In the starwars2 dataframe, give me all the rows for which the
+# condition starwars2$species=="Droid" is TRUE, and give me all the columns."
+
+starwars2[starwars2$species == "Droid", ]
+```
+
+`r optbegin('Optional', FALSE)`
+A useful function is `with()`. This creates a "container" where the variables of the dataframe are available to R within the `with()` parentheses without the need to use `$`:
+```{r}
+with(starwars2, starwars2[species == "Droid", ])
+```
+`r optend()`
+
+
+## Editing parts of the data  
+
+Now that we've seen a few ways of _accessing_ sections of data, we can learn how to edit them!  
+
+:::yellow
+__Data Cleaning__
+
+One of the most common reasons you will need to modify entries in your data is in __data cleaning__. This is the process of identifying incorrect/incomplete/irrelevant data, and replacing/modifying/deleting them.  
+:::
+
+### Changing specific entries {-}  
+
+Above, we looked at the subsection of the data where the _species_ variable had the entry "Droid". Some of you may have noticed earlier that we had some data on C3PO. Is he not also a droid? 
+
+<center>
+![](images/types_of_data/c3po.png)  
+</center>
+
+(Looks pretty Droid-y to me! _disclaimer: I know nothing about Star Wars_ &#128578; )
+
+Just as we saw above how to _access_ specific entries, e.g.: 
+```{r}
+# 2nd row, all columns
+starwars2[2, ]
+# 2nd row, 6th column (the "species" column)
+starwars2[2,6]
+```
+
+We can change these by __assigning them a new value__ (remember the `<-` symbol):
+```{r}
+# C3PO is a droid, not a human
+starwars2[2,6] <- "Droid"
+
+# Look at the 2nd row now -
+# the entry in the "species" column has changed:
+starwars2[2, ]
+```
+
+:::frame
+__Think of it as "overwriting", "replacing", or "reassigning"__
+
+We have _replaced_, or _overwritten_, the entry in the 2nd row and 6th column of the data (`starwars2[2,6]`) with the value "Droid". 
+:::
+
+### Changing entries via a condition {-}  
+
+We saw above how to access parts of data by means of a __condition__, with code such as:
+
+```{r}
+# "In the starwars2 dataframe, give me all the rows for which the
+# condition starwars2$homeworld=="Naboo" is TRUE, and give me all the columns."
+
+# remember, we're asking for all the columns by leaving it blank *after* the 
+# comma inside the square brackets: data[rows, columns]
+starwars2[starwars2$homeworld=="Naboo", ]
+```
+
+What if we wanted to modify it so that every character from "Naboo" was actually of species "Nabooian"?  
+
+We can do that in a number of ways, all of which do the same thing - namely, they access parts of the data and assign them the new value "Nabooian".  
+
+Study the lines of code below and their interpretations:  
+
+```{r}
+# In the starwars2 data, give the rows for which condition 
+# starwars2$homeworld=="Naboo" is TRUE, and select only the "species" column. 
+# Assign to these selected entries the value "Nabooian".
+starwars2[starwars2$homeworld=="Naboo", "species"] <- "Nabooian"
+
+# In the starwars2 data, give the rows for which condition 
+# starwars2$homeworld=="Naboo" is TRUE, and select only the 6th column. 
+# Assign to these selected entries the value "Nabooian".
+starwars2[starwars2$homeworld=="Naboo", 6] <- "Nabooian"
+
+# Extract the species variable from the starwars2 data (it's a vector).
+# Pick the entries for which the condition starwars2$homeworld=="Naboo" is TRUE.
+# Assign to these selected entries the value "Nabooian".
+starwars2$species[starwars2$homeworld=="Naboo"] <- "Nabooian"
+```
+
+
+### Changing a variable
+
+Another thing we might want to do is change a whole variable (a whole column) in some way.  
+The logic is the same, for instance: 
+```{r}
+starwars2$height <- starwars2$height / 100
+```
+What we have done above is taking the variable "height" from the dataframe "starwars2", dividing it by 100 via `starwars2$height / 100`, and then assigning the result to the same variable, i.e. we overwrite the column.  
+
+Equally, we _could also have added a new column_ named "height2" with those values if you do not want to overwrite "height":
+```{r eval=FALSE}
+starwars2$height2 <- starwars2$height / 100
+```
+This would have left the "height" variable as-is, and created a new one called "height2" which was the values in "height" divided by 100. 
+
+
+### Removing rows or columns
+
+Lastly, we might want to change the data by removing a row or a column.
+Again, the logic remains the same, in that we use `<-` to assign the edited data to a name (either a new name, thus creating a new object, or an existing name, thereby _overwriting_ that object).  
+  
+For instance, notice that the 35th and 75th rows of our data probably aren't a valid observation - I'm reasonably sure that Marge and Homer Simpson never appeared in Star Wars:
+```{r}
+starwars2[c(35,75), ]
+```
+
+We can remove a certain row(s) by using a minus sign `-` inside the square brackets 
+```{r}
+# everything minus the 75th row
+starwars2[-75, ]
+
+# everything minus the (35th and 75th rows)
+starwars2[-c(35, 75), ]
+```
+
+And we can simply _re-use_ the name "starwars2" to overwrite the data and make this change take effect (rather than just print out the result, which the code above did):
+```{r}
+starwars2 <- starwars2[-c(35, 75), ]
+```
+(now, in the __environment__ pane of Rstudio, the object named "starwars2" will say 73 observations, rather than 75, which it had before - we've removed the 2 rows)   
+
+The same logic applies for columns:
+```{r}
+# Create a new object called "anonymous_starwars2" and assign it 
+# to the values which are the "starwars2" dataframe minus the 
+# 1st column (the "name" column):
+anonymous_starwars2 <- starwars2[, -1]
+
+# print out anonymous_starwars2
+anonymous_starwars2
+```
+
+# Refresher: Types of Data
+
+In the dice-rolling example, each roll of the die could take one of a discrete set of responses (1, 2, 3, 4, 5 or 6). A die cannot land on 5.3, or 2.6.  
+
+There are many different things we can measure / record on observational units, and the data we collect will also have different characteristics.  
+Some data will be similar to rolling a die in that values take on **categories**, and others could take any value on a **continuous** scale.   
+
+We distinguish between these different types of data by talking about __categorical__ and __numerical__ variables. Within each, there also are a few important sub-classes.
+
+:::yellow
+__Categorical__ variables tell us what group or category each individual belongs to. Each distinct group or category is called a __level__ of the variable.
+:::
+
+|  __Type__ | __Description__ |  __Example__|
+|:--|:--|:--|
+|  __Nominal (Unordered categorical)__ | A categorical variable with _no_ intrinsic ordering among the levels. | Species: _Human_, _Droid_, _Wookie_, _Hutt_, ... |
+|  __Ordinal (Ordered categorical)__ | A categorical variable which levels possess some kind of order |  Level: _Low_, _Medium_, _High_ |
+|  __Binary categorical__ | A special case of categorical variable with only 2 possible levels |  Is_Human: _Yes_ or _No_. |
+
+<br>
+
+:::yellow
+__Numerical__ (or quantitative) variables consist of numbers, and represent a measurable quantity. Operations like adding and averaging make sense only for numeric variables.
+:::
+|  __Type__ | __Description__ |  __Example__|
+|:--|:--|:--|
+|  __Continuous__ | Variables which can take any real number within the specified range of measurement |  Height: _172_, _165.2_, _183_, ... |
+  
+
+# Exercises: Categorical distributions  
+
+For the exercises, we have a dataset on some of the most popular internet passwords, their strength, and how long it took for an algorithm to crack it.  
+The data is available online at https://uoepsy.github.io/data/passworddata.csv.  
+  
+| Variable Name | Description            |
+|---------------|--------------------|
+| rank   | Popularity in the database of released passwords |
+| password     | Password |
+| type     | Category of password  |
+| cracked     | Time to crack by online guessing |
+| strength     | Strength = quality of password where 10 is highest, 1 is lowest |
+| strength_cat     | Strength category (weak, medium, strong) |
+
+`r qbegin(7)`
+Create a new heading in your Rmarkdown document for this set of exercises.  
+__Remember:__ We make headings using the # _outside_ of a code chunk.  
+  
+Load in the **tidyverse** package, and read in the data.  
+
+Which variables are *categorical*?  
+`r qend()`
+`r solbegin(8, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+library(tidyverse)
+pwords <- read_csv("https://uoepsy.github.io/data/passworddata.csv")
+```
+
+all of them! 
+`r solend()`
+
+`r qbegin(8)`
+create a frequency distribution table, and a frequency plot, of the password type variable. 
+
+
+before, we ran code such as:
+```{r eval=FALSE}
+roll100 <- dice(100)
+```
+This created an object named "roll100" which was a **vector** - a set of values.  
+What we are now working with is a dataframe, which is simply a list of vectors.  
+Code which extracts a variable from a dataframe: `dataframe$variable` extracts it as a vector.  
+`r qend()`
+`r solbegin(8, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+table(pwords$type)
+
+barplot(table(pwords$type))
+```
+
+`r solend()`
+
+`r qbegin(9)`
+:::yellow
+__Relative frequency distribution__
+
+A relative frequency distribution shows the __proportion of times__ each value occurs  
+(contrast this with the frequency distribution which shows the __number__ of times).  
+Relative frequencies can be written as fractions, percents, or decimals.
+:::
+
+create the relative frequency distributon of the password type. You can do this by dividing the entire table by the sum of the table. R can calculate the sum using `sum()`
+
+`r qend()`
+`r solbegin(9, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+We'll multiple the whole thing by 100 to make it percentages. 
+```{r}
+table(pwords$type)/sum(table(pwords$type))*100
+
+barplot(table(pwords$type)/sum(table(pwords$type))*100)
+```
+`r solend()`
+
+`r qbegin(10)`
+Create a new object in R which is only those passwords which are of the type "fluffy". 
+  
+`r qend()`
+`r solbegin(10, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+fluffy <- pwords[pwords$type=="fluffy", ]
+```
+`r solend()`
+
+
+`r qbegin(11)`
+note that the "strength" variable is categorical, but it is **ordered** (category 1 is the weakest, category 10 is the strongest).  
+
+When categorical data is ordered, it is often useful to think about cumulative percentages
+
+:::yellow
+__Cumulative percentage__
+
+Cumulative percentages are another way of expressing a frequency distribution.  
+They are the __successive addition of percentages__ in each category. For example, the cumulative percentage for the 3rd category is the percentage of respondents in the 1st, 2nd and 3rd category:
+```{r echo=FALSE}
+tibble(
+  Category = paste0("Response ",1:5),
+  n = c(10,10,20,25,10)
+) %>% mutate(
+  p = n/sum(n)*100,
+  cn = cumsum(n),
+  cp = cumsum(p)
+) %>% rename(`Frequency count (n)`=n,
+             `Relative frequency (%)`=p,
+             `Cumulative frequency`=cn,
+             `Cumulative percentage`=cp
+             ) %>%
+  knitr::kable()
+```
+
+**In R, we can cumulatively sum a set of numbers using the `cumsum()` function.**
+:::
+
+At what password strength are 50% of the "fluffy" passwords on either side?  
+**Hint:** how many "fluffy" passwords are there? make a relative frequency table, and use `cumsum()` to cumulatively sum these to work out where 50% lies. 
+`r qend()`
+`r solbegin(11, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+# frequency table
+freq <- table(fluffy$strength)
+freq 
+
+# relative frequency table
+relfreq <- freq / sum(freq)
+relfreq
+
+# cumulative percentage
+cumsum(relfreq)
+```
+`r solend()`
+
+`r qbegin(12)`
+The point at which 50% of the data lies either side is the median (the mid-point of the data). Check your answer from the previous exercise by using the function `median()` on the strengths of the fluffy passwords.  
+How does it compare to the median strength of passwords which are of type "simple-alphanumeric"? 
+`r qend()`
+`r solbegin(12, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+median(fluffy$strength)
+
+median(pwords$strength[pwords$type == "simple-alphanumeric"])
+```
+
+`r solend()`
+
+
+# Exercises: Advanced plotting
+
+
+`r qbegin(13)`
+
+`r qend()`
+`r solbegin(13, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+`r solend()`
