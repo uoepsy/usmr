@@ -5,7 +5,7 @@ biblio-style: apalike
 link-citations: yes
 params: 
     SHOW_SOLS: TRUE
-    TOGGLE: FALSE
+    TOGGLE: TRUE
 ---
 
 ```{r setup, include=FALSE}
@@ -14,39 +14,69 @@ source('assets/setup.R')
 
 
 :::red
-**Prerequisites**
+**Preliminaries**  
 
-Please ensure you have successfully installed R and RStudio, or are working on RStudio Cloud, and that you have completed the tasks on the [Getting started in R & RStudio](00_intro.html) page, which introduced the basics of a) how to navigate around Rstudio, b) how to create a Rmarkdown document, c) how to read data into R, and d) how to use R to do basic arithmetic.  
+1. Please ensure you have successfully installed R and RStudio, or are working on RStudio Cloud, and that you have completed the tasks on the [Getting started in R & RStudio](00_intro.html) page, which introduced the basics of a) how to navigate around Rstudio, b) how to create a Rmarkdown document, c) how to read data into R, and d) how to use R to do basic arithmetic.  
+
+2. Open Rstudio, and make sure you have your USMR course project open.  
+
+3. Open a new Rmarkdown document:    
+__File > New File > R Markdown..__  
 :::
 
 # Exercises: Dice Simulations
 
 `r qbegin(1)`
-Open Rstudio, and make sure you have your USMR course project open.  
-
-Open a new Rmarkdown document:    
-__File > New File > R Markdown..__  
-
-And in your first code-chunk, copy the code from the lecture which creates a custom function called `dice()` (copied below). Be sure to run the code-chunk.  
+You can add a code-chunk with the "Insert" button in the top right of your Rmarkdown document, and clicking R, or you can use a shortcut of **Ctrl + Alt + i**.  
+  
+In your first code-chunk, copy the code from the lecture which creates a custom function called `dice()` (copied below). Be sure to run the code-chunk.  
 ```{r}
 dice <- function(num = 1) {
   sample(1:6, num, replace=TRUE)
 }
 ```
 
-Remember, you can add a code-chunk with the "Insert" button in the top right of your Rmarkdown document, and clicking R. Or you can use a shortcut of **Ctrl + Alt + i**.   
+---
+
 ```{r echo=FALSE}
 knitr::include_graphics("images/categorical/freshrmd2.png")
 ```
+
 `r qend()`
+
+:::frame
+**What did that code-chunk do?**
+
+In a sense, this code-chunk does *nothing*:  It won't give you any output when you run it.  What it is actually doing, though, is defining a *function* called `dice()`.  If you look at your *environment* panel (top right), you'll see `dice` appear when you run the code.
+  
+To produce some output, we have to *call* the function `dice()` (by writing it into code:  `dice(4)`, for example).  `dice()` wants to be supplied with some information (in the *argument* `num`).  If no information is supplied, num will take a *default value* of `1`.  (So writing `dice()` is equivalent to writing `dice(1)`).
+
+What does `dice()` do with `num`?  It calls another function, `sample()`, with *3* arguments.  We didn't write `sample()`:  it's a function that's "supplied with" R.  To find out more about what `sample()` does:
+
+* click inside the brackets just after `sample()` in your RMarkdown document (not this document; the one in RStudio);
+
+* press `TAB` (`⇥`), then `F1`
+
+* you should see some help appear in the bottom right-hand panel of RStudio.
+
+You will find that "`sample()` takes a sample ... from the elements of `x` ..."  If you compare the code in RStudio to the code under "Usage" you'll see that where the help has `x`, we have `1:6`.  So what does `1:6` mean?  One way to find out is to open the *console* in RStudio (bottom left) and just type stuff in.  What happens when you type `1:6`?  What about `2:17`?  (What about `6:1`?)
+
+The console is the place to "try stuff out" (don't worry, you can't break it).  What you should have found out is that `1:6` creates a *vector* (list of similar things, in this case numbers) of the numbers 1-6.
+
+Next, `num` maps to `size`: Looking through the help, `size` is the number of items to choose.  So `sample(1:6, 1)` would choose one number from the numbers 1-6 at random; `sample(1:6, 3)` would choose 3, and so on.  The last argument, `replace=TRUE`, tells `sample()` what to do with a number once it's been picked:  Does it go 'back into the bag' to be picked again (`TRUE`) or not? (`FALSE`)?
+
+Putting it all together, our `dice()` function "throws a die `num` times" by `sample()`ing from the numbers 1-6 `num` times, `replace`ing each number when it's been picked.
+:::
+
 
 `r qbegin(2)`
-Roll the dice 100 times.  
-Store the results in an object in your environment.  
-Create a barplot showing the frequency with which each number was landed on in the 100 rolls. 
+Roll the dice 100 times, and store the results in an object in your environment. Give it an easily identifiable name.   
+  
+Create a barplot showing the frequency with which each number was landed on in the 100 rolls.  
+**Hint:** the functions `table()` and `barplot()` were used to do this in the lecture.
 `r qend()`
 `r solbegin(2, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
+We'll name it "roll100". 
 ```{r}
 roll100 <- dice(100)
 ```
@@ -72,7 +102,9 @@ barplot(table(dice(1000)))
 barplot(table(dice(10000)))
 ```
 
-gets flatter - uniform probability! 
+:::int
+The more rolls we do of the dice, the flatter the graph becomes. This is because there is an equal probability of the die landing on any of the responses - there is a **Uniform probability**.  
+:::
 `r solend()`
 
 `r qbegin(4)`
@@ -90,24 +122,33 @@ wdice <- function(num = 1){
 
 `r qend()`
 `r solbegin(4, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+Your plots will look slightly different to these, because all of our dice are random!  
+```{r echo=FALSE}
+set.seed(564)
+```
+
 ```{r}
 barplot(table(wdice(100)))
 barplot(table(wdice(1000)))
 barplot(table(wdice(10000)))
 ```
 
-100 rolls is not enough to reliably perceive the weighting of the die. 
-1000 is though!
+:::int
+The die is clearly weighted towards landing on 6. 
+However, 100 rolls is not enough to reliably observe this. In our 100 rolls above, it landed on 2 quite a bit too! The pattern becomes clearer after 1000 rolls.  
+:::
 
 `r solend()`
 
 `r qbegin(5)`
-Take another loook at the `wdice()` function. Try modifying it so that 50% of the time it lands on number 6.  
-**Hint:** The `prob` bit is what was different from the original `dice()` function, and it looks like it takes a set of probabilities `prob = c(.....)`. Be careful to remember that the probability of these different outcomes must sum to 1 (i.e., it's not possible to land on 6 50% of the time as well as land on 5 60% of the time).  
-  
-**To test out your modified function, you will need to re-run code which defines the function.**
+Take another loook at the `wdice()` function. Try modifying it so that 50% of the time it lands on number 6. 
 
+**Hint:** The `prob` bit is what was different from the original `dice()` function, and it looks like it takes a set of probabilities `prob = c(.....)`. Be careful to remember that the probability of these different outcomes must sum to 1 (i.e., it's not possible to 50% of the time land on 6 as well as 70% of the time land on 5!).  
+  
+**NOTE:** To test out your modified function, you will need to re-run code which defines the function. 
+  
 :::frame
+
 __Think of it as "overwriting", "replacing", or "reassigning"__
 
 ```{r}
@@ -131,9 +172,9 @@ wdice <- function(num = 1){
 `r solend()`
 
 `r qbegin(6)`
-Can you detect the weighting in your new die (the one which 50% of the time lands on number 6) in only 100 rolls?  
+Can you observe the weighting in your new die (the one which 50% of the time lands on number 6) in only 100 rolls?  
 
-Conceptually, what can we learn from this toy example.  
+Conceptually, what can we learn from this toy example?    
 **Hint:** Think of how strongly weighted the die is as an **effect size**, and the number of rolls as the **sample size**.  
 `r qend()`
 `r solbegin(6, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -141,15 +182,16 @@ Conceptually, what can we learn from this toy example.
 barplot(table(wdice(100)))
 ```
 
-the bigger effect size/difference, the smaller the sample size required to observe it. 
+:::int
+The bigger the effect, the smaller the sample size required to observe it. 
+:::
 
 `r solend()` 
 
 # Reading: Accessing Data in R  
 
-Now that we've played with a toy example for a bit, we're going to read in some data, and look at some of the variables 
+Now that we've played with a toy example for a bit, we're going to look at reading in some data, and exploring some of the variables 
 
-Let's read some data into R. 
 First we'll load the **tidyverse** package, so that we can use the `read_csv()` function.  
 ```{r}
 library(tidyverse)
@@ -168,7 +210,7 @@ We can print out the top of the data by using the `head()` function which displa
 head(starwars2, n = 10)
 ```
 
-_(Don't worry about the_ <NA>s _for now, they are just how R tells you an entry is missing, i.e. Not Available.)_  
+_(Don't worry about the_ NAs _for now, they are just how R tells you an entry is missing, i.e. Not Available.)_  
 
 :::green
 __Tip:__ Try clicking on the data in your __environment__ (the top right window of RStudio). It will open the data in a tab in the editor window - this is another way of looking at the data, more like you would in spreadsheet software like Microsoft Excel.
@@ -322,9 +364,9 @@ To only select values which are greater than 20, we can use:
 somevalues[somevalues > 20]
 ```
 
-Let's unpack what this is doing..  
-
-<div style="margin-left:15px">
+:::frame
+Unpacking: `somevalues[somevalues > 20]`  
+<br>
 First, let's look at what `somevalues > 20` does. It returns TRUE for the entries of `somevalues` which are greater than 20, and FALSE for the entries of `somevalues` that are not (that is, which are less than, or equal to, 20. 
 
 This statement `somevalues > 20` is called the __condition__.    
@@ -351,7 +393,8 @@ Note that you don't have to always give a name to the condition. This works too:
 somevalues[somevalues > 20]
 ```
 
-</div>
+:::
+
 <br>
 We can extend this same logic to a dataframe.
 Let's suppose we want to access all the entries in our Star Wars data who have the value "Droid" in the _species_ variable.
@@ -547,157 +590,7 @@ __Numerical__ (or quantitative) variables consist of numbers, and represent a me
 
 # Exercises: Categorical distributions  
 
-For the exercises, we have a dataset on some of the most popular internet passwords, their strength, and how long it took for an algorithm to crack it.  
-The data is available online at https://uoepsy.github.io/data/passworddata.csv.  
-  
-| Variable Name | Description            |
-|---------------|--------------------|
-| rank   | Popularity in the database of released passwords |
-| password     | Password |
-| type     | Category of password  |
-| cracked     | Time to crack by online guessing |
-| strength     | Strength = quality of password where 10 is highest, 1 is lowest |
-| strength_cat     | Strength category (weak, medium, strong) |
-
-`r qbegin(7)`
-Create a new heading in your Rmarkdown document for this set of exercises.  
-__Remember:__ We make headings using the # _outside_ of a code chunk.  
-  
-Load in the **tidyverse** package, and read in the data.  
-
-Which variables are *categorical*?  
-`r qend()`
-`r solbegin(8, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r message=FALSE,warning=FALSE}
-library(tidyverse)
-pwords <- read_csv("https://uoepsy.github.io/data/passworddata.csv")
-
-head(pwords)
-```
-
-all of them except for "cracked". 
-`r solend()`
-
-`r qbegin(8)`
-create a frequency distribution table, and a frequency plot, of the password type variable. 
-
-
-before, we ran code such as:
-```{r eval=FALSE}
-roll100 <- dice(100)
-```
-This created an object named "roll100" which was a **vector** - a set of values.  
-What we are now working with is a dataframe, which is simply a list of vectors.  
-Code which extracts a variable from a dataframe: `dataframe$variable` extracts it as a vector.  
-`r qend()`
-`r solbegin(8, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-table(pwords$type)
-
-barplot(table(pwords$type))
-```
-
-`r solend()`
-
-`r qbegin(9)`
-:::yellow
-__Relative frequency distribution__
-
-A relative frequency distribution shows the __proportion of times__ each value occurs  
-(contrast this with the frequency distribution which shows the __number__ of times).  
-Relative frequencies can be written as fractions, percents, or decimals.
-:::
-
-create the relative frequency distributon of the password type. You can do this by dividing the entire table by the sum of the table. R can calculate the sum using `sum()`
-
-`r qend()`
-`r solbegin(9, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-We'll multiple the whole thing by 100 to make it percentages. 
-```{r}
-table(pwords$type)/sum(table(pwords$type))*100
-
-barplot(table(pwords$type)/sum(table(pwords$type))*100)
-```
-`r solend()`
-
-`r qbegin(10)`
-Create a new object in R which is only those passwords which are of the type "fluffy". 
-  
-`r qend()`
-`r solbegin(10, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-fluffy <- pwords[pwords$type=="fluffy", ]
-```
-`r solend()`
-
-
-`r qbegin(11)`
-note that the "strength" variable is categorical, but it is **ordered** (category 1 is the weakest, category 10 is the strongest).  
-
-When categorical data is ordered, it is often useful to think about cumulative percentages
-
-:::yellow
-__Cumulative percentage__
-
-Cumulative percentages are another way of expressing a frequency distribution.  
-They are the __successive addition of percentages__ in each category. For example, the cumulative percentage for the 3rd category is the percentage of respondents in the 1st, 2nd and 3rd category:
-```{r echo=FALSE}
-tibble(
-  Category = paste0("Response ",1:5),
-  n = c(10,10,20,25,10)
-) %>% mutate(
-  p = n/sum(n)*100,
-  cn = cumsum(n),
-  cp = cumsum(p)
-) %>% rename(`Frequency count (n)`=n,
-             `Relative frequency (%)`=p,
-             `Cumulative frequency`=cn,
-             `Cumulative percentage`=cp
-             ) %>%
-  knitr::kable()
-```
-
-**In R, we can cumulatively sum a set of numbers using the `cumsum()` function.**
-:::
-
-At what password strength are 50% of the "fluffy" passwords on either side?  
-**Hint:** how many "fluffy" passwords are there? make a relative frequency table, and use `cumsum()` to cumulatively sum these to work out where 50% lies. 
-`r qend()`
-`r solbegin(11, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-# frequency table
-freq <- table(fluffy$strength)
-freq 
-
-# relative frequency table
-relfreq <- freq / sum(freq)
-relfreq
-
-# cumulative percentage
-cumsum(relfreq)
-```
-`r solend()`
-
-`r qbegin(12)`
-The point at which 50% of the data lies either side is the median (the mid-point of the data). Check your answer from the previous exercise by using the function `median()` on the strengths of the fluffy passwords.  
-How does it compare to the median strength of passwords which are of type "simple-alphanumeric"? 
-`r qend()`
-`r solbegin(12, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-median(fluffy$strength)
-
-median(pwords$strength[pwords$type == "simple-alphanumeric"])
-```
-
-`r solend()`
 
 
 # Exercises: Advanced plotting
 
-
-`r qbegin(13)`
-
-`r qend()`
-`r solbegin(13, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-`r solend()`

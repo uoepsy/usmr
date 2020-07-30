@@ -13,7 +13,18 @@ source('assets/setup.R')
 library(patchwork)
 ```
 
-# Reading: "pipes" %>% 
+
+:::red
+**Preliminaries**  
+
+1. Open Rstudio, make sure you have the USMR project open, and create a new RMarkdown document (giving it a title for this week). 
+
+2. Make sure you regularly save the Rmarkdown files you are writing in, and it might help to close the ones from previous weeks to make your RStudio experience less busy. You should still be able to see in the bottomr right window of RStudio, there is a "Files" tab. When this is open, you are able to see the various files within your project. 
+
+:::
+
+
+# Reading: Tidyverse and pipes! 
 
 Before we get started on the statistics, we're going to briefly introduce a crucial bit of R code. 
 
@@ -34,7 +45,7 @@ barplot(table(somedata$somevariable))
 __R evaluates code from the inside-out!__ 
 
 You can end up with functions inside functions inside functions ... 
-```{r}
+```{r eval=FALSE}
 # Don't worry about what all these functions do, 
 # it's just an example -
 round(mean(log(cumsum(diff(1:10)))))
@@ -61,14 +72,21 @@ We can now write code that requires reading it from the inside-out:
 ```{r eval=FALSE}
 barplot(table(starwars2$species))
 ```
-or which requires reading it from left to right:
-```{r}
+or which reads from left to right:
+```{r eval=FALSE}
+starwars2$species %>%
+    table() %>%
+    barplot()
+```
+Both of which do exactly the same thing! They create the plot below:
+```{r echo=FALSE}
 starwars2$species %>%
     table() %>%
     barplot()
 ```
 
-And that long line of code from above:
+
+Similarly, that long line of code from above:
 ```{r eval=FALSE}
 # again, don't worry about all these functions, 
 # just notice the difference in the two styles.
@@ -96,13 +114,10 @@ We introduce a couple of these in more detail in the refresher and exercises bel
 
 # Exercises: ??? simulation  
 
-`r qbegin(1)`
-Open Rstudio, make sure you have the USMR project open, and create a new RMarkdown document (giving it a title for this week). 
-
-Make sure you regularly save the Rmarkdown files you are writing in, and it might help to close the ones from previous weeks to make your RStudio experience less busy. You should still be able to see in the bottomr right window of RStudio, there is a "Files" tab. When this is open, you are able to see the various files within your project. 
-
-`r qend()`
-
+introduce rnorm
+```{r}
+rnorm(10)
+```
 
 
 :::yellow
@@ -123,14 +138,6 @@ __Note:__ Inside `mutate()`, we don't have to keep using the dollar sign `$`, as
 :::
 
 
-```{r}
-data.frame(
-  x = rnorm(100)
-) %>%
-  mutate(
-    y = x^2
-  )
-```
 
 
 
@@ -391,46 +398,6 @@ wechsler %>%
   )
 ```
 
-## Skew 
-
-Skewness is a measure of _asymmetry_ in a distribution. Distributions can be _positively skewed_ or _negatively skewed_, and this influences our measures of central tendency and of spread to different degrees (see Figure \@ref(fig:skewplot)). 
-
-```{r, skewplot, echo=FALSE, fig.cap = "Skew influences the mean and median to different degrees."}
-library(sn)
-tibble(
-  x = seq(0, 200, 1),
-  y = dnorm(x, 100, 15),
-  y2 = dsn(x, xi = 180, omega=27.5, alpha = -5),
-  y3 = dsn(x, xi = 20, omega=27.5,alpha = 5),
-) %>%
-  ggplot(.,aes(x=x))+
-  geom_ribbon(aes(ymin=0, ymax=y, fill="Symmetric"), alpha=0.2)+
-  geom_ribbon(aes(ymin=0, ymax=y2, fill="Negative Skew"), alpha=0.2)+
-  geom_ribbon(aes(ymin=0, ymax=y3, fill="Positive Skew"), alpha=0.2)+
-  theme_classic()+
-  scale_fill_manual("",breaks=c("Positive Skew","Symmetric","Negative Skew"), values=c("chartreuse3","blue","red"))+
-  scale_y_continuous(NULL, breaks=NULL,)+
-  theme(axis.line.y = element_blank(), axis.text.x = element_blank(), 
-        axis.title.x = element_blank(), legend.position="bottom")+
-  
-  geom_vline(aes(xintercept=100), lty="dashed", col="blue")+
-  annotate("label",x=100, y=0.029, label="Mode", vjust=1,hjust=0.5, col="blue")+
-  annotate("label",x=100, y=0.031, label="Median", vjust=1,hjust=0.5, col="blue")+
-  annotate("label",x=100, y=0.033, label="Mean", vjust=1,hjust=0.5, col="blue")+
-  
-  geom_vline(xintercept=c(155,165,170), lty="dashed", col="red")+
-  annotate("label",x=170, y=0.029, label="Mode", vjust=1,hjust=0.5, col="red")+
-  annotate("label",x=165, y=0.031, label="Median", vjust=1,hjust=0.5, col="red")+
-  annotate("label",x=155, y=0.033, label="Mean", vjust=1,hjust=0.5, col="red")+
-  
-  geom_vline(xintercept=c(45,35,30), lty="dashed", col="chartreuse3")+
-  annotate("label",x=30, y=0.029, label="Mode", vjust=1,hjust=0.5, col="chartreuse3")+
-  annotate("label",x=35, y=0.031, label="Median", vjust=1,hjust=0.5, col="chartreuse3")+
-  annotate("label",x=45, y=0.033, label="Mean", vjust=1,hjust=0.5, col="chartreuse3")+
-  NULL
-```
-
-
 # Reading: Visualisations
 
 ## Boxplots {-}
@@ -543,6 +510,45 @@ ggplot(data = wechsler, aes(x = iq)) +
   xlim(50,150)
 ```
 
+## Skew 
+
+Skewness is a measure of _asymmetry_ in a distribution. Distributions can be _positively skewed_ or _negatively skewed_, and this influences our measures of central tendency and of spread to different degrees (see Figure \@ref(fig:skewplot)). 
+
+```{r, skewplot, echo=FALSE, fig.cap = "Skew influences the mean and median to different degrees."}
+library(sn)
+tibble(
+  x = seq(0, 200, 1),
+  y = dnorm(x, 100, 15),
+  y2 = dsn(x, xi = 180, omega=27.5, alpha = -5),
+  y3 = dsn(x, xi = 20, omega=27.5,alpha = 5),
+) %>%
+  ggplot(.,aes(x=x))+
+  geom_ribbon(aes(ymin=0, ymax=y, fill="Symmetric"), alpha=0.2)+
+  geom_ribbon(aes(ymin=0, ymax=y2, fill="Negative Skew"), alpha=0.2)+
+  geom_ribbon(aes(ymin=0, ymax=y3, fill="Positive Skew"), alpha=0.2)+
+  theme_classic()+
+  scale_fill_manual("",breaks=c("Positive Skew","Symmetric","Negative Skew"), values=c("chartreuse3","blue","red"))+
+  scale_y_continuous(NULL, breaks=NULL,)+
+  theme(axis.line.y = element_blank(), axis.text.x = element_blank(), 
+        axis.title.x = element_blank(), legend.position="bottom")+
+  
+  geom_vline(aes(xintercept=100), lty="dashed", col="blue")+
+  annotate("label",x=100, y=0.029, label="Mode", vjust=1,hjust=0.5, col="blue")+
+  annotate("label",x=100, y=0.031, label="Median", vjust=1,hjust=0.5, col="blue")+
+  annotate("label",x=100, y=0.033, label="Mean", vjust=1,hjust=0.5, col="blue")+
+  
+  geom_vline(xintercept=c(155,165,170), lty="dashed", col="red")+
+  annotate("label",x=170, y=0.029, label="Mode", vjust=1,hjust=0.5, col="red")+
+  annotate("label",x=165, y=0.031, label="Median", vjust=1,hjust=0.5, col="red")+
+  annotate("label",x=155, y=0.033, label="Mean", vjust=1,hjust=0.5, col="red")+
+  
+  geom_vline(xintercept=c(45,35,30), lty="dashed", col="chartreuse3")+
+  annotate("label",x=30, y=0.029, label="Mode", vjust=1,hjust=0.5, col="chartreuse3")+
+  annotate("label",x=35, y=0.031, label="Median", vjust=1,hjust=0.5, col="chartreuse3")+
+  annotate("label",x=45, y=0.033, label="Mean", vjust=1,hjust=0.5, col="chartreuse3")+
+  NULL
+```
+  
 
 
 # Exercises: Stroop Experiment
@@ -563,10 +569,10 @@ knitr::include_graphics("images/numeric/stroop1.png")
 
 :::
 
-`r qbegin(1)` 
-Create a new heading for these exercises and read in the data.  
+`r qbegin()` 
+Create a new heading for these exercises and read in the data. Be sure to assign it a clear name.  
 `r qend()`
-`r solbegin(1, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r include=FALSE}
 stroopdata <- read_csv("https://uoepsy.github.io/data/strooptask.csv")
 ```
@@ -574,10 +580,10 @@ stroopdata <- read_csv("https://uoepsy.github.io/data/strooptask.csv")
 
 ---
 
-`r qbegin(2)`  
+`r qbegin()`  
 using `summarise()`, show the minimum, maximum, mean and median of the times taken to read the matching word set, and then do the same for the mismatching word set.
 `r qend()`
-`r solbegin(2, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 Matching words
 ```{r}
 stroopdata %>%
@@ -603,12 +609,12 @@ stroopdata %>%
 
 ---
 
-`r qbegin(3)` 
+`r qbegin()` 
 What we are interested in is the differences between these times. For someone who took 10 seconds for the matching set, and 30 seconds for the mismatching set, we want to record the difference of 20 seconds.  
 
 Create a new variable called _stroop_effect_ which is the difference between the _mismatching_ and _matching_ variables.  
 
-__Hint:__ Remember we can use the `mutate()` function to add a new variable. Recall also that we need to _reassign_ this to the name "stroopdata", to make the changes appear in the __environment__ (rather than just printing them out).  
+__Hint:__ Remember we can use the `mutate()` function to add a new variable. Recall also that we need to _reassign_ this to the name of your dataframe, to make the changes appear in the __environment__ (rather than just printing them out).  
 ```{r eval=FALSE}
 stroopdata <- 
   stroopdata %>%
@@ -618,7 +624,7 @@ stroopdata <-
 ```
 
 `r qend()`
-`r solbegin(3, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
 stroopdata <- 
   stroopdata %>%
@@ -631,7 +637,7 @@ stroopdata
 ```
 `r solend()`
 
-`r qbegin(4)`  
+`r qbegin()`  
 For the _stroop_effect_ variable you just created, produce both a histogram and a density curve.  
 
 What is the more appropriate guess for the mean of this variable?  
@@ -642,7 +648,7 @@ a. 10
 a. 12 
 
 `r qend()`
-`r solbegin(4, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 ```{r}
 ggplot(data = stroopdata, aes(x = stroop_effect)) +
@@ -667,107 +673,14 @@ ggplot(data = stroopdata, aes(x = stroop_effect)) +
 
 ---
 
-`r qbegin(5)`  
-The code below will produce a histogram of the _stroop_effect_ variable and add a vertical line (`geom_vline()`) at zero. 
-
+We know how to use `[]` and `$` in order to manipulate data by specifying rows/columns/conditions which we want to access: 
 ```{r eval=FALSE}
-ggplot(data = stroopdata, aes(x = stroop_effect)) +
-  geom_histogram() +
-  geom_vline(xintercept = 0)
-```
-
-Calculate the a measure of central tendency for the _stroop_effect_ variable, and add a line to your histogram at that value.  
-`r qend()`
-`r solbegin(5, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-We'll go for the mean here
-```{r}
-stroopdata %>% 
-  summarise(
-    mean_diff = mean(stroop_effect)
-  )
-```
-
-```{r}
-ggplot(data = stroopdata, aes(x = stroop_effect)) +
-  geom_histogram() +
-  geom_vline(xintercept = 7.9)
-```
-`r solend()`
-
----
-
-`r qbegin(6)`  
-There are some other variables in the Stroop Task dataset.  
-Provide some descriptive statistics for the _age_, _height_ and _practice_ variables.  
-
-For each variable, think: 
-
-+ what type of data is it?  
-+ what do you want to report about it? central tendency? if so, what measure? or do you want to report frequencies?
-
-`r qend()`
-`r solbegin(6, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-The _age_ variable is numeric. The distribution of ages in an experiment will depend a bit on how participants were recruited.  
-What do you think the shape of the distribution of the global populations' ages would look like? 
-Are they likely to be evenly spread around a central value - i.e., are there a similar number of <5 year olds as there are >95 year olds? There are probably more <5 year olds? It's probably not symmetric. The median is less sensitive to asymmetry, so let's report that (we would normally want to plot it first too).
-```{r}
-stroopdata %>%
-  summarise(
-    min_age = min(age),
-    max_age = max(age),
-    median_age = median(age),
-    iqr_age = IQR(age)
-  )
-```
-
-Think about what the distribution shape of everbody in the worlds' heights might look like? We would expect it to be reasonably symmetric (evenly distributed around a central value). Probably? The mean is likely appropriate here (again, plotting first would be worthwhile).
-
-```{r}
-stroopdata %>%
-  summarise(
-    min_height = min(height),
-    max_height = max(height),
-    mean_height = mean(height),
-    sd_height = sd(height)
-  )
-```
-
-Lastly, the _practice_ variable is categorical - there are only two categories ("Yes" and "No"). So all we can do is to report the counts (number of datapoints) in each category.
-```{r}
-stroopdata %>%
-  count(practice)
-```
-`r solend()`
-
----
-
-`r qbegin(7)`  
-Think back to our first lab, in which we learned how to access different sections of data.  
-
-1. Assign the name "no_practice" to a new object, which is all of the rows in the "stroopdata" dataframe where the _practice_ variable is equal to "no". 
-2. Assign the name "practice" to a new object, which is all of the rows in the "stroopdata" dataframe where the _practice_ variable is equal to "yes".  
-
-`r qend()`
-`r solbegin(7, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-We learned how to do this using `[]` and `$`:
-```{r}
 # In the stroopdata dataframe, give me all the rows for which the
 # condition stroopdata$practice=="no" is TRUE, and give me all the columns.
-# assign this as an object with the name "no_practice"
-no_practice <- stroopdata[stroopdata$practice == "no", ]
-
-#and the same but for practice == "yes"
-practice <- stroopdata[stroopdata$practice == "yes", ]
-
+stroopdata[stroopdata$practice == "no", ]
 ```
-Notice that when we run this code, the objects __no_practice__ and __practice__ will now show up in the environment (top right of Rstudio). We can see there that they have 69 and 62 observations each. This adds up to the 131 observations in the __stroopdata__ object. 
-`r solend()`
 
----  
-
-We learned how to tackle things such Question 7 above by making use of `[]` and `$` to specify rows/columns/conditions which we want to access in a dataframe.  
-
-There are two functions which provide similar functionality - `filter()` and `select()`. They are part of the same package as `mutate()` and `summarise()` and are often used in conjunction with the `%>%` operator to tell the functions where to find the variables (meaning we don't need to use `data$variable`, we can just use the variable name)
+In the **tidyverse** way of doing things, there are two functions which provide similar functionality - `filter()` and `select()`. They are part of the same package as `mutate()` and `summarise()` and are often used in conjunction with the `%>%` operator to tell the functions where to find the variables (meaning we don't need to use `data$variable`, we can just use the variable name)
 
 :::yellow
 __filter()__ 
@@ -796,23 +709,92 @@ data %>%
 ```
 :::
 
-`r qbegin(8)`  
-Using `filter()` and `select()`, 
+---
 
-1. Assign the name "no_practice" to a new object, which is all of the rows in the "stroopdata" dataframe where the _practice_ variable is equal to "no". 
-2. Assign the name "practice" to a new object, which is all of the rows in the "stroopdata" dataframe where the _practice_ variable is equal to "yes".  
-3. Assign the name "participants" to a new object, which is all of the rows in the "stroopdata" dataframe where the _age_ variable is greater than or equal to 40, but only the _id_, _age_, and _height_ variables. 
-
+`r qbegin()`  
+Filter the data to only participants who are at least 40 years old and did not have any practice, and calculate the mean stroop effect for these participants. 
 `r qend()`
-`r solbegin(8, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-We learned how to do this using `[]` and `$`:
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
-no_practice <- stroopdata %>% filter(practice == "no")
-
-practice <- stroopdata %>% filter(practice == "yes")
-
-participants <- stroopdata %>% filter(age >= 40) %>% select(id, age, height)
+stroopdata %>% filter(age >= 40, practice == "no") %>%
+  summarise(
+    meanstroop = mean(stroop_effect)
+  )
 ```
 `r solend()`
 
+`r qbegin()`  
+Create a density plot of the stroop effect for those who had no practice.  
+If the experimental manipulation had no effect, what would you expect the mean to be?  
+
+**Tip:** You can pass data to a ggplot using `%>%`. It means you can do sequences of **data &#8594; manipulation &#8594; plot**, without having to store the manipulated data as a named object in R's memory. For instance:
+```{r eval=FALSE}
+data %>% 
+  filter(condition) %>% 
+  mutate(
+    new_variable = variable1 * variable2
+  )
+  ggplot(aes(x = variable1, y = new_variable)) +
+  geom....
+```
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+stroopdata %>% 
+  filter(practice == "no") %>%
+  ggplot(aes(x = stroop_effect)) + 
+  geom_density()
+```
+
+If there wasn't a difference between the conditions, then we would expect the mean of the variable we just created (the difference between conditions) to be 0. 
+`r solend()`
+
+
+# Exercises: Many samples
+
+remember - 
+we use a sample statistics to estimate a population parameter.
+e.g. we use the mean difference in RT times between matching and mismatching conditions in our sample of 131 participants, to estimate the true mean difference in the population!  
+
+
+Let's assume that in the population, the Stroop task doesn't do anything - i.e., in the population there is *no* difference in reaction times between the matching and mismatching conditions.  
+
+We can simulate an hypothetical sample of the "stroop_effect" variable, of the same $n$ as our experiment.  
+Note that we assume the standard deviation of this sample to be the same as the sample we collected, but the mean we assume to be zero (indicating no difference between conditions).  
+```{r}
+# observed standard deviation
+sd(stroopdata$stroop_effect)
+
+# generated sample with mean 0
+rnorm(n = 131, mean = 0, sd = 5.015774) 
+```
+
+wrap the whole thing with `mean()` to find the mean of a randomly generated hypothetical sample. 
+```{r}
+mean(rnorm(n = 131, mean = 0, sd = 5.015774))
+```
+
+- run the code again, and then again. notice that they change a bit. why?
+A: random sampling! even with mean = 0, a sample statistic will vary.  
+
+- look up the function `replicate()`. we can use it to do something lots of times! 
+
+- calculate the means of 1000 hypothetical samples of $n = 131$. 
+- store it an object and make a histogram of it. 
+```{r}
+samplemeans <- replicate(1000, mean(rnorm(n=131, mean=0, sd=5.015774)))
+hist(samplemeans)
+```
+
+- what does the histogram show? 
+A: shows how, if the true population mean was 0, the mean of samples of size 131 would vary due to randomness of sampling  
+
+- where, on our histogram, does the *observed* sample mean lie?
+```{r}
+mean(stroopdata$stroop_effect)
+```
+
+- if the true mean is 0, are we likely to see the mean of a sample of 131 which is `r round(mean(stroopdata$stroop_effect),2)`? 
+A: no!
 
