@@ -5,7 +5,7 @@ biblio-style: apalike
 link-citations: yes
 params: 
     SHOW_SOLS: TRUE
-    TOGGLE: FALSE
+    TOGGLE: TRUE
 ---
 
 ```{r setup, include=FALSE}
@@ -114,9 +114,13 @@ We introduce a couple of these in more detail in the refresher and exercises bel
 
 # Exercises: ??? simulation  
 
-introduce rnorm
+introduce rnorm, hist, mutate
+
 ```{r}
-rnorm(10)
+rnorm(10, mean = 178, sd = 10)
+hist(rnorm(10, mean = 178, sd = 10))
+
+
 ```
 
 
@@ -264,7 +268,7 @@ data %>%
     summary_value2 = mean(variable2)
   )
 ```
-__Note:__ Just like with `mutate()` (introduced in the [previous lab](https://uoepsy.github.io/dapr1/labs/02_categorical.html#Relative_frequencies)) we don't have to keep using the dollar sign `$`, as we have already told it what dataframe to look for the variables in. 
+__Note:__ Just like with `mutate()` we don't have to keep using the dollar sign `$`, as we have already told it what dataframe to look for the variables in. 
 :::
 
 So if we want to show the mean IQ score and the mean age of our participants:
@@ -569,18 +573,18 @@ knitr::include_graphics("images/numeric/stroop1.png")
 
 :::
 
-`r qbegin()` 
+`r qbegin("B1")` 
 Create a new heading for these exercises and read in the data. Be sure to assign it a clear name.  
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r include=FALSE}
+```{r}
 stroopdata <- read_csv("https://uoepsy.github.io/data/strooptask.csv")
 ```
 `r solend()`
 
 ---
 
-`r qbegin()`  
+`r qbegin("B2")`  
 using `summarise()`, show the minimum, maximum, mean and median of the times taken to read the matching word set, and then do the same for the mismatching word set.
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -609,7 +613,7 @@ stroopdata %>%
 
 ---
 
-`r qbegin()` 
+`r qbegin("B3")` 
 What we are interested in is the differences between these times. For someone who took 10 seconds for the matching set, and 30 seconds for the mismatching set, we want to record the difference of 20 seconds.  
 
 Create a new variable called _stroop_effect_ which is the difference between the _mismatching_ and _matching_ variables.  
@@ -637,7 +641,7 @@ stroopdata
 ```
 `r solend()`
 
-`r qbegin()`  
+`r qbegin("B4")`  
 For the _stroop_effect_ variable you just created, produce both a histogram and a density curve.  
 
 What is the more appropriate guess for the mean of this variable?  
@@ -650,14 +654,14 @@ a. 12
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
-```{r}
+```{r fig.width=3, fig.height=3}
 ggplot(data = stroopdata, aes(x = stroop_effect)) +
   geom_histogram()
 ```
 
 The default binwidth of the histogram here might lead you astray in guessing the mean value - the highest bar by some distance is at around 5 seconds.  
 Try changing the binwidth to get a different picture - for example:
-```{r out.width="50%"}
+```{r fig.width=3, fig.height=3}
 ggplot(data = stroopdata, aes(x = stroop_effect)) +
   geom_histogram(binwidth = 2)
 ```
@@ -665,13 +669,13 @@ ggplot(data = stroopdata, aes(x = stroop_effect)) +
 In both histograms, you can see that there is quite a lot of data between the values of 7 and 12.  
 
 An advantage of the density curve is that they are better at displaying the distribution shape as they are not influenced by the number of bins. However, this comes at the expense of no longer having the easily interpreted _count_ on the y-axis. A benefit of a histogram is that the viewer can also gain an idea of _how much_ data there is, whereas a density curve of 10 datapoints could be hard to distinguish from one of 100. 
-```{r}
+```{r fig.width=3, fid.height=3}
 ggplot(data = stroopdata, aes(x = stroop_effect)) +
   geom_density()
 ```
 `r solend()`
 
----
+## Introducing filter() and select()
 
 We know how to use `[]` and `$` in order to manipulate data by specifying rows/columns/conditions which we want to access: 
 ```{r eval=FALSE}
@@ -711,7 +715,7 @@ data %>%
 
 ---
 
-`r qbegin()`  
+`r qbegin("B5")`  
 Filter the data to only participants who are at least 40 years old and did not have any practice, and calculate the mean stroop effect for these participants. 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -723,7 +727,7 @@ stroopdata %>% filter(age >= 40, practice == "no") %>%
 ```
 `r solend()`
 
-`r qbegin()`  
+`r qbegin("B6")`  
 Create a density plot of the stroop effect for those who had no practice.  
 If the experimental manipulation had no effect, what would you expect the mean to be?  
 
@@ -753,48 +757,75 @@ If there wasn't a difference between the conditions, then we would expect the me
 
 # Exercises: Many samples
 
-remember - 
-we use a sample statistics to estimate a population parameter.
-e.g. we use the mean difference in RT times between matching and mismatching conditions in our sample of 131 participants, to estimate the true mean difference in the population!  
+Statistical inference is the use of a sample statistic to estimate a population parameter. For example, we can use the mean difference in RT times between matching and mismatching conditions in our sample of 131 participants as an estimate of the true mean difference in the population!  
 
-
-Let's assume that in the population, the Stroop task doesn't do anything - i.e., in the population there is *no* difference in reaction times between the matching and mismatching conditions.  
-
-We can simulate an hypothetical sample of the "stroop_effect" variable, of the same $n$ as our experiment.  
+The thing is, *samples vary*. Take 10 randomly selected people and calculate the average height. Take another 10, and calculate their average height. The average from the second sample will be different from the average of the first. If you take lots of samples, the average heights will all be different, but by how much will they vary? We need to try to quantify how much sample statistics vary due to random sampling.  
+  
+Let's assume that in the population, the Stroop task doesn't do anything - i.e., in the population there is *no* difference in reaction times between the matching and mismatching conditions. Under this assumption, we can simulate an hypothetical sample of the "stroop_effect" variable, of the same $n$ as our experiment.  
 Note that we assume the standard deviation of this sample to be the same as the sample we collected, but the mean we assume to be zero (indicating no difference between conditions).  
 ```{r}
 # observed standard deviation
 sd(stroopdata$stroop_effect)
 
-# generated sample with mean 0
+# generated sample of 131 with mean 0
 rnorm(n = 131, mean = 0, sd = 5.015774) 
 ```
 
-wrap the whole thing with `mean()` to find the mean of a randomly generated hypothetical sample. 
+`r qbegin("C1")`  
+Now that we know how to generate a sample, wrap the whole thing with the `mean()` function to find the mean of a randomly generated hypothetical sample.  
+
+Run this again and again, and notice that your hypothetical sample means change each time. Why?
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+Each result will be different, because we're *randomly* generating a new sample each time!    
+Even when we specify `mean = 0`, randomness means that it will deviate slightly each time!
 ```{r}
 mean(rnorm(n = 131, mean = 0, sd = 5.015774))
 ```
+`r solend()`
 
-- run the code again, and then again. notice that they change a bit. why?
-A: random sampling! even with mean = 0, a sample statistic will vary.  
+`r qbegin("C2")`  
+Look up the function `replicate()`. We can use it to do something in R lots of times!  
 
-- look up the function `replicate()`. we can use it to do something lots of times! 
+Calculate the means of 1000 hypothetical samples of $n = 131$.  
+Store the sample means as a named object and make a quick histogram of it using `hist()`.  
 
-- calculate the means of 1000 hypothetical samples of $n = 131$. 
-- store it an object and make a histogram of it. 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
 samplemeans <- replicate(1000, mean(rnorm(n=131, mean=0, sd=5.015774)))
 hist(samplemeans)
 ```
+`r solend()`
 
-- what does the histogram show? 
-A: shows how, if the true population mean was 0, the mean of samples of size 131 would vary due to randomness of sampling  
+`r qbegin("C2")`  
+Write a sentence explaining what the histogram you just created shows.  
 
-- where, on our histogram, does the *observed* sample mean lie?
+How can we use the histogram to inform us about the *observed* mean which we calculated from our collected data?
 ```{r}
+# observed mean
 mean(stroopdata$stroop_effect)
 ```
 
-- if the true mean is 0, are we likely to see the mean of a sample of 131 which is `r round(mean(stroopdata$stroop_effect),2)`? 
-A: no!
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+The histogram shows how means of samples of size 131 will vary due to random sampling, *if the true population mean is zero*.  
+
+We can then ask ourselves: "if the true population mean is 0, how likely is it that we would get a sample mean of `r round(mean(stroopdata$stroop_effect),2)` from a sample of 131?"  
+
+```{r echo=FALSE}
+ggplot(data=tibble(samplemeans),aes(x=samplemeans))+
+  geom_histogram(col="white")+
+  geom_vline(aes(xintercept=mean(stroopdata$stroop_effect)),lty="dashed",col="tomato1")+
+  scale_y_continuous(NULL,breaks=NULL)+
+  labs(x = "mean stroop effect")+
+  theme_minimal()+
+  annotate("text",x=3, y=270, label="What we would expect for the mean\nstroop effect from samples of size 131\nif the population mean is 0", col="grey30")+
+  annotate("text",x=5.5, y=150, label="What we observed for the mean\nstroop effect of a sample of size 131", col="tomato1")+
+  geom_curve(aes(x=3, xend=1.2, y=240, yend=160), col="grey30", size=0.5, curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))+
+  geom_curve(aes(x=5.5, xend=7.5, y=130, yend=90), col="tomato1", size=0.5, curvature = 0.2, arrow = arrow(length = unit(0.03, "npc")))
+```
+
+`r solend()`
 
