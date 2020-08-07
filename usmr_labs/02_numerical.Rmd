@@ -112,17 +112,36 @@ We're going to use this way of writing a lot throughout the course, and it pairs
 
 We introduce a couple of these in more detail in the refresher and exercises below. 
 
-# Exercises: ??? simulation  
+# Exercises: Sampling heights
 
-introduce rnorm, hist, mutate
-
+`r qbegin("A1")`  
+Copy the code below and explore what it does.  
+Note that `tibble()` is the tidyverse name for a `data.frame()`. 
 ```{r}
-rnorm(10, mean = 178, sd = 10)
-hist(rnorm(10, mean = 178, sd = 10))
+library(tidyverse)
+simdata <-
+  tibble(
+    id = 1:10000,
+    height = rnorm(10000, mean = 178, sd = 10)
+  )
 
-
+simdata
 ```
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+The code creates a dataframe object called "simdata", which has 2 columns, "id" and "height".  
+The "id" variable has the numbers 1 to 10,000. The "height" variable has 10,000 random numbers drawn from a population with a mean of 178 and a standard deviation of 10.  
+`r solend()`
 
+`r qbegin("A2")`  
+For now, let's imagine that the 10,000 entries we created in `simdata` are the entire population of interested.  
+Calculate the mean height of the population. 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+mean(simdata$height)
+```
+`r solend()`
 
 :::yellow
 __mutate()__  
@@ -138,10 +157,120 @@ data %>%
     newvariable = oldvariable * 2
   )
 ```
-__Note:__ Inside `mutate()`, we don't have to keep using the dollar sign `$`, as we have already told it what data to look for variables in. 
+__Note:__ Inside `mutate()`, we don't have to keep using the dollar sign `$`, as we have already told it what data to look for variables in.  
+  
+To ensure that our additions/modifications of variables are stored in R's environment (rather than simply printed out), we need to *reassign* the name of our dataframe:
+```{r eval=FALSE}
+data <- 
+  data %>%
+  mutate(
+    ...
+  )
+```
 :::
 
 
+`r qbegin("A3")`  
+Add a new variable to `simdata` which is TRUE for those in the population who are over 6 foot (182.88cm) and FALSE for those who are under.  
+You can do this with or without using `mutate()`, why not see if you can do both?  
+
+Calculate the proportion of the population are over 6 foot?  
+
+`r optbegin("helpful hint", olabel=FALSE)`
+```{r}
+# some numbers:
+x1 <- c(3,1,4,2,7)
+# whether or not each value is <5
+x2 <- x1<5
+# x2 is a set of TRUEs and FALSEs
+x2
+# TRUE gets counted as 1, FALSE as 0:
+sum(x2)
+# the proportion of TRUEs:
+sum(x2)/length(x2)
+# or, alternatively:
+mean(x2)
+mean(x1<5)
+```
+`r optend()`
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+Using `mutate()`:
+```{r}
+simdata <- 
+  simdata %>% 
+  mutate(
+    over6foot = height > 182.88
+  )
+```
+
+Or, the non-tidyverse way:
+```{r}
+simdata$over6foot <- simdata$height > 182.88
+```
+
+Proportion over 6 foot:
+```{r}
+mean(simdata$over6foot)
+```
+`r solend()`
+
+`r qbegin("A4")`  
+In real life, we rarely have data on the entire population that we're interested in. Instead, we collect a sample.    Statistical inference is the use of a sample statistic to estimate a population parameter. For example, we can use the mean height from a sample of 20 as an estimate of the mean height of the population!  
+  
+The thing is, *samples vary*. Using `sample()`, take a sample of size $n=20$ from the `simdata` population.  
+Calculate the mean height of the sample. 
+Run the code a couple of times (each time you run `sample()` it will draw a new sample), to see how the mean of the samples vary.
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+mean(sample(simdata$height, size = 20))
+mean(sample(simdata$height, size = 20))
+mean(sample(simdata$height, size = 20))
+```
+`r solend()`
+
+`r qbegin("A5")`  
+Look up the function `replicate()`. We can use it to do something in R lots of times!  
+  ```{r}
+  # run the code "1+1" 100 times: 
+  replicate(100, 1+1)
+  ```
+
+Calculate the means of 1000 samples of size $n=20$ drawn randomly from the heights in `simdata`.  
+You can make a quick visualisation of the distribution of sample means using `hist()`.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+hist(replicate(1000, mean(sample(simdata$height, size = 20))))
+```
+`r solend()`
+
+`r qbegin("A6")`  
+What happens to the shape of the distribution if you take 1000 means of samples of size $n=200$, rather than $n=20$?  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+hist(replicate(1000, mean(sample(simdata$height, size = 200))))
+```
+
+:::int
+Note the values on the x-axis. Most of the values are in a much narrow bracket (176 to 180) than when we took lots of samples of $n=20$.  
+:::int
+
+`r solend()`
+
+`r qbegin("A7")`  
+For 1000 samples of size $n=20$, calculate the proportion of the sample which is over 6 foot. Plot the distribution of the 1000 sample proportions.  
+At what value would you expect the distribution to be centred? 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+We would expect the distribution of sample proportions to be centered around the population proportion. 
+```{r}
+hist(replicate(1000, mean(sample(simdata$over6foot, size = 20))))
+```
+`r solend()`
 
 
 
@@ -455,7 +584,7 @@ rm(mn,mx,outs_lw,outs_up,px)
 ```
 
 We can create a boxplot of our age variable using the following code:
-```{r}
+```{r fig.height=3}
 # Notice, we put age on the x axis, making the box plot vertical. 
 # If we had set aes(y = age) instead, then it would simply be rotated 90 degrees 
 ggplot(data = wechsler, aes(x = age)) +
@@ -496,17 +625,17 @@ Tests 1 and 2 have similar means (around 50), but the standard deviation of Test
 ```{r echo=FALSE}
 ggplot(data = wechsler, aes(x = test1)) + 
   geom_histogram()+
-  xlim(0,100) + theme_classic() +
+  xlim(0,100) +
 ggplot(data = wechsler, aes(x = test2)) + 
   geom_histogram()+
-  xlim(0,100) +theme_classic()
+  xlim(0,100)
 ```
 
 ## Density curves {-}  
 
 In addition to grouping numeric data into _bins_ in order to produce a histogram, we can also visualise a __density curve.__
   
-For the time being, you can think of the density as a bit similar to the notion of __relative frequency__ which we [discussed in the lab on categorical data](https://uoepsy.github.io/dapr1/labs/02_categorical.html#Relative_frequencies), in that for a density curve, the values on the y-axis are scaled so that the total area under the curve is equal to 1. Because there are infinitely many values that numeric variables could take (e.g., 50, 50.1, 50.01, 5.001, ...), we could group the data into infinitely many bins. In creating a curve for which the total area underneath is equal to one, we can use the area under the curve in a range of values to indicate the proportion of values in that range.  
+For the time being, you can think of the density as a bit similar to the notion of __relative frequency__, in that for a density curve, the values on the y-axis are scaled so that the total area under the curve is equal to 1. Because there are infinitely many values that numeric variables could take (e.g., 50, 50.1, 50.01, 5.001, ...), we could group the data into infinitely many bins. In creating a curve for which the total area underneath is equal to one, we can use the area under the curve in a range of values to indicate the proportion of values in that range.  
 
 ```{r}
 ggplot(data = wechsler, aes(x = iq)) + 
@@ -757,11 +886,7 @@ If there wasn't a difference between the conditions, then we would expect the me
 
 # Exercises: Many samples
 
-Statistical inference is the use of a sample statistic to estimate a population parameter. For example, we can use the mean difference in RT times between matching and mismatching conditions in our sample of 131 participants as an estimate of the true mean difference in the population!  
-
-The thing is, *samples vary*. Take 10 randomly selected people and calculate the average height. Take another 10, and calculate their average height. The average from the second sample will be different from the average of the first. If you take lots of samples, the average heights will all be different, but by how much will they vary? We need to try to quantify how much sample statistics vary due to random sampling.  
-  
-Let's assume that in the population, the Stroop task doesn't do anything - i.e., in the population there is *no* difference in reaction times between the matching and mismatching conditions. Under this assumption, we can simulate an hypothetical sample of the "stroop_effect" variable, of the same $n$ as our experiment.  
+Let's assume that in the population, the Stroop task doesn't do anything - i.e., in the population there is *no* difference in reaction times between the matching and mismatching conditions. Under this assumption, we can generate an hypothetical sample of the "stroop_effect" variable, of the same $n$ as our experiment.  
 Note that we assume the standard deviation of this sample to be the same as the sample we collected, but the mean we assume to be zero (indicating no difference between conditions).  
 ```{r}
 # observed standard deviation
@@ -785,9 +910,7 @@ mean(rnorm(n = 131, mean = 0, sd = 5.015774))
 `r solend()`
 
 `r qbegin("C2")`  
-Look up the function `replicate()`. We can use it to do something in R lots of times!  
-
-Calculate the means of 1000 hypothetical samples of $n = 131$.  
+Using `replicate()`, calculate the means of 1000 hypothetical samples of $n = 131$.  
 Store the sample means as a named object and make a quick histogram of it using `hist()`.  
 
 `r qend()`
@@ -818,11 +941,12 @@ We can then ask ourselves: "if the true population mean is 0, how likely is it t
 ggplot(data=tibble(samplemeans),aes(x=samplemeans))+
   geom_histogram(col="white")+
   geom_vline(aes(xintercept=mean(stroopdata$stroop_effect)),lty="dashed",col="tomato1")+
+  ylim(0,300)+
   scale_y_continuous(NULL,breaks=NULL)+
   labs(x = "mean stroop effect")+
   theme_minimal()+
   annotate("text",x=3, y=270, label="What we would expect for the mean\nstroop effect from samples of size 131\nif the population mean is 0", col="grey30")+
-  annotate("text",x=5.5, y=150, label="What we observed for the mean\nstroop effect of a sample of size 131", col="tomato1")+
+  annotate("text",x=5.5, y=150, label="What we observed for the mean\nstroop effect of our sample of size 131", col="tomato1")+
   geom_curve(aes(x=3, xend=1.2, y=240, yend=160), col="grey30", size=0.5, curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))+
   geom_curve(aes(x=5.5, xend=7.5, y=130, yend=90), col="tomato1", size=0.5, curvature = 0.2, arrow = arrow(length = unit(0.03, "npc")))
 ```

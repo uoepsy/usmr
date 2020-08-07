@@ -6,4 +6,5 @@
 source('assets/dropdowns.R')
 
 # Knitr settings
-knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, fig.align = 'center')
+
