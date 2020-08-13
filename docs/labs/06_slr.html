@@ -11,7 +11,7 @@
 
 
 
-<title>Simple Linear Regression</title>
+<title>Linear Regression Basics</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -414,10 +414,10 @@ div.tocify {
   </a>
   <ul class="dropdown-menu" role="menu">
     <li>
-      <a href="06_slr.html">6: simple regression, assumptions</a>
+      <a href="06_slr.html">6: Linear Regression Basics</a>
     </li>
     <li>
-      <a href="07_mlr.html">7: multiple regression, interactions</a>
+      <a href="07_mlr.html">7: More Regression</a>
     </li>
   </ul>
 </li>
@@ -429,12 +429,14 @@ div.tocify {
   </a>
   <ul class="dropdown-menu" role="menu">
     <li>
-      <a href="08_contrasts.html">8: categorical predictors: contrasts</a>
+      <a href="08_contrasts.html">8: Contrasts</a>
     </li>
     <li>
-      <a href="09_glm.html">9: categorical outcomes: GLM</a>
+      <a href="09_glm.html">9: GLM</a>
     </li>
-    <li class="dropdown-header">10: everything is an lm</li>
+    <li>
+      <a href="10_everything.html">10: everything is an lm</a>
+    </li>
   </ul>
 </li>
       </ul>
@@ -449,28 +451,1610 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">Simple Linear Regression</h1>
+<h1 class="title toc-ignore">Linear Regression Basics</h1>
 
 </div>
 
 
-<div id="model-formula" class="section level1">
-<h1>Model formula</h1>
+<div class="red">
+<p><strong>Preliminaries</strong></p>
+<ol style="list-style-type: decimal">
+<li>Open Rstudio, make sure you have the USMR project open, and create a new RMarkdown document (giving it a title for this week).</li>
+</ol>
 </div>
-<div id="interpreting-coefficients" class="section level1">
-<h1>Interpreting coefficients</h1>
-<div id="numeric-predictor" class="section level2">
-<h2>Numeric predictor</h2>
+<div id="choose-fit-assess-use" class="section level1">
+<h1>CHOOSE &gt; FIT &gt; ASSESS &gt; USE</h1>
+<div class="yellow">
+<p><strong>IMPORTANT!</strong></p>
+<p>It may help to think of the sequence of steps involved in statistical modeling as:<br />
+<span class="math display">\[
+\text{Choose} \rightarrow \text{Fit} \rightarrow \text{Assess} \rightarrow \text{Use}
+\]</span>
+<br>
+We explore/visualise our data and <strong>Choose</strong> our model specification.<br />
+Then we <strong>Fit</strong> the model in R.<br />
+Next, we <strong>Assess</strong> the fit, to ensure that it meets all the underlying assumptions?<br />
+<em>Finally</em>, we <strong>Use</strong> our model to draw statistical inferences about the world, or to make predictions.</p>
+<div class="frame">
+<strong>A general rule</strong><br />
+<br>
+<center>
+Do not <strong>use</strong> (draw inferences or predictions from) a model <em>before</em> you have <strong>assessed</strong> that the model satisfies the underlying assumptions
+</center>
 </div>
-<div id="categorical-predictor" class="section level2">
-<h2>Categorical predictor</h2>
+<p><br>
+In these exercises, at times we will skip straight to <strong>Using</strong> the model (interpreting our parameter estimates and construct confidence intervals around them), before considering the assumptions. This is because we believe this ordering aids learning what different parts of fitted models represent, and enables us to devote a section to <strong>Assessing</strong> assumptions later on. Please note that this when conducting real analyses, the <span class="math inline">\(\text{Choose} \rightarrow \text{Fit} \rightarrow \text{Assess} \rightarrow \text{Use}\)</span> is the appropriate sequence of steps.</p>
 </div>
 </div>
-<div id="assumptions" class="section level1">
-<h1>Assumptions</h1>
+<div id="exercises-simple-regression" class="section level1">
+<h1>Exercises: Simple regression</h1>
 </div>
-<div id="model-fit" class="section level1">
-<h1>Model fit?</h1>
+<div id="exercises-multiple-regression" class="section level1">
+<h1>Exercises: Multiple Regression</h1>
+<p>In this block of exercises, we move from the simple linear regression model (one outcome variable, one explanatory variable) to the <em>multiple regression model</em> (one outcome variable, multiple explanatory variables).<br />
+Everything we just learned about simple linear regression can be extended (with minor modification) to the multiple regresion model. The key conceptual difference is that for simple linear regression we think of the distribution of errors at some fixed value of the explanatory variable, and for multiple linear regression, we think about the distribution of errors at fixed set of values for all our explanatory variables.</p>
+<div id="numeric-numeric" class="section level2">
+<h2>~ Numeric + Numeric</h2>
+<blockquote>
+<p><strong>Research question</strong><br />
+Reseachers are interested in the relationship between psychological wellbeing and time spent outdoors.<br />
+The researchers know that other aspects of peoples’ lifestyles such as how much social interaction they have can influence their mental well-being. They would like to study whether there is a relationship between well-being and time spent outdoors <em>after</em> taking into account the relationship between well-being and social interactions.</p>
+</blockquote>
+<!-- We previously used simple linear regression to examine whether score on the WMBWS was related to the amount of time spent outdoors (self-reported as the average number of hours per week). We will now extend this and build a multiple regression model which we can use to predict WEMWBS score based on both outdoor time *and* number of social interactions.   -->
+<div class="optional-begin">
+Wellbeing data codebook<span id="opt-start-47" class="fa fa-plus optional-icon clickable" onclick="toggle_visibility(&#39;opt-body-47&#39;, &#39;opt-start-47&#39;)"></span>
+</div>
+<div id="opt-body-47" class="optional-body" style="display: none;">
+<p><strong>Download link</strong></p>
+<p>The data is available at <a href="https://uoepsy.github.io/data/wellbeing.csv" class="uri">https://uoepsy.github.io/data/wellbeing.csv</a>.</p>
+<p><strong>Description</strong></p>
+<p>Researchers interviewed 32 participants, selected at random from the population of residents of Edinburgh &amp; Lothians. They used the Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS), a self-report measure of mental health and well-being. The scale is scored by summing responses to each item, with items answered on a 1 to 5 Likert scale. The minimum scale score is 14 and the maximum is 70.<br />
+The researchers also asked participants to estimate the average number of hours they spend outdoors each week, the average number of social interactions they have each week (whether on-line or in-person), and whether they believe that they stick to a routine throughout the week (Yes/No).</p>
+<p>The data in <code>wellbeing.csv</code> contain five attributes collected from a random sample of <span class="math inline">\(n=32\)</span> hypothetical residents over Edinburgh &amp; Lothians, and include:</p>
+<ul>
+<li><code>wellbeing</code>: Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS), a self-report measure of mental health and well-being. The scale is scored by summing responses to each item, with items answered on a 1 to 5 Likert scale. The minimum scale score is 14 and the maximum is 70.<br />
+</li>
+<li><code>outdoor_time</code>: Self report estimated number of hours per week spent outdoors<br />
+</li>
+<li><code>social_int</code>: Self report estimated number of social interactions per week (both online and in-person)</li>
+<li><code>routine</code>: Binary Yes/No response to the question “Do you follow a daily routine throughout the week?”</li>
+<li><code>location</code>: Location of primary residence (City, Suburb, Rural)</li>
+</ul>
+<p><strong>Preview</strong></p>
+<p>The first six rows of the data are:</p>
+<style>html {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
+}
+
+#uzjcbgbful .gt_table {
+  display: table;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#uzjcbgbful .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#uzjcbgbful .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#uzjcbgbful .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 0;
+  padding-bottom: 4px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#uzjcbgbful .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#uzjcbgbful .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#uzjcbgbful .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#uzjcbgbful .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#uzjcbgbful .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#uzjcbgbful .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#uzjcbgbful .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#uzjcbgbful .gt_group_heading {
+  padding: 8px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#uzjcbgbful .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#uzjcbgbful .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#uzjcbgbful .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#uzjcbgbful .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#uzjcbgbful .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#uzjcbgbful .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 12px;
+}
+
+#uzjcbgbful .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uzjcbgbful .gt_first_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+}
+
+#uzjcbgbful .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uzjcbgbful .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#uzjcbgbful .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#uzjcbgbful .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#uzjcbgbful .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding: 4px;
+}
+
+#uzjcbgbful .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#uzjcbgbful .gt_sourcenote {
+  font-size: 90%;
+  padding: 4px;
+}
+
+#uzjcbgbful .gt_left {
+  text-align: left;
+}
+
+#uzjcbgbful .gt_center {
+  text-align: center;
+}
+
+#uzjcbgbful .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#uzjcbgbful .gt_font_normal {
+  font-weight: normal;
+}
+
+#uzjcbgbful .gt_font_bold {
+  font-weight: bold;
+}
+
+#uzjcbgbful .gt_font_italic {
+  font-style: italic;
+}
+
+#uzjcbgbful .gt_super {
+  font-size: 65%;
+}
+
+#uzjcbgbful .gt_footnote_marks {
+  font-style: italic;
+  font-size: 65%;
+}
+</style>
+<div id="uzjcbgbful" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
+  
+  <thead class="gt_col_headings">
+    <tr>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">wellbeing</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">outdoor_time</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">social_int</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1">location</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1">routine</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr>
+      <td class="gt_row gt_right">30</td>
+      <td class="gt_row gt_right">7</td>
+      <td class="gt_row gt_right">8</td>
+      <td class="gt_row gt_left">Suburb</td>
+      <td class="gt_row gt_left">Routine</td>
+    </tr>
+    <tr>
+      <td class="gt_row gt_right">21</td>
+      <td class="gt_row gt_right">9</td>
+      <td class="gt_row gt_right">8</td>
+      <td class="gt_row gt_left">City</td>
+      <td class="gt_row gt_left">No Routine</td>
+    </tr>
+    <tr>
+      <td class="gt_row gt_right">38</td>
+      <td class="gt_row gt_right">14</td>
+      <td class="gt_row gt_right">10</td>
+      <td class="gt_row gt_left">Suburb</td>
+      <td class="gt_row gt_left">Routine</td>
+    </tr>
+    <tr>
+      <td class="gt_row gt_right">27</td>
+      <td class="gt_row gt_right">16</td>
+      <td class="gt_row gt_right">10</td>
+      <td class="gt_row gt_left">City</td>
+      <td class="gt_row gt_left">No Routine</td>
+    </tr>
+    <tr>
+      <td class="gt_row gt_right">20</td>
+      <td class="gt_row gt_right">1</td>
+      <td class="gt_row gt_right">10</td>
+      <td class="gt_row gt_left">Rural</td>
+      <td class="gt_row gt_left">No Routine</td>
+    </tr>
+    <tr>
+      <td class="gt_row gt_right">37</td>
+      <td class="gt_row gt_right">11</td>
+      <td class="gt_row gt_right">12</td>
+      <td class="gt_row gt_left">Suburb</td>
+      <td class="gt_row gt_left">No Routine</td>
+    </tr>
+  </tbody>
+  
+  
+</table></div>
+</div>
+<p class="optional-end">
+</p>
+<div class="question-begin">
+Question B1
+</div>
+<div class="question-body">
+<p>Create a new section heading in your RMarkdown document for the multiple regression exercises.<br />
+Import the wellbeing data into R. Assign them to a object called <code>mwdata</code>.</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-48" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-48&#39;, &#39;sol-start-48&#39;)"></span>
+</div>
+<div id="sol-body-48" class="solution-body" style="display: none;">
+<pre class="r"><code>library(tidyverse)
+# Read in data
+mwdata = read_csv(file = &quot;https://uoepsy.github.io/data/wellbeing.csv&quot;)
+head(mwdata)</code></pre>
+<pre><code>## # A tibble: 6 x 5
+##   wellbeing outdoor_time social_int location routine   
+##       &lt;dbl&gt;        &lt;dbl&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt;     
+## 1        30            7          8 Suburb   Routine   
+## 2        21            9          8 City     No Routine
+## 3        38           14         10 Suburb   Routine   
+## 4        27           16         10 City     No Routine
+## 5        20            1         10 Rural    No Routine
+## 6        37           11         12 Suburb   No Routine</code></pre>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B2
+</div>
+<div class="question-body">
+<p>Produce plots of the <em>marginal distributions</em> (the distributions of each variable in the analysis without reference to the other variables) of the <code>wellbeing</code>, <code>outdoor_time</code>, and <code>social_int</code> variables.</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-49" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-49&#39;, &#39;sol-start-49&#39;)"></span>
+</div>
+<div id="sol-body-49" class="solution-body" style="display: none;">
+<p>We should be familiar now with how to visualise a marginal distribution. You might choose histograms, density curves, or boxplots, or a combination:</p>
+<pre class="r"><code>library(patchwork) #used to arrange plots
+
+wellbeing_plot &lt;- 
+  ggplot(data = mwdata, aes(x = wellbeing)) +
+  geom_density() +
+  geom_boxplot(width = 1/250) +
+  labs(x = &quot;Score on WEMWBS (range 14-70)&quot;, y = &quot;Probability\ndensity&quot;)
+
+outdoortime_plot &lt;- 
+  ggplot(data = mwdata, aes(x = outdoor_time)) +
+  geom_density() +
+  geom_boxplot(width = 1/200) +
+  labs(x = &quot;Time spent outdoors per week (hours)&quot;, y = &quot;Probability\ndensity&quot;)
+
+social_plot &lt;- 
+  ggplot(data = mwdata, aes(x = social_int)) +
+  geom_density() +
+  geom_boxplot(width = 1/150) +
+  labs(x = &quot;Number of social interactions per week&quot;, y = &quot;Probability\ndensity&quot;)
+
+# the &quot;patchwork&quot; library allows us to arrange multiple plots
+wellbeing_plot / outdoortime_plot / social_plot</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-3"></span>
+<img src="06_slr_files/figure-html/unnamed-chunk-3-1.png" alt="Marginal distribution plots of wellbeing sores, weekly hours spent outdoors, and social interactions" width="672" />
+<p class="caption">
+Figure 1: Marginal distribution plots of wellbeing sores, weekly hours spent outdoors, and social interactions
+</p>
+</div>
+<div class="int">
+<ul>
+<li>The marginal distribution of scores on the WEMWBS is unimodal with a mean of approximately 43 years. There is variation in employees’ salaries (SD = 11.7 years).<br />
+</li>
+<li>The marginal distribution of weekly hours spend outdoors is unimodal with a mean of approximately 14.8 years. There is variation in employees’ salaries (SD = 6.9 years).<br />
+</li>
+<li>The marginal distribution of numbers of social interactions per week is unimodal with a mean of approximately 16 years. There is variation in employees’ salaries (SD = 4.4 years).</li>
+</ul>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B3
+</div>
+<div class="question-body">
+<p>Produce plots of the <em>marginal relationships</em> between the outcome variable (<code>wellbeing</code>) and each of the explanatory variables.</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-50" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-50&#39;, &#39;sol-start-50&#39;)"></span>
+</div>
+<div id="sol-body-50" class="solution-body" style="display: none;">
+<pre class="r"><code>wellbeing_outdoor &lt;- 
+  ggplot(data = mwdata, aes(x = outdoor_time, y = wellbeing)) +
+  geom_point(alpha = 0.5) +
+  labs(x = &quot;Time spent outdoors per week (hours)&quot;, y = &quot;Wellbeing score (WEMWBS)&quot;)
+
+wellbeing_social &lt;- 
+  ggplot(data = mwdata, aes(x = social_int, y = wellbeing)) +
+  geom_point(alpha = 0.5) +
+  labs(x = &quot;Number of social interactions per week&quot;, y = &quot;Wellbeing score (WEMWBS)&quot;)
+
+wellbeing_outdoor | wellbeing_social</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:mwdata-mlr-rels"></span>
+<img src="06_slr_files/figure-html/mwdata-mlr-rels-1.png" alt="Scatterplots displaying the relationships between scores on the WEMWBS and a) weekly outdoor time (hours), and b) weekly number of social interactions" width="672" />
+<p class="caption">
+Figure 2: Scatterplots displaying the relationships between scores on the WEMWBS and a) weekly outdoor time (hours), and b) weekly number of social interactions
+</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B4
+</div>
+<div class="question-body">
+<p>Produce a correlation matrix of the variables which are to be used in the analysis, and write a short paragraph describing the relationships.</p>
+<div class="yellow">
+<p><strong>Correlation matrix</strong></p>
+<p>A table showing the correlation coefficients - <span class="math inline">\(r_{(x,y)}=\frac{\mathrm{cov}(x,y)}{s_xs_y}\)</span> - between variables. Each cell in the table shows the relationship between two variables. The diagonals show the correlation of a variable with itself (and are therefore always equal to 1).</p>
+<p><strong>Hint:</strong> We can create a correlation matrix easily by giving the <code>cor()</code> function a dataframe. However, we only want to give it 3 columns here. Think about how we select specific columns, either using <code>select()</code>, or giving the column numbers inside <code>[]</code>.</p>
+</div>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-51" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-51&#39;, &#39;sol-start-51&#39;)"></span>
+</div>
+<div id="sol-body-51" class="solution-body" style="display: none;">
+<p>We can either use:</p>
+<pre class="r"><code># correlation matrix of the first 3 columns
+cor(mwdata[,1:3])</code></pre>
+<p>or:</p>
+<pre class="r"><code># select only the columns we want by name, and pass this to cor()
+mwdata %&gt;% 
+  select(wellbeing, outdoor_time, social_int) %&gt;%
+  cor()</code></pre>
+<pre><code>##              wellbeing outdoor_time social_int
+## wellbeing    1.0000000    0.5815613  0.7939003
+## outdoor_time 0.5815613    1.0000000  0.3394469
+## social_int   0.7939003    0.3394469  1.0000000</code></pre>
+<div class="int">
+<p>There is a moderate, positive, linear relationship between weekly outdoor time and WEMWBS scores for the participants in the sample.
+Participants’ wellbeing scores tend to increase, on average, with the number of hours spent outdoors each week.<br />
+There is a moderate, positive, linear relationship between the weekly number of social interactions and WEMWBS scores for the participants in the sample.
+Participants’ wellbeing scores tend to increase, on average, with the weekly number of social interactions.
+There is also a weak positive correlation between weekly outdoor time and the weekly number of social interactions.</p>
+</div>
+<p><br>
+Note that there is a weak correlation between our two explanatory variables (outdoor_time and social_int). We will return to how this might affect our model when later on we look at the assumptions of multiple regression.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B5
+</div>
+<div class="question-body">
+<p>The scatterplots we created above show moderate, positive, and linear relationships both between outdoor time and wellbeing, and between numbers of social interactions and wellbeing.</p>
+<p>Specify the form of your model, where <span class="math inline">\(x_1\)</span> = weekly outdoor time, <span class="math inline">\(x_2\)</span> = weekly numbers of social interactions and <span class="math inline">\(y\)</span> = scores on the WEMWBS.<br />
+What are the <em>parameters</em> of the model. How do we denote <em>parameter estimates</em>?</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-52" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-52&#39;, &#39;sol-start-52&#39;)"></span>
+</div>
+<div id="sol-body-52" class="solution-body" style="display: none;">
+<p>A model for the relationship between <span class="math inline">\(x_1\)</span> = weekly outdoor time, <span class="math inline">\(x_2\)</span> = weekly numbers of social interactions and <span class="math inline">\(y\)</span> = scores on the WEMWBS is given by:
+<span class="math display">\[
+y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \epsilon \\ \quad \\ \text{where} \quad \epsilon \sim N(0, \sigma) \text{ independently}
+\]</span></p>
+<p>In the model specified above,</p>
+<ul>
+<li><span class="math inline">\(\mu_{y|x_1, x_2} = \beta_0 + \beta_1 x + \beta_2 x_2\)</span> represents the systematic part of the model giving the mean of <span class="math inline">\(y\)</span> at each combination of values of <span class="math inline">\(x_1\)</span> and <span class="math inline">\(x_2\)</span>;</li>
+<li><span class="math inline">\(\epsilon\)</span> represents the error (deviation) from that mean, and the errors are independent from one another.</li>
+</ul>
+<p>The parameters of our model are:</p>
+<ul>
+<li><span class="math inline">\(\beta_0\)</span> (The intercept);</li>
+<li><span class="math inline">\(\beta_1\)</span> (The slope across values of <span class="math inline">\(x_1\)</span>);</li>
+<li><span class="math inline">\(\beta_2\)</span> (The slope across values of <span class="math inline">\(x_2\)</span>);<br />
+</li>
+<li><span class="math inline">\(\sigma\)</span> (The standard deviation of the errors).</li>
+</ul>
+<p>When we estimate these parameters from the available data, we have a <em>fitted model</em> (recall that the h<span class="math inline">\(\hat{\textrm{a}}\)</span>ts are used to distinguish our <em>estimates</em> from the <em>true unknown parameters</em>):
+<span class="math display">\[
+\widehat{Wellbeing} = \hat \beta_0 + \hat \beta_1 \cdot Outdoor Time + \hat \beta_2 \cdot Social Interactions + \hat \epsilon
+\]</span>
+Where residuals <span class="math inline">\(\hat \epsilon = y - \hat y\)</span> are the deviations from the observed values and our model-predicted responses.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="frame">
+<p><strong>Visual</strong></p>
+<p>Note that for simple linear regression we talked about our model as a <em>line</em> in 2 dimensions: the systematic part <span class="math inline">\(\beta_0 + \beta_1 x\)</span> defined a line for <span class="math inline">\(\mu_y\)</span> across the possible values of <span class="math inline">\(x\)</span>, with <span class="math inline">\(\epsilon\)</span> as the random deviations from that line. But in multiple regression we have more than two variables making up our model.</p>
+<p>In this particular case of three variables (one outcome + two explanatory), we can think of our model as a <em>regression surface</em> (See Figure <a href="#fig:regsurf">3</a>). The systematic part of our model defines the surface across a range of possible values of both <span class="math inline">\(x_1\)</span> <em>and</em> <span class="math inline">\(x_2\)</span>. Deviations from the surface are determined by the random error component, <span class="math inline">\(\hat \epsilon\)</span>.</p>
+<div class="figure" style="text-align: center"><span id="fig:regsurf"></span>
+<img src="06_slr_files/figure-html/regsurf-1.png" alt="Regression surface for wellbeing ~ outdoor_time + social_int, from two different angles" width="100%" />
+<p class="caption">
+Figure 3: Regression surface for wellbeing ~ outdoor_time + social_int, from two different angles
+</p>
+</div>
+<p>Don’t worry about trying to figure out how to visualise it if we had any more explanatory variables! We can only concieve of 3 spatial dimensions. One could imagine this surface changing over time, which would bring in a 4th dimension, but beyond that, it’s not worth trying!.</p>
+</div>
+<div class="question-begin">
+Question B6
+</div>
+<div class="question-body">
+<p>Fit the linear model in R, assigning the output to an object called <code>wb_mdl1</code>.</p>
+As we did for simple linear regression, we can fit our multiple regression model using the <code>lm()</code> function. We can add as many explanatory variables as we like, separating them with a <code>+</code>.<br />
+<br>
+<center>
+<code>lm( &lt;response variable&gt; ~ 1 + &lt;explanatory variable 1&gt; + &lt;explanatory variable 2&gt; + ... , data = &lt;dataframe&gt; )</code>
+</center>
+<p><br></p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-53" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-53&#39;, &#39;sol-start-53&#39;)"></span>
+</div>
+<div id="sol-body-53" class="solution-body" style="display: none;">
+<pre class="r"><code>wb_mdl1 &lt;- lm(wellbeing ~ 1 + outdoor_time + social_int, data = mwdata)</code></pre>
+</div>
+<p class="solution-end">
+</p>
+<div class="frame">
+<p><strong>Interpretation of Muliple Regression Coefficients</strong></p>
+<p>You’ll hear a lot of different ways that people explain multiple regression coefficients.<br />
+For the model <span class="math inline">\(y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \epsilon\)</span>, the estimate <span class="math inline">\(\hat \beta_1\)</span> will often be reported as:</p>
+<p>the increase in <span class="math inline">\(y\)</span> for a one unit increase in <span class="math inline">\(x_1\)</span> when…</p>
+<ul>
+<li>holding the effect of <span class="math inline">\(x_2\)</span> constant.</li>
+<li>controlling for differences in <span class="math inline">\(x_2\)</span>.</li>
+<li>partialling out the effects of <span class="math inline">\(x_2\)</span>.</li>
+<li>holding <span class="math inline">\(x_2\)</span> equal.</li>
+<li>accounting for effects of <span class="math inline">\(x_2\)</span>.</li>
+</ul>
+<div class="int">
+<pre><code>##               Estimate Std. Error  t value     Pr(&gt;|t|)
+## (Intercept)  5.3703775  4.3205141 1.242995 2.238259e-01
+## outdoor_time 0.5923673  0.1689445 3.506284 1.499467e-03
+## social_int   1.8034489  0.2690982 6.701825 2.369845e-07</code></pre>
+<p>The coefficient 0.59 of weekly outdoor time for predicting wellbeing score says that among those with the same number of social interactions per week, those who have one additional hour of outdoor time tend to, on average, score 0.59 higher on the WEMWBS wellbeing scale. The multiple regression coefficient measures that average <em>conditional</em> relationship.</p>
+</div>
+</div>
+<div class="question-begin">
+Question B7
+</div>
+<div class="question-body">
+<p>Using any of:</p>
+<ul>
+<li><code>wb_mdl1</code></li>
+<li><code>wb_mdl1$coefficients</code></li>
+<li><code>coef(wb_mdl1)</code></li>
+<li><code>coefficients(wb_mdl1)</code></li>
+<li><code>summary(wb_mdl1)</code></li>
+</ul>
+<p>Write out the estimated parameter values of:</p>
+<ol style="list-style-type: decimal">
+<li><span class="math inline">\(\hat \beta_0\)</span>, the estimated average wellbeing score associated with zero hours of outdoor time and zero social interactions per week.<br />
+</li>
+<li><span class="math inline">\(\hat \beta_1\)</span>, the estimated increase in average wellbeing score associated with one hour increase in weekly outdoor time, <em>holding the number of social interactions constant</em> (i.e., when the remaining explanatory variables are held at the same value or are fixed).</li>
+<li><span class="math inline">\(\hat \beta_2\)</span>, the estimated increase in average wellbeing score associated with an additional social interaction per week (an increase of one), <em>holding weekly outdoor time constant</em>.</li>
+</ol>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-54" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-54&#39;, &#39;sol-start-54&#39;)"></span>
+</div>
+<div id="sol-body-54" class="solution-body" style="display: none;">
+<pre class="r"><code>coef(wb_mdl1)</code></pre>
+<pre><code>##  (Intercept) outdoor_time   social_int 
+##    5.3703775    0.5923673    1.8034489</code></pre>
+<ol style="list-style-type: decimal">
+<li><span class="math inline">\(\hat \beta_0\)</span> = 5.37<br />
+</li>
+<li><span class="math inline">\(\hat \beta_1\)</span> = 0.59<br />
+</li>
+<li><span class="math inline">\(\hat \beta_2\)</span> = 1.8</li>
+</ol>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B8
+</div>
+<div class="question-body">
+<p>Within what distance from the model predicted values (the regression surface) would we expect 95% of WEMWBS wellbeing scores to be?</p>
+<p><strong>Hint:</strong> either <code>sigma(wb_mdl1)</code> or part of the output from <code>summary(wb_mdl1)</code> will help you here.</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-55" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-55&#39;, &#39;sol-start-55&#39;)"></span>
+</div>
+<div id="sol-body-55" class="solution-body" style="display: none;">
+<p>The estimated standard deviation of the errors is <span class="math inline">\(\hat \sigma\)</span> = 6.15. We would expect 95% of wellbeing scores to be within about $12300 (<span class="math inline">\(2 \hat \sigma\)</span>) from the model fit.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B9
+</div>
+<div class="question-body">
+<p>Obtain 95% <a href="https://lmgtfy.com/?q=confidence+intervals+for+lm+in+r">confidence intervals for the regression coefficients</a>, and write a sentence describing each.</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-56" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-56&#39;, &#39;sol-start-56&#39;)"></span>
+</div>
+<div id="sol-body-56" class="solution-body" style="display: none;">
+<pre class="r"><code>confint(wb_mdl1, level = 0.95)</code></pre>
+<pre><code>##                   2.5 %     97.5 %
+## (Intercept)  -3.4660660 14.2068209
+## outdoor_time  0.2468371  0.9378975
+## social_int    1.2530813  2.3538164</code></pre>
+<div class="int">
+<ul>
+<li>The average wellbeing score for all those with zero hours of outdoor time and zero social interactions per week is between -3.47 and 14.21.<br />
+</li>
+<li>When <em>holding the number of social interactions per week constant</em>, each one hour increase in weekly outdoor time is associated with a difference in wellbeing scores between 0.25 and 0.94, on average.<br />
+</li>
+<li>When <em>holding weekly outdoor time constant</em>, each increase of one social interaction per week is associated with a difference in wellbeing scores between 1.25 and 2.35, on average.</li>
+</ul>
+</div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="numeric-categorical" class="section level2">
+<h2>~ Numeric + Categorical</h2>
+<p>Let’s do that again, but paying careful attention to where and how the process differs when we have a <em>categorical</em> predictor.</p>
+<blockquote>
+<p>Suppose that the group of researchers were instead wanting to study the relationship between well-being and time spent outdoors after taking into account the relationship between well-being and <em>having a routine</em>.</p>
+</blockquote>
+<div class="question-begin">
+Question B10
+</div>
+<div class="question-body">
+<p>We have already visualised the marginal distribution of weekly outdoor time in an earlier question, as well as its relationship with wellbeing scores.<br />
+Produce visualisations of:</p>
+<ol style="list-style-type: decimal">
+<li>the distribution of the <code>routine</code> variable</li>
+<li>the relationship between <code>routine</code> and <code>wellbeing</code>.</li>
+</ol>
+<p><strong>Note:</strong> We cannot visualise the distribution of <code>routine</code> as a density curve or boxplot, because it is a <em>categorical</em> variable (observations can only take one of a set of discrete response values).</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-57" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-57&#39;, &#39;sol-start-57&#39;)"></span>
+</div>
+<div id="sol-body-57" class="solution-body" style="display: none;">
+<p><code>geom_bar()</code> will count the number of observations falling into each unique level of the routine variable:</p>
+<pre class="r"><code>ggplot(data = mwdata, aes(x = routine)) +
+  geom_bar()+
+  labs(x = &quot;Routine&quot;, y = &quot;Frequency&quot;)</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-10"></span>
+<img src="06_slr_files/figure-html/unnamed-chunk-10-1.png" alt="Marginal distribution plots of Routine (y/n)" width="672" />
+<p class="caption">
+Figure 4: Marginal distribution plots of Routine (y/n)
+</p>
+</div>
+<p>We might plot the relationship between routine and wellbeing as two boxplots:</p>
+<pre class="r"><code>ggplot(data = mwdata, aes(x = routine, y = wellbeing)) +
+  geom_boxplot()+
+  labs(x = &quot;Routine&quot;, y = &quot;Wellbeing score (WEMWBS)&quot;)</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-11"></span>
+<img src="06_slr_files/figure-html/unnamed-chunk-11-1.png" alt="Relationship between wellbeing and presence of routine" width="672" />
+<p class="caption">
+Figure 5: Relationship between wellbeing and presence of routine
+</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="frame">
+<p><strong>Categorical predictors</strong></p>
+<p>When we have a <em>categorical</em> explanatory variable such as this one, what actually gets inputted into our model is a number of <em>dummy variables</em> which are numeric variables that represents categorical data.</p>
+<p>For a categorical variable with <span class="math inline">\(k\)</span> levels, we can express it in <span class="math inline">\(k-1\)</span> dummy variables.<br />
+For example, the “species” column below has three levels, and can be expressed by the two variables “species_dog” and “species_parrot”:</p>
+<pre><code>##   species species_dog species_parrot
+## 1     cat           0              0
+## 2     cat           0              0
+## 3     dog           1              0
+## 4  parrot           0              1
+## 5     dog           1              0
+## 6     cat           0              0
+## 7     ...         ...            ...</code></pre>
+<ul>
+<li>The “cat” level is expressed whenever both the “species_dog” and “species_parrot” variables are 0.</li>
+<li>The “dog” level is expressed whenever the “species_dog” variable is 1 and the “species_parrot” variable is 0.</li>
+<li>The “parrot” level is expressed whenever the “species_dog” variable is 0 and the “species_parrot” variable is 1.</li>
+</ul>
+<p>R will do all of this re-expression for us. If we include in our model a categorical explanatory variable with 4 different levels, the model will estimate 3 parameters - one for each dummy variable. We can interpret the parameter estimates (the coefficients we obtain using <code>coefficients()</code>,<code>coef()</code> or <code>summary()</code>) as the estimated increase in the outcome variable associated with an increase of one in each dummy variable (holding all other variables equal).<br />
+Note that in the above example, an increase in 1 of “species_dog” is the difference between a “cat” and a “dog”. An increase in one of “species_parrot” is the difference between a “cat” and a “parrot”. We think of the “cat” category in this example as the <em>reference level</em> - it is the category against which other categories are compared against.</p>
+</div>
+<div class="question-begin">
+Question B11
+</div>
+<div class="question-body">
+<p>Fit the multiple regression model below using <code>lm()</code>, and assign it to an object named <code>wb_mdl2</code>. Examine the summary output of the model.</p>
+<p><span class="math display">\[
+Wellbeing = \beta_0 + \beta_1 \cdot OutdoorTime + \beta_2 \cdot Routine + \epsilon
+\]</span></p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-58" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-58&#39;, &#39;sol-start-58&#39;)"></span>
+</div>
+<div id="sol-body-58" class="solution-body" style="display: none;">
+<pre class="r"><code>wb_mdl2 &lt;- lm(wellbeing ~ 1 + outdoor_time + routine, data = mwdata)
+summary(wb_mdl2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = wellbeing ~ 1 + outdoor_time + routine, data = mwdata)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -16.3597  -5.7983   0.1047   7.2899  12.5957 
+## 
+## Coefficients:
+##                Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)     26.2525     3.9536   6.640  2.8e-07 ***
+## outdoor_time     0.9152     0.2358   3.881 0.000552 ***
+## routineRoutine   7.2947     3.2507   2.244 0.032633 *  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 9.06 on 29 degrees of freedom
+## Multiple R-squared:  0.4361, Adjusted R-squared:  0.3972 
+## F-statistic: 11.21 on 2 and 29 DF,  p-value: 0.0002467</code></pre>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B12
+</div>
+<div class="question-body">
+<p><span class="math inline">\(\hat \beta_0\)</span> (the intercept) is the estimated average wellbeing score associated with zero hours of weekly outdoor time and zero in the routine variable.</p>
+<p>What group is the intercept the estimated wellbeing score for when they have zero hours of outdoor time? Why (think about what zero in the routine variable means)?</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-59" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-59&#39;, &#39;sol-start-59&#39;)"></span>
+</div>
+<div id="sol-body-59" class="solution-body" style="display: none;">
+<p>As you can see in the output of the model, we have a coefficient called <code>routineRoutine</code>. This is the parameter estimate for a dummy variable which has been inputted into the model. The <code>lm()</code> function will automatically name the dummy variables (and therefore the coefficients) according to what level is identified by the 1. It names them <code>&lt;variable&gt;&lt;Level&gt;</code>, so we can tell that <code>routineRoutine</code> is 1 for “Routine” and 0 for “No Routine”.</p>
+<p>The intercept is therefore the estimated wellbeing score for those with No Routine and zero hours of outdoor time.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B13
+</div>
+<div class="question-body">
+<p>In the previous example, we had a visualisation of our model as a regression surface (Figure <a href="#fig:regsurf">3</a>).<br />
+Here, one of our explanatory variables has only two possible responses. How might we visualise the model?</p>
+<ol style="list-style-type: lower-alpha">
+<li>one line</li>
+<li>one surface</li>
+<li>two lines</li>
+<li>two surfaces</li>
+<li>a curved (not flat) surface</li>
+</ol>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-60" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-60&#39;, &#39;sol-start-60&#39;)"></span>
+</div>
+<div id="sol-body-60" class="solution-body" style="display: none;">
+<p>We can visualise the model <span class="math inline">\(\widehat{Wellbeing} = \hat \beta_0 + \hat \beta_1 \cdot OutdoorTime + \hat \beta_2 \cdot Routine\)</span> as two lines.<br />
+Each line represents the model predicted values for wellbeing scores across the range of weekly outdoor time, with one line for those who report having “Routine” and one for those with “No Routine”.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B14
+</div>
+<div class="question-body">
+<p>Get a pen and paper, and sketch out the plot shown in Figure <a href="#fig:plot-annotate">6</a>.</p>
+<div class="figure" style="text-align: center"><span id="fig:plot-annotate"></span>
+<img src="06_slr_files/figure-html/plot-annotate-1.png" alt="Multiple regression model: Wellbeing ~ Outdoor Time + Routine" width="672" />
+<p class="caption">
+Figure 6: Multiple regression model: Wellbeing ~ Outdoor Time + Routine
+</p>
+</div>
+<p>Annotate your plot with labels for each of parameter estimates from your model:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Parameter Estimate</th>
+<th align="center">Model Coefficient</th>
+<th align="right">Estimate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(\hat \beta_0\)</span></td>
+<td align="center"><code>(Intercept)</code></td>
+<td align="right">26.25</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\hat \beta_1\)</span></td>
+<td align="center"><code>outdoor_time</code></td>
+<td align="right">0.92</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(\hat \beta_2\)</span></td>
+<td align="center"><code>routineRoutine</code></td>
+<td align="right">7.29</td>
+</tr>
+</tbody>
+</table>
+<div class="optional-begin">
+Hint<span id="opt-start-61" class="fa fa-plus optional-icon clickable" onclick="toggle_visibility(&#39;opt-body-61&#39;, &#39;opt-start-61&#39;)"></span>
+</div>
+<div id="opt-body-61" class="optional-body" style="display: none;">
+<p>Below you can see where to add the labels, but we have not said which is which.</p>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-14-1.png" width="672" style="display: block; margin: auto;" /></p>
+<ul>
+<li>A is the vertical distance between the red and blue lines (the lines are parallel, so this distance is the same wherever you cut it on the x-axis).<br />
+</li>
+<li>B is the point at which the blue line cuts the y-axis.<br />
+</li>
+<li>C is the vertical increase (increase on the y-axis) for the blue line associated with a 1 unit increase on the x-axis (the lines are parallel, so this is the same for the red line).</li>
+</ul>
+</div>
+<p class="optional-end">
+</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-62" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-62&#39;, &#39;sol-start-62&#39;)"></span>
+</div>
+<div id="sol-body-62" class="solution-body" style="display: none;">
+<ul>
+<li>A = <span class="math inline">\(\hat \beta_2\)</span> = <code>routineRoutine</code> coefficient = 7.29</li>
+<li>B = <span class="math inline">\(\hat \beta_0\)</span> = <code>(Intercept)</code> coefficient = 26.25</li>
+<li>C = <span class="math inline">\(\hat \beta_1\)</span> = <code>outdoor_time</code> coefficient = 0.92</li>
+</ul>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-15-1.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B15
+</div>
+<div class="question-body">
+<p>Load the <strong>sjPlot</strong> package using <code>library(sjPlot)</code> and try running the code below. (You may already have the <strong>sjPlot</strong> package installed from previous exercises. If not, you will need to install it first).</p>
+<pre class="r"><code>plot_model(wb_mdl2)
+plot_model(wb_mdl2, type = &quot;pred&quot;)
+plot_model(wb_mdl2, type = &quot;pred&quot;,  terms=c(&quot;outdoor_time&quot;,&quot;routine&quot;), show.data=TRUE)</code></pre>
+<p>What do you think each one is showing?</p>
+<div class="frame">
+<p>The <code>plot_model</code> function (and the <strong>sjPlot</strong> package) can do a lot of different things. Most packages in R come with tutorials (or “vignettes”), for instance: <a href="https://strengejacke.github.io/sjPlot/articles/plot_model_estimates.html" class="uri">https://strengejacke.github.io/sjPlot/articles/plot_model_estimates.html</a></p>
+</div>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-63" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-63&#39;, &#39;sol-start-63&#39;)"></span>
+</div>
+<div id="sol-body-63" class="solution-body" style="display: none;">
+<pre class="r"><code>library(sjPlot)
+plot_model(wb_mdl2)</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-17-1.png" width="672" style="display: block; margin: auto;" />
+These are the parameter estimates (the <span class="math inline">\(\hat \beta\)</span>’s), and the confidence intervals.</p>
+<pre class="r"><code>confint(wb_mdl2)</code></pre>
+<pre><code>##                     2.5 %    97.5 %
+## (Intercept)    18.1665376 34.338493
+## outdoor_time    0.4329433  1.397409
+## routineRoutine  0.6462090 13.943226</code></pre>
+<p>When we add <code>type=&quot;pred&quot;</code> we are asking for the predicted values. It will provide a separate plot for each explanatory variable, showing the predicted values at each level of that variable:</p>
+<pre class="r"><code>plot_model(wb_mdl2, type = &quot;pred&quot;)</code></pre>
+<pre><code>## $outdoor_time</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-19-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre><code>## 
+## $routine</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-19-2.png" width="672" style="display: block; margin: auto;" /></p>
+<p>We can combine these into one plot, and ask it to show the raw data as well:</p>
+<pre class="r"><code>plot_model(wb_mdl2, type = &quot;pred&quot;,  terms=c(&quot;outdoor_time&quot;,&quot;routine&quot;), show.data=TRUE)</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-20-1.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+<p class="solution-end">
+</p>
+</div>
+</div>
+<div id="exercises-assumptions-diagnostics" class="section level1">
+<h1>Exercises: Assumptions &amp; Diagnostics</h1>
+<div class="frame">
+<p>Above, we have fitted a number of multiple regression models. In each case, we first specified the model, then visually explored the marginal distributions and relationships of variables which would be used in the analysis. Finally, we fit the model, and began to examine the fit by studying what the various parameter estimates represented, and the spread of the residuals (the parts of the output inside the red boxes in Figure <a href="#fig:mlroutput">7</a>).</p>
+<div class="figure" style="text-align: center"><span id="fig:mlroutput"></span>
+<img src="images/mlroutput.png" alt="Multiple regression output in R, summary.lm(). Residuals and Coefficients highlighted" width="297" />
+<p class="caption">
+Figure 7: Multiple regression output in R, summary.lm(). Residuals and Coefficients highlighted
+</p>
+</div>
+<p>You will recall that <strong>before</strong> we draw inferences using our model estimates or use our model to make predictions, we need to be satisfied that our model meets the set of assumptions.</p>
+All of the estimates, intervals and hypothesis tests (see Figure <a href="#fig:mlroutputhyp">8</a>) resulting from a regression analysis <em>assume</em> a certain set of conditions have been met. Meeting these conditions is what allows us to generalise our findings beyond our sample (i.e., to the population).<br />
+
+<div class="figure" style="text-align: center"><span id="fig:mlroutputhyp"></span>
+<img src="images/mlrhyp.png" alt="Multiple regression output in R, summary.lm(). Hypothesis tests highlighted" width="299" />
+<p class="caption">
+Figure 8: Multiple regression output in R, summary.lm(). Hypothesis tests highlighted
+</p>
+</div>
+</div>
+<div class="yellow">
+<p>The assumptions of the linear model can be commited to memory using the <strong>LINE</strong> mnemonic:</p>
+<ul>
+<li><strong>L</strong>inearity: The relationship between <span class="math inline">\(y\)</span> and <span class="math inline">\(x\)</span> is linear.</li>
+<li><strong>I</strong>ndependence of errors: The error terms should be independent from one another.</li>
+<li><strong>N</strong>ormality: The errors <span class="math inline">\(\epsilon\)</span> are normally distributed</li>
+<li><strong>E</strong>qual variances (“Homoscedasticity”): The scale of the variability of the errors <span class="math inline">\(\epsilon\)</span> is constant at all values of <span class="math inline">\(x\)</span>.</li>
+</ul>
+<p>When we fit a model, we evaluate many of these assumptions by looking at the residuals (the deviations from the observed values <span class="math inline">\(y_i\)</span> and the model estimated value <span class="math inline">\(\hat y_i\)</span>).<br />
+The residuals, <span class="math inline">\(\hat \epsilon\)</span> are our estimates of the actual unknown true error term <span class="math inline">\(\epsilon\)</span>. These assumptions hold both for a regression model with a single predictor and for one with multiple predictors.</p>
+</div>
+<div class="question-begin">
+Question C1
+</div>
+<div class="question-body">
+<p>Create a new section heading for “Assumptions”.<br />
+Recall our the form of our model which we fitted and stored as <code>wb_mdl1</code>:</p>
+<p><span class="math display">\[ 
+\text{Wellbeing} = \beta_0 + \beta_1 \cdot \text{Outdoor Time} + \beta_2 \cdot \text{Social Interactions} + \epsilon
+\]</span></p>
+<p>Wich we fitted in R using:</p>
+<pre class="r"><code>wb_mdl1 &lt;- lm(wellbeing ~ outdoor_time + social_int, data = mwdata)</code></pre>
+<p><strong>Note:</strong> We have have forgone writing the <code>1</code> in <code>lm(y ~ 1 + x...</code>. The 1 just tells R that we want to estimate the Intercept, and it will do this by default even if we leave it out.</p>
+<p class="question-end">
+</p>
+</div>
+<div id="linearity" class="section level2">
+<h2>Linearity</h2>
+<div class="frame">
+<p>In simple linear regression with only one explanatory variable, we can assess linearity through a simple scatterplot of the outcome variable against the explanatory. In multiple regression, however, it becomes more necessary to rely on diagnostic plots of the model residuals. This is because we need to know whether the relations are linear between the outcome and each predictor <em>after accounting for the other predictors in the model.</em></p>
+<p>In order to assess this, we use <strong>partial-residual plots</strong> (also known as ‘component-residual plots’). This is a plot with each explanatory variable <span class="math inline">\(x_j\)</span> on the x-axis, and <strong>partial residuals</strong> on the y-axis.</p>
+<p>Partial residuals for a predictor <span class="math inline">\(x_j\)</span> are calculated as:
+<span class="math display">\[
+\hat \epsilon + \hat \beta_j x_j
+\]</span></p>
+<p><strong>In R</strong> we can easily create these plots for all predictors in the model by using the <code>crPlots()</code> function from the <strong>car</strong> package.</p>
+</div>
+<div class="question-begin">
+Question C2
+</div>
+<div class="question-body">
+<p>Create partial-residual plots for the <code>wb_mdl1</code> model.<br />
+Remember to load the <strong>car</strong> package first. If it does not load correctly, it might mean that you have need to install it.</p>
+<p>Write a sentence summarising whether or not you consider the assumption to have been met. Justify your answer with reference to the plots.</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-64" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-64&#39;, &#39;sol-start-64&#39;)"></span>
+</div>
+<div id="sol-body-64" class="solution-body" style="display: none;">
+<pre class="r"><code>library(car)
+crPlots(wb_mdl1)</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-22-1.png" width="672" style="display: block; margin: auto;" /></p>
+<div class="int">
+<p>The smoother (the pink line) follows quite closely to a linear relationship (the dashed blue line), suggesting that the linearity assumption is met.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="equal-variances-homoscedasticity" class="section level2">
+<h2>Equal variances (Homoscedasticity)</h2>
+<div class="frame">
+<p>The equal variances assumption is that the error variance <span class="math inline">\(\sigma^2\)</span> is constant across values of the predictors <span class="math inline">\(x_1\)</span>, … <span class="math inline">\(x_k\)</span>, and across values of the fitted values <span class="math inline">\(\hat y\)</span>. This sometimes gets termed “Constant” vs “Non-constant” variance. Figures <a href="#fig:ncv1">9</a> &amp; <a href="#fig:ncv2">10</a> shows what these look like visually.</p>
+<div class="figure" style="text-align: center"><span id="fig:ncv1"></span>
+<img src="06_slr_files/figure-html/ncv1-1.png" alt="Non-constant variance for numeric and categorical x" width="672" />
+<p class="caption">
+Figure 9: Non-constant variance for numeric and categorical x
+</p>
+</div>
+<div class="figure" style="text-align: center"><span id="fig:ncv2"></span>
+<img src="06_slr_files/figure-html/ncv2-1.png" alt="Constant variance for numeric and categorical x" width="672" />
+<p class="caption">
+Figure 10: Constant variance for numeric and categorical x
+</p>
+</div>
+<p><strong>In R</strong> we can create plots of the <em>Pearson residuals</em> against the predicted values <span class="math inline">\(\hat y\)</span> and against the predictors <span class="math inline">\(x_1\)</span>, … <span class="math inline">\(x_k\)</span> by using the <code>residualPlots()</code> function from the <strong>car</strong> package. This function also provides the results of a lack-of-fit test for each of these relationships (note when it is the fitted values <span class="math inline">\(\hat y\)</span> it gets called “Tukey’s test”).</p>
+<p><code>ncvTest(model)</code> (also from the <strong>car</strong> package) performs a test against the alternative hypothesis that the error variance changes with the level of the fitted value (also known as the “Breusch-Pagan test”). <span class="math inline">\(p &gt;.05\)</span> indicates that we do <em>not</em> have evidence that the assumption has been violated.</p>
+</div>
+<div class="question-begin">
+Question C3
+</div>
+<div class="question-body">
+<p>Use <code>residualPlots()</code> to plot residuals against each predictor, and use <code>ncvTest()</code> to perform a test against the alternative hypothesis that the error variance changes with the level of the fitted value.</p>
+<p>Write a sentence summarising whether or not you consider the assumption to have been met. Justify your answer with reference to plots and/or formal tests where available.</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-65" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-65&#39;, &#39;sol-start-65&#39;)"></span>
+</div>
+<div id="sol-body-65" class="solution-body" style="display: none;">
+<pre class="r"><code>residualPlots(wb_mdl1)</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-23-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre><code>##              Test stat Pr(&gt;|Test stat|)
+## outdoor_time   -0.3478           0.7306
+## social_int     -0.1068           0.9157
+## Tukey test     -0.4189           0.6753</code></pre>
+<pre class="r"><code>#test against the alternative hypothesis that error variance changes with level of fitted value
+ncvTest(wb_mdl1)</code></pre>
+<pre><code>## Non-constant Variance Score Test 
+## Variance formula: ~ fitted.values 
+## Chisquare = 0.001925809, Df = 1, p = 0.965</code></pre>
+<div class="int">
+<p>Partial residual plots show no clear non-linear trends between residuals and predictors.
+Visual inspection of suggested little sign of non-constant variance, with the Breusch-Pagan test failing to reject the null that error varance does not change across the fitted values (<span class="math inline">\(\chi^2(1)=0.002\)</span>, <span class="math inline">\(p = .965\)</span>).</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question C4
+</div>
+<div class="question-body">
+<p>Create the “residuals vs. fitted plot” - a scatterplot with the residuals <span class="math inline">\(\hat \epsilon\)</span> on the y-axis and the fitted values <span class="math inline">\(\hat y\)</span> on the x-axis.<br />
+<br>
+You can either do this:</p>
+<ol style="list-style-type: lower-alpha">
+<li>manually, using the functions <code>residuals()</code> and <code>fitted()</code>, or</li>
+<li>quickly by giving the <code>plot()</code> function your model. This will actually give you lots of plots, so we can specify which plot we want to return - e.g., <code>plot(wb_mdl1, which = 1)</code></li>
+</ol>
+<p>You can use this plot to visually assess:</p>
+<ul>
+<li><strong>L</strong>inearity: Does the average of the residuals <span class="math inline">\(\hat \epsilon\)</span> remain close to 0 across the plot?<br />
+</li>
+<li><strong>E</strong>qual Variance: does the spread of the residuals <span class="math inline">\(\hat \epsilon\)</span> remain constant across the predicted values <span class="math inline">\(\hat y\)</span>?</li>
+</ul>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-66" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-66&#39;, &#39;sol-start-66&#39;)"></span>
+</div>
+<div id="sol-body-66" class="solution-body" style="display: none;">
+<p>The long way:</p>
+<pre class="r"><code># Notice that we create a tibble and pass it directly to ggplot()
+# using the %&gt;%.
+# This means we don&#39;t have to store it as an object in the environment,
+# it is just being used to create the plot
+tibble(
+  residuals = residuals(wb_mdl1),
+  fitted = fitted(wb_mdl1)
+) %&gt;% 
+  ggplot(aes(x = fitted, y = residuals)) + 
+  geom_point() + 
+  geom_smooth(color=&quot;red&quot;,se=FALSE)</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-24-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>The quick way:</p>
+<pre class="r"><code>plot(wb_mdl1, which=1)</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-25-1.png" width="672" style="display: block; margin: auto;" /></p>
+<div class="int">
+<p>The horizontal red line shows that the average of the residual remains close to zero across the fitted values.<br />
+The spread of the residuals remains reasonably constant across the fitted values.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="independence" class="section level2">
+<h2>Independence</h2>
+<div class="frame">
+<p>The “independence of errors” assumption is the condition that the errors do not have some underlying relationship which is causing them to influence one another.
+<br>
+There are many sources of possible dependence, and often these are issues of study design. For example, we may have groups of observations in our data which we would expect to be related (e.g., multiple trials from the same participant). Our modelling strategy would need to take this into account.
+<br>
+One form of dependence is <strong>autocorrelation</strong> - this is when observations influence those adjacent to them. It is common in data for which <em>time</em> is a variable of interest (e.g, the humidity today is dependent upon the rainfall yesterday).<br />
+<br>
+<strong>In R</strong> we can test against the alternative hypothesis that there is autocorrelation in our errors using the <code>durbinWatsonTest()</code> (an abbreviated function <code>dwt()</code> is also available) in the <strong>car</strong> package.</p>
+</div>
+<div class="question-begin">
+Question C5
+</div>
+<div class="question-body">
+<p>Perform a test against the alternative hypothesis that there is autocorrelation in the error terms.</p>
+<p>Write a sentence summarising whether or not you consider the assumption of independence to have been met (you may have to assume certain aspects of the study design).</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-67" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-67&#39;, &#39;sol-start-67&#39;)"></span>
+</div>
+<div id="sol-body-67" class="solution-body" style="display: none;">
+<pre class="r"><code>dwt(wb_mdl1)</code></pre>
+<pre><code>##  lag Autocorrelation D-W Statistic p-value
+##    1       -0.318249      2.600574   0.132
+##  Alternative hypothesis: rho != 0</code></pre>
+<div class="int">
+<p>A Durbin-Watson test of autocorrelation failed to reject the null hypothesis that there was no serial dependence in the error (<span class="math inline">\(DW = 2.6\)</span>, <span class="math inline">\(p = .138\)</span>). We will also assume that observations to be randomly sampled during study recruitment.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="normality-of-errors" class="section level2">
+<h2>Normality of errors</h2>
+<div class="frame">
+<p>The normality assumption is the condition that the errors <span class="math inline">\(\epsilon\)</span> are normally distributed.</p>
+<p>We can visually assess this condition through histograms, density plots, and quantile-quantile plots (QQplots) of our residuals <span class="math inline">\(\hat \epsilon\)</span>.<br />
+We can also perform a Shapiro-Wilk test against the alternative hypothesis that the residuals were not sampled from a normally distributed population. The <code>shapiro.test()</code> function in R.</p>
+</div>
+<div class="question-begin">
+Question C6
+</div>
+<div class="question-body">
+<p>Assess the normality assumption by producing a qqplot of the residuals (either manually or using <code>plot(model, which = ???)</code>), and conducting a Shapiro-Wilk test.</p>
+<p>Write a sentence summarising whether or not you consider the assumption to have been met. Justify your answer with reference to plots and/or formal tests where available.</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-68" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-68&#39;, &#39;sol-start-68&#39;)"></span>
+</div>
+<div id="sol-body-68" class="solution-body" style="display: none;">
+<p>We can get the QQplot from one of the <code>plot(model)</code> plots:</p>
+<pre class="r"><code>plot(wb_mdl1, which = 2)</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-27-1.png" width="672" style="display: block; margin: auto;" />
+Or we can make our own:</p>
+<pre class="r"><code>tibble(
+  resids = residuals(wb_mdl1)
+) %&gt;% ggplot(aes(sample=resids))+
+  geom_qq()+
+  geom_qq_line()</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-28-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>shapiro.test(residuals(wb_mdl1))</code></pre>
+<pre><code>## 
+##  Shapiro-Wilk normality test
+## 
+## data:  residuals(wb_mdl1)
+## W = 0.94831, p-value = 0.129</code></pre>
+<div class="int">
+<p>The QQplot indicates that the residuals follow close to a normal distribution, although with evidence of heavier tails. A Shapiro-Wilk test failed to reject the null hypothesis that the residuals were drawn from a normally distributed population (<span class="math inline">\(W = 0.95\)</span>, <span class="math inline">\(p = .129\)</span>)</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="multicollinearity" class="section level2">
+<h2>Multicollinearity</h2>
+<div class="frame">
+For the linear model with multiple explanatory variables, we need to also think about <strong>multicollinearity</strong> - this is when two (or more) of the predictors in our regression model are moderately or highly correlated.<br />
+Recall our interpretation of multiple regression coefficients as<br />
+
+<center>
+“the effect of <span class="math inline">\(x_1\)</span> on <span class="math inline">\(y\)</span> when <em>holding the values of <span class="math inline">\(x_2\)</span>, <span class="math inline">\(x_3\)</span>, … <span class="math inline">\(x_k\)</span> constant</em>”
+</center>
+<p>This interpretation falls down if predictors are highly correlated because if, e.g., predictors <span class="math inline">\(x_1\)</span> and <span class="math inline">\(x_2\)</span> are highly correlated, then changing the value of <span class="math inline">\(x_1\)</span> necessarily entails a change the value of <span class="math inline">\(x_2\)</span> meaning that it no longer makes sense to talk about <em>holding <span class="math inline">\(x_2\)</span> constant.</em><br />
+<br>
+We can assess multicollinearity using the <strong>variance inflation factor (VIF)</strong>, which for a given predictor <span class="math inline">\(x_j\)</span> is calculated as:<br />
+<span class="math display">\[
+VIF_j = \frac{1}{1-R_j^2} \\
+\]</span>
+Where <span class="math inline">\(R_j^2\)</span> is the coefficient of determination (the R-squared) resulting from a regression of <span class="math inline">\(x_j\)</span> on to all the other predictors in the model (<span class="math inline">\(x_j = x_1 + ... x_k + \epsilon\)</span>).<br />
+The more highly correlated <span class="math inline">\(x_j\)</span> is with other predictors, the bigger <span class="math inline">\(R_j^2\)</span> becomes, and thus the bigger <span class="math inline">\(VIF_j\)</span> becomes.<br />
+<br>
+The square root of VIF indicates how much the SE of the coefficient has been inflated due to multicollinearity. For example, if the VIF of a predictor variable were 4.6 (<span class="math inline">\(\sqrt{4.6} = 2.1\)</span>), then the standard error of the coefficient of that predictor is 2.1 times larger than if the predictor had zero correlation with the other predictor variables. Suggested cut-offs for VIF are varied. Some suggest 10, others 5. Define what you will consider an acceptable value <em>prior</em> to calculating it.<br />
+<br>
+<strong>In R</strong>, the <code>vif()</code> function from the <strong>car</strong> package will provide VIF values for each predictor in your model.</p>
+</div>
+<div class="question-begin">
+Question C7
+</div>
+<div class="question-body">
+<p>Calculate the variance inflation factor (VIF) for the predictors in the model.</p>
+<p>Write a sentence summarising whether or not you consider multicollinearity to be a problem here.</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-69" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-69&#39;, &#39;sol-start-69&#39;)"></span>
+</div>
+<div id="sol-body-69" class="solution-body" style="display: none;">
+<pre class="r"><code>vif(wb_mdl1)</code></pre>
+<pre><code>## outdoor_time   social_int 
+##      1.13023      1.13023</code></pre>
+<div class="int">
+<p>VIF values &lt;5 indicate that multicollinearity is not adversely affecting model estimates.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="individual-cases" class="section level2">
+<h2>Individual cases</h2>
+<div class="frame">
+<p>We have seen in the case of the simple linear regression that individual cases in our data can influence our model more than others. We know about:</p>
+<ul>
+<li><strong>Regression outliers:</strong> A large residual <span class="math inline">\(\hat \epsilon_i\)</span> - i.e., a big discrepancy between their predicted y-value and their observed y-value.
+<ul>
+<li><strong>Standardised residuals:</strong> For residual <span class="math inline">\(\hat \epsilon_i\)</span>, divide by the estimate of the standard deviation of the residuals. In R, the <code>rstandard()</code> function will give you these</li>
+<li><strong>Studentised residuals:</strong> For residual <span class="math inline">\(\hat \epsilon_i\)</span>, divide by the estimate of the standard deviation of the residuals excluding case <span class="math inline">\(i\)</span>. In R, the <code>rstudent()</code> function will give you these.</li>
+</ul></li>
+<li><strong>High leverage cases:</strong> These are cases which have considerable <em>potential</em> to influence the regression model (e.g., cases with an unusual combination of predictor values).
+<ul>
+<li><strong>Hat values:</strong> are used to assess leverage. In R, The <code>hatvalues()</code> function will retrieve these.</li>
+</ul></li>
+<li><strong>High influence cases:</strong> When a case has high leverage <em>and</em> is an outlier, it will have a large influence on the regression model.
+<ul>
+<li><strong>Cook’s Distance:</strong> combines <em>leverage</em> (hatvalues) with <em>outlying-ness</em> to capture influence. In R, the <code>cooks.distance()</code> function will provide these.</li>
+</ul></li>
+</ul>
+</div>
+<div class="question-begin">
+Question C8
+</div>
+<div class="question-body">
+<p>Create a new tibble which contains:</p>
+<ol style="list-style-type: decimal">
+<li>The original variables from the model (Hint, what does <code>wb_mdl1$model</code> give you?)</li>
+<li>The fitted values from the model <span class="math inline">\(\hat y\)</span><br />
+</li>
+<li>The residuals <span class="math inline">\(\hat epsilon\)</span></li>
+<li>The studentised residuals</li>
+<li>The hat values</li>
+<li>The Cook’s Distance values.</li>
+</ol>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-70" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-70&#39;, &#39;sol-start-70&#39;)"></span>
+</div>
+<div id="sol-body-70" class="solution-body" style="display: none;">
+<pre class="r"><code>mdl_diagnost &lt;- 
+  tibble(
+  wb_mdl1$model,
+  fitted = fitted(wb_mdl1),
+  resid = residuals(wb_mdl1),
+  studres = rstudent(wb_mdl1),
+  hats = hatvalues(wb_mdl1),
+  cooksd = cooks.distance(wb_mdl1)
+)</code></pre>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question C9
+</div>
+<div class="question-body">
+<p>Looking at the studentised residuals, are there any outliers?</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-71" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-71&#39;, &#39;sol-start-71&#39;)"></span>
+</div>
+<div id="sol-body-71" class="solution-body" style="display: none;">
+<p>Recall from the lectures, studentised residuals of <span class="math inline">\(&gt;2\)</span> or <span class="math inline">\(&lt; -2\)</span> indicate potential outlyingness.</p>
+<p>We can ask R whether the <em>absolute</em> values are <span class="math inline">\(&gt;2\)</span>:</p>
+<pre class="r"><code>abs(mdl_diagnost$studres) &gt; 2</code></pre>
+<pre><code>##     1     2     3     4     5     6     7     8     9    10    11    12    13 
+## FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE 
+##    14    15    16    17    18    19    20    21    22    23    24    25    26 
+## FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE 
+##    27    28    29    30    31    32 
+## FALSE FALSE FALSE FALSE FALSE FALSE</code></pre>
+<p>We could <em>filter</em> our newly created tibble to these observations:</p>
+<pre class="r"><code>mdl_diagnost %&gt;% 
+  filter(abs(studres)&gt;2)</code></pre>
+<pre><code>## # A tibble: 0 x 8
+## # … with 8 variables: wellbeing &lt;dbl&gt;, outdoor_time &lt;dbl&gt;, social_int &lt;dbl&gt;,
+## #   fitted &lt;dbl&gt;, resid &lt;dbl&gt;, studres &lt;dbl&gt;, hats &lt;dbl&gt;, cooksd &lt;dbl&gt;</code></pre>
+<p>There are zero rows.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question C10
+</div>
+<div class="question-body">
+<p>Hat values of more than <span class="math inline">\(2 \bar{h}\)</span> (2 times the average hat value) are considered high leverage.<br />
+The average hat value, <span class="math inline">\(\bar{h}\)</span> is calculated as <span class="math inline">\(\frac{k + 1}{n}\)</span>, where <span class="math inline">\(k\)</span> is the number of predictors, and <span class="math inline">\(n\)</span> is the sample size.</p>
+<p>Looking at the hat values, are there any observations with high leverage?</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-72" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-72&#39;, &#39;sol-start-72&#39;)"></span>
+</div>
+<div id="sol-body-72" class="solution-body" style="display: none;">
+<p>For our model, the average hat value <span class="math inline">\(\bar h\)</span> is:<br />
+<span class="math display">\[
+\bar h = \frac{k+1}{n} = \frac{2+1}{32} = \frac{3}{32} = 0.094
+\]</span></p>
+<p>We can ask whether any of observations have hat values which are greater than <span class="math inline">\(\bar h\)</span>:</p>
+<pre class="r"><code>mdl_diagnost %&gt;%
+  filter(hats &gt; 0.094)</code></pre>
+<pre><code>## # A tibble: 13 x 8
+##    wellbeing outdoor_time social_int fitted resid studres   hats  cooksd
+##        &lt;dbl&gt;        &lt;dbl&gt;      &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
+##  1        30            7          8   23.9  6.06   1.07  0.149  0.0665 
+##  2        21            9          8   25.1 -4.13  -0.719 0.141  0.0288 
+##  3        38           14         10   31.7  6.30   1.08  0.0967 0.0415 
+##  4        27           16         10   32.9 -5.88  -1.01  0.107  0.0410 
+##  5        20            1         10   24.0 -4.00  -0.710 0.177  0.0367 
+##  6        40           24         12   41.2 -1.23  -0.214 0.156  0.00291
+##  7        26            5         14   33.6 -7.58  -1.31  0.0956 0.0592 
+##  8        52           26         14   46.0  5.98   1.06  0.152  0.0665 
+##  9        49            5         20   44.4  4.60   0.815 0.167  0.0448 
+## 10        57           26         21   58.6 -1.64  -0.282 0.128  0.00401
+## 11        45            8         22   49.8 -4.79  -0.849 0.169  0.0493 
+## 12        56           14         22   53.3  2.66   0.451 0.105  0.00815
+## 13        63           27         24   64.6 -1.65  -0.292 0.186  0.00674</code></pre>
+<p>Note that quite a few observations (13) have high leverage.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question C11
+</div>
+<div class="question-body">
+<p>A suggested Cook’s Distance cut-off is <span class="math inline">\(\frac{4}{n-k-1}\)</span>, where <span class="math inline">\(k\)</span> is the number of predictors, and <span class="math inline">\(n\)</span> is the sample size.</p>
+<p>Looking at the Cook’s Distance values, are there any highly influential points?<br />
+You can also display these graphically using <code>plot(model, which = 4)</code> and <code>plot(model, which = 5)</code>.</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-73" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-73&#39;, &#39;sol-start-73&#39;)"></span>
+</div>
+<div id="sol-body-73" class="solution-body" style="display: none;">
+<p>For our model, a proposed cut-off for Cook’s Distance is:
+<span class="math display">\[
+D_{cutoff} = \frac{4}{n-k-1} = \frac{4}{32 - 2 - 1} = \frac{4}{29} = 0.138
+\]</span></p>
+<p>There are no observations which have a high influence on our model estimates:</p>
+<pre class="r"><code>mdl_diagnost %&gt;%
+  filter(cooksd &gt; 0.138)</code></pre>
+<pre><code>## # A tibble: 0 x 8
+## # … with 8 variables: wellbeing &lt;dbl&gt;, outdoor_time &lt;dbl&gt;, social_int &lt;dbl&gt;,
+## #   fitted &lt;dbl&gt;, resid &lt;dbl&gt;, studres &lt;dbl&gt;, hats &lt;dbl&gt;, cooksd &lt;dbl&gt;</code></pre>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="other-influence.measures" class="section level2">
+<h2>Other influence.measures()</h2>
+<div class="frame">
+<p>Alongside Cook’s Distance, we can examine the extent to which model estimates and predictions are affected when an entire case is dropped from the dataset and the model is refitted.</p>
+<ul>
+<li><strong>DFFit:</strong> the change in the predicted value at the <span class="math inline">\(i^{th}\)</span> observation with and without the <span class="math inline">\(i^{th}\)</span> observation is included in the regression.<br />
+</li>
+<li><strong>DFbeta:</strong> the change in a specific coefficient with and without the <span class="math inline">\(i^{th}\)</span> observation is included in the regression.<br />
+</li>
+<li><strong>DFbetas:</strong> the change in a specific coefficient divided by the standard error, with and without the <span class="math inline">\(i^{th}\)</span> observation is included in the regression.<br />
+</li>
+<li><strong>COVRATIO:</strong> measures the effect of an observation on the covariance matrix of the parameter estimates. In simpler terms, it captures an observation’s influence on standard errors. Values which are <span class="math inline">\(&gt;1+\frac{3(k+1)}{n}\)</span> or <span class="math inline">\(&lt;1-\frac{3(k+1)}{n}\)</span> are considered as having strong influence.</li>
+</ul>
+</div>
+<div class="question-begin">
+Question C12
+</div>
+<div class="question-body">
+<p>Use the function <code>influence.measures()</code> to extract these delete-1 measures of influence.</p>
+<p>Try plotting the distributions of some of these measures.</p>
+<p><strong>Tip:</strong> the function <code>influence.measures()</code> returns an <code>infl</code>-type object. To plot this, we need to find a way to extract the actual numbers from it.<br />
+What do you think <code>names(influence.measures(wb_mdl1))</code> shows you? How can we use <code>influence.measures(wb_mdl1)$&lt;insert name here&gt;</code> to extract the matrix of numbers?</p>
+<p class="question-end">
+</p>
+</div>
+<div class="solution-begin">
+Solution <span id="sol-start-74" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-74&#39;, &#39;sol-start-74&#39;)"></span>
+</div>
+<div id="sol-body-74" class="solution-body" style="display: none;">
+<pre class="r"><code>influence.measures(wb_mdl1)</code></pre>
+<pre><code>## Influence measures of
+##   lm(formula = wellbeing ~ outdoor_time + social_int, data = mwdata) :
+## 
+##      dfb.1_ dfb.otd_ dfb.scl_   dffit cov.r   cook.d    hat inf
+## 1   0.43653 -0.11116 -0.32167  0.4477 1.157 0.066470 0.1489    
+## 2  -0.28160  0.03170  0.22954 -0.2917 1.225 0.028838 0.1414    
+## 3   0.29581  0.07604 -0.29025  0.3540 1.088 0.041520 0.0967    
+## 4  -0.26445 -0.13055  0.29341 -0.3508 1.117 0.040991 0.1071    
+## 5  -0.27084  0.22733  0.10472 -0.3290 1.279 0.036700 0.1766    
+## 6   0.12462 -0.02693 -0.08288  0.1460 1.141 0.007277 0.0604    
+## 7  -0.17361 -0.03392  0.15313 -0.2235 1.087 0.016770 0.0597    
+## 8  -0.02879 -0.07259  0.06069 -0.0918 1.309 0.002906 0.1556    
+## 9   0.16925  0.08820 -0.17834  0.2477 1.088 0.020553 0.0668    
+## 10 -0.24768  0.33112 -0.00551 -0.4267 1.027 0.059217 0.0956    
+## 11 -0.02018 -0.02535  0.02534 -0.0492 1.166 0.000834 0.0518    
+## 12  0.04644  0.38731 -0.22045  0.4474 1.164 0.066462 0.1517    
+## 13 -0.15606  0.21587 -0.02477 -0.3135 1.017 0.032241 0.0626    
+## 14  0.13390 -0.31537  0.10705  0.3905 1.039 0.049887 0.0899    
+## 15  0.14774 -0.25595  0.08688  0.4273 0.815 0.055918 0.0487    
+## 16 -0.11881  0.17855 -0.06061 -0.3502 0.873 0.038519 0.0422    
+## 17  0.00121 -0.07684  0.02608 -0.1031 1.177 0.003653 0.0703    
+## 18  0.00329  0.04637 -0.01574  0.0739 1.159 0.001877 0.0516    
+## 19  0.04301 -0.15310  0.09227  0.2432 1.055 0.019693 0.0546    
+## 20  0.05819 -0.10961 -0.03803 -0.2189 1.065 0.016025 0.0508    
+## 21 -0.01498  0.00131  0.03428  0.0875 1.131 0.002622 0.0380    
+## 22  0.12553 -0.15510 -0.09098 -0.3084 1.020 0.031247 0.0622    
+## 23 -0.03324 -0.00580  0.05840  0.1049 1.138 0.003770 0.0466    
+## 24  0.24606 -0.23731 -0.18568 -0.4783 0.911 0.071967 0.0774    
+## 25  0.06123  0.10878 -0.16017 -0.2209 1.131 0.016498 0.0771    
+## 26 -0.02732 -0.29363  0.23790  0.3643 1.243 0.044752 0.1666    
+## 27 -0.30514  0.33726  0.20108  0.5966 0.830 0.108234 0.0858    
+## 28  0.06176 -0.07036 -0.03455 -0.1080 1.263 0.004013 0.1280    
+## 29 -0.15327 -0.04611  0.23001  0.3039 1.067 0.030646 0.0754    
+## 30  0.11226  0.25745 -0.30386 -0.3826 1.238 0.049262 0.1686    
+## 31 -0.07637 -0.05313  0.12879  0.1542 1.214 0.008153 0.1047    
+## 32  0.10249 -0.07000 -0.07662 -0.1399 1.353 0.006736 0.1864   *</code></pre>
+<p>Let’s plot the distribution of COVRATIO statistics.<br />
+Recall that values which are <span class="math inline">\(&gt;1+\frac{3(k+1)}{n}\)</span> or <span class="math inline">\(&lt;1-\frac{3(k+1)}{n}\)</span> are considered as having strong influence.<br />
+For our model:
+<span class="math display">\[
+1 \pm \frac{3(k+1)}{n} \quad = \quad 1 \pm\frac{3(2+1)}{32} \quad = \quad 1\pm \frac{9}{32} \quad = \quad 1\pm0.28
+\]</span></p>
+<p>The “infmat” bit of an <code>infl</code>-type object contains the numbers. To use it with ggplot, we will need to turn it into a dataframe (<code>as.data.frame()</code>), or a tibble (<code>as_tibble()</code>):</p>
+<pre class="r"><code>infdata &lt;- influence.measures(wb_mdl1)$infmat %&gt;%
+  as_tibble()
+
+ggplot(data = infdata, aes(x = cov.r)) + 
+  geom_histogram() +
+  geom_vline(aes(xintercept = c(1-0.28)))+
+  geom_vline(aes(xintercept = c(1+0.28)))</code></pre>
+<p><img src="06_slr_files/figure-html/unnamed-chunk-37-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>It looks like a few observations may be having quite a high influence here. This is perhaps not that surprising as we only have 32 datapoints.</p>
+</div>
+<p class="solution-end">
+</p>
+</div>
 </div>
 
 
