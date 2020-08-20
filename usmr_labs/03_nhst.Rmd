@@ -80,7 +80,7 @@ tibble(
 
 ## Standard Error in practice
 
-In practice, we cannot actually draw lots and lots of samples in order to construct a sampling distribution, and we do not know the population parameters which are required to generate samples like we did above.  
+In practice, we cannot actually draw lots and lots of samples in order to construct a sampling distribution, and we do not know the population parameters which are required to generate samples like we did above (we do not know the population mean $\mu$ or standard deviation $\sigma$)  
 
 Instead, we start with just one observed sample, e.g.:
 ```{r}
@@ -147,7 +147,6 @@ Either way, what we get is an idea of the distribution of what we would expect f
 Against this, we can then compare our observed mean: 
 
 ```{r hyp, echo=FALSE, fig.cap="Sampling distribution for mean of sample size 131, assuming population mean = 0. Observed sample mean shown in red", fig.width=6, fig.height=4}
-
 set.seed(2394)
 samplemeans <- replicate(2000, mean(rnorm(n=131, mean=0, sd=5.015774)))
 
@@ -362,30 +361,33 @@ Because $p$>.05, we fail to reject the null hypothesis of the Shapiro-Wilk test 
 Shapiro-Wilk test did not indicate violation of the assumption of normality ($W$=`r shapiro.test(stroopdata$stroop_effect)$statistic %>% round(.,2)`, $p$=`r shapiro.test(stroopdata$stroop_effect)$p.value %>% round(.,3)`).
 :::
 
-# Exercises: Some simple tests
+# Exercises: Some basic tests  
 
-`r qbegin(1)`
-The Procrastination Assessment Scale for Students (PASS) was designed to assess how individuals approach decision situations, specifically the tendency of individuals to postpone decisions (see [Solomon & Rothblum, 1984](http://dx.doi.org/10.1037/0022-0167.31.4.503)).  
-  
-The PASS assesses the prevalence of procrastination in six areas: writing a paper; studying for an exam; keeping up with reading; administrative tasks; attending meetings; and performing general tasks. 
-For a measure of total endorsement of procrastination, responses to 18 questions (each measured on a 1-5 scale) are summed together, providing a single score for each participant (range 0 to 90). 
-The mean score from Solomon & Rothblum, 1984 was 33.  
+## Single Sample $t$-test
 
+:::frame
 > __Research Question__
 > Do Edinburgh University students report endorsing procrastination less than the norm?  
-  
-A student has administered the PASS to 20 students from Edinburgh University. The data is available at [https://edin.ac/2wJgYwL](https://edin.ac/2wJgYwL).  
-  
+
+The Procrastination Assessment Scale for Students (PASS) was designed to assess how individuals approach decision situations, specifically the tendency of individuals to postpone decisions (see [Solomon & Rothblum, 1984](http://dx.doi.org/10.1037/0022-0167.31.4.503)). The PASS assesses the prevalence of procrastination in six areas: writing a paper; studying for an exam; keeping up with reading; administrative tasks; attending meetings; and performing general tasks. For a measure of total endorsement of procrastination, responses to 18 questions (each measured on a 1-5 scale) are summed together, providing a single score for each participant (range 0 to 90). The mean score from Solomon & Rothblum, 1984 was 33.  
+
+A student administers the PASS to 20 students from Edinburgh University.  
+The data is available at https://uoepsy.github.io/data/pass_scores.csv.  
+:::
+
+
+`r qbegin("A1")`
 Conduct a one sample $t$-test to evaluate whether Edinburgh University students' average score on the PASS is not equal to 33. Remember to check the assumptions!    
 
-**Note:** Think carefully about the wording of the question. Is the alternative hypothesis "less than", "greater than" or "not equal to"? What does this mean in relation to the areas of the $t$-distribution for which you will reject the null hypothesis - upper tail, lower tail, or both tails? Check out the help page for `t.test()` - is there some thing you can change to make sure it is the correct option?  
+**Note:** Think carefully about the wording of the research question. Is the alternative hypothesis "less than", "greater than" or "not equal to"? What does this mean in relation to the areas of the $t$-distribution for which you will reject the null hypothesis - upper tail, lower tail, or both tails? Check out the help page for `t.test()` - is there some thing you can change to make sure it is the correct option?  
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r fig.height=3, fig.width=5}
 pass_scores <- read_csv("https://edin.ac/2wJgYwL") 
 
 ggplot(data = pass_scores, aes(x=PASS)) + 
-  geom_boxplot()
+  geom_boxplot() + 
+  geom_vline(xintercept=33, lty="dashed", col="red")
 
 shapiro.test(pass_scores$PASS)
 
@@ -393,7 +395,7 @@ t.test(pass_scores$PASS, mu = 33, alternative = "less")
 ```
 `r solend()`
 
-`r qbegin()`
+`r qbegin("A2")`
 Write up the results.  
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -404,19 +406,109 @@ res2<-t.test(pass_scores$PASS, mu = 33, alternative = "less")
 :::int
 A one-sided one-sample t-test was conducted in order to determine if the average score on the Procrastination Assessment Scale for Students (PASS) for a sample of `r nrow(pass_scores)` students at Edinburgh University was significantly lower ($\alpha = .05$) than the average score obtained during development of the PASS. 
 
-Edinburgh University students scored lower (Mean=`r mean(pass_scores$PASS) %>% round(2)`, SD=`r sd(pass_scores$PASS) %>% round(2)`) than the score reported by the authors of the PASS (Mean = 33). This difference was statistically significant (t(`r nrow(pass_scores)-1`)=`r res2$statistic %>% round(2)`, p < .05, one-tailed).  
+Edinburgh University students scored lower (Mean = `r mean(pass_scores$PASS) %>% round(2)`, SD = `r sd(pass_scores$PASS) %>% round(2)`) than the score reported by the authors of the PASS (Mean = 33). This difference was statistically significant (t(`r nrow(pass_scores)-1`)=`r res2$statistic %>% round(2)`, p < .05, one-tailed).  
 :::
 `r solend()`
 
 
-## independent samples t test
+## Independent Samples $t$-test  
 
-## chi square test
-table, fill it by hand
-calculate chisq
-pchisq
-check using 
+In addition to testing the difference from an observed sample mean to some hypothesised mean, we can also conduct a $t$-test to explore the difference between two observed sample means.  
 
+:::frame
+> __Research Question__
+> Can a server earn higher tips simply by introducing themselves by name when greeting customers?
+
+Researchers investigated the effect of a server introducing herself by name on restaurant tipping.
+The study involved forty, 2-person parties eating a \$23.21 fixed-price buffet Sunday brunch at Charley Brown's Restaurant in Huntington Beach, California, on April 10 and 17, 1988.
+Each two-person party was randomly assigned by the waitress to either a name or a no name introduction condition using a random mechanism. The waitress kept track of the two-person party condition and how much the party paid at the end of the meal.   
+  
+The data is available at https://uoepsy.github.io/data/gerritysim.csv.  
+(This is a simulated example based on [Garrity and Degelman (1990)](https://doi.org/10.1111/j.1559-1816.1990.tb00405.x))  
+:::
+
+`r qbegin("A3")`
+Conduct an independent samples $t$-test to assess whether higher tips are earned when the server introduces themselves by name, in comparison to when they do not.    
+
+Notes about assumptions
+
+- Do the sample data arise from independent random samples from two populations OR from random assignment of the units to treatment groups? 
+- Is the quantitative variable of interest normally distributed in *both* populations/groups?  
+- Does the quantitative variable of interest have equal variance between the populations/groups? (you can test this using `var.test()`).  
+
+`r optbegin("Help: What do I need give the t.test() function?", olabel=FALSE)`
+We can give `t.test()` two numeric vectors: `t.test(x = , y = )`.   
+However, data can be stored in various different shapes.  
+
+If our data is **wide**:
+```{r echo=FALSE}
+tibble(
+  groupA = c("value","value","...","..."),
+  groupB = c("value","value","...","...")
+)
+```
+We can simply give `t.test()` both variables:  
+```{r eval=FALSE}
+t.test(x = data$groupA, y = data$groupB)
+```
+
+---
+
+If our data is **long**:
+```{r echo=FALSE}
+tibble(
+  values = rep(c("value","value","...","...","value"),2),
+  group = c("A","A","...","...","A","B","B","...","...","B")
+)
+```
+
+1. Index the correct values:  
+    ```{r eval=FALSE}
+    t.test(x = data$value[data$group=="A"], y = data$value[data$group=="B"])
+    ```
+
+2. Or use the **formula** notation, using `~` (the "tilde").  
+  In R, you can interpret `y ~ x` as "y is modeled as a function of x".  
+  By splitting the numeric values by the categories of the "group" variable, we can conduct a $t$-test using:  
+    ```{r eval=FALSE}
+    t.test(data$value ~ data$group)
+    ```
+  Or, even more handy, we can use `with()`:  
+    ```{r eval=FALSE}
+    with(data, t.test(value ~ group))
+    ```
+
+`r optend()`
+`r qend()`  
+
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+tipdata <- read_csv("https://uoepsy.github.io/data/gerritysim.csv")
+
+#make a "tip" column, which is minus the meal amount
+tipdata <- 
+  tipdata %>% mutate(
+    tip = paid - 23.21
+  )
+
+ggplot(data = tipdata, aes(x = tip, y = condition)) +
+  geom_boxplot()
+```
+  
+__check assumptions__  
+
+```{r}
+shapiro.test(tipdata$tip[tipdata$condition=="name"])
+shapiro.test(tipdata$tip[tipdata$condition=="no name"])
+with(tipdata, var.test(tip ~ condition))
+```
+
+__conduct t-test__  
+```{r}
+with(tipdata, t.test(tip ~ condition, alternative = "greater"))
+```
+
+`r solend()`
 
 # Exercises: Writing results in Rmarkdown
 
@@ -443,3 +535,10 @@ Note how it works:
 
   - the code chunk saves the results of the `t.test()` function as a named object `res2`.
   - in text, the backticks <code>&grave;r ... ... ... &grave;</code> are used to execute small bits of R code, and include the output within the text. For instance, the line <code>&grave;r res2\$statistic %>% round(2)&grave;</code> gets the t-statistic from the results, and rounds it to 2 decimal places, which get's printed out as `r res2[["statistic"]] %>% round(2)`. 
+
+
+`r qbegin("B1")`
+Write up the results of from question A3 above, using as much inline R code (the backticks) as you can.  
+
+Compile your document to ensure that it gets rendered correctly.  
+`r qend()`

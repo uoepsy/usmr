@@ -134,7 +134,7 @@ The "id" variable has the numbers 1 to 10,000. The "height" variable has 10,000 
 `r solend()`
 
 `r qbegin("A2")`  
-For now, let's imagine that the 10,000 entries we created in `simdata` are the entire population of interested.  
+For now, let's imagine that the 10,000 entries we created in `simdata` are the entire population of interest.  
 Calculate the mean height of the population. 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -711,8 +711,6 @@ stroopdata <- read_csv("https://uoepsy.github.io/data/strooptask.csv")
 ```
 `r solend()`
 
----
-
 `r qbegin("B2")`  
 using `summarise()`, show the minimum, maximum, mean and median of the times taken to read the matching word set, and then do the same for the mismatching word set.
 `r qend()`
@@ -739,8 +737,6 @@ stroopdata %>%
   )
 ```
 `r solend()`
-
----
 
 `r qbegin("B3")` 
 What we are interested in is the differences between these times. For someone who took 10 seconds for the matching set, and 30 seconds for the mismatching set, we want to record the difference of 20 seconds.  
@@ -887,14 +883,12 @@ If there wasn't a difference between the conditions, then we would expect the me
 
 # Exercises: Many samples
 
-Let's assume that in the population, the Stroop task doesn't do anything - i.e., in the population there is *no* difference in reaction times between the matching and mismatching conditions.  
-Under this assumption, we can generate an hypothetical sample of the "stroop_effect" variable, of the same $n$ as our experiment.  
-Note that we assume the standard deviation of this sample to be the same as the sample we collected, but the mean we assume to be zero (indicating no difference between conditions).  
-```{r}
-# observed standard deviation
-sd(stroopdata$stroop_effect)
+Let's assume that in the population, the Stroop task doesn't do anything - i.e., in the population there is *no* difference in reaction times between the matching and mismatching conditions. In other words, the mean in the population "stroop_effect" is zero (indicating no difference between conditions). 
+Let's also assume, for this example, that the standard deviation of the population is the same as the standard deviation of the sample we collected (`sd(stroopdata$stroop_effect)` = `r sd(stroopdata$stroop_effect)`).  
 
-# generated sample of 131 with mean 0
+We can now generate an hypothetical sample of the "stroop_effect" variable, of the same $n$ as our experiment.  
+```{r}
+# generate a sample of 131, drawn from population with mean 0 and sd 5.02
 rnorm(n = 131, mean = 0, sd = 5.015774) 
 ```
 
@@ -913,7 +907,7 @@ mean(rnorm(n = 131, mean = 0, sd = 5.015774))
 
 `r qbegin("C2")`  
 Using `replicate()`, calculate the means of 2000 hypothetical samples of $n = 131$.  
-Store the sample means as a named object and make a quick histogram of it using `hist()`.  
+Store the sample means as a named object and make a quick histogram of them using `hist()`.  
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -933,23 +927,30 @@ mean(stroopdata$stroop_effect)
 ```
 
 `r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
 
 The histogram shows how means of samples of size 131 will vary due to random sampling, *if the true population mean is zero*.  
 
-We can then ask ourselves: "if the true population mean is 0, how likely is it that we would get a sample mean of `r round(mean(stroopdata$stroop_effect),2)` from a sample of 131?"  
+We can then ask ourselves: "if the true population mean is 0, how likely is it that we would get a mean of `r round(mean(stroopdata$stroop_effect),2)` from a sample of 131?"  
 
 ```{r echo=FALSE}
+set.seed(2394)
+samplemeans <- replicate(2000, mean(rnorm(n=131, mean=0, sd=5.015774)))
+
 ggplot(data=tibble(samplemeans),aes(x=samplemeans))+
-  geom_histogram(col="white")+
+  geom_histogram(col="white", alpha=.6)+
+  #stat_function(geom="line",fun=~dnorm(.x, mean=0,sd=sd(samplemeans))*270,lwd=1)+
   geom_vline(aes(xintercept=mean(stroopdata$stroop_effect)),lty="dashed",col="tomato1")+
-  scale_y_continuous(NULL,breaks=NULL)+
   labs(x = "mean stroop effect")+
+  scale_y_continuous(NULL, breaks=NULL)+
   theme_minimal()+
-  annotate("text",x=1.3, y=240, label="What we would expect for the mean\nstroop effect from samples of size 131\nif the population mean is 0", col="grey30")+
+  annotate("text",x=1.3, y=230, label="What we would expect for the mean\nstroop effect from samples of size 131\nif the population mean is 0", col="grey30")+
   annotate("text",x=1.5, y=100, label="What we observed for the mean\nstroop effect of our sample\nof size 131", col="tomato1")+
-  geom_curve(aes(x=1.3, xend=0.5, y=210, yend=150), col="grey30", size=0.5, curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))+
-  geom_curve(aes(x=1.5, xend=2.35, y=75, yend=30), col="tomato1", size=0.5, curvature = 0.2, arrow = arrow(length = unit(0.03, "npc")))
+  geom_curve(aes(x=1.3, xend=0.5, y=200, yend=150), col="grey30", size=0.5, curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))+
+  geom_curve(aes(x=1.5, xend=2.35, y=75, yend=30), col="tomato1", size=0.5, curvature = 0.2, arrow = arrow(length = unit(0.03, "npc")))+
+  annotate("text",x=-1.1, y=150, label="SD = 0.44", col="grey30")+
+  geom_curve(aes(x=-0.8, xend=-0.2, y=150, yend=100), col="grey30", size=0.5, curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))+
+  geom_segment(aes(x=0, xend=-0.44, y=95, yend=95), col="grey30", size=0.5)
 ```
 
 `r solend()`
