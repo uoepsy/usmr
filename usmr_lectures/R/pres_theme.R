@@ -2,7 +2,7 @@
 
 library(ggthemes)
 
-theme_presentation<- function(base_size = 24, base_family = "") {
+theme_presentation<- function(base_size = 20, base_family = "") {
   # Start with theme_economist
   tr <- function(prop) {
     round(base_size*prop)

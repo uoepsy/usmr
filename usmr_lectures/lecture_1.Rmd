@@ -274,7 +274,7 @@ it's careful and principled story-telling
 --
 
 .br3.center.pa2.bg-red.white.f3[
-Coursework submission deadline: 17 Dec 2020
+coursework submission deadline: 17 Dec 2020
 ]
 
 ---
@@ -499,15 +499,96 @@ in part 3 we're going to look at probability, starting with a couple of dice
 
 
 ---
-# How likely are you to throw 12?
+## How likely are you to throw 12 with two dice?
+
+.left-column[
+![:scale 80%](img/two_sixes.svg)
+]
+.right-column[
+- pretty easy to work out
+
+- one-in-six chance of throwing a six
+
+- one-in-six chance of throwing a second six
+
+  + NB., these observations are _independent_
+  + (wouldn't matter if you threw one dice twice or two dice together)
+  
+- $\frac{1}{36}$ chance of throwing two sixes
+]
+
+
+---
+# Are my dice fair?
 
 - one way to find out:  throw two dice many times and count the outcomes
 
-- first we need some dice
+.center[
+```{r justg, echo=FALSE, fig.asp=.55}
+d <- data.frame(dice=replicate(20,sum(sample(1:6,2,replace=T))))
+d %>% ggplot(aes(x=dice)) + geom_bar() + scale_x_continuous(breaks=1:12,name = 'sum of dice',limits = c(2,12)) +
+  ggtitle('20 throws of 2 dice')
+```
+]
+
+---
+# What would fair dice look like?
+
+.pull-left[
+![](img/playmo_lazy.jpg)
+]
+.pull-right[
+
+- we need a lot of throws
+
+- first rule of coding: be lazy
+
+- let the computer do the work
+]
+
+---
+# Using RStudio
+
+.center[
+![:scale 80%](img/rstudio.png)
+]
+
+---
+count: false
+# Using RStudio
+
+.center[
+![:scale 80%](img/rstudio_zones.png)
+]
+
+
+---
+class: center, middle
+
+## create some dice
+
+???
+- show creating a project
+
+- markdown; call project **dice**
+
+- first show `1:6`
+
+- then `sample(1:6, 1)`
+
+- then help for `sample()`
+
+- then `sample(1:6, 2, replace=T)`
+
+- then `sum(sample(1:6,2,replace=T))`
+
+- then make a `dice(num=1)` function which returns the sum, for default 1
+---
+# Now we can throw dice a _lot_ of times
 
 ```{r dice}
 dice <- function(num=1) {
-  sample(1:6, num, replace=TRUE)
+  sum(sample(1:6, num, replace=TRUE))
 }
 
 dice()
@@ -516,33 +597,43 @@ dice()
 ```{r dice2}
 dice(2)
 ```
---
-```{r dice3}
-sum(dice(2))
-```
 
 ---
 # Throw two dice many times
 ```{r dice4}
-replicate(500,sum(dice(2)))
+replicate(250,dice(2))
 ```
+--
+
+- ...and record the result
+
+```{r dice 5}
+d <- replicate(250,dice(2))
+```
+???
+- actually, `d` won't contain the same numbers as you see on the slide
 
 ---
 # Make a graph
 
-```{r dice5, fig.asp=.6}
-d <- data.frame(dice=replicate(500,sum(dice(2))))
-ggplot(d,aes(dice)) + geom_bar() + scale_x_continuous(breaks=1:12)
+```{r dice5}
+table(d)
 ```
 
+---
+count: false
+# Make a graph
+```{r dice5a, fig.asp=.6}
+barplot(table(d))
+```
 
 ---
 # Many more throws
-```{r dice6, fig.asp=.6}
-d <- data.frame(dice=replicate(10000,sum(dice(2)))) #<<
-ggplot(d,aes(dice)) + geom_bar() + scale_x_continuous(breaks=1:12)
-```
 
+```{r dice6, fig.asp=.6}
+d <- replicate(10000,dice(2))
+barplot(table(d))
+```
 ---
 # 10,000 dice throws
 .flex.items-top[
@@ -553,7 +644,7 @@ ggplot(d,aes(dice)) + geom_bar() + scale_x_continuous(breaks=1:12)
 - we can work out the proportion of throws that summed to 12
 
 ```{r dice7}
-sum(d$dice == 12) / 10000
+sum(d == 12) / 10000
 ```
 
 - and we know what that proportion should be if the dice are fair
@@ -563,6 +654,33 @@ sum(d$dice == 12) / 10000
 ```
 
 ]]
+
+---
+# Some more (fake) dice throws
+
+.center[
+```{r fdice, fig.asp=.5, echo=FALSE}
+d <- tibble(dice=replicate(10000,sum(sample(1:6,2,T,c(rep(.164,5),.21)))))
+d <- d %>% mutate(c = ifelse(dice==12,'a','b'))
+d %>% ggplot(aes(x=dice,fill=c)) + geom_bar() +
+  scale_fill_manual('legend',values=c('a'='red','b'='darkgrey')) +
+  theme(legend.position = "none") +
+  scale_x_continuous(breaks=1:12,name = 'sum of dice')
+```
+]
+
+.br3.center.pa2.bg-green.white.f4[
+are the patterns from the dice _different enough_ from what we would expect from fair dice for us to conclude that they're unfair?
+]
+
+---
+# Statistical questions
+
+
+- so the million-dollar question is:
+
+.
+
 ---
 # Acknowledgements
 
