@@ -1,5 +1,5 @@
 ---
-title: "Categorical Distributions"
+title: "Categorical Data"
 bibliography: references.bib
 biblio-style: apalike
 link-citations: yes
@@ -32,7 +32,7 @@ You can add a code-chunk with the "Insert" button in the top right of your Rmark
 In your first code-chunk, copy the code from the lecture which creates a custom function called `dice()` (copied below). Be sure to run the code-chunk.  
 ```{r}
 dice <- function(num = 1) {
-  sample(1:6, num, replace=TRUE)
+  sum(sample(1:6, num, replace=TRUE))
 }
 ```
 
@@ -64,21 +64,28 @@ You will find that "`sample()` takes a sample ... from the elements of `x` ..." 
 The console is the place to "try stuff out" (don't worry, you can't break it). 
 Watch the video below and then try it out yourself:
 
-TODO: add video screencap
 <center><video width="320" height="240" controls>
-  <source src="" type="video/mp4">
+  <source src="images/dice.mp4" type="video/mp4">
 </video></center>
 
 What you will discover is that `1:6` creates a *vector* (list of similar things, in this case numbers) of the numbers 1-6.
-The next bit of the `sample()` function is `size`. In the `dice()` function, the `num` passes down to the `size` of the `sample()`: Looking through the help, `size` is the number of items to choose.  So `sample(1:6, 1)` would choose one number from the numbers 1-6 at random; `sample(1:6, 3)` would choose 3, and so on.  The last argument, `replace=TRUE`, tells `sample()` what to do with a number once it's been picked:  Does it go 'back into the bag' to be picked again (`TRUE`) or not? (`FALSE`)?
+The next bit of the `sample()` function is `size`. In the `dice()` function, the `num` passes down to the `size` of the `sample()`: Looking through the help, `size` is the number of items to choose.  So `sample(1:6, 1)` would choose one number from the numbers 1-6 at random; `sample(1:6, 3)` would choose 3, and so on.  The last argument, `replace=TRUE`, tells `sample()` what to do with a number once it's been picked:  Does it go 'back into the bag' to be picked again (`TRUE`) or not? (`FALSE`)?  
 
-Putting it all together, our `dice()` function "throws a die `num` times" by `sample()`ing from the numbers 1-6 `num` times, `replace`ing each number when it's been picked.
+Around the outside is `sum()` which simply sums the numbers on however many (`num`) dice you "rolled".  
+
+Putting it all together, our `dice()` function "throws a die `num` times" by `sample()`ing from the numbers 1-6 `num` times, `replace`ing each number when it's been picked, and sums the numbers of all the dice.  
 
 </div>
 
 
 `r qbegin("A2")`
-Simulate 100 rolls of the dice, and store the results in an object in your environment. Give it an easily identifiable name.   
+Look up the function `replicate()`. We can use it to do something in R lots of times!  
+  ```{r}
+  # run the code "1+1" 20 times: 
+  replicate(20, 1+1)
+  ```
+  
+Use `replicate()` to simulate 100 rolls of a single dice (*Hint:* this means `num = 1`), and store the results in an object in your environment. Give it an easily identifiable name.   
 **Refresher:** defining things in R, we use the syntax `name <- value`  
   
 Create a barplot showing the frequency with which each number was landed on in the 100 rolls.  
@@ -87,7 +94,7 @@ Create a barplot showing the frequency with which each number was landed on in t
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 We'll name it "roll100". 
 ```{r}
-roll100 <- dice(100)
+roll100 <- replicate(100, dice(1))
 ```
 
 We can get the frequency table using `table()`
@@ -106,9 +113,11 @@ What do you notice?
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
-barplot(table(dice(1000)))
+d <- replicate(1000, dice(1))
+barplot(table(d))
 
-barplot(table(dice(10000)))
+d <- replicate(10000, dice(1))
+barplot(table(d))
 ```
 
 :::int
@@ -118,14 +127,14 @@ The more rolls we do of the dice, the flatter the graph becomes. This is because
 
 `r qbegin("A4")`
 Copy the code below into a code-chunk and run it. 
-It creates a new function called `wdice()` which simulates the rolling of a die which is slightly weighted. 
+It creates a new function called `wdice()` which simulates the rolling of `num` dice which are slightly weighted. 
 
-Roll the weighted die 100 times and plot the frequency distribution. Do the same for 1,000 and 10,000 rolls.  
+Roll a single weighted die 100 times and plot the frequency distribution. Do the same for 1,000 and 10,000 rolls of a single die.  
 Does a pattern emerge? At how many rolls? 
 
 ```{r}
 wdice <- function(num = 1){
-    sample(1:6, num, replace=TRUE, prob = c(0.15,0.15,0.15,0.15,0.15,0.25))
+    sum(sample(1:6, num, replace=TRUE, prob = c(0.15,0.15,0.15,0.15,0.15,0.25)))
 }
 ```
 
@@ -137,9 +146,14 @@ set.seed(564)
 ```
 
 ```{r}
-barplot(table(wdice(100)))
-barplot(table(wdice(1000)))
-barplot(table(wdice(10000)))
+wd <- replicate(100, wdice(1))
+barplot(table(wd))
+
+wd <- replicate(1000, wdice(1))
+barplot(table(wd))
+
+wd <- replicate(10000, wdice(1))
+barplot(table(wd))
 ```
 
 :::int
@@ -150,7 +164,7 @@ However, 100 rolls is not enough to reliably observe this. In our 100 rolls abov
 `r solend()`
 
 `r qbegin("A5")`
-Remember, `wdice()` and `dice()` are really just relying on a different function, `sample()`. Try playing around with `sample()` in the console again - what does the `prob = c(....)` bit do?  
+Remember, `wdice()` and `dice()` are really just relying on different functions, like `sample()`. Try playing around with `sample()` in the console again - what does the `prob = c(....)` bit do?  
 <br>
 
 Now let's try to modify the `wdice()` function. Edit the code for `wdice()` so that 50% of the time it lands on number 6.  
@@ -174,6 +188,10 @@ x
 
 When you use the assignment operator `<-` we assign a name to a value and store in R's memory.  
 To edit any of these named objects, we simply _reassign_ the name to the edited value. This applies to functions, to dataframes, and to specific observations in dataframes etc.  
+
+<center><video width="320" height="240" controls>
+  <source src="images/overwriting.mp4" type="video/mp4">
+</video></center>
 :::
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -182,7 +200,7 @@ We need to be careful to remember that the probability of the different outcomes
 
 ```{r}
 wdice <- function(num = 1){
-    sample(1:6, num, replace=TRUE, prob = c(0.1,0.1,0.1,0.1,0.1,0.5))
+    sum(sample(1:6, num, replace=TRUE, prob = c(0.1,0.1,0.1,0.1,0.1,0.5)))
 }
 ```
 `r solend()`
@@ -195,7 +213,8 @@ Conceptually, what can we learn from this toy example?
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
-barplot(table(wdice(100)))
+wd <- replicate(100, wdice(1))
+barplot(table(wd))
 ```
 
 :::int
@@ -772,7 +791,10 @@ Note the key components of the ggplot code.
 
 Then we add (using `+`) some _geometry_. These are the shapes (in our case, the columns/bars), which will be put in the correct place according to what we specified in `aes()`.  
 
-* `+ geom_....` Adds different shapes (e.g., bars) to the plot. 
+* `+ geom_....` Adds different shapes (e.g., bars) to the plot.  
+
+<br>
+You can find great documentation on ggplot2 at https://www.statsandr.com/blog/graphics-in-r-with-ggplot2/.  
 :::
 
 
