@@ -1,5 +1,3 @@
-library(crayon)
-
 .pp <- function(command,top=3,bottom=-3,l=FALSE) {
   t <- capture.output(eval(command))
   ln <- length(t)
@@ -7,7 +5,7 @@ library(crayon)
     i=0
     for (n in l) {
       if (i>0) {
-        cat(red("..."),sep="\n")
+        cat("...",sep="\n")
       }
       i=i+1
       if (length(n)==1 && (i == 1 || i == length(l))) {
@@ -26,7 +24,7 @@ library(crayon)
     if (top != 0) {
       cat(t[1:top],sep="\n")
     }
-    cat(red("..."),sep="\n")
+    cat("...",sep="\n")
     if (bottom !=0) {
       bottom <- bottom+1+ln
       cat(t[bottom:ln],sep="\n")
