@@ -1,0 +1,140 @@
+---
+title: "Messy Data"
+bibliography: references.bib
+biblio-style: apalike
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+    
+```{r setup, include=FALSE}
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+```
+
+:::red
+**Preliminaries**  
+
+1. Open Rstudio, make sure you have the USMR project open, and create a new RMarkdown document (giving it a title for this week).  
+2. Download the data from [here]() (right click the link and choose "save target as"/"save file as" etc.)
+
+:::
+
+This week we're going to take a little detour away from statistics to get some practice wrangling and cleaning data in R.   
+
+:::blue
+**The 80/20 Rule**   
+In many projects (both in acadmemic research & in other sectors), 80 percent of the time will be spent cleaning and organising data, and only 20% will be spent actually conducting statistical analyses^[A well designed study with a well-thought through data collection process can go a long way to remedy this!].
+:::
+
+
+
+```{r}
+clickdat<-readRDS("~/Documents/git_archive/gcd_analysis/processed_data/gcd2_offline.RDS")
+
+#clicks 
+clickdat %>% select(subject, trial_no, obj_clicked) %>% 
+    mutate(obj_clicked = fct_recode(obj_clicked, "Target"="Referent"),
+           subject = paste0("subject_",subject)) %>%
+    pivot_wider(names_from=trial_no, values_from=obj_clicked, names_prefix="Trial ") %>%
+    #write.csv("data/trialcclicks.csv") %>%
+    print
+
+# conditions
+clickdat %>% 
+    mutate(cond = ifelse(condition=="No Cue", "_fluent.wav","_disfluent.wav"),
+           audio = paste0("/files/",ref,cond)) %>%
+    select(subject, trial_no, audio, rt) -> t
+
+t$audio[grepl("umbrella_disfluent",t$audio)] <- "/files/umbrella_dislfuent.wav"
+t$rt[sample(1:length(t$rt), size=4)]<-round(rnorm(4,13300,4050))
+t$rt[sample(1:length(t$rt), size=4)]<-NA
+
+#write.csv(t,"data/audio.csv",row.names=F)
+
+head(clickdat)
+summary(clickdat)
+```
+
+
+# Reading in data
+
+## Different formats
+
+TODO: table of functions for reading/writing data types.
+
+:::frame
+
+|  filetype|  description|  reading| writing|
+|--:|--:|--:|
+|  .csv|  2|  `read_csv()`<br>`read.csv()`<br>`read.table(..., sep = ",")`| `write.csv()`, |
+|  .tsv|  3|  `read_tsv()`<br>`read.table(..., sep = "\t")`|
+|  .txt|  3|  `read.table(..., sep = ...)`|
+
+R files
+|  filetype|  description|  reading| writing|
+|  .RDS|  3|  `readRDS()`|
+|  .RData|  3|  4|
+
+Excel files
+readxl
+
+
+Other software
+haven 
+for instance with `read_spss()`/`read_sav()` and `read_sas()` for files from SPSS and SAS. 
+
+Google sheets
+googlesheets4 package
+read_sheet()
+requires authentication
+
+:::
+
+## Column names
+
+```{r}
+library(readxl)
+read_xlsx("data/audio.xlsx")
+audiodata <- read_xlsx("data/audio.xlsx")
+audiodata
+read_csv("data/trialcclicks.csv")
+clicksdata <- read_csv("data/trialcclicks.csv", col_names = FALSE)
+clicksdata <- clicksdata[,-1]
+# clicksdata <- clicksdata %>% select(-1)
+
+```
+
+## Reshaping data 
+
+```{r}
+head(clicksdata)
+clicksdata %>% 
+    pivot_longer(cols = X3:X22, names_to = "trial_number", values_to = "object_clicked")
+```
+
+
+
+
+# Dealing with character strings
+
+separate()
+gsub()
+substr()
+    
+# joining/merging
+
+left_join/right_join
+full_join
+anti_join
+semi_join
+            
+??? 
+
+# identifying outliers
+## dealing with outliers
+
+# dealing with missingness
+

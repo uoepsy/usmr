@@ -4,7 +4,7 @@ bibliography: references.bib
 biblio-style: apalike
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -32,7 +32,7 @@ Let's take a look at the relationships between the percentage of items answered 
 library(tidyverse)
 library(patchwork)
 
-recalldata <- read_csv("https://edin.ac/2wHhCej")
+recalldata <- read_csv("https://uoepsy.github.io/data/recalldata.csv")
 
 ggplot(recalldata, aes(x=recall_confidence, recall_accuracy))+
   geom_point() + 
@@ -427,7 +427,7 @@ __Just because you observe an association between x and y, we should not deduce 
 An often cited paper (See Figure \@ref(fig:choco)) which appears to fall foul of this error took a correlation between a country's chocolate consumption and its number of nobel prize winners to suggest a _causal relationship_ between the two:  
 
 ```{r choco,echo=FALSE,warning=FALSE,message=FALSE, fig.cap="Chocolate consumption causes more Nobel Laureates?"}
-knitr::include_graphics("https://pbs.twimg.com/media/D0AS2iEX0AAuMLX.jpg")
+knitr::include_graphics("images/covcor/choco.jpeg")
 ```
 
 _"since chocolate consumption has been documented to improve cognitive function, it seems most likely that in a dose-dependent way, chocolate intake provides the abundant fertile ground needed for the sprouting of Nobel laureates"_    
@@ -441,9 +441,90 @@ Take a break and play this "guess the correlation" game to get an idea of what d
 `r knitr::include_url("http://guessthecorrelation.com/", height="650px")`
 **source: [http://guessthecorrelation.com/](http://guessthecorrelation.com/)**
 
-# Exercises:
+# Exercises: Correlation  
 
-# Exercises: functions and models
+
+### Sleep levels and daytime functioning {-}  
+
+> A researcher is interested in the relationship between hours slept per night and self-rated effects of sleep on daytime functioning. She recruited 50 healthy adults, and collected data on the Total Sleep Time (TST) over the course of a seven day period via sleep-tracking devices.  
+> At the end of the seven day period, participants completed a Daytime Functioning (DTF) questionnaire. This involved participants rating their agreement with ten statements (see Table \@ref(tab:sleepitems)). Agreement was measured on a scale from 1-5. An overall score of daytime functioning can be calculated by:  
+>  
+> 1. reversing the scores for items 4,5 and 6 (because those items reflect agreement with _positive_ statements, whereas the other ones are agreement with _negative_ statement);
+2. summing the scores on each item; and 
+3. subtracting the sum score from 50 (the max possible score). This will make higher scores reflect better perceived daytime functioning.  
+>
+> The data is available at https://uoepsy.github.io/data/sleepdtf.csv. 
+  
+```{r sleepitems, echo=FALSE}
+tibble(
+  Item = paste0("Item_",1:10),
+  Statement = c("I often felt an inability to concentrate","I frequently forgot things","I found thinking clearly required a lot of effort","I often felt happy","I had lots of energy","I worked efficiently","I often felt irritable" ,"I often felt stressed","I often felt sleepy", "I often felt fatigued")
+) %>%
+  knitr::kable(caption="Daytime Functioning Questionnaire")
+```
+
+
+`r qbegin("A1")`
+Read in the data, and calculate the overall daytime functioning score, following the criteria outlined above. Make this a new column in your dataset.  
+
+_Hints:_  
+
++ To reverse items 4, 5 and 6, we we need to make all the scores of 1 become 5, scores of 2 become 4, and so on... What number satisfies all of these equations: `? - 5 = 1`, `? - 4 = 2`, `? - 3 = 3`?
++ To quickly sum accross rows, you can use the `rowSums()` function. 
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r message=FALSE}
+sleepdtf <- read_csv("https://uoepsy.github.io/data/sleepdtf.csv")
+summary(sleepdtf)
+# To reverse the items, we can simply do 6 minus the score.   
+sleepdtf <- 
+  sleepdtf %>% mutate(
+    item_4=6-item_4,
+    item_5=6-item_5,
+    item_6=6-item_6
+  ) 
+
+# Now using rowSums()
+sleepdtf$dtf = rowSums(sleepdtf[, 2:11])
+```
+`r solend()`
+
+`r qbegin("A2")`
+Calculate the correlation between the total sleep time (`TST`) and the overall daytime functioning score.  
+Conduct a test to establish the probability of observing a correlation this strong in a sample of this size assuming the true correlation to be 0.  
+<br>
+Write a sentence or two summarising the results. 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+cor.test(sleepdtf$TST, sleepdtf$dtf)
+```
+
+:::int
+There was a strong negative correlation between total sleep time and self-reported daytime functioning score ($r$ = `r cor(sleepdtf$TST, sleepdtf$dtf) %>% round(2)`, $t(48)$ = `r cor.test(sleepdtf$TST, sleepdtf$dtf)$statistic %>% round(2)`, $p < .001$) in the current sample. As total sleep time increased, levels of self-reported daytime functioning decreased.  
+:::
+`r solend()`
+
+`r qbegin("A3")`
+__Open-ended:__ Think about this relationship in terms of _causation_.  
+<br>
+Claim: _Less sleep causes poorer daytime functioning._  
+<br>
+Why might it be inappropriate to make the claim above based on these data alone? Think about what sort of study could provide stronger evidence for such a claim.  
+
+Things to think about:  
+
++ comparison groups.   
++ random allocation.  
++ measures of daytime functioning.   
++ measures of sleep time.  
++ other (unmeasured) explanatory variables.  
+
+`r qend()`
+
+
+# Exercises: Functions and Models
 
 `r qbegin()`
 The Scottish National Gallery kindly provided us with measurements of side and perimeter (in metres) for a sample of 10 square paintings.

@@ -4,7 +4,7 @@ bibliography: references.bib
 biblio-style: apalike
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -77,6 +77,68 @@ tibble(
   NULL
 ```
 :::
+
+## Normal curves & CLT
+
+Notice that the sampling distributions we have generated above all have similar properties - they are *symmetric and bell-shaped*. This shape of distribution is known as the **normal** distribution, and we can define a specific distribution via two parameters, the mean and the standard deviation.  
+  
+In fact, the **central limit theorem (CLT)** states that when we take sufficiently large random samples from a population, the distribution of the sample means will be approximately normally distributed. This holds regardless of whether the population is normal (or skewed).  
+
+```{r echo=FALSE, fig.width=5, fig.height=4, fig.cap = "Population distributions (top) and sampling distributions (bottom)"}
+set.seed(130)
+simdata <-
+  tibble(
+    id = 1:10000,
+    height = rnorm(10000, mean = 178, sd = 10),
+    over6ft = height > 182.88
+  )
+
+pop1 <- ggplot(simdata, aes(x=over6ft))+geom_bar() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  labs(title="Population >6ft tall")
+
+
+tibble(
+  sp = replicate(1000, mean(sample(simdata$over6ft,size=50)))
+) %>%
+  ggplot(.,aes(x=sp))+
+  geom_histogram(bins=20)+
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  labs(title="Proportion >6ft tall of\n1000 samples of size 50",x="sample proportion") -> samps1
+
+
+ggplot(simdata, aes(x=height))+geom_histogram() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  labs(title="Population heights") -> pop2
+
+
+tibble(
+  sm = replicate(1000, mean(sample(simdata$height,size=50)))
+) %>%
+  ggplot(.,aes(x=sm))+
+  geom_histogram(bins=20)+
+  theme_minimal() +
+  theme(axis.text.y = element_blank()) +
+  labs(title="Mean heights of 1000\nsamples of size 50",x="sample mean") -> samps2
+
+(pop2 + pop1) / (samps2 + samps1)
+
+```
+
+
+There are certain properties of normal distributions which we can exploit, in order to determine how plausible an observed value is relative to a distribution. When a distribution is normal (symmetric and bell-shaped):  
+
+- 68% of values will lie within 1 standard deviation of the mean.
+- 95% of values will lie within 1.96 standard deviations of the mean.
+- 99.7% of values will lie within 3 standard deviations of the mean.  
+
+```{r echo=FALSE, fig.width=3, fig.height=3}
+knitr::include_graphics("images/hypothesis/normal.png")
+```
+
 
 ## Standard Error in practice
 
@@ -411,6 +473,26 @@ Edinburgh University students scored lower (Mean = `r mean(pass_scores$PASS) %>%
 `r solend()`
 
 
+`r qbegin("A3")`
+Conduct a one sample $t$-test to evaluate whether the average height of students of USMR 2020/2021 is different from 155cm.  
+
+The data is available at https://uoepsy.github.io/usmr/surveyresults/usmr_surveyresponse.csv. 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+survey_data <- read_csv("https://uoepsy.github.io/usmr/surveyresults/usmr_surveyresponse.csv") 
+
+ggplot(data = survey_data, aes(x = height)) + 
+  geom_histogram() +
+  geom_vline(xintercept = 155)
+
+shapiro.test(survey_data$height)
+
+t.test(survey_data$height, mu = 155, alternative = "two.sided")
+```
+`r solend()`
+
+
 ## Independent Samples $t$-test  
 
 In addition to testing the difference from an observed sample mean to some hypothesised mean, we can also conduct a $t$-test to explore the difference between two observed sample means.  
@@ -427,7 +509,7 @@ The data is available at https://uoepsy.github.io/data/gerritysim.csv.
 (This is a simulated example based on [Garrity and Degelman (1990)](https://doi.org/10.1111/j.1559-1816.1990.tb00405.x))  
 :::
 
-`r qbegin("A3")`
+`r qbegin("B1")`
 Conduct an independent samples $t$-test to assess whether higher tips are earned when the server introduces themselves by name, in comparison to when they do not.    
 
 Notes about assumptions
@@ -537,8 +619,8 @@ Note how it works:
   - in text, the backticks <code>&grave;r ... ... ... &grave;</code> are used to execute small bits of R code, and include the output within the text. For instance, the line <code>&grave;r res2\$statistic %>% round(2)&grave;</code> gets the t-statistic from the results, and rounds it to 2 decimal places, which get's printed out as `r res2[["statistic"]] %>% round(2)`. 
 
 
-`r qbegin("B1")`
-Write up the results of from question A3 above, using as much inline R code (the backticks) as you can.  
+`r qbegin("C1")`
+Write up the results of from question B1 above, using as much inline R code (the backticks) as you can.  
 
 Compile your document to ensure that it gets rendered correctly.  
 `r qend()`
