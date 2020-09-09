@@ -1,3 +1,3 @@
 # USMR - Lecture slides  
 
-[lecture1](lecture1.html)
+[welcome week lecture](lecture_0.html)
