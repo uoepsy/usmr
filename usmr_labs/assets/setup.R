@@ -18,5 +18,5 @@ knitr::opts_chunk$set(
 library(ggplot2)
 theme_set(
     theme_bw(base_size = 15) + 
-        theme(plot.title = element_text(hjust = 0.5))
+    theme(plot.title = element_text(hjust = 0.5))
 )
