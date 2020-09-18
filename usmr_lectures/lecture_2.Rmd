@@ -532,9 +532,127 @@ $$ z_i = \frac{x_i - \bar{x}}{\sigma} $$
 - CLT, standard deviation and standard error?
 
 
+---
+class: inverse, center, middle
+
+# Part 3
 
 ---
-class: inverse, center, middle, animated, heartBeat
+# PLAN
+
+- R session (CLT)
+
+- get heights of sample, sd and se
+
+---
+# Looking at the class data
+
+```{r get_data, include=FALSE}
+library(googlesheets4)
+clData <- read_sheet("1JacU9_yb9lt9FaHeiblZTw4vvFwLVOaCOiUIVdzmoPQ")
+hData <- lapply(clData[,4],as.character,simplify=T)[[1]]
+hData[hData=="NULL"] <- NA
+hData <- hData[!is.na(hData)]
+hData <- sub(' *cm','',hData)
+hData <- sub(',','.',hData)
+hData <- as.numeric(hData)
+hData[hData <100] <- hData[hData <100] * 100 
+```
+
+.pull-left[
+```{r doahist, fig.asp=.55, fig.show='hide'}
+# the class heights in cm are in hData
+hist(hData, xlab="height in cm")
+```
+]
+.pull-right[
+`r include_graphics("lecture_2_files/figure-html/doahist-1.svg")`
+]
+
+
+.flex.items-center[
+.w-5.pa1[
+![:scale 70%](lecture_1_files/img/danger.svg)
+]
+.w-95.pa1[
+- data taken directly from the class survey responses
+- uses the `googlesheets4` library
+]]
+
+---
+# Mean, Standard Deviation
+
+.pull-left[
+
+- information about the distribution of the sample
+
+```{r sd}
+mean(hData)
+
+sd(hData)
+```
+
+]
+.pull-right[
+```{r realnorm, echo=FALSE, fig.asp=.6}
+t <- data.frame(x=c(min(hData-15),max(hData+15)))
+p <- t %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(hData), sd=sd(hData)), size=1.5, colour="darkgrey") +
+  xlab("height in cm") + ylab("density")
+p
+```
+]
+
+---
+# Standard Error
+
+.pull-left[
+
+- **standard error** is the "standard deviation of the mean"
+
+- as we saw in the simulation
+
+- can be _estimated_ as $\frac{\sigma}{\sqrt{n}}$
+
+```{r se}
+n <- length(hData)
+# standard error
+sd(hData) / sqrt(n)
+```
+]
+.pull-right[
+```{r senorm,echo=FALSE, fig.asp=.6}
+se=sd(hData)/sqrt(n)
+p2 <- p +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(hData), sd=se), size=1.5)
+p2
+
+```
+
+]
+
+---
+# Statistically Useful Information
+
+.flex.items-center[.w-50.pa2[
+```{r senorm2,echo=FALSE, fig.asp=.6}
+fillme <- layer_data(p2,2) %>% filter(x >= mean(hData)-1.96*se & x <= mean(hData)+1.96*se)
+
+p2 + geom_area(data=fillme,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(hData), sd=se), size=1.5)
+
+```
+- we know that the area between $\bar{x}-1.96\sigma$ and $\bar{x}+1.96\sigma$ is 0.95
+]
+.w-50.pa2[
+.br3.center.pa2.pt2.bg-gray.white.f3[
+if we measure the mean height of `r length(hData)` people from the same population as the USMR class, we estimate that the answer we obtain will lie between `r round(mean(hData)-1.96*se,1)`cm and `r round(mean(hData)+1.96*se,1)`cm 95% of the time
+]
+
+]]
+
+---
+class: inverse, center, middle, animated, swing
 
 # End
 
