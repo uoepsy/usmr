@@ -277,11 +277,11 @@ class: inverse, center, middle
 # Investment Strategies
 
 .br3.pa2.pt2.bg-gray.white.f3[
-The Playmo Investment Circle have been pursuing a special investment strategy over the past year.  By no means everyone has made a profit.  Is the strategy worth advertising to others?
+The Playmo Investors' Circle have been pursuing a special investment strategy over the past year.  By no means everyone has made a profit.  Is the strategy worth advertising to others?
 ]
 
 ```{r invest, echo=F, fig.asp=.2, fig.width=11}
-set.seed(10)
+set.seed(25)
 m <- tibble(profit=rnorm(12,20,20),color=if_else(profit <0,'A','B'),
             names=c('Adam','Bill','Clare','Dave','Emma','Fred','Gina','Hal','Ian','Jane','Kim','Leo'))
 m %>% ggplot(aes(x=names,y=profit,fill=color)) +
@@ -291,6 +291,7 @@ m %>% ggplot(aes(x=names,y=profit,fill=color)) +
   theme(legend.position = "none", axis.text.x = element_text(angle=45)) +
   xlab("") + ylab("£ profit")
 profit <- m$profit
+
 ```
 ---
 # Information About the Investments
@@ -305,12 +306,172 @@ profit <- m$profit
 - the standard error is $\sigma/\sqrt{12}$ which is `r sd(profit)/sqrt(12)`
 
 .pt2[
-- we are interested in the _probability of 12 people making at least a mean £`r pr` profit_ assuming that they come from the same population
+- we are interested in the _probability of 12 people making at least a mean £`r pr` profit_
+
+  + assuming that they come from the same population
 ]]
 
 .pull-right[
 ![:scale 70%](lecture_3_files/img/playmo_investors.jpg)
 ]
+
+---
+# Using Standard Error
+
+.pull-left[
+- together with the mean, the standard error describes a normal distribution
+
+- "likely distribution of means for other samples of 12"
+]
+
+.pull-right[
+```{r segraph, echo=FALSE, fig.asp=.6}
+df <- tibble(x=c(-30,30))
+df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,n=151,args=list(mean=mean(profit),sd=sd(profit)/sqrt(12)),size=2) +
+  geom_vline(xintercept=mean(profit),colour="red") +
+  xlab("mean profit") + ylab("density")
+```
+]
+
+---
+# Using Standard Error (2)
+
+.pull-left[
+- last time, our **null hypothesis** ("most likely outcome") was "Casper is of average height"
+
+- this time, our null hypothesis is "there was no profit"
+
+- easiest way to operationalize this:
+
+  + "the average profit was zero"
+  
+- so redraw the normal curve with _the same standard error_ and a _mean of zero_
+]
+
+.pull-right[
+```{r segraph2, echo=FALSE, fig.asp=.6}
+ng <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,n=151,args=list(mean=mean(profit),sd=sd(profit)/sqrt(12)),size=1.5,colour="grey") +
+  xlab("mean profit") + ylab("density") +
+  stat_function(fun=dnorm,n=151,args=list(mean=0,sd=sd(profit)/sqrt(12)),size=2)+
+  geom_vline(xintercept=mean(profit),colour="red") +
+  geom_vline(xintercept=0,linetype=3)
+ng
+```
+]
+
+---
+# Using Standard Error (3)
+
+.pull-left[
+- null hypothesis: $\mu=0$
+
+- probability of making a mean profit of £`r pr` or more:
+
+  + _one-tailed_ hypothesis
+  
+  + evaluated as relevant area under the curve
+  
+```{r area}
+se=sd(profit)/sqrt(12)
+
+pnorm(mean(profit), mean=0, sd=se,
+      lower.tail=FALSE)
+```
+]
+
+.pull-right[
+```{r segraph3, echo=FALSE, fig.asp=.6}
+ld <- layer_data(ng,2) %>% filter(x>=mean(profit))
+ng + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+    stat_function(fun=dnorm,n=151,args=list(mean=0,sd=sd(profit)/sqrt(12)),size=2)
+```
+]
+
+---
+# The Standardized Version
+
+.flex.items-center[
+.w-60[
+- last week we talked about the _standard normal curve_
+  + mean = 0; standard deviation = 1
+- our investors' curve is very easy to transform
+  + mean is _already_ 0; divide by standard error  
+```{r twopnorms}
+pnorm(mean(profit),0,se,lower.tail=FALSE)
+pnorm(mean(profit)/se,0,1,lower.tail=FALSE)
+```
+- `mean(profit)/se` (`r mean(profit)/se`) is "number of standard errors from zero"
+]
+.w-40.pa2[
+```{r snc,echo=FALSE, fig.asp=.6}
+df <- tibble(x=c(-3.5,3.5))
+gr <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,n=451,size=2) +
+  xlab("standard errors") +
+  ylab("density") +
+  geom_vline(xintercept=mean(profit)/se,colour="red") +
+  annotate(geom="text",x=mean(profit)/se-1,y=.28,label=paste0(round(mean(profit)/se,2)," standard errors"),size=6,colour="red")
+ld <- layer_data(gr) %>% filter(x >= mean(profit)/se)
+gr + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,n=451,size=2)
+```
+
+]]
+---
+# Which Means...
+
+.br3.pa2.pt2.bg-gray.white.f3[
+If you picked 12 people at random from a population of investors who were making no profit, there would be a `r (pc=round(100*pnorm(mean(profit),0,sd(profit)/sqrt(12),lower.tail=F),0))`% chance that their average profit would be £`r pr` or more.
+]
+
+.pt2[
+- is `r pc`% low enough for you to believe that the mean profit probably wasn't due to chance?
+
+  + again, it's a _judgement call_
+  
+  + but before we make that judgement...
+]
+???
+obviously here our "population of investors" means "investors like the Playmo Investors' Circle.
+
+One important thing about statistics is that you can only extrapolate to the relevant population (but it's a matter of interpretation what the relevant population is!)
+---
+# A Small Confession
+
+.pull-left[
+![:scale 70%](lecture_3_files/img/playmo_liar.jpg)
+]
+
+.pull-right[
+- I haven't told the whole truth
+
+- all of the principles are correct, but for $n < 30$ the normal curve isn't the best estimate
+
+- for that we use the $t$ distribution
+]
+
+
+---
+# The $t$ Distribution
+
+.pull-left[
+.center[
+![:scale 40%](lecture_3_files/img/gossett.jpg)
+
+"A. Student", or William Sealy Gossett
+]]
+
+.pull-right[
+df <- tibble(x=c(-3.5,3.5))
+
+]
+
+???
+The official name for the $t$-distribution is "Student's t-distribution", after William Gossett's pen-name
+
+Gossett specialised in statistics for relatively small numbers of observations, working with Pearson, Fisher, and others
 
 ---
 class: inverse, center, middle, animated, rubberBand
