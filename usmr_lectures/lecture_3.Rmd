@@ -508,15 +508,209 @@ df %>% ggplot(aes(x=x)) +
 
 ]
 
+.pt2[
+- note that the shape changes according to _degrees of freedom_, hence $t(11)$
+]
 ???
 The official name for the $t$-distribution is "Student's t-distribution", after William Gossett's pen-name
 
 Gossett specialised in statistics for relatively small numbers of observations, working with Pearson, Fisher, and others
 
 ---
-- the "11" is the degrees of freedom (size of the sample-1)
+# The $t$ Distribution
+
+.flex.items-top[
+.w-60.pa2[
+- conceptually, the $t$ distribution increases uncertainty when the sample is small
+
+  + the probability of more extreme values is slightly higher
+  
+- exact shape of distribution depends on sample size
+  
+- the degrees of freedom are inherited from the standard error
+
+$$ \textrm{se} = \frac{\sigma}{\sqrt{n}} = \frac{\sqrt{\frac{\sum{(\bar{x}-x)^2}}{\color{red}{n-1}}}}{\sqrt{n}} $$
+]
+
+.w-40.pa2[
+```{r ts, echo=F, fig.asp=.6}
+df <- tibble(x=c(0,3.5))
+df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dt,n=151,args=list(df=11),colour="red") +
+  stat_function(fun=dt,n=151,args=list(df=5),colour="blue") +
+  stat_function(fun=dt,n=151,args=list(df=23),colour="black") +
+  xlab("standard deviations") + ylab("density") +
+  annotate(geom="text",x=1.7,y=.3,label="t(11)",colour="red",size=8) +
+  annotate(geom="text",x=1.7,y=.34,label="t(23)",colour="black",size=8) +
+  annotate(geom="text",x=1.7,y=.26,label="t(5)",colour="blue",size=8)
+  
+
+```
+]]
+
+???
+here, I'm only showing the right-hand side of each distribution, so that you can see the differences between different degrees of freedom
+
+the distributions are, of course, symmetrical
+---
+# Using the $t$ Distribution
+
+- in part 2, we calculated the mean profit for the group as £`r pr` and the standard error as `r se`
+
+- we used the formula $z=\bar{x}/\sigma$ to calculate $z$, and the standard normal curve to calculate probability
+
+--
+
+- **the formula for $t$ is the same as the formula for $z$ **
+
+  + what differs is the _distribution we are using to calculate probability_
+  
+  + we need to know the degrees of freedom (to get the right $t$-curve)
+  
+- so $t(\textrm{df}) = \bar{x}/\sigma$  
+
+- **in this case $t(11) = \bar{x}/\sigma$, where $\sigma$ is the standard error**
+---
+# So What is the Probability of a £`r pr` Profit?
+.pull-left[
+- for 12 people who made a mean profit of £`r pr` with an se of `r se`
+
+- $t(11) = `r pr`/`r se` = `r pr/se`$
+
+- instead of `pnorm()` we use `pt()` for the $t$ distribution
+  
+- `pt()` requires the degrees of freedom
+  
+```{r pt1}
+pt(mean(profit)/se,df=11,lower.tail=FALSE)
+```
+]
+
+
+.pull-right[
+```{r tgraph, echo=FALSE, fig.asp=.6}
+df <- tibble(x=c(-3.5,3.5))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dt,n=151,args=list(df=11),size=2) +
+  xlab("standard deviations") + ylab("density")
+
+ld <- layer_data(g) %>% filter(x>= mean(profit)/se)
+g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dt,n=151,args=list(df=11),size=2) +
+  annotate(geom="text",x=2,y=.3,label="t(11)",size=8)
+```
+
+]
+---
+# Did We Have to Do All That Work?
+
+.flex.items-top[
+.w-70.pa2[
+```{r ttes1samp}
+head(profit)
+
+t.test(profit, mu=0, alternative = "greater")
+```
+
+]
+.w-30.pa2[
+- **one-sample** $t$-test
+
+- compares a single sample against a hypothetical mean (`mu`)
+
+- usually zero
+  
+]]
+
+???
+note the use of "alternative = greater" here.
+
+we'll talk about that on the next slide.
+---
+# Types of Hypothesis
+
+```{r ttt,eval=FALSE}
+t.test(profit, mu=0, alternative = "greater")
+```
+
+- note the use of `alternative="greater"`
+
+- we've talked about the _null hypothesis_ (also **H<sub>0</sub>**)
+
+  + there is no profit (mean profit = 0)
+  
+- the **alternative hypothesis** (**H<sub>1</sub>**, **experimental hypothesis**) is the hypothesis we're interested in
+
+  + here, that the profit is reliably £`r pr` _or more_ (_one-tailed_ hypothesis)
+  
+  + could also use `alternative = "less"` or `alternative = "two.sided"`
 
 ---
+# Putting it Together
+
+- for $t(11)=`r mean(profit)/se`$, $p=`r pt(mean(profit/se),11,lower.tail=FALSE)`$
+
+.br3.pa2.pt2.bg-gray.white.f3[
+If you picked 12 people at random from a population of investors who were making no profit, there would be a `r (pc=round(100*pt(mean(profit)/se,11,lower.tail=F),0))`% chance that their average profit would be £`r pr` or more.
+]
+
+.pt2[
+- is `r pc`% low enough for you to believe that the mean profit probably wasn't due to chance?
+
+- perhaps we'd better face up to this question!
+
+]
+
+---
+# Setting the Alpha Level
+
+.pull-left[
+- the $\alpha$ level is a criterion for $p$
+
+- if $p$ is lower than the $\alpha$ level
+
+  + we can (decide to) _reject H<sub>0</sub>_
+
+  + we can (implictly) _accept H<sub>1</sub>_
+
+- what we set $\alpha$ to is a _matter of convention_
+
+- typically, in Psychology, $\color{red}{\alpha}$ .red[is set to .05]
+
+- important to set _before_ any statistical analysis
+]
+.pull-right[
+```{r twonorms, echo=F, fig.asp=.8}
+library(patchwork)
+p <- df %>% ggplot(aes(x=x)) +
+  xlab("") + ylab("density") +
+  stat_function(fun=dnorm,n=151)
+ld <- layer_data(p) %>% filter(x>=qnorm(.95))
+p1 <- p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  ggtitle("one-tailed") +
+  stat_function(fun=dnorm,n=151,size=1)
+ld1 <- layer_data(p) %>% filter(x>=qnorm(.975))
+ld2 <- layer_data(p) %>% filter(x<=qnorm(.025))
+p2 <- p + geom_area(data=ld1,aes(x=x,y=y),fill="red") +
+  geom_area(data=ld2,aes(x=x,y=y),fill="red") +
+  xlab("std devs") + ggtitle("two-tailed") +
+  stat_function(fun=dnorm,n=151,size=1)
+p1/p2
+```
+]
+???
+I've shown you here on the normal curve because it's a more general distribution than the $t$ distribution, which requires degrees of freedom, but the graphs would look quite similar, as you know
+
+- if we're testing a medicine, with possible side-effects, we want alpha to be low
+
+- for general psychology, meh...
+
+- no leading zeroes because $p$ is always less than 1
+
+- no cheating now!
+
+---
+
 class: inverse, center, middle, animated, rubberBand
 
 # End
