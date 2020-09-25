@@ -393,7 +393,9 @@ div.tocify {
     <li>
       <a href="01_categorical.html">1: Categorical Data</a>
     </li>
-    <li class="dropdown-header">2: Numeric Data</li>
+    <li>
+      <a href="02_numerical.html">2: Numeric Data</a>
+    </li>
   </ul>
 </li>
 <li class="dropdown">
@@ -425,7 +427,7 @@ div.tocify {
 </li>
 <li class="dropdown">
   <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Advanced Topics in Regression
+    More Regression!
      
     <span class="caret"></span>
   </a>
@@ -453,6 +455,9 @@ div.tocify {
 
 <div class="red">
 <p><strong>Preliminaries</strong></p>
+<ul>
+<li>Be sure to check the <a href="03_nhst.html"><strong>solutions to last week’s exercises</strong></a>. You can still ask any questions about previous weeks’ materials if things aren’t clear!</li>
+</ul>
 <ol style="list-style-type: decimal">
 <li>Open Rstudio, make sure you have the USMR project open, and create a new RMarkdown document (giving it a title for this week).</li>
 </ol>
@@ -463,24 +468,49 @@ div.tocify {
 Question A1
 </div>
 <div class="question-body">
-<p>In the survey during the welcome week, we asked you which month you were born in.</p>
+<p>In the survey during the welcome week, we asked you (and students on other stats courses in the department) which month you were born in. The data is at <a href="https://uoepsy.github.io/data/surveydata_allcourse.csv" class="uri">https://uoepsy.github.io/data/surveydata_allcourse.csv</a>.</p>
 <p>What is your intuition about the distribution of students’ birth-months?<br />
 Do you think they will be spread uniformly across all months of the year (like a fair 12-sided dice), or do you think people are more likely to be born in certain months more than others?</p>
 <p>Plot the distribution and get an initial idea of how things are looking.</p>
 <p><em>Tip:</em> You can do this quickly with <code>barplot()</code> and <code>table()</code>, or you could create try using <code>ggplot()</code> and looking into <code>geom_bar()</code>.</p>
+<p><em>(We’ve made the solutions visible immediately for this question, because they contain some useful little bits of code for re-ordering the months)</em></p>
 <p class="question-end">
 </p>
 </div>
-<div style="display:none;">
-<pre class="r"><code>survey_data &lt;- read_csv(&quot;https://uoepsy.github.io/usmr/surveyresults//usmr_surveyresponse.csv&quot;) </code></pre>
+<div class="solution-begin">
+Solution <span id="sol-start-24" class="fa fa-plus solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-24&#39;, &#39;sol-start-24&#39;)"></span>
+</div>
+<div id="sol-body-24" class="solution-body" style="display: none;">
+<pre class="r"><code>survey_data &lt;- read_csv(&quot;https://uoepsy.github.io/data/surveydata_allcourse.csv&quot;) </code></pre>
 <p>The quick and dirty way:</p>
-<pre class="r"><code>barplot(table(survey_data$birthdaymonth))</code></pre>
+<pre class="r"><code>barplot(table(survey_data$birthmonth))</code></pre>
 <p><img src="04_tests_files/figure-html/unnamed-chunk-2-1.png" width="80%" style="display: block; margin: auto;" /></p>
 <p>A ggplot option:</p>
-<pre class="r"><code>ggplot(data = survey_data, aes(x = birthdaymonth)) +
+<pre class="r"><code>ggplot(data = survey_data, aes(x = birthmonth)) +
     geom_bar() +
     labs(x = &quot;- Birth Month -&quot;)</code></pre>
-<p><img src="04_tests_files/figure-html/unnamed-chunk-3-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<p><img src="04_tests_files/figure-html/unnamed-chunk-3-1.png" width="80%" style="display: block; margin: auto;" />
+To order the months correctly, we need to make the “birthmonth” variable a <em>factor</em> (a categorical variable), and order the levels:</p>
+<pre class="r"><code># we can make use of month.abb which is the abbreviated months in R
+month.abb</code></pre>
+<pre><code>##  [1] &quot;Jan&quot; &quot;Feb&quot; &quot;Mar&quot; &quot;Apr&quot; &quot;May&quot; &quot;Jun&quot; &quot;Jul&quot; &quot;Aug&quot; &quot;Sep&quot; &quot;Oct&quot; &quot;Nov&quot; &quot;Dec&quot;</code></pre>
+<pre class="r"><code># but we want them all lower case:
+tolower(month.abb)</code></pre>
+<pre><code>##  [1] &quot;jan&quot; &quot;feb&quot; &quot;mar&quot; &quot;apr&quot; &quot;may&quot; &quot;jun&quot; &quot;jul&quot; &quot;aug&quot; &quot;sep&quot; &quot;oct&quot; &quot;nov&quot; &quot;dec&quot;</code></pre>
+<pre class="r"><code>#This is one way to do it
+survey_data$birthmonth &lt;- factor(survey_data$birthmonth, levels = tolower(month.abb), ordered=T)
+
+# and this is another (the tidyverse way):
+survey_data &lt;-
+  survey_data %&gt;%
+    mutate(
+      birthmonth = fct_relevel(factor(birthmonth), tolower(month.abb))
+    )</code></pre>
+<p>Now when we plot it, they’re in the right order!</p>
+<pre class="r"><code>ggplot(data = survey_data, aes(x = birthmonth)) +
+    geom_bar() +
+    labs(x = &quot;- Birth Month -&quot;)</code></pre>
+<p><img src="04_tests_files/figure-html/unnamed-chunk-5-1.png" width="80%" style="display: block; margin: auto;" /></p>
 </div>
 <p class="solution-end">
 </p>
@@ -512,12 +542,12 @@ There are 12 months, so we would expect <span class="math inline">\(\frac{1}{12}
 Question A3
 </div>
 <div class="question-body">
-<p>Given that there 90 observations in our sample, how many observations would we <em>expect</em> to find with a birthday in January? And in February? … and so on?</p>
+<p>Given that there 276 observations in our sample, how many observations would we <em>expect</em> to find with a birthday in January? And in February? … and so on?</p>
 <p class="question-end">
 </p>
 </div>
 <div style="display:none;">
-<p>We would expect <span class="math inline">\(\frac{1}{12} \times\)</span> 90 = 7.5 observations in each month.</p>
+<p>We would expect <span class="math inline">\(\frac{1}{12} \times\)</span> 276 = 23 observations in each month.</p>
 </div>
 <p class="solution-end">
 </p>
@@ -536,7 +566,7 @@ Question A4
 <div class="question-body">
 <p>The code below creates counts for each month:</p>
 <pre class="r"><code>survey_data %&gt;%
-    group_by(birthdaymonth) %&gt;%
+    group_by(birthmonth) %&gt;%
     summarise(
         observed = n()
     )</code></pre>
@@ -554,35 +584,38 @@ If your observed counts matched the expected counts <em>perfectly</em>, what wou
 </p>
 </div>
 <div style="display:none;">
-<pre class="r"><code>chi_table &lt;- 
+<pre class="r"><code># the nrow() function tells us how many rows there are in the dataset!
+totaln &lt;- nrow(survey_data)
+
+chi_table &lt;- 
     survey_data %&gt;%
-    group_by(birthdaymonth) %&gt;%
+    group_by(birthmonth) %&gt;%
     summarise(
         observed = n(),
-        expected = 90/12,
+        expected = totaln/12,
         diff = observed-expected,
         sq_diff = diff^2,
         std_sq_diff = sq_diff / expected
     )
 chi_table</code></pre>
 <pre><code>## # A tibble: 12 x 6
-##    birthdaymonth observed expected  diff sq_diff std_sq_diff
-##    &lt;chr&gt;            &lt;int&gt;    &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;       &lt;dbl&gt;
-##  1 apr                  9      7.5   1.5    2.25      0.3   
-##  2 aug                  6      7.5  -1.5    2.25      0.3   
-##  3 dec                  5      7.5  -2.5    6.25      0.833 
-##  4 feb                  5      7.5  -2.5    6.25      0.833 
-##  5 jan                  7      7.5  -0.5    0.25      0.0333
-##  6 jul                 12      7.5   4.5   20.2       2.7   
-##  7 jun                  9      7.5   1.5    2.25      0.3   
-##  8 mar                  8      7.5   0.5    0.25      0.0333
-##  9 may                  8      7.5   0.5    0.25      0.0333
-## 10 nov                 11      7.5   3.5   12.2       1.63  
-## 11 oct                  7      7.5  -0.5    0.25      0.0333
-## 12 sep                  3      7.5  -4.5   20.2       2.7</code></pre>
+##    birthmonth observed expected  diff sq_diff std_sq_diff
+##    &lt;ord&gt;         &lt;int&gt;    &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;       &lt;dbl&gt;
+##  1 jan              27       23     4      16      0.696 
+##  2 feb              22       23    -1       1      0.0435
+##  3 mar              22       23    -1       1      0.0435
+##  4 apr              16       23    -7      49      2.13  
+##  5 may              22       23    -1       1      0.0435
+##  6 jun              20       23    -3       9      0.391 
+##  7 jul              29       23     6      36      1.57  
+##  8 aug              26       23     3       9      0.391 
+##  9 sep              25       23     2       4      0.174 
+## 10 oct              23       23     0       0      0     
+## 11 nov              24       23     1       1      0.0435
+## 12 dec              20       23    -3       9      0.391</code></pre>
 <p>And we can calculate our <span class="math inline">\(\chi^2\)</span> test statistic by simply summing the values in the last column we created:</p>
 <pre class="r"><code>sum(chi_table$std_sq_diff)</code></pre>
-<pre><code>## [1] 9.733333</code></pre>
+<pre><code>## [1] 5.913043</code></pre>
 <p>If all our observed counts are equal to our expected counts, then the <code>diff</code> column above will be all <span class="math inline">\(0\)</span>, and <span class="math inline">\(0^2=0\)</span>, and <span class="math inline">\(\frac{0}{E_i}\)</span> will be <span class="math inline">\(0\)</span>. So <span class="math inline">\(\chi^2\)</span> will be <span class="math inline">\(0\)</span>.</p>
 </div>
 <p class="solution-end">
@@ -591,9 +624,15 @@ chi_table</code></pre>
 Question A5
 </div>
 <div class="question-body">
-<p>You can see the distribution of <span class="math inline">\(\chi^2\)</span> distributions with different degrees of freedom below.<br />
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Chi-square_pdf.svg/1200px-Chi-square_pdf.svg.png" width="80%" style="display: block; margin: auto;" /></p>
-<p>We can find out the proportion of the distribution which falls to either side of a given value of <span class="math inline">\(chi^2\)</span> using <code>pchisq()</code>. We need to give it our calculated <span class="math inline">\(chi^2\)</span> statistic, our degrees of freedom (<code>df</code>), which is equal to the number of categories minus 1. We also need to specify whether we want the proportion to the left (<code>lower.tail=TRUE</code>) or to the right (<code>lower.tail=FALSE</code>).</p>
+You can see the distribution of <span class="math inline">\(\chi^2\)</span> distributions with different degrees of freedom below.<br />
+
+<div class="figure" style="text-align: center"><span id="fig:chidist"></span>
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Chi-square_pdf.svg/1200px-Chi-square_pdf.svg.png" alt="Chi-Square Distributions" width="80%" />
+<p class="caption">
+Figure 1: Chi-Square Distributions
+</p>
+</div>
+<p>We can find out the proportion of the distribution which falls to either side of a given value of <span class="math inline">\(\chi^2\)</span> using <code>pchisq()</code>. We need to give it our calculated <span class="math inline">\(\chi^2\)</span> statistic, our degrees of freedom (<code>df</code>), which is equal to the number of categories minus 1. We also need to specify whether we want the proportion to the left (<code>lower.tail=TRUE</code>) or to the right (<code>lower.tail=FALSE</code>).</p>
 <ol style="list-style-type: decimal">
 <li>Using <code>pchisq()</code>, calculate the probability of observing a <span class="math inline">\(\chi^2\)</span> statistic as least as extreme as the one we have calculated.<br />
 </li>
@@ -604,15 +643,15 @@ Question A5
 </div>
 <div style="display:none;">
 <pre class="r"><code>sum(chi_table$std_sq_diff)</code></pre>
-<pre><code>## [1] 9.733333</code></pre>
+<pre><code>## [1] 5.913043</code></pre>
 <pre class="r"><code>pchisq(sum(chi_table$std_sq_diff), df = 11, lower.tail = FALSE)</code></pre>
-<pre><code>## [1] 0.5545216</code></pre>
-<pre class="r"><code>chisq.test(table(survey_data$birthdaymonth))</code></pre>
+<pre><code>## [1] 0.8791027</code></pre>
+<pre class="r"><code>chisq.test(table(survey_data$birthmonth))</code></pre>
 <pre><code>## 
 ##  Chi-squared test for given probabilities
 ## 
-## data:  table(survey_data$birthdaymonth)
-## X-squared = 9.7333, df = 11, p-value = 0.5545</code></pre>
+## data:  table(survey_data$birthmonth)
+## X-squared = 5.913, df = 11, p-value = 0.8791</code></pre>
 </div>
 <p class="solution-end">
 </p>
@@ -627,39 +666,39 @@ Question A6
 </div>
 <div style="display:none;">
 <p><strong>Standardized squared deviations</strong></p>
-<p>One possible way to answer this question is to look at the individual contribution of each category to the chi-square statistic. We computed these values in Question A4.</p>
+<p>One possible way to answer this question is to look at the individual contribution of each category to the <span class="math inline">\(\chi^2\)</span> statistic. We computed these values in Question A4.</p>
 <pre class="r"><code>chi_table %&gt;%
-  select(birthdaymonth, std_sq_diff)</code></pre>
+  select(birthmonth, std_sq_diff)</code></pre>
 <pre><code>## # A tibble: 12 x 2
-##    birthdaymonth std_sq_diff
-##    &lt;chr&gt;               &lt;dbl&gt;
-##  1 apr                0.3   
-##  2 aug                0.3   
-##  3 dec                0.833 
-##  4 feb                0.833 
-##  5 jan                0.0333
-##  6 jul                2.7   
-##  7 jun                0.3   
-##  8 mar                0.0333
-##  9 may                0.0333
-## 10 nov                1.63  
-## 11 oct                0.0333
-## 12 sep                2.7</code></pre>
+##    birthmonth std_sq_diff
+##    &lt;ord&gt;            &lt;dbl&gt;
+##  1 jan             0.696 
+##  2 feb             0.0435
+##  3 mar             0.0435
+##  4 apr             2.13  
+##  5 may             0.0435
+##  6 jun             0.391 
+##  7 jul             1.57  
+##  8 aug             0.391 
+##  9 sep             0.174 
+## 10 oct             0     
+## 11 nov             0.0435
+## 12 dec             0.391</code></pre>
 <p>From the barplot we created earlier on, we can see which months make up higher/lower proportions than expected:</p>
-<pre class="r"><code>ggplot(chi_table, aes(x = birthdaymonth, y = observed/nrow(survey_data))) +
+<pre class="r"><code>ggplot(chi_table, aes(x = birthmonth, y = observed/nrow(survey_data))) +
   geom_col(fill = &#39;lightblue&#39;) +
   geom_hline(yintercept = 1/12, color = &#39;red&#39;) +
   theme_classic(base_size = 15)</code></pre>
-<p><img src="04_tests_files/figure-html/unnamed-chunk-11-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<p><img src="04_tests_files/figure-html/unnamed-chunk-12-1.png" width="80%" style="display: block; margin: auto;" /></p>
 <p><strong>Pearson residuals</strong></p>
 <p>Equivalently, you could answer by looking at Pearson residuals:</p>
-<pre class="r"><code>chisq.test(table(survey_data$birthdaymonth))$residuals</code></pre>
+<pre class="r"><code>chisq.test(table(survey_data$birthmonth))$residuals</code></pre>
 <pre><code>## 
-##        apr        aug        dec        feb        jan        jul        jun 
-##  0.5477226 -0.5477226 -0.9128709 -0.9128709 -0.1825742  1.6431677  0.5477226 
-##        mar        may        nov        oct        sep 
-##  0.1825742  0.1825742  1.2780193 -0.1825742 -1.6431677</code></pre>
-<p>The greatest <em>absolute</em> values are for jul and sep, showing that for these months the deviations from expected to observed were the greatest.</p>
+##        jan        feb        mar        apr        may        jun        jul 
+##  0.8340577 -0.2085144 -0.2085144 -1.4596009 -0.2085144 -0.6255432  1.2510865 
+##        aug        sep        oct        nov        dec 
+##  0.6255432  0.4170288  0.0000000  0.2085144 -0.6255432</code></pre>
+<p>The greatest <em>absolute</em> values are for apr and jul, showing that for these months the deviations from expected to observed were the greatest.</p>
 </div>
 <p class="solution-end">
 </p>
@@ -668,7 +707,7 @@ Question A7
 </div>
 <div class="question-body">
 <p>According to the internet (that reliable source of information!), 76% of people in the world have brown eyes, 10% have blue, 5% hazel, 5% amber, 2% green, 1% grey, and 1% have some other eye colouring (red/violet/heterochromia).</p>
-<p>Perform a chi-squared goodness of fit test to assess the extent to which USMR students of 2020/21 conform to this theorised distribution of eye-colours.</p>
+<p>Perform a <span class="math inline">\(\chi^2\)</span> goodness of fit test to assess the extent to which our sample of students of 2020/21 conform to this theorised distribution of eye-colours.</p>
 <ul>
 <li><em>Hint:</em> <code>chisq.test(..., p = c(?,?,?,...) )</code>.</li>
 </ul>
@@ -679,15 +718,33 @@ Question A7
 <p>Let’s look at the observed counts:</p>
 <pre class="r"><code>table(survey_data$eyecolour)</code></pre>
 <pre><code>## 
-## amber  blue brown  gray green hazel other 
-##    11     8    59     1     2     7     2</code></pre>
+## amber  blue brown green  grey hazel other 
+##     2    77   117    37     4    31     8</code></pre>
 <p>Our theoretical probabilities of different eye colours must match the order in the table which we give <code>chisq.test()</code>. They must also always sum to 1.</p>
-<pre class="r"><code>chisq.test(table(survey_data$eyecolour), p = c(.05,.1,.76,.01,.02,.05,.01))</code></pre>
+<pre class="r"><code>chisq.test(table(survey_data$eyecolour), p = c(.05,.1,.76,.02,.01,.05,.01))</code></pre>
 <pre><code>## 
 ##  Chi-squared test for given probabilities
 ## 
 ## data:  table(survey_data$eyecolour)
-## X-squared = 13.558, df = 6, p-value = 0.03498</code></pre>
+## X-squared = 351, df = 6, p-value &lt; 2.2e-16</code></pre>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question A8
+</div>
+<div class="question-body">
+<p>What are the <em>observed</em> proportions of our sample with each eyecolour?<br />
+Can you figure out how to use the <code>prop.table()</code> function?</p>
+<p class="question-end">
+</p>
+</div>
+<div style="display:none;">
+<p>From the help documentation (<code>?prop.table()</code>), we see that we can pass <code>prop.table()</code> the argument <code>x</code>, which needs to be a table.</p>
+<pre class="r"><code>prop.table(table(survey_data$eyecolour))*100</code></pre>
+<pre><code>## 
+##      amber       blue      brown      green       grey      hazel      other 
+##  0.7246377 27.8985507 42.3913043 13.4057971  1.4492754 11.2318841  2.8985507</code></pre>
 </div>
 <p class="solution-end">
 </p>
@@ -726,7 +783,7 @@ table(tipjoke$Card, tipjoke$Tip)</code></pre>
 ##   Joke 42 30
 ##   None 49 16</code></pre>
 <pre class="r"><code>plot(table(tipjoke$Card, tipjoke$Tip))</code></pre>
-<p><img src="04_tests_files/figure-html/unnamed-chunk-16-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<p><img src="04_tests_files/figure-html/unnamed-chunk-18-1.png" width="80%" style="display: block; margin: auto;" /></p>
 </div>
 <p class="solution-end">
 </p>
@@ -782,14 +839,7 @@ So we would expect 0.4 of each group to leave a tip.</p>
 </tbody>
 </table>
 <p>For a given cell of the table we can calculate the expected count as <span class="math inline">\(\text{row total} \times \frac{\text{column total}}{\text{samplesize}}\)</span>:</p>
-<p><strong>Expected:</strong></p>
-<pre class="r"><code>table(tipjoke$Card, tipjoke$Tip) %&gt;%
-  rbind(colSums(.)) %&gt;% 
-  cbind(rowSums(.)) -&gt; conttable
-conttable[1:3,1]&lt;-round(conttable[1:3,3]*(conttable[4,1])/conttable[4,3],2)
-conttable[1:3,2]&lt;-round(conttable[1:3,3]*(conttable[4,2])/conttable[4,3],2)
-conttable %&gt;% knitr::kable(.) %&gt;%
-  kableExtra::kable_styling()</code></pre>
+<strong>Expected:</strong>
 <table class="table" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -874,7 +924,7 @@ Question B3
 <p>Try it now.</p>
 <blockquote>
 <p><strong>Why is the degrees of freedom 2 (df = 2)?</strong><br />
-Degrees of freedom for a chi-square test of independence is calculated as:<br />
+Degrees of freedom for a <span class="math inline">\(\chi^2\)</span> test of independence is calculated as:<br />
 <span class="math display">\[
 \begin{align}
 &amp; df = (r - 1)(c - 1) \\
@@ -899,8 +949,36 @@ Why? Well, remember that the degrees of freedom is the number of values that are
 <p class="solution-end">
 </p>
 </div>
-<div id="statistically-significant." class="section level1">
-<h1>“Statistically significant”.</h1>
+<div id="revisiting-hypothesis-testing." class="section level1">
+<h1>Revisiting “Hypothesis Testing”.</h1>
+<p>Now that you have performed a number of different types of statistical hypothesis test, it is worth revisiting the general concept in order to consolidate what you’ve been doing.</p>
+<ul>
+<li>Step 1. We have been starting by considering what a given statistic is <em>likely to be</em> if a given hypothesis (the null) were true.
+<ul>
+<li>For the <span class="math inline">\(t\)</span>-tests, if the null hypothesis is true (there is no difference between group means/between our observed mean and some value), then our <span class="math inline">\(t\)</span>-statistics (if we could do our study loads of times) will mainly fall around 0, and follow a <span class="math inline">\(t\)</span>-distribution. The precise <span class="math inline">\(t\)</span>-distribution depends on the degrees of freedom, which in turn depends on how much data we have.<br />
+</li>
+<li>For the <span class="math inline">\(\chi^2\)</span> tests, if the null hypothesis is true and there is no difference between the observed and expected frequencies, then our <span class="math inline">\(\chi^2\)</span>-statistics will follow the <span class="math inline">\(\chi^2\)</span> distribution (i.e., with 2 categories, most of them will be between 0 and 2, with fewer falling &gt;2, see the yellow line in Figure <a href="#fig:chidist">1</a>).<br />
+</li>
+</ul></li>
+<li>Step 2. We calculate our statistic from our <em>observed</em> data.</li>
+<li>Step 3. We ask what the probability is of getting a statistic at least as extreme as we get from Step 2, assuming the null hypothesis we stated in Step 1.</li>
+</ul>
+<div class="frame">
+<p><strong>If you’re finding the programming easy, but the statistical concepts difficult</strong></p>
+<p>Another way which <em>might</em> help to think about this is that if we can make a computer do something over and over again, we can do stats!</p>
+<div style="width:60%; display: inline-block">
+<ol style="list-style-type: decimal">
+<li><p>make the computer generate random data, based on some null hypothesis. Do it lots of times.</p></li>
+<li><p>what proportion of the simulations produce results similar to the observed data (i.e., as extreme or more extreme)? This is <span class="math inline">\(p\)</span>. The only difference between this and “statistics” is that we calculate <span class="math inline">\(p\)</span> using math, rather than having to generate random data.</p></li>
+</ol>
+</div>
+<div style="width:35%; display: inline-block">
+<p><img src="images/moretests/playmo_investors.jpg" width="80%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+</div>
+<div id="statistically-significant-further-readings." class="section level1">
+<h1>“Statistically significant” &amp; Further readings.</h1>
 <div class="question-begin">
 Question C1
 </div>
@@ -909,6 +987,7 @@ Question C1
 <p>They plant 1000 seeds (taken from the same tomato plant) in the same compost and place them in positions with the same amount of sunlight. 500 of the plants receive 100ml of water daily, and the other 500 receive a 100ml of the fertiliser mixed with water. After 100 days, they measure the height of all the tomato plants (in cm).</p>
 <p>You can find the data at <a href="https://uoepsy.github.io/data/tomatogrowth.csv" class="uri">https://uoepsy.github.io/data/tomatogrowth.csv</a>.</p>
 <p>Conduct the appropriate test to determine whether the fertiliser provides a statistically significant improvement to tomato plant growth.</p>
+<p><img src="images/moretests/playmotom.jpg" width="70%" style="display: block; margin: auto;" /></p>
 <p class="question-end">
 </p>
 </div>
@@ -959,10 +1038,10 @@ t.test(tomato$height ~ tomato$group, alternative = &quot;greater&quot;)</code></
 Question C2
 </div>
 <div class="question-body">
-<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-23"></span>
-<img src="04_tests_files/figure-html/unnamed-chunk-23-1.png" alt="Relationship between tomato plant height and crop yield" width="80%" />
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-27"></span>
+<img src="04_tests_files/figure-html/unnamed-chunk-27-1.png" alt="Relationship between tomato plant height and crop yield" width="80%" />
 <p class="caption">
-Figure 1: Relationship between tomato plant height and crop yield
+Figure 2: Relationship between tomato plant height and crop yield
 </p>
 </div>
 <p>Consider the above plot. For every 5cm taller a tomato plant is, it tends to provide 1 more tomato.<br />
@@ -971,14 +1050,13 @@ Now consider the agricultural company’s situation in the previous question. Gi
 </p>
 </div>
 <div style="display:none;">
-<p>While the fertiliser does improve plant growth to a statistically significant (at <span class="math inline">\(\alpha=0.05\)</span>) degree, the improvement is minimal. The difference in means is only 1.2737, which is about 1/4 of a tomato.</p>
+<p>While the fertiliser does improve plant growth to a statistically significant (at <span class="math inline">\(\alpha=0.05\)</span>) degree, the improvement is minimal. The difference in means is only 1.2737, which would result in about 1/4 of a tomato per plant.</p>
 <p>Furthermore, if we take a look at the <em>confidence interval</em> provided by the <code>t.test()</code> function, we can see that a plausible value for the <em>true difference</em> in means is 0.23cm, which is tiny!</p>
 </div>
 <p class="solution-end">
 </p>
-</div>
-<div id="reading" class="section level1">
-<h1>Reading</h1>
+<div id="further-reading" class="section level2">
+<h2>Further Reading</h2>
 <p>The above exercises are aimed to demonstrate that whether or not our p-value is below some set criteria (e.g., .05, .01, .001) is only a small part of the picture. There are many things which are good to remember about p-values:</p>
 <ol style="list-style-type: decimal">
 <li><p>With a big enough sample size, even a tiny tiny effect is detectable at &lt;.05. For example, you might be interested in testing if the difference in population means across two groups is 0 (<span class="math inline">\(\mu_1 - \mu_2 = 0\)</span>. Your calculated sample difference could be <span class="math inline">\(\bar{x}_1 - \bar{x}_2 = 0.00002\)</span> but with a very small p-value of 0.00000001. This would tell you that there is strong evidence that the observed difference in means (0.00002) is significantly different from 0. However, the practical difference, that is - the magnitude of the distance between 0.00002 and 0 - is negligible and of pretty much no interest to practitioners. This is the idea we saw in the tomato-plant example.</p></li>
@@ -986,17 +1064,18 @@ Now consider the agricultural company’s situation in the previous question. Gi
 Two things need to be kept in mind: there is the true status of the world (which is unknown to us) and the collected data (which are available and reveal the truth only in part).<br />
 An observed p-value smaller than the chosen alpha does not imply the true presence of an effect. The observed difference might be due to sampling variability.<br />
 
-<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-24"></span>
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-28"></span>
 <img src="images/moretests/samples.png" alt="Two possible samples (blue dots) drawn from two populations with same mean. On the left, the selected sample shows a big difference. On the right, the sample shows no difference. Samples such as that on the left are very unlikely to happen (e.g., 5% of the time). It is for these unlikely samples that we would reject the null hypothesis incorrectly 5% of the time." width="80%" />
 <p class="caption">
-Figure 2: Two possible samples (blue dots) drawn from two populations with same mean. On the left, the selected sample shows a big difference. On the right, the sample shows no difference. Samples such as that on the left are very unlikely to happen (e.g., 5% of the time). It is for these unlikely samples that we would reject the null hypothesis incorrectly 5% of the time.
+Figure 3: Two possible samples (blue dots) drawn from two populations with same mean. On the left, the selected sample shows a big difference. On the right, the sample shows no difference. Samples such as that on the left are very unlikely to happen (e.g., 5% of the time). It is for these unlikely samples that we would reject the null hypothesis incorrectly 5% of the time.
 </p>
 </div></li>
 <li><p>Even if a null hypothesis about the population is actually true, then 5% (if <span class="math inline">\(\alpha\)</span> = 0.05) of the test-statistics computed on different samples from that population would result in a p-value &lt;.05. If you were to obtain 100 random samples from that population, five out of the 100 p-values are likely to be &lt;.05 <em>even if the null hypothesis about the population was actually true</em>.</p></li>
 <li><p>If you have a single dataset, and you perform several tests of hypotheses on those data, each test comes with a probability of incorrectly rejecting the null (making a <em>type I error</em>) of 5%. Hence, considering the entire family of tests computed, your overall type I error probability will be larger than 5%. In simple words, this means that if you perform enough tests on the same data, you’re almost sure to reject one of the null hypotheses by mistake. This concept is known as <strong>multiple comparisons</strong>.</p></li>
 </ol>
 </div>
-<div id="further-reading" class="section level1">
+</div>
+<div id="further-reading-1" class="section level1">
 <h1>Further reading</h1>
 <p>There are many different competing approaches to doing statistical analyses.<br />
 In this course we are learning about what is known as the <em>frequentist</em> framework. Roughly speaking, this is where probabilities are defined as “long-run frequencies” (i.e., the probability of <span class="math inline">\(x\)</span> happening over many many trials<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a>). Even within the <em>frequentist</em> approach, there are different views as to how to how this definition of probability is best utilised.</p>
@@ -1006,6 +1085,9 @@ In this course we are learning about what is known as the <em>frequentist</em> f
 <li><p><a href="https://www.tandfonline.com/doi/full/10.1080/00031305.2018.1518266">Calin-Jageman, R. J., &amp; Cumming, G. (2019). The new statistics for better science: ask how much, how uncertain, and what else is known. The American Statistician, 73(sup1), 271-280.</a></p></li>
 <li><p><a href="https://thenewstatistics.com/itns/2019/05/20/reply-to-lakens-the-correctly-used-p-value-needs-an-effect-size-and-ci/">The correctly-used p value needs an effect size and CI</a> - don’t worry too much about the background of this blog, but it offers some useful visualisations to show how important it is to remember about the uncertainty in our estimates.</p></li>
 </ol>
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;">
+
+</div>
 </div>
 <div class="footnotes">
 <hr />

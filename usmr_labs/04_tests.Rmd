@@ -18,6 +18,8 @@ set.seed(017)
 :::red
 **Preliminaries**  
 
+- Be sure to check the [**solutions to last week's exercises**](03_nhst.html). You can still ask any questions about previous weeks' materials if things aren't clear!     
+
 1. Open Rstudio, make sure you have the USMR project open, and create a new RMarkdown document (giving it a title for this week). 
 
 :::
@@ -25,27 +27,52 @@ set.seed(017)
 # Exercises: $\chi^2$ Goodness of Fit Test. 
 
 `r qbegin("A1")`
-In the survey during the welcome week, we asked you which month you were born in.  
-
+In the survey during the welcome week, we asked you (and students on other stats courses in the department) which month you were born in. The data is at https://uoepsy.github.io/data/surveydata_allcourse.csv.  
+  
 What is your intuition about the distribution of students' birth-months?  
 Do you think they will be spread uniformly across all months of the year (like a fair 12-sided dice), or do you think people are more likely to be born in certain months more than others?  
 
 Plot the distribution and get an initial idea of how things are looking.  
 
-*Tip:* You can do this quickly with `barplot()` and `table()`, or you could create try using `ggplot()` and looking into `geom_bar()`. 
+*Tip:* You can do this quickly with `barplot()` and `table()`, or you could create try using `ggplot()` and looking into `geom_bar()`.  
+  
+*(We've made the solutions visible immediately for this question, because they contain some useful little bits of code for re-ordering the months)*
 `r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+`r solbegin(show=TRUE, toggle=TRUE)`
 ```{r}
-survey_data <- read_csv("https://uoepsy.github.io/usmr/surveyresults//usmr_surveyresponse.csv") 
+survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv") 
 ```
 The quick and dirty way:
 ```{r}
-barplot(table(survey_data$birthdaymonth))
+barplot(table(survey_data$birthmonth))
 ```
 
 A ggplot option:
 ```{r}
-ggplot(data = survey_data, aes(x = birthdaymonth)) +
+ggplot(data = survey_data, aes(x = birthmonth)) +
+    geom_bar() +
+    labs(x = "- Birth Month -")
+```
+To order the months correctly, we need to make the "birthmonth" variable a *factor* (a categorical variable), and order the levels:
+```{r}
+# we can make use of month.abb which is the abbreviated months in R
+month.abb
+# but we want them all lower case:
+tolower(month.abb)
+
+#This is one way to do it
+survey_data$birthmonth <- factor(survey_data$birthmonth, levels = tolower(month.abb), ordered=T)
+
+# and this is another (the tidyverse way):
+survey_data <-
+  survey_data %>%
+    mutate(
+      birthmonth = fct_relevel(factor(birthmonth), tolower(month.abb))
+    )
+```
+Now when we plot it, they're in the right order!
+```{r}
+ggplot(data = survey_data, aes(x = birthmonth)) +
     geom_bar() +
     labs(x = "- Birth Month -")
 ```
@@ -95,7 +122,7 @@ $$
 The code below creates counts for each month: 
 ```{r eval=FALSE}
 survey_data %>%
-    group_by(birthdaymonth) %>%
+    group_by(birthmonth) %>%
     summarise(
         observed = n()
     )
@@ -114,12 +141,15 @@ If your observed counts matched the expected counts *perfectly*, what would the 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
+# the nrow() function tells us how many rows there are in the dataset!
+totaln <- nrow(survey_data)
+
 chi_table <- 
     survey_data %>%
-    group_by(birthdaymonth) %>%
+    group_by(birthmonth) %>%
     summarise(
         observed = n(),
-        expected = 90/12,
+        expected = totaln/12,
         diff = observed-expected,
         sq_diff = diff^2,
         std_sq_diff = sq_diff / expected
@@ -137,11 +167,11 @@ If all our observed counts are equal to our expected counts, then the `diff` col
 
 `r qbegin("A5")`
 You can see the distribution of $\chi^2$ distributions with different degrees of freedom below.  
-```{r echo=FALSE}
+```{r chidist, echo=FALSE, fig.cap="Chi-Square Distributions"}
 knitr::include_graphics("https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Chi-square_pdf.svg/1200px-Chi-square_pdf.svg.png")
 ```
 
-We can find out the proportion of the distribution which falls to either side of a given value of $chi^2$ using `pchisq()`. We need to give it our calculated $chi^2$ statistic, our degrees of freedom (`df`), which is equal to the number of categories minus 1. We also need to specify whether we want the proportion to the left (`lower.tail=TRUE`) or to the right (`lower.tail=FALSE`).  
+We can find out the proportion of the distribution which falls to either side of a given value of $\chi^2$ using `pchisq()`. We need to give it our calculated $\chi^2$ statistic, our degrees of freedom (`df`), which is equal to the number of categories minus 1. We also need to specify whether we want the proportion to the left (`lower.tail=TRUE`) or to the right (`lower.tail=FALSE`).  
 
 1. Using `pchisq()`, calculate the probability of observing a $\chi^2$ statistic as least as extreme as the one we have calculated.  
 2. Check that these results match with those provided by R's built-in function: `chisq.test(table(survey_data$birthdaymonth))`.  
@@ -153,7 +183,7 @@ pchisq(sum(chi_table$std_sq_diff), df = 11, lower.tail = FALSE)
 ```
 
 ```{r}
-chisq.test(table(survey_data$birthdaymonth))
+chisq.test(table(survey_data$birthmonth))
 ```
 `r solend()`
 
@@ -165,15 +195,15 @@ Which months of year had the highest contributions to the chi-square test statis
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 **Standardized squared deviations**
 
-One possible way to answer this question is to look at the individual contribution of each category to the chi-square statistic. We computed these values in Question A4.  
+One possible way to answer this question is to look at the individual contribution of each category to the $\chi^2$ statistic. We computed these values in Question A4.  
 ```{r}
 chi_table %>%
-  select(birthdaymonth, std_sq_diff)
+  select(birthmonth, std_sq_diff)
 ```
 
 From the barplot we created earlier on, we can see which months make up higher/lower proportions than expected:
 ```{r}
-ggplot(chi_table, aes(x = birthdaymonth, y = observed/nrow(survey_data))) +
+ggplot(chi_table, aes(x = birthmonth, y = observed/nrow(survey_data))) +
   geom_col(fill = 'lightblue') +
   geom_hline(yintercept = 1/12, color = 'red') +
   theme_classic(base_size = 15)
@@ -183,11 +213,11 @@ ggplot(chi_table, aes(x = birthdaymonth, y = observed/nrow(survey_data))) +
 
 Equivalently, you could answer by looking at Pearson residuals:
 ```{r}
-chisq.test(table(survey_data$birthdaymonth))$residuals
+chisq.test(table(survey_data$birthmonth))$residuals
 ```
 
 ```{r echo=FALSE}
-presids <- chisq.test(table(survey_data$birthdaymonth))$residuals
+presids <- chisq.test(table(survey_data$birthmonth))$residuals
 presids <- presids[order(abs(presids),decreasing = TRUE)]
 ```
 
@@ -199,7 +229,7 @@ The greatest *absolute* values are for `r names(presids)[1]` and `r names(presid
 `r qbegin("A7")`
 According to the internet (that reliable source of information!), 76% of people in the world have brown eyes, 10% have blue, 5% hazel, 5% amber, 2% green, 1% grey, and 1% have some other eye colouring (red/violet/heterochromia).
 
-Perform a chi-squared goodness of fit test to assess the extent to which USMR students of 2020/21 conform to this theorised distribution of eye-colours.  
+Perform a $\chi^2$ goodness of fit test to assess the extent to which our sample of students of 2020/21 conform to this theorised distribution of eye-colours.  
   
 - *Hint:* `chisq.test(..., p = c(?,?,?,...) )`.  
 
@@ -211,11 +241,20 @@ table(survey_data$eyecolour)
 ```
 Our theoretical probabilities of different eye colours must match the order in the table which we give `chisq.test()`. They must also always sum to 1.  
 ```{r}
-chisq.test(table(survey_data$eyecolour), p = c(.05,.1,.76,.01,.02,.05,.01))
+chisq.test(table(survey_data$eyecolour), p = c(.05,.1,.76,.02,.01,.05,.01))
 ```
 `r solend()`
 
-
+`r qbegin("A8")`
+What are the *observed* proportions of our sample with each eyecolour?  
+Can you figure out how to use the `prop.table()` function?  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+From the help documentation (`?prop.table()`), we see that we can pass `prop.table()` the argument `x`, which needs to be a table. 
+```{r}
+prop.table(table(survey_data$eyecolour))*100
+```
+`r solend()`
 
 # Exercises: $\chi^2$ Test of Independence.  
 
@@ -268,7 +307,7 @@ conttable %>% knitr::kable(.) %>%
 For a given cell of the table we can calculate the expected count as $\text{row total} \times \frac{\text{column total}}{\text{samplesize}}$:
 
 **Expected:**
-```{r}
+```{r echo=FALSE}
 table(tipjoke$Card, tipjoke$Tip) %>%
   rbind(colSums(.)) %>% 
   cbind(rowSums(.)) -> conttable
@@ -285,7 +324,7 @@ Just like we gave the `chisq.test()` function a table of observed frequencies wh
 Try it now.  
 
 > **Why is the degrees of freedom 2 (df = 2)?**  
-Degrees of freedom for a chi-square test of independence is calculated as:  
+Degrees of freedom for a $\chi^2$ test of independence is calculated as:  
 $$
 \begin{align}
 & df = (r - 1)(c - 1) \\
@@ -303,7 +342,40 @@ chisq.test(table(tipjoke$Card, tipjoke$Tip))
 ```
 `r solend()`
 
-# "Statistically significant". 
+# Revisiting "Hypothesis Testing".  
+
+Now that you have performed a number of different types of statistical hypothesis test, it is worth revisiting the general concept in order to consolidate what you've been doing. 
+
+- Step 1. We have been starting by considering what a given statistic is *likely to be* if a given hypothesis (the null) were true.
+    - For the $t$-tests, if the null hypothesis is true (there is no difference between group means/between our observed mean and some value), then our $t$-statistics (if we could do our study loads of times) will mainly fall around 0, and follow a $t$-distribution. The precise $t$-distribution depends on the degrees of freedom, which in turn depends on how much data we have.  
+    - For the $\chi^2$ tests, if the null hypothesis is true and there is no difference between the observed and expected frequencies, then our $\chi^2$-statistics will follow the $\chi^2$ distribution (i.e., with 2 categories, most of them will be between 0 and 2, with fewer falling >2, see the yellow line in Figure \@ref(fig:chidist)).   
+- Step 2. We calculate our statistic from our *observed* data. 
+- Step 3. We ask what the probability is of getting a statistic at least as extreme as we get from Step 2, assuming the null hypothesis we stated in Step 1.  
+
+:::frame
+**If you're finding the programming easy, but the statistical concepts difficult**
+
+Another way which *might* help to think about this is that if we can make a computer do something over and over again, we can do stats!  
+
+<div style="width:60%; display: inline-block">
+
+1. make the computer generate random data, based on some null hypothesis. Do it lots of times.  
+  
+2. what proportion of the simulations produce results similar to the observed data (i.e., as extreme or more extreme)? This is $p$. The only difference between this and "statistics" is that we calculate $p$ using math, rather than having to generate random data. 
+
+</div>
+<div style="width:35%; display: inline-block">
+```{r echo=FALSE}
+knitr::include_graphics("images/moretests/playmo_investors.jpg")
+```
+</div>
+
+
+:::
+
+
+
+# "Statistically significant" & Further readings. 
 
 `r qbegin("C1")`
 An agricultural company is testing out a new fertiliser they have developed to improve tomato growth.  
@@ -312,7 +384,13 @@ They plant 1000 seeds (taken from the same tomato plant) in the same compost and
 
 You can find the data at https://uoepsy.github.io/data/tomatogrowth.csv. 
 
-Conduct the appropriate test to determine whether the fertiliser provides a statistically significant improvement to tomato plant growth.  
+Conduct the appropriate test to determine whether the fertiliser provides a statistically significant improvement to tomato plant growth.   
+
+```{r echo=FALSE, out.width="70%"}
+knitr::include_graphics("images/moretests/playmotom.jpg")
+```
+
+
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
@@ -349,13 +427,14 @@ Consider the above plot. For every 5cm taller a tomato plant is, it tends to pro
 Now consider the agricultural company's situation in the previous question. Given that the fertiliser is comparitively pricey for them to manufacture, is it worth putting into production?  
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-While the fertiliser does improve plant growth to a statistically significant (at $\alpha=0.05$) degree, the improvement is minimal. The difference in means is only 1.2737, which is about 1/4 of a tomato.  
+While the fertiliser does improve plant growth to a statistically significant (at $\alpha=0.05$) degree, the improvement is minimal. The difference in means is only 1.2737, which would result in about 1/4 of a tomato per plant.   
 
 Furthermore, if we take a look at the *confidence interval* provided by the `t.test()` function, we can see that a plausible value for the *true difference* in means is 0.23cm, which is tiny!  
 `r solend()`
 
 
-# Reading  
+
+## Further Reading  
 
 The above exercises are aimed to demonstrate that whether or not our p-value is below some set criteria (e.g., .05, .01, .001) is only a small part of the picture. There are many things which are good to remember about p-values:
 
@@ -386,6 +465,7 @@ The following links provide some introductory readings to some of the different 
 3. [The correctly-used p value needs an effect size and CI](https://thenewstatistics.com/itns/2019/05/20/reply-to-lakens-the-correctly-used-p-value-needs-an-effect-size-and-ci/) - don't worry too much about the background of this blog, but it offers some useful visualisations to show how important it is to remember about the uncertainty in our estimates.  
 
 
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
 
 
 
