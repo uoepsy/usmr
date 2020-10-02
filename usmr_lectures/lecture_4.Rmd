@@ -58,21 +58,132 @@ style_mono_accent(
 )
 ```
 
+```{r gt,include=FALSE,cache=FALSE}
+library(gt)
+```
+
+```{r data, include=FALSE}
+statsClasses <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv")
+```
+
+
 class: inverse, center, middle
 
+.pull-left[
+![:scale 94%](lecture_4_files/img/milk_tea.jpg)
+]
+.pull-right[
+.center[
 # Part 1
 
-### R:  The Big Ideas
-
+## Statistics for Categories
+]]
 
 ---
-- the big ideas include the idea that if you know the chance distribution, you
-  can work out probability
-  
-- in Part 3 maybe simulate a x-sq distribution??
-  + live R?
+# Eyes
 
-- any other tests?
+- here are the eyecolours returned for USMR (two ways)
+
+```{r eyecolour}
+statsClasses %>% filter(course=='usmr') %>% pull(eyecolour) %>% table()
+
+table(statsClasses$eyecolour[statsClasses$course=='usmr'])
+```
+
+- let's take the second one and save it for later
+
+```{r eyecol2}
+eyes <- table(statsClasses$eyecolour[statsClasses$course=='usmr'])
+```
+
+---
+# Binomial Test
+
+- we can use this test to test a sample against a known population
+
+- approx. [9% of the world's population have blue eyes](https://www.worldatlas.com/articles/which-eye-color-is-the-most-common-in-the-world.html); are USMR a representative sample?
+
+```{r eyecolour22, highlight.output=5}
+binom.test(eyes['blue'],sum(eyes),0.09,alternative="two.sided")
+```
+???
+- here, we're very confident that the USMR poll sample is not typical of the world's population
+
+- there are `r eyes['blue']` out of `r sum(eyes)` people with blue eyes, or around `r 100*eyes['blue']/sum(eyes)`%
+
+---
+# The Exact Test
+
+.flex.items-center[
+.w-40.pa2[
+.center[
+### Muriel Bristol
+
+![:scale 50%](lecture_4_files/img/muriel_bristol.png)
+]
+- claimed she could tell milk-first from tea-first tea
+]
+.w-60.pa2[
+- Fisher devised the notion of the null hypothesis (H<sub>0</sub>)
+
+  + NB H<sub>1</sub> was due to Neyman and Pearson
+
+.pt2[
+&nbsp;
+]
+
+.br3.pt1.pa2.bg-gray.white.f4.tc[
+assume chance govern's Muriel's judgements
+]
+]]
+
+???
+- there are some problems with Fisher's reputation and I don't think we should celebrate him.  However there are millions of textbooks which refer to the test this way, as does R
+---
+# Combinations
+
+.flex.items-center[
+.w-40.pa2[
+.center[
+![:scale 70%](lecture_4_files/img/eight_tea.png)
+]
+
+- eight cups of tea, 4 milk-first, 4 tea-first
+
+- which four are milk-first?
+]
+.w-60.pa2[
+| successes | patterns                           |            |
+|-----------|------------------------------------|-----------:|
+|         0 | oooo                               |  1 x 1 = 1 |
+|         1 | ooox, ooxo, oxoo, xooo             | 4 x 4 = 16 |
+|         2 | ooxx, oxox, oxxo, xoxo, xoox, xxoo | 6 x 6 = 36 |
+|         3 | oxxx, xoxx, xxox, xxxo             | 4 x 4 = 16 |
+|         4 | xxxx                               |  1 x 1 = 1 |
+| **total**     |                                    |         **70** |
+]]
+
+???
+- it's 4x4 because there are four ways of getting one right, and, independently, four ways of picking three wrong
+---
+# Picking Tea
+
+- 70 ways of picking four cups of tea by chance
+
+- **all right**: probability = $1/70 = .0142$
+  
+- **one wrong**: probability = $(1 + 16)/70 = .2428$
+
+- Fisher concludes that he won't believe in Mrs Bristol's tea tasting powers unless she correctly discriminates all 8 cups<sup>1</sup>
+
+.pt2[
+- this is an example of the **hypergeometric** distribution
+]
+
+.footnote[
+[1] in the original experiment, all 8 cups were guessed correctly
+]
+
 ---
 class: inverse, center, middle, animated, RollIn
 
@@ -83,10 +194,10 @@ class: inverse, center, middle
 
 # Part 2
 
-### Statistics:  The $\chi^2$ test
+### The $\chi^2$ Distribution
 
 ---
-# Time to Revisit Dice
+# Goodness-of-Fit Test
 
 .left-column[
 ![](lecture_4_files/img/one_red_die.svg)
@@ -281,7 +392,6 @@ background-image: url(lecture_4_files/img/playmo_world.jpg)
 ]
 
 ```{r readData, include=FALSE}
-statsClasses <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv")
 sc <- statsClasses %>% select(course,in_uk)
 ```
 
@@ -541,9 +651,11 @@ class: inverse, center, middle, animated, rollIn
 ---
 class: inverse, center, middle
 
-# Part 3
+# Part 3:  The Zen of Stats
 
-### Concepts Refesher
+.center[
+![:scale 70%](lecture_4_files/img/zen.png)
+]
 
 ---
 # We Have Been Bandying Terms About
