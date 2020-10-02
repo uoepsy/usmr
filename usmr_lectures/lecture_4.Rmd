@@ -80,17 +80,8 @@ class: inverse, center, middle, animated, RollIn
 
 ---
 class: inverse, center, middle
+
 # Part 2
-
-### Where Are You All?
-
----
-- chisq
-
----
-class: inverse, center, middle
-
-# Part 3
 
 ### Statistics:  The $\chi^2$ test
 
@@ -214,7 +205,38 @@ for more on `chisq.test(...)$statistic`, start with `str(chisq.test(...))`
 - here I'm using a cheat's way to calculate the $\chi^2$ value, by relying on the R function to calculate it
 
 - note that the `density()` function isn't perfect here -- $\chi^2$ can never actually go below zero, because the numerators in the sum are squared 
+
 ---
+# The $\chi^2$ Distribution
+
+.center[
+```{r biggraph, fig.asp=.4, echo=FALSE, fig.width=10}
+library(patchwork)
+x <- tibble(x=c(0,20))
+
+p <- x %>% ggplot(aes(x=x)) +
+  xlab(expression(chi^2)) + ylab("density") +
+  ylim(0,.3) + theme_presentation(10)
+
+q <- p + ggtitle("1 df") +
+  stat_function(fun=dchisq,n=151,args=list(df=1),size=1.5,colour="purple")
+
+r <- p + ggtitle("2 df") +
+  stat_function(fun=dchisq,n=151,args=list(df=2),size=1.5,colour="purple")
+
+s <- p + ggtitle("5 df") +
+  stat_function(fun=dchisq,n=151,args=list(df=5),size=1.5,colour="purple")
+
+t <- p + ggtitle("9 df") +
+  stat_function(fun=dchisq,n=151,args=list(df=9),size=1.5,colour="purple")
+
+(q + r) / (s + t)
+
+```
+]
+
+---
+
 # $\chi^2$ probability
 
 .pull-left[
@@ -252,34 +274,151 @@ p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
 ]
 
 ---
-# The $\chi^2$ Distribution
+class: animated, bounceInRight
+background-image: url(lecture_4_files/img/playmo_world.jpg)
+.br3.pa2.bg-white-80[
+# Where Are You All?
+]
 
-.center[
-```{r biggraph, fig.asp=.4, echo=FALSE, fig.width=10}
-library(patchwork)
-x <- tibble(x=c(0,20))
+```{r readData, include=FALSE}
+statsClasses <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv")
+sc <- statsClasses %>% select(course,in_uk)
+```
 
-p <- x %>% ggplot(aes(x=x)) +
-  xlab(expression(chi^2)) + ylab("density") +
-  ylim(0,.3) + theme_presentation(10)
 
-q <- p + ggtitle("1 df") +
-  stat_function(fun=dchisq,n=151,args=list(df=1),size=1.5,colour="purple")
+---
+# Where Are You?
 
-r <- p + ggtitle("2 df") +
-  stat_function(fun=dchisq,n=151,args=list(df=2),size=1.5,colour="purple")
+- data from all of the stats modules in Psychology
 
-s <- p + ggtitle("5 df") +
-  stat_function(fun=dchisq,n=151,args=list(df=5),size=1.5,colour="purple")
+```{r tab1}
+statsClasses %>% select(course,in_uk) %>% table()
+statsClasses %>% select(course,in_uk) %>% table() %>% addmargins() #<<
+```
 
-t <- p + ggtitle("9 df") +
-  stat_function(fun=dchisq,n=151,args=list(df=9),size=1.5,colour="purple")
+???
+- in the second version, I've added the `addmargins()` function to give useful summary statistics.  I can also use functions like `rowSums()` which I'll show you in the next slide
+---
+# Under the Null Hypothesis:
 
-(q + r) / (s + t)
+.flex.items-top[
+.w-60.pa2.pt3[
+- students on each module would be _equally likely_ to come from the UK (or "Elsewhere")
 
+- in other words, of the `r rowSums(table(sc))[1]` students on dapr1, $\frac{`r colSums(table(sc))[1]`}{`r sum(table(sc))`}\times{}`r rowSums(table(sc))[1]`$, or approx `r round(rowSums(table(sc))[1]*colSums(table(sc))[1]/sum(table(sc)),2)` students should come from Elsewhere under H<sub>0</sub>
+
+- we can repeat this calculation for each cell of the table, to give "expected values"
+
+  + like the probability-based values for dice
+]
+.w-40.pa5[
+```{r tab3, echo=F}
+statsClasses %>% select(course,in_uk) %>% table() %>% addmargins()
+```
+
+]]
+---
+.flex.items-center[
+.w-5.pa1[
+![:scale 70%](lecture_4_files/img/danger.svg)
+]
+.w-95.pa1[
+# Expected Values
+]]
+
+- repeating the calculation is easy using the "outer product" operator `%o%` in R (this takes two vectors and multiplies them out into a matrix)
+
+.pull-left[
+```{r tab5}
+t <- statsClasses %>%
+  select(course,in_uk) %>% table()
+t
 ```
 ]
+.pull-right[
+```{r tab6}
+# expected values
+e <- rowSums(t) %o% colSums(t) / sum(t)
+e
+```
+]
+
 ---
+# Restating the Null Hypothesis
+
+.flex.items-center[
+.w-60.pa2[
+- under H<sub>0</sub>:
+
+  + knowing which class people are in gives no additional information about where they come from
+  
+  + knowing where they're from gives no additional information about which class they're in
+  
+- ** $\chi^2$ test of independence ** (of the two variables)
+]
+.w-40.pa5[
+```{r tab7, echo=F}
+e
+```
+
+]]
+
+---
+# We Can Illustate our Tables Using `plot()`
+
+.pull-left[
+```{r p1,fig.asp=.55}
+plot(t)
+```
+]
+.pull-right[
+```{r p2,fig.asp=.55}
+plot(as.table(e))
+```
+
+]
+.flex.items-center[
+.w-5.pa1[
+![:scale 70%](lecture_4_files/img/danger.svg)
+]
+.w-95.pa1[
+`e` was actually created as a `matrix` (using `%o%`) but here we tell R to treat it as a table
+]]
+???
+here we're feeding tables to `plot()`.  It's looking at its arguments and choosing an appropriate way to plot them:  This is an example of the _object-oriented_ nature of R.
+---
+# Are There Differences Between Courses?
+
+.pull-left[
+```{r uk1}
+chisq.test(t)
+```
+- might need to look more closely
+```{r uk3}
+chisq.test(t)$p.value
+```
+- no difference between classes
+]
+.pull-right[
+```{r uk2,fig.asp=.6,echo=FALSE}
+x <- tibble(x=c(0,20))
+p <- x %>% ggplot(aes(x=x)) +
+  stat_function(fun=dchisq,n=151,args=list(df=3)) +
+  xlab(expression(paste(chi^2, "(3)"))) + ylab("density")
+ld <- layer_data(p) %>% filter(x >= chisq.test(t)$statistic)
+p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dchisq,n=151,args=list(df=3),size=2)
+  
+```
+]
+???
+- before you get too excited by these results, remember that there are well over 800 students on our stats courses, but only 166 identifiable responses about where people are.
+
+- we know that in general, larger numbers give us better estimates of things, but can we say any more about this?
+
+- back to throwing a die
+---
+class: animated, bounceInLeft
 # How Many Throws?
 
 .pull-left[
@@ -290,7 +429,9 @@ t <- p + ggtitle("9 df") +
 - how many times should you throw it before you're satisfied you have an answer?
 ]
 .pull-right[
-FIXME IMAGE OF PLAYMO THROWING DICE
+.center[
+![:scale 60%](lecture_4_files/img/playmo_dice.jpg)
+]
 ]
 ---
 # Type 1 and Type 2 Errors again
@@ -395,12 +536,12 @@ die %>% ggplot(aes(x=throws,y=power)) +
 ---
 class: inverse, center, middle, animated, rollIn
 
-# End of Part 3
+# End of Part 2
 
 ---
 class: inverse, center, middle
 
-# Part 4
+# Part 3
 
 ### Concepts Refesher
 
