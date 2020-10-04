@@ -7,3 +7,5 @@
 [lecture 2: measurement and distributions](lecture_2.html)
 
 [lecture 3: testing statistical hypotheses](lecture_3.html)
+
+[lecture 4: statistics for categories](lecture_4.html)
