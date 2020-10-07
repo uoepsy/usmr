@@ -1,5 +1,5 @@
 ---
-title: "<b>Week 3: Testing Statistical Hypotheses</b>"
+title: "<b>Week 5: Correlations</b>"
 subtitle: "Univariate Statistics and Methodology using R"
 author: "Martin Corley"
 institute: "Department of Psychology<br/>The University of Edinburgh"
@@ -190,7 +190,8 @@ $$ s^2 = \frac{\sum{(x-\bar{x})^2}}{n} = \frac{\sum{(x-\bar{x})(x-\bar{x})}}{n} 
 .br3.white.bg-gray.pa1[
 $$ \textrm{cov}(x,y) = \frac{\sum{(x-\bar{x})\color{red}{(y-\bar{y})}}}{n} $$
 ]
-
+???
+- note that for any (x,y), $x-\bar{x}$ might be positive and $y-\bar{y}$ might be positive, so the covariance could be a negative number
 ---
 # Covariance
 
@@ -216,14 +217,53 @@ $$ \textrm{cov}(x,y) = \frac{\sum{(x-\bar{x})(y-\bar{y})}}{n} = \frac{`r sum(t$x
 ???
 - I've rounded up the numbers at the end to make this a bit neater on the slide
 ---
-# FIXME COVARIANCE UNITS
+# The Problem With Covariance
+
+.pull-left[
+
+**Miles**
+
+| $x-\bar{x}$ | $y-\bar{y}$ | $(x-\bar{x})(y-\bar{y})$ |
+|------------:|------------:|-------------------------:|
+| `r t$xd[1]` | `r t$yd[1]` |              `r t$xy[1]` |
+| `r t$xd[2]` | `r t$yd[2]` |              `r t$xy[2]` |
+| `r t$xd[3]` | `r t$yd[3]` |              `r t$xy[3]` |
+| `r t$xd[4]` | `r t$yd[4]` |              `r t$xy[4]` |
+| `r t$xd[5]` | `r t$yd[5]` |              `r t$xy[5]` |
+|             |             |        **`r sum(t$xy)`** |
+
+$$ \textrm{cov}(x,y)=\frac{`r sum(t$xy)`}{5}\simeq `r round(sum(t$xy)/5,2)` $$
+]
+
+.pull-right[
+**Kilometres**
+```{r mkm,include=F}
+tk <- dat2 %>% select(xd,yd) %>% mutate(xd=xd * 1.60934,yd=yd * 1.60934) %>% mutate(xy=xd*yd) %>% round(2)
+```
+
+| $x-\bar{x}$ | $y-\bar{y}$ | $(x-\bar{x})(y-\bar{y})$ |
+|------------:|------------:|-------------------------:|
+| `r tk$xd[1]` | `r tk$yd[1]` |              `r tk$xy[1]` |
+| `r tk$xd[2]` | `r tk$yd[2]` |              `r tk$xy[2]` |
+| `r tk$xd[3]` | `r tk$yd[3]` |              `r tk$xy[3]` |
+| `r tk$xd[4]` | `r tk$yd[4]` |              `r tk$xy[4]` |
+| `r tk$xd[5]` | `r tk$yd[5]` |              `r tk$xy[5]` |
+|             |             |        **`r sum(tk$xy)`** |
+
+$$ \textrm{cov}(x,y)=\frac{`r sum(tk$xy)`}{5}\simeq `r round(sum(tk$xy)/5,2)` $$
+
+]
+???
+- these are exactly the same 'values' so they should each be as correlated as the other
+
+- so we need to divide covariance by something to represent the overall "scale" of the units
 
 ---
 # Correlation Coefficient
 
-- the standardisedm version of covariance is the **correlation coefficient**, $r$
+- the standardised version of covariance is the **correlation coefficient**, $r$
 
-$$ r = \frac{\textrm{covvariance}(x,y)}{\textrm{standard deviation}(x)\cdot\textrm{standard deviation}(y)} $$
+$$ r = \frac{\textrm{covariance}(x,y)}{\textrm{standard deviation}(x)\cdot\textrm{standard deviation}(y)} $$
 
 --
 
@@ -235,6 +275,101 @@ $$ r=\frac{\frac{\sum{(x-\bar{x})(y-\bar{y})}}{\color{red}{N}}}{\sqrt{\frac{\sum
 .pt1[
 $$ r=\frac{\sum{(x-\bar{x})(y-\bar{y})}}{\sqrt{\sum{(x-\bar{x})^2}}\sqrt{\sum{(y-\bar{y})^2}}} $$
 ]
+
+---
+# Correlation Coefficient
+
+- measure of _how related_ two variables are
+
+- $-1 \le r \le 1$ ( $\pm 1$ = perfect fit; $0$ = no fit; sign shows direction of slope )
+.pull-left[
+![](lecture_5_files/figure-html/ba-1.svg)
+$$ r=`r cor(dat$BloodAlc,dat$RT)` $$
+]
+.pull-right[
+```{r ba2,fig.asp=.6,echo=FALSE}
+dat3 <- dat %>% mutate(Blood = max(BloodAlc)-BloodAlc+min(BloodAlc))
+dat3 %>% ggplot(aes(x=Blood,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=3)
+```
+
+$$ r=`r cor(dat3$Blood,dat$RT)` $$
+]
+???
+- on the left, we have the drunken drivers from our first slide, and you can see that there is a moderate positive correlation
+  + the higher your blood alcohol, the slower your RT
+  
+- on the right, we have a negative correlation: what the drivers _think_ happens
+  + the higher your blood alcohol, the _faster_ your RT
+---
+# What Does the Value of _r_ Mean?
+
+```{r lots, fig.asp=.4, echo=F, fig.width=11}
+set.seed(13)
+ndat <- rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p1 <- ndat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0") +
+  theme_presentation(10) +
+  theme(plot.title = element_text(size = 14, colour="red")) +
+  ylim(500,850)
+ndat <- rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0.2,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p2 <- ndat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0.2") +
+  theme_presentation(10) +
+  theme(plot.title = element_text(size = 14, colour="red")) +
+  ylim(500,850)
+ndat <- rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0.5,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p3 <- ndat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0.5") +
+  theme_presentation(10) +
+  theme(plot.title = element_text(size = 14, colour="red")) +
+  ylim(500,850)
+ndat <- rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0.9,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p4 <- ndat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0.9") +
+  theme_presentation(10) +
+  theme(plot.title = element_text(size = 14, colour="red")) +
+  ylim(500,850)
+(p1 + p2) / (p3 + p4)
+```
+
+
+---
+class: inverse, center, middle, animated, bounceInUp
+
+# Intermission
+
+---
+class: inverse, center, middle
+
+# Part 1a
+
+## Correlations Contd.
 
 ---
 class: inverse, center, middle
