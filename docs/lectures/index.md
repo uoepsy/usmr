@@ -9,3 +9,5 @@
 [lecture 3: testing statistical hypotheses](lecture_3.html)
 
 [lecture 4: statistics for categories](lecture_4.html)
+
+[lecture 5: correlations, statistical principles, RMarkdown](lecture_5.html)
