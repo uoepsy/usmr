@@ -70,8 +70,54 @@ dat <- rnorm_multi(n=50,
                    sd=c(.009,60),
                    r=.4,
                    varnames=c('BloodAlc','RT'))
-d20 <- sample(dat,20) # FIXME
+d20 <- dat %>% sample_n(20) # FIXME
 ```
+---
+# Back on the Road
+
+.pull-left[
+```{r frecap,fig.asp=.6,echo=FALSE}
+p1 <- dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=3)
+p1
+  rd <- cor.test(dat$BloodAlc,dat$RT)
+```
+
+.center[
+$r= `r rd$estimate`$, $p = `r rd$p.value`$
+]
+]
+.pull-right[
+![](lecture_6_files/img/playmo_police.jpg)
+]
+???
+- is there anything more the police' data about blood alcohol and reaction time can tell us?
+
+- so far we know they're correlated, but it would be good if we could something about _how bad_ blood alcohol is
+
+  + how much worse does drinking more make things?
+---
+# Back on the Road (2)
+
+.pull-left[
+```{r frecap2,fig.asp=.6,echo=FALSE}
+p1 + geom_smooth(method="lm")
+m1 <- lm(RT~BloodAlc, data=dat)
+```
+
+.tc[
+"for every extra 0.01% blood alcohol, reaction time slows down by around `r round(coef(m1)[2]*0.01,0)` ms"
+]
+]
+.pull-right[
+![](lecture_6_files/img/playmo_police.jpg)
+
+]
+???
+- this kind of information is based on the assumption that the relationship between blood alcohol and RT is _linear_
+
+- that is, that each additional unit of blood alcohol affects reaction time by the same amount
 
 
 ---
@@ -106,7 +152,27 @@ $$ \textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i $$
 ---
 # A Linear Model
 
-.flex.items-center[
+.flex.items-top[
+.w-40.pa2[
+$$ \color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i $$
+$$ \color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i $$
+.center[
+so the linear model itself is...
+]
+
+$$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
+.center[
+![:scale 30%](lecture_6_files/img/formula.svg)
+]
+]
+.w-60[
+&nbsp;
+]]
+---
+count: false
+# A Linear Model
+
+.flex.items-top[
 .w-40.pa2[
 $$ \color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i $$
 $$ \color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i $$
@@ -123,7 +189,7 @@ $$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
 ```{r bb,echo=F, fig.asp=.6}
 x <- tibble(x=c(-1,4))
 f <- function(x) {5+2*x}
-x %>% ggplot(aes(x=x)) +
+p1 <- x %>% ggplot(aes(x=x)) +
   stat_function(fun=f,size=1) +
   geom_segment(aes(x=0,xend=0,y=0,yend=f(0)),arrow=arrow(ends="both",length=unit(.05,"native")),colour="blue") +
   geom_segment(aes(x=1,xend=2,y=f(1),yend=f(1)),linetype="dotted") +
@@ -131,11 +197,136 @@ x %>% ggplot(aes(x=x)) +
   annotate("text",x=.6,y=2.5,label="b[0]~(intercept)",
            size=5,parse=TRUE) +
   annotate("text",x=2.6,y=7.5,label="b[1]~(slope)",
-           size=5,parse=TRUE)
+           size=5,parse=TRUE) +
+    ggtitle(expression(paste(b[0]," = 5, ",b[1]," = 2")))
 
+p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
+  theme(axis.title.y = element_text(colour = "blue"))
 ```
 
 ]]
+---
+# Take An Observation
+
+.flex.items-top[
+.w-40.pa2[
+
+.br3.bg-gray.white.f2.pa2.tc[
+x<sub>i</sub> = 1.2, y<sub>i</sub> = 9.9
+]
+```{r vals,include=F}
+xX <-1.2
+yY <- 9.9
+```
+ 
+$$ \hat{y}_i = b_0\cdot{}1 + b_1\cdot{}x_i = 7.4 $$ 
+$$ y_i = \hat{y}_i + \epsilon_i = 7.4 + \color{red}{2.5} $$
+
+]
+.w-60.pa2[
+```{r errplot,fig.asp=.6,echo=FALSE}
+p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
+  geom_point(aes(x=xX,y=yY),size=3,colour="red") +
+  geom_segment(aes(x=xX,xend=xX,y=f(xX),yend=yY),linetype="dotted",colour="red") +
+  annotate("text",.8,8.6,label=expression(paste(epsilon[i]," (error)")),colour="red",size=5)
+```
+]
+]
+???
+- $\hat{y}_i$ is what the model _predicts_ for $x_i$
+
+- $y_i$ is the actual value that was observed for $x_i$
+
+- why would we care?
+
+  + for one thing, the model can predict $\hat{y}$ for values of $x$ that we have never observed
+
+---
+# Simplifying the Data
+
+.pull-left[
+- **NB** we're doing this for illustrative purposes only
+
+```{r simple}
+ourDat <- dat %>% sample_n(20)
+  # take 20 data points
+```
+]
+.pull-right[
+```{r plot1, fig.asp=.6, echo=F}
+ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3)
+```
+]
+
+---
+count: false
+# Simplifying the Data
+.pull-left[
+- **NB** we're doing this for illustrative purposes only
+
+```{r simple1, eval=F}
+ourDat <- dat %>% sample_n(20)
+  # take 20 data points
+```
+```{r simple2}
+ourDat <- ourDat %>% 
+  mutate(BloodAlc = BloodAlc*100)
+```
+
+```{r modh,include=FALSE}
+m1 <- lm(RT ~ BloodAlc,data=ourDat)
+```
+
+]
+.pull-right[
+```{r plot3, fig.asp=.6, echo=F}
+ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3) +
+  theme(axis.text.x = element_text(colour = "red"))
+```
+]
+---
+count: false
+# Simplifying the Data
+.pull-left[
+- **NB** we're doing this for illustrative purposes only
+
+```{r simple1a, eval=F}
+ourDat <- dat %>% sample_n(20)
+  # take 20 data points
+```
+```{r simple2a,eval=F}
+ourDat <- ourDat %>% 
+  mutate(BloodAlc = BloodAlc*100)
+```
+.center[
+"for every extra unit blood alcohol, reaction time slows down by around `r round(coef(m1)[2],0)` ms"
+]
+
+]
+.pull-right[
+```{r plot2, fig.asp=.6, echo=F}
+ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3) +
+  geom_smooth(method="lm")
+
+```
+]
+
+--
+
+.center.f3.pt3[
+but how can we find values for $b_0$ and $b_1$?
+]
+---
+# A Linear Model for 20 Drinkers
+
+```{r mod}
+#FIXME
+```
+
+
 ---
 class: inverse, center, middle, animated, bounceInUp
 
@@ -143,7 +334,5 @@ class: inverse, center, middle, animated, bounceInUp
 
 ---
 # Acknowledgements
-
-- the [papaja package](https://github.com/crsh/papaja) helps with the preparation of APA-ready manuscripts
 
 - icons by Diego Lavecchia from the [Noun Project](https://thenounproject.com/)
