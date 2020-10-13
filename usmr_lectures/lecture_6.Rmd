@@ -317,24 +317,163 @@ ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
 --
 
 .center.f3.pt3[
-but how can we find values for $b_0$ and $b_1$?
+but how can we evaluate our model?
 ]
 ---
 # A Linear Model for 20 Drinkers
 
 .center[
-```{r mod,fig.asp=.55,echo=FALSE}
-ourDat <- ourDat %>% mutate(pred=predict(m1))
+```{r mod,fig.asp=.55,echo=FALSE,fig.width=6}
+ourDat <- ourDat %>% mutate(pred=predict(m1),mRT=mean(RT))
 p1 <- ourDat %>% ggplot(aes(x=BloodAlc,y=RT,yend=pred))
 
-p1 + geom_segment(aes(xend=BloodAlc),linetype="dotted",colour="red",size=1) +
+pRes <- p1 + geom_segment(aes(xend=BloodAlc),linetype="dotted",colour="red",size=1) +
   geom_smooth(method="lm",se=FALSE) +
   geom_point(size=3)
+pRes
 ```
 ]
 
 - a linear model describes the **best-fit line** through the data
+
 - minimises the error terms $\epsilon$ or **residuals**
+---
+# Total Sum of Squares
+
+$$ \textrm{total SS}=\sum{(y - \bar{y})^2} $$
+
+.pull-left[
+- sum of squares between observed $y$ and mean $\bar{y}$
+
+- represents the total amount of variance in the model
+
+- how much does the observed data vary from a model which says "there is no effect of $x$" (**null model**)?
+]
+.pull-right[
+```{r totss,echo=F,fig.asp=.6}
+pTot <- p1 + geom_abline(intercept=mean(ourDat$RT),slope=0,size=1) +
+  geom_segment(aes(yend=mean(mRT),xend=BloodAlc),linetype="dotted",colour="red",size=1) +
+  geom_point(size=3)
+pTot
+```
+
+]
+---
+# Residual Sum of Squares
+
+$$ \textrm{residual SS} = \sum{(y - \hat{y})^2} $$
+.pull-left[
+- sum of squared differences between observed $y$ and predicted $\hat{y}$
+
+- represents the unexplained variance in the model
+
+- how much does the observed data vary from the existing model?
+]
+.pull-right[
+```{r residp,echo=F,fig.asp=.6}
+pRes
+```
+]
+---
+# Model Sum of Squares
+
+$$ \textrm{model SS} = \sum{(\hat{y} - \bar{y})^2} $$
+
+.pull-left[
+- sum of squared differences between predicted $\hat{y}$ and mean $\bar{y}$
+
+- represents the additional variance explained by the current model over the null model
+]
+.pull-right[
+```{r modp,echo=F,fig.asp=.6}
+pMod <- p1 + geom_segment(aes(y=mRT,xend=BloodAlc),colour="red",linetype="dotted",size=1) +
+  geom_hline(yintercept = mean(ourDat$RT),size=1) +
+  geom_smooth(method="lm",se=FALSE) +
+  geom_point(size=3)
+pMod
+```
+
+]
+
+---
+# Testing the Model: _R_<sup>2</sup>
+
+.pull-left[
+$$ R^2 = \frac{\textrm{model SS}}{\textrm{total SS}} = \frac{\sum{(\hat{y}-\bar{y})^2}}{\sum{(y-\bar{y})^2}} $$
+
+
+
+"how much the model improves over the null"
+
+
+.pt3[
+- $0 \le R^2 \le 1$
+
+- we want $R^2$ to be large
+
+- for a single predictor, $\sqrt{R^2} = |r|$
+
+]]
+
+.pull-right[
+```{r echo=F,fig.asp=0.8}
+library(patchwork)
+pMod/pTot
+```
+
+]
+---
+# Testing the Model: _F_
+
+.pull-left[
+$F$ ratio depends on **mean squares** ( $\textrm{MS}_x = \textrm{SS}_x/\textrm{df}_x$ )
+
+$$ R^2 = \frac{\textrm{model MS}}{\textrm{residual MS}} = \frac{\sum{(\hat{y}-\bar{y})^2}}{\sum{(y-\hat{y})^2}} $$
+
+
+
+"how much the model improves over chance"
+
+
+.pt3[
+- $0 < F$
+
+- we want $F$ to be large
+
+- significance of $F$ does not always equate to a large (or theoretically sensible) effect
+
+]]
+
+.pull-right[
+```{r echo=F,fig.asp=0.8}
+library(patchwork)
+pMod/pRes
+```
+
+]
+---
+# Linear Models in R
+
+```{r lm1, eval=F}
+mod <- lm(RT ~ BloodAlc, data=ourDat)
+```
+
+---
+count: false
+# Linear Models in R
+
+```{r lm2, highlight.output=c(17,18)}
+mod <- lm(RT ~ BloodAlc, data=ourDat)
+summary(mod)
+```
+
+---
+count: false
+# Linear Models in R
+
+```{r lm3, highlight.output=c(11,12)}
+<<lm2>>
+```
 ---
 class: inverse, center, middle, animated, bounceInUp
 
