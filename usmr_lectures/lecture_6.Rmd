@@ -183,8 +183,7 @@ so the linear model itself is...
 $$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
 .center[
 ![:scale 30%](lecture_6_files/img/formula.svg)
-]
-]
+]]
 .w-60.pa2[
 ```{r bb,echo=F, fig.asp=.6}
 x <- tibble(x=c(-1,4))
@@ -206,6 +205,35 @@ p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 
 ]]
 ---
+count: false
+# A Linear Model
+
+.flex.items-top[
+.w-40.pa2[
+$$ \color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i $$
+$$ \color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i $$
+.center[
+so the linear model itself is...
+]
+
+$$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
+.center[
+![:scale 30%](lecture_6_files/img/formula.svg)
+]
+.br3.pa3.bg-light-yellow[
+$$ \hat{y} = \color{blue}{b_0 + b_1 \cdot{} x_i} $$
+.center[
+![:scale 30%](lecture_6_files/img/formula2.svg)
+]]
+]
+.w-60.pa2[
+```{r bb2,fig.asp=.6,echo=F}
+p1 + ylab(expression(paste(hat(y)," = ",5 + 2 %.% x))) +
+  theme(axis.title.y = element_text(colour = "blue"))
+```
+
+]]
+---
 # Take An Observation
 
 .flex.items-top[
@@ -219,7 +247,7 @@ xX <-1.2
 yY <- 9.9
 ```
  
-$$ \hat{y}_i = b_0\cdot{}1 + b_1\cdot{}x_i = 7.4 $$ 
+$$ \hat{y}_i = b_0 + b_1\cdot{}x_i = 7.4 $$ 
 $$ y_i = \hat{y}_i + \epsilon_i = 7.4 + \color{red}{2.5} $$
 
 ]
@@ -251,6 +279,17 @@ p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 ourDat <- dat %>% sample_n(20)
   # take 20 data points
 ```
+
+```{r s2,include=FALSE}
+lmp <- function(x) {
+  m <- lm(RT~BloodAlc,data=x)
+  summary(m)$coefficients[2,4]
+}
+while(lmp(ourDat) > .05) {
+ ourDat <- dat %>% sample_n(20)
+}
+```
+
 ]
 .pull-right[
 ```{r plot1, fig.asp=.6, echo=F}
@@ -319,6 +358,86 @@ ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
 .center.f3.pt3[
 but how can we evaluate our model?
 ]
+---
+# Linear Models in R
+
+```{r lm1, eval=F}
+mod <- lm(RT ~ BloodAlc, data=ourDat)
+```
+
+---
+count: false
+# Linear Models in R
+
+```{r lm2, highlight.output=c(11,12)}
+mod <- lm(RT ~ BloodAlc, data=ourDat)
+summary(mod)
+```
+
+---
+# Intercept and Slope Again
+
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+.center[
+```{r git,echo=F,fig.asp=.6}
+p1 <- ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlim(c(-1,12)) + ylim(300,800) +
+  geom_segment(aes(x=0,y=300,xend=0,yend=coef(mod)[1]),colour="red") +
+  annotate("text",x=.4,y=310,label=expression(b[0]),size=5,colour="red")
+p1
+```
+]
+???
+- $b_0$ is the the predicted value, $\bar{y}$, when $x=0$.  Here I've represented it as a line, so where the top is the intercept value of `r coef(mod)[1]`
+---
+count: false
+# Intercept and Slope Again
+
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+.center[
+```{r git2,echo=F,fig.asp=.6}
+lmf <- function(x) {
+  coef(mod)[1]+coef(mod)[2]*x
+}
+p2 <- p1 +
+  geom_segment(aes(x=4,xend=5,y=lmf(4),yend=lmf(4)),
+               arrow=arrow(ends = "both",length = unit(.03,"native"))) +
+  annotate("text",x=4.5,y=435,label="1",size=5) +
+  geom_segment(aes(x=5,xend=5,y=lmf(4),yend=lmf(5)),
+               colour="red") +
+  annotate("text",x=5.4,y=475,label=expression(b[1]),colour="red",size=5) +  geom_segment(aes(x=0,xend=1,y=lmf(0),yend=lmf(0)),
+               arrow=arrow(ends = "both",length = unit(.03,"native"))) +
+  geom_segment(aes(x=1,xend=1,y=lmf(0),yend=lmf(1)),
+               colour="red") +
+  annotate("text",x=1.4,y=335,label=expression(b[1]),colour="red",size=5)
+p2  
+```
+]
+---
+count: false
+# Intercept and Slope Again
+
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+.center[
+```{r git3, echo=FALSE, fig.asp=.6}
+p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2)
+```
+]
+---
+count: false
+# Intercept and Slope Again
+
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+.center[
+```{r git4, echo=FALSE, fig.asp=.6}
+p2 + geom_point(size=3) +
+  geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2)
+```
+]
+???
+- note that the intercept is really very far from the data we're interested in.
+
+- it may be pretty meaningless to talk about the reaction time of someone with zero blood alcohol
 ---
 # A Linear Model for 20 Drinkers
 
@@ -451,27 +570,11 @@ pMod/pRes
 ```
 
 ]
+
 ---
 # Linear Models in R
 
-```{r lm1, eval=F}
-mod <- lm(RT ~ BloodAlc, data=ourDat)
-```
-
----
-count: false
-# Linear Models in R
-
-```{r lm2, highlight.output=c(17,18)}
-mod <- lm(RT ~ BloodAlc, data=ourDat)
-summary(mod)
-```
-
----
-count: false
-# Linear Models in R
-
-```{r lm3, highlight.output=c(11,12)}
+```{r lm3, highlight.output=c(17,18)}
 <<lm2>>
 ```
 ---
