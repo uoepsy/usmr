@@ -1,0 +1,766 @@
+---
+title: "Covariance, Correlation, and Modelling"
+bibliography: references.bib
+biblio-style: apalike
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+
+```{r setup, include=FALSE}
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+set.seed(017)
+```
+
+<!-- :::red -->
+<!-- **Preliminaries**   -->
+
+<!-- - Be sure to check the [**solutions to last week's exercises**](04_tests.html). You can still ask any questions about previous weeks' materials if things aren't clear!     -->
+
+<!-- - Open Rstudio, make sure you have the USMR project open, and create a new RMarkdown document (giving it a title for this week).  -->
+
+<!-- ::: -->
+
+
+# Reading: Covariance & Correlation  
+
+Our data for this walkthrough is from a (hypothetical) study on memory. Twenty participants studied passages of text (c500 words long), and were tested a week later. The testing phase presented participants with 100 statements about the text. They had to answer whether each statement was true or false, as well as rate their confidence in each answer (on a sliding scale from 0 to 100). The dataset contains, for each participant, the percentage of items correctly answered, and the average confidence rating. Participants' ages were also recorded.   
+
+Let's take a look at the relationships between the percentage of items answered correctly (`recall_accuracy`) and participants' average self-rating of confidence in their answers (`recall_confidence`): 
+```{r message=FALSE,warning=FALSE}
+library(tidyverse)
+library(patchwork)
+
+recalldata <- read_csv("https://uoepsy.github.io/data/recalldata.csv")
+
+ggplot(recalldata, aes(x=recall_confidence, recall_accuracy))+
+  geom_point() + 
+ggplot(recalldata, aes(x=age, recall_accuracy))+
+  geom_point()
+```
+
+These two relationships look quite different.  
+
++ For participants who tended to be more confident in their answers, the percentage of items they correctly answered tends to be higher.  
++ The older participants were, the lower the percentage of items they correctly answered tended to be.  
+
+Which relationship should we be more confident in and why? 
+
+Ideally, we would have some means of quantifying the strength and direction of these sorts of relationship. This is where we come to the two summary statistics which we can use to talk about the association between two numeric variables: __Covariance__ and __Correlation__.  
+
+## Covariance
+
+:::yellow
+
+Covariance is the measure of how two variables vary together. 
+It is the change in one variable associated with the change in another variable.   
+
+For samples, covariance is calculated using the following formula:
+
+$$\mathrm{cov}(x,y)=\frac{1}{n-1}\sum_{i=1}^n (x_{i}-\bar{x})(y_{i}-\bar{y})$$
+
+where:
+
+- $x$ and $y$ are two variables; e.g., `age` and `recall_accuracy`;
+- $i$ denotes the observational unit, such that $x_i$ is value that the $x$ variable takes on the $i$th observational unit, and similarly for $y_i$;
+- $n$ is the sample size.
+
+**In R**  
+We can calculate covariance in R using the `cov()` function.  
+`cov()` can take two variables `cov(x = , y = )`.  
+
+```{r}
+cov(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
+```
+
+:::
+
+`r optbegin("Optional: Manually calculating covariance", olabel=FALSE)`
+1. Create 2 new columns in the memory recall data, one of which is the mean recall accuracy, and one which is the mean recall confidence. 
+```{r}
+recalldata <-
+  recalldata %>% mutate(
+    maccuracy = mean(recall_accuracy),
+    mconfidence = mean(recall_confidence)
+  )
+```
+
+2. Now create three new columns which are:
+
+    i. recall accuracy minus the mean recall accuracy - this is the $(x_i - \bar{x})$ part.   
+    ii. confidence minus the mean confidence - and this is the $(y_i - \bar{y})$ part.   
+    iii. the product of i. and ii. - this is calculating $(x_i - \bar{x})$$(y_i - \bar{y})$.    
+
+```{r}
+recalldata <- 
+  recalldata %>% 
+    mutate(
+      acc_minus_mean_acc = recall_accuracy - maccuracy,
+      conf_minus_mean_conf = recall_confidence - mconfidence,
+      prod_acc_conf = acc_minus_mean_acc * conf_minus_mean_conf
+    )
+
+recalldata
+```
+
+3. Finally, sum the products, and divide by $n-1$
+
+```{r}
+recalldata %>%
+  summarise(
+    prod_sum = sum(prod_acc_conf),
+    n = n()
+  )
+
+2243.46 / (20-1)
+```
+
+Which is the same result as using `cov()`:
+```{r}
+cov(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
+```
+`r optend()`
+
+`r optbegin("Optional: Covariance explained visually", olabel=FALSE)`
+```{r echo=FALSE, message=FALSE,warning=FALSE}
+set.seed(7135)
+tibble(x=runif(10,20,80),y=rnorm(10,160,10)) %>%
+  mutate(y=y+x/2,
+         coldir = ifelse( (x>mean(x) & y>mean(y)) | (x<mean(x) & y<mean(y)), "pos","neg")
+  ) -> df
+
+p1<-ggplot(df,aes(x=x,y=y))+
+  geom_point()+
+  theme_classic()
+  
+p2<-ggplot(df,aes(x=x,y=y))+
+  geom_point()+
+  theme_classic()+
+  geom_vline(aes(xintercept=mean(x)), lty="dashed")+
+  annotate("text",x=mean(df$x)+1, y=max(df$y)-5,label=expr(bar("x")))+
+  geom_hline(aes(yintercept=mean(y)), lty="dashed")+
+  annotate("text",x=min(df$x)+5, y=mean(df$y)+1,label=expr(bar("y")))
+  
+p3<-ggplot(df,aes(x=x,y=y))+
+  geom_point()+
+  theme_classic()+
+  geom_vline(aes(xintercept=mean(x)), lty="dashed")+
+  annotate("text",x=mean(df$x)-1, y=max(df$y)-5,label=expr(bar("x")))+
+  geom_hline(aes(yintercept=mean(y)), lty="dashed")+
+  annotate("text",x=min(df$x)+5, y=mean(df$y)+1,label=expr(bar("y")))+
+  annotate("text",x=mean(df$x)+7, y=202,label=expression(x[i]-bar("x")))+
+  annotate("text",x=71.5, y=mean(df$y)+7,label=expression(y[i]-bar("y")))+
+  geom_segment(aes(x = mean(x), y = 200.9559, xend = 69.47989, yend = 200.9559), color="tomato1", data = df)+
+  geom_segment(aes(x = 69.47989, y = mean(y), xend = 69.47989, yend = 200.9559), color="tomato1",data = df)
+
+
+p4<-ggplot(df,aes(x=x,y=y))+
+  geom_point(aes(col=coldir))+
+  scale_color_manual("",values=c("black","red"))+
+  theme_classic()+
+  theme(legend.position = "none")+
+  geom_vline(aes(xintercept=mean(x)), lty="dashed")+
+  annotate("text",x=mean(df$x)-1, y=max(df$y)-5,label=expr(bar("x")))+
+  geom_hline(aes(yintercept=mean(y)), lty="dashed")+
+  annotate("text",x=min(df$x)+5, y=mean(df$y)+1,label=expr(bar("y")))+
+  geom_segment(aes(x = mean(x), y = 200.9559, xend = 69.47989, yend = 200.9559), color="tomato1", data = df)+
+  geom_segment(aes(x = 69.47989, y = mean(y), xend = 69.47989, yend = 200.9559), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 211.5757, xend = 56.36053, yend = 211.5757), color="tomato1", data = df)+
+  geom_segment(aes(x = 56.36053, y = mean(y), xend = 56.36053, yend = 211.5757), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 180.5799, xend = 44.37031, yend = 180.5799), color="tomato1", data = df)+
+  geom_segment(aes(x = 44.37031, y = mean(y), xend = 44.37031, yend = 180.5799), color="tomato1",data = df)
+
+p5<-ggplot(df,aes(x=x,y=y))+
+  geom_point(aes(col=coldir))+
+  scale_color_manual("",values=c("blue","red"))+
+  theme_classic()+
+  theme(legend.position = "none")+
+  geom_vline(aes(xintercept=mean(x)), lty="dashed")+
+  annotate("text",x=mean(df$x)-1, y=max(df$y)-5,label=expr(bar("x")))+
+  geom_hline(aes(yintercept=mean(y)), lty="dashed")+
+  annotate("text",x=min(df$x)+5, y=mean(df$y)+1,label=expr(bar("y")))+
+  geom_segment(aes(x = mean(x), y = 200.9559, xend = 69.47989, yend = 200.9559), color="tomato1", data = df)+
+  geom_segment(aes(x = 69.47989, y = mean(y), xend = 69.47989, yend = 200.9559), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 211.5757, xend = 56.36053, yend = 211.5757), color="tomato1", data = df)+
+  geom_segment(aes(x = 56.36053, y = mean(y), xend = 56.36053, yend = 211.5757), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 180.5799, xend = 44.37031, yend = 180.5799), color="tomato1", data = df)+
+  geom_segment(aes(x = 44.37031, y = mean(y), xend = 44.37031, yend = 180.5799), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 194.4188, xend = 45.32536, yend = 194.4188), color="skyblue3", data = df)+
+  geom_segment(aes(x = 45.32536, y = mean(y), xend = 45.32536, yend = 194.4188), color="skyblue3",data = df)+
+  geom_segment(aes(x = mean(x), y = 182.6440, xend = 66.73541, yend = 182.6440), color="skyblue3", data = df)+
+  geom_segment(aes(x = 66.73541, y = mean(y), xend = 66.73541, yend = 182.6440), color="skyblue3",data = df)
+```
+
+Consider the following scatterplot:  
+```{r echo=FALSE, message=FALSE}
+p1
+```
+<br>
+Now let's superimpose a vertical dashed line at the mean of $x$ ($\bar{x}$) and a horizontal dashed line at the mean of $y$ ($\bar{y}$):
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p2
+```
+<br>
+Now let's pick one of the points, call it $x_i$, and show $(x_{i}-\bar{x})$ and $(y_{i}-\bar{y})$.  
+<br>
+Notice that this makes a rectangle.  
+<br>
+As $(x_{i}-\bar{x})$ and $(y_{i}-\bar{y})$ are both positive values, their product -  $(x_{i}-\bar{x})(y_{i}-\bar{y})$ - is positive. 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p3
+```
+<br>
+In fact, for all these points in red, the product $(x_{i}-\bar{x})(y_{i}-\bar{y})$ is positive (remember that a negative multiplied by a negative gives a positive): 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p4
+```
+<br>
+And for these points in blue, the product $(x_{i}-\bar{x})(y_{i}-\bar{y})$ is negative:  
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p5
+```
+<br>
+Now take another look at the formula for covariance:  
+
+$$\mathrm{cov}(x,y)=\frac{\sum_{i=1}^n (x_{i}-\bar{x})(y_{i}-\bar{y})}{n-1}$$
+  
+It is the sum of all these products divided by $n-1$. It is the average of the products! 
+`r optend()`
+  
+## Correlation - $r$
+
+:::yellow
+
+You can think of correlation as a standardized covariance. It has a scale from negative one to one, on which the distance from zero indicates the strength of the relationship.  
+Just like covariance, positive/negative values reflect the nature of the relationship.  
+
+The __correlation coefficient__ is a standardised number which quantifies the strength and direction of the **linear** relationship between two variables. In a population it is denoted by $\rho$, and in a sample it is denoted by $r$.  
+  
+We can calculate $r$ using the following formula:  
+$$
+r_{(x,y)}=\frac{\mathrm{cov}(x,y)}{s_xs_y}
+$$ 
+
+We can actually rearrange this formula to show that the correlation is simply the covariance, but with the values $(x_i - \bar{x})$ divided by the standard deviation ($s_x$), and the values $(y_i - \bar{y})$ divided by $s_y$: 
+$$
+r_{(x,y)}=\frac{1}{n-1} \sum_{i=1}^n \left( \frac{x_{i}-\bar{x}}{s_x} \right) \left( \frac{y_{i}-\bar{y}}{s_y} \right)
+$$
+<br>
+The correlation is the simply the covariance of **standardised** variables (variables expressed as the distance _in standard deviations_ from the mean).    
+
+  
+**Properties of correlation coefficients**
+
++ $-1 \leq r \leq 1$
++ The sign indicates the direction of association
+  + _positive association_ ($r > 0$) means that values of one variable tend to be higher when values of the other variable are higher
+  + _negative association_ ($r < 0$) means that values of one variable tend to be lower when values of the other variable are higher
+  + _no linear association_ ($r \approx 0$) means that higher/lower values of one variable do not tend to occur with higher/lower values of the other variable 
++ The closer $r$ is to $\pm 1$, the stronger the linear association
++ $r$ has no units and does not depend on the units of measurement
++ The correlation between $x$ and $y$ is the same as the correlation between $y$ and $x$
+
+**In R**  
+Just like R has a `cov()` function for calculating covariance, there is a `cor()` function for calculating correlation: 
+```{r}
+cor(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
+```
+
+:::
+
+`r optbegin("Optional: Manually calculating correlation", olabel=FALSE)`
+We calculated above that $\mathrm{cov}(\texttt{recall_accuracy}, \texttt{recall_confidence})$ = `r cov(recalldata$recall_accuracy, recalldata$recall_confidence) %>% round(3)`.  
+  
+To calculate the _correlation_, we can simply divide this by the standard deviations of the two variables $s_{\texttt{recall_accuracy}} \times s_{\texttt{recall_confidence}}$
+
+```{r}
+recalldata %>% summarise(
+  s_ra = sd(recall_accuracy),
+  s_rc = sd(recall_confidence)
+)
+
+118.08 / (14.527 * 11.622)
+```
+
+Which is the same result as using `cor()`:
+```{r}
+cor(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
+```
+`r optend()`
+
+## Correlation Test  
+
+Now that we've seen the formulae for _covariance_ and _correlation_, as well as how to quickly calculate them in R using `cov()` and `cor()`, we can use a statistical test to establish the probability of finding an association this strong by chance alone.  
+
+:::yellow 
+__Hypotheses__ 
+
+_Remember_, hypotheses are about the _population_ parameter (in this case the correlation between the two variables in the population - i.e., $\rho$).  
+
+<div style="margin-left:15px">  
+__Null Hypothesis__  
+
++ There is _not_ a linear relationship between $x$ and $y$ in the population.<br>$H_0: \rho = 0$  
+
+<br>
+__Alternative Hypothesis__  
+
+i. There is a _positive_ linear relationship between $x$ and $y$ in the population.<br>$H_1: \rho > 0$  
+ii. There is a _negative_ linear relationship between $x$ and $y$ in the population.<br>$H_1: \rho < 0$  
+iii. There is a linear relationship between $x$ and $y$ in the population.<br>$H_1: \rho \neq 0$  
+</div>
+
+__Test statistic__ 
+
+Our test statistic here is _another_ $t$ statistic, the formula for which depends on both the observed correlation ($r$) and the sample size ($n$):  
+
+$$t = r \sqrt{\frac{n-2}{1-r^2}}$$
+
+__$p$-value__
+
+We calculate the p-value for our $t$-statistic as the long-run probability of a $t$-statistic with $n-2$ degrees of freedom being less than, greater than, or more extreme in either direction (depending on the direction of our alternative hypothesis) than our observed $t$-statistic.  
+
+__Assumptions__ 
+
++ Both variables are quantitative
++ Both variables should be drawn from normally distributed populations.
++ The relationship between the two variables should be linear.  
+
+**In R**  
+We can test the significance of the correlation coefficient really easily with the function `cor.test()`:  
+
+```{r}
+cor.test(recalldata$recall_accuracy, recalldata$recall_confidence)
+```
+:::
+
+`r optbegin("Optional: Manually conducting the correlation test", olabel=FALSE)`
+
+Or, if we want to calculate our test statistic manually: 
+```{r}
+#calculate r
+r = cor(recalldata$recall_accuracy, recalldata$recall_confidence)
+
+#get n
+n = nrow(recalldata)
+
+#calculate t    
+tstat = r * sqrt((n - 2) / (1 - r^2))
+
+#calculate p-value for t, with df = n-2 
+2*(1-pt(tstat, df=n-2))
+```
+`r optend()`
+
+## Cautions! {-}  
+
+Correlation is an invaluable tool for quantifying relationships between variables, but __must be used with care__.  
+
+Below are a few things to be aware of when we talk about correlation. 
+
+`r optbegin("Correlation can be heavily affected by outliers. Always plot your data!", olabel=FALSE)`  
+
+The two plots below only differ with respect to the inclusion of _one_ observation. However, the correlation coefficient for the two sets of observations is markedly different.  
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+df2<-df
+df2[2,1]<-180
+
+pp1 <- ggplot(df2,aes(x=x,y=y))+
+  geom_point()+
+  theme_classic()+
+  geom_vline(aes(xintercept=mean(x)), lty="dashed")+
+  annotate("text",x=mean(df2$x)+1.5, y=max(df2$y)-5,label=expr(bar("x")))+
+  geom_hline(aes(yintercept=mean(y)), lty="dashed")+
+  annotate("text",x=min(df2$x)+5, y=mean(df2$y)+1,label=expr(bar("y")))+
+  geom_segment(aes(x = mean(x), y = df2[[2,2]], xend = df2[[2,1]], yend = df2[[2,2]]), color="skyblue3", data = df2)+
+  geom_segment(aes(x = df2[[2,1]], y = mean(y), xend = df2[[2,1]], yend = df2[[2,2]]), color="skyblue3",data = df2)+
+  labs(title=paste0("Cov = ",cov(df2[,1],df2[,2]) %>% round(2),"   r = ",cor(df2[,1],df2[,2]) %>% round(2)))+
+  xlim(35,185)
+
+df3<-df2[-2,]
+pp2 <- ggplot(df3,aes(x=x,y=y))+
+  geom_point()+
+  theme_classic()+
+  #geom_vline(aes(xintercept=mean(x)), lty="dashed")+
+  #annotate("text",x=mean(df3$x)+1.5, y=max(df3$y)-5,label=expr(bar("x")))+
+  #geom_hline(aes(yintercept=mean(y)), lty="dashed")+
+  #annotate("text",x=min(df3$x)+5, y=mean(df3$y)+1,label=expr(bar("y")))+
+  #geom_segment(aes(x = mean(x), y = df3[[2,2]], xend = df3[[2,1]], yend = df3[[2,2]]), color="skyblue3", data = df3)+
+  #geom_segment(aes(x = df3[[2,1]], y = mean(y), xend = df3[[2,1]], yend = df3[[2,2]]), color="skyblue3",data = df3)+
+  labs(title=paste0("Cov = ",cov(df3[,1],df3[,2]) %>% round(2),"   r = ",cor(df3[,1],df3[,2]) %>% round(2)))+
+  xlim(35,185)
+
+pp2 / pp1
+```
+`r optend()`
+`r optbegin("r = 0 means no linear association. The variables could still be otherwise associated. Always plot your data!", olabel = FALSE)`
+The correlation coefficient in Figure \@ref(fig:joface) below is negligible, suggesting no _linear_ association. The word "linear" here is crucial - the data are very clearly related. 
+
+```{r joface, echo=FALSE,message=FALSE,warning=FALSE, fig.cap="Unrelated data?"}
+faced<-read_csv("data/face.csv")
+
+ggplot(faced,aes(x=lm_x,y=lm_y))+
+  geom_point()+
+  theme_classic()+
+  xlim(-3,3)+
+  labs(title=paste0("Cov = ",cov(faced$lm_x,faced$lm_y) %>% round(2),"   r = ",cor(faced$lm_x,faced$lm_y) %>% round(2)))
+```
+
+Similarly, take look at all the sets of data in Figure \@ref(fig:datasaurus) below. The summary statistics (means and standard deviations of each variable, and the correlation) are almost identical, but the visualisations suggest that the data are very different from one another.
+```{r datasaurus, echo=FALSE, fig.cap="Datasaurus! "}
+knitr::include_graphics("https://media1.giphy.com/media/UN2kVJQeMFUje/source.gif")
+```
+__Source:__ Matejka, J., & Fitzmaurice, G. (2017, May). Same stats, different graphs: generating datasets with varied appearance and identical statistics through simulated annealing. In _Proceedings of the 2017 CHI Conference on Human Factors in Computing Systems_ (pp. 1290-1294).  
+`r optend()`
+
+`r optbegin("Correlation does not imply causation!", olabel=FALSE)`
+
+```{r xkcdcor, echo=FALSE, fig.cap="https://twitter.com/quantitudepod/status/1309135514839248896"}
+knitr::include_graphics("images/covcor/corcaus.jpeg")
+```
+
+You will have likely heard the phrase "correlation does not imply causation". There is even a whole [wikipedia entry](https://en.wikipedia.org/wiki/Correlation_does_not_imply_causation) devoted to the topic.  
+
+__Just because you observe an association between x and y, we should not deduce that x causes y__
+
+An often cited paper (See Figure \@ref(fig:choco)) which appears to fall foul of this error took a correlation between a country's chocolate consumption and its number of nobel prize winners to suggest a _causal relationship_ between the two:  
+
+```{r choco,echo=FALSE,warning=FALSE,message=FALSE, fig.cap="Chocolate consumption causes more Nobel Laureates?"}
+knitr::include_graphics("images/covcor/choco.jpeg")
+```
+
+_"since chocolate consumption has been documented to improve cognitive function, it seems most likely that in a dose-dependent way, chocolate intake provides the abundant fertile ground needed for the sprouting of Nobel laureates"_    
+[Messerli, Franz. Chocolate Consumption, Cognitive Function, and Nobel Laureates. The New England Journal of Medicine 2012; 367:1562-4, (http://www.nejm.org/doi/full/10.1056/NEJMon1211064)]
+`r optend()`
+
+# <b>Game:</b> Guess the $r$ {-}
+Take a break and play this "guess the correlation" game to get an idea of what different strengths and directions of $r$ can look like.   
+(if the game is not showing, try http://guessthecorrelation.com/). 
+  
+`r knitr::include_url("http://guessthecorrelation.com/", height="650px")`
+**source: [http://guessthecorrelation.com/](http://guessthecorrelation.com/)**
+
+# Exercises: Correlation  
+
+
+### Sleep levels and daytime functioning {-}  
+
+> A researcher is interested in the relationship between hours slept per night and self-rated effects of sleep on daytime functioning. She recruited 50 healthy adults, and collected data on the Total Sleep Time (TST) over the course of a seven day period via sleep-tracking devices.  
+> At the end of the seven day period, participants completed a Daytime Functioning (DTF) questionnaire. This involved participants rating their agreement with ten statements (see Table \@ref(tab:sleepitems)). Agreement was measured on a scale from 1-5. An overall score of daytime functioning can be calculated by:  
+>  
+> 1. reversing the scores for items 4,5 and 6 (because those items reflect agreement with _positive_ statements, whereas the other ones are agreement with _negative_ statement);
+2. summing the scores on each item; and 
+3. subtracting the sum score from 50 (the max possible score). This will make higher scores reflect better perceived daytime functioning.  
+>
+> The data is available at https://uoepsy.github.io/data/sleepdtf.csv. 
+  
+```{r sleepitems, echo=FALSE}
+tibble(
+  Item = paste0("Item_",1:10),
+  Statement = c("I often felt an inability to concentrate","I frequently forgot things","I found thinking clearly required a lot of effort","I often felt happy","I had lots of energy","I worked efficiently","I often felt irritable" ,"I often felt stressed","I often felt sleepy", "I often felt fatigued")
+) %>%
+  knitr::kable(caption="Daytime Functioning Questionnaire")
+```
+
+
+`r qbegin("A1")`
+Read in the data, and calculate the overall daytime functioning score, following the criteria outlined above. Make this a new column in your dataset.  
+
+_Hints:_  
+
++ To reverse items 4, 5 and 6, we we need to make all the scores of 1 become 5, scores of 2 become 4, and so on... What number satisfies all of these equations: `? - 5 = 1`, `? - 4 = 2`, `? - 3 = 3`?
++ To quickly sum accross rows, you can use the `rowSums()` function. 
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r message=FALSE}
+sleepdtf <- read_csv("https://uoepsy.github.io/data/sleepdtf.csv")
+summary(sleepdtf)
+# To reverse the items, we can simply do 6 minus the score.   
+sleepdtf <- 
+  sleepdtf %>% mutate(
+    item_4=6-item_4,
+    item_5=6-item_5,
+    item_6=6-item_6
+  ) 
+
+# Now using rowSums(), and subtracting it from 50 (the max score)
+sleepdtf$dtf = 50-rowSums(sleepdtf[, 2:11])
+```
+`r solend()`
+
+`r qbegin("A2")`
+Calculate the correlation between the total sleep time (`TST`) and the overall daytime functioning score.  
+Conduct a test to establish the probability of observing a correlation this strong in a sample of this size assuming the true correlation to be 0.  
+<br>
+Write a sentence or two summarising the results. 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+cor.test(sleepdtf$TST, sleepdtf$dtf)
+```
+
+:::int
+There was a strong positive correlation between total sleep time and self-reported daytime functioning score ($r$ = `r cor(sleepdtf$TST, sleepdtf$dtf) %>% round(2)`, $t(48)$ = `r cor.test(sleepdtf$TST, sleepdtf$dtf)$statistic %>% round(2)`, $p < .001$) in the current sample. As total sleep time increased, levels of self-reported daytime functioning increased.  
+:::
+`r solend()`
+
+`r qbegin("A3")`
+__Open-ended:__ Think about this relationship in terms of _causation_.  
+<br>
+Claim: _Less sleep causes poorer daytime functioning._  
+<br>
+Why might it be inappropriate to make the claim above based on these data alone? Think about what sort of study could provide stronger evidence for such a claim.  
+
+Things to think about:  
+
++ comparison groups.   
++ random allocation.  
++ measures of daytime functioning.   
++ measures of sleep time.  
++ other (unmeasured) explanatory variables.  
+
+`r qend()`
+
+
+# Exercises: Functions and Models
+
+`r qbegin("B1")`
+The Scottish National Gallery kindly provided us with measurements of side and perimeter (in metres) for a sample of 10 square paintings.
+
+The data are provided below:
+```{r eval=FALSE}
+sng <- tibble(
+  side = c(1.3, 0.75, 2, 0.5, 0.3, 1.1, 2.3, 0.85, 1.1, 0.2),
+  perimeter = c(5.2, 3.0, 8.0, 2.0, 1.2, 4.4, 9.2, 3.4, 4.4, 0.8)
+)
+```
+
+Plot the data from the Scottish National Gallery using `ggplot()`.  
+  
+We know that there is a mathematical model for the relationship between the side-length and perimeter of squares: $perimeter = 4 \times \ side$.  
+Try adding the following line to your plot:
+```{r eval=FALSE}
+  stat_function(fun = ~.x * 4)
+```
+
+`r qend()`
+
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+```{r squares-scatterplot, fig.cap='The exact relationship between side and perimeter of squares.'}
+sng <- tibble(
+  side = c(1.3, 0.75, 2, 0.5, 0.3, 1.1, 2.3, 0.85, 1.1, 0.2),
+  perimeter = c(5.2, 3.0, 8.0, 2.0, 1.2, 4.4, 9.2, 3.4, 4.4, 0.8)
+)
+
+ggplot(data = sng, aes(x = side, y = perimeter)) +
+  geom_point(colour = 'black', alpha = 0.5, size = 3) +
+  labs(x = 'Side (m)', y = 'Perimeter (m)')+
+  stat_function(fun = ~.x * 4)
+```
+
+The above plot shows perfect agreement between the observed data and the model.
+`r solend()`
+
+
+`r qbegin("B2")`
+Use our mathematical model to predict the perimeter of a painting with a side of 1.5 metres.  
+We do not have a painting with a side of 1.5 metres within the random sample of paintings from the Scottish National Gallery.
+We predict the perimeter of an unobserved squared painting having a 1.5 metre side using the mathematical model.
+
+You can obtain this prediction either using a visual approach or an algebraic one.
+`r qend()`
+
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+**Visual approach**
+
+```{r echo=FALSE}
+ggplot(data = sng, aes(x = side, y = perimeter)) +
+  geom_point(colour = 'black', alpha = 0.5, size = 3) +
+  labs(x = 'Side (m)', y = 'Perimeter (m)')+
+  stat_function(fun = ~.x * 4) +
+  geom_segment(aes(x = 1.5, xend = 1.5, y = 0, yend = 4 * 1.5), linetype = 2, 
+               colour = 'red', arrow = arrow(length = unit(0.5, "cm"))) +
+  geom_segment(aes(x = 1.5, xend = 0 , y = 4 * 1.5, yend = 4 * 1.5), linetype = 2, 
+               colour = 'red', arrow = arrow(length = unit(0.5, "cm"))) +
+  labs(x = 'Side (m)', y = 'Perimeter (m)')
+```
+
+Sometimes we can directly read a predicted value from the graph of the functional relationship.
+
+Consider the plot created in the previous question. First, we need to check where x = 1.5. Then, we draw a vertical dashed line until it meets the blue line. The y value corresponding to x = 1.5 can be read off the y-axis.
+
+However, in this case it is not that easy to read it from the drawing... Let's try the next approach.
+
+<br>
+**Algebraic approach**
+
+You can substitute the x value in the formula and calculate the corresponding y value.
+$$
+y = 4 \times \ x = 4 \times \ (1.5) = 6
+$$
+
+<br>
+We might write this up as:
+
+:::int
+The predicted perimeter of squared paintings having a 1.5m side is 6m.
+:::
+
+**NOTE**: Don't forget to always include the measurement units when reporting/writing-up results!
+
+`r solend()`
+
+
+`r qbegin("B3")` 
+Consider now the relationship between height (in inches) and handspan (in cm). @Utts2015 provides data for a sample of 167 students who reported their height and handspan as part of a class survey. 
+
+`r optbegin('Data: handheight.csv', FALSE, show = TRUE, toggle = params$TOGGLE)`
+**Download link**
+
+[Download the data here](https://uoepsy.github.io/data/handheight.csv){target="_blank"}
+
+**Description**
+
+The data set records the height and handspan reported by a random sample of 167 students as part of a class survey [@Utts2015].
+
+The variables are:
+
+- `height`, measured in inches
+- `handspan`, measured in centimetres
+
+**Preview**
+
+The first six rows of the data are:
+
+```{r echo=FALSE}
+library(kableExtra)
+handheight <- read_csv(file = 'https://uoepsy.github.io/data/handheight.csv')
+kable(head(handheight), align = 'c') %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1:2, width = '10em')
+```
+`r optend()` 
+
+Read the handheight data into R, and investigate how handspan varies as a function of height for the students in the sample.
+
+Do you notice any outliers or points that do not fit with the pattern in the rest of the data? 
+
+Comment on any main differences you notice between this relationship and the relationship between sides and perimeter of squares.
+`r qend()`
+
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+The `handheight` data set contains two variables, height and handspan, which are both numeric and continuous. We display the relationship between two numeric variables with a scatterplot.  
+
+We can also add marginal boxplots for each variable using the package `ggExtra`. Before using the package, make sure you have it installed via `install.packages('ggExtra')`.
+
+```{r handheight-scatterplot, fig.cap='The statistical relationship between height and handspan.'}
+handheight <- read_csv(file = 'https://uoepsy.github.io/data/handheight.csv')
+
+library(ggExtra)
+
+plt <- ggplot(handheight, aes(x = height, y = handspan)) +
+  geom_point(size = 3, alpha = 0.5) +
+  labs(x = 'Height (in.)', y = 'Handspan (cm)')
+
+ggMarginal(plt, type = 'boxplot')
+```
+
+Outliers are extreme observations that do not seem to fit with the rest of the data. This could either be:
+
+- *marginally* along one axis: points that have an unusual (too high or too low) x-coordinate or y-coordinate;
+- *jointly*: observations that do not fit with the rest of the point cloud.
+
+The boxplots in Figure \@ref(fig:handheight-scatterplot) do not highlight any outliers in the marginal distributions of height and handspan.
+Furthermore, from the scatterplot we do not notice any extreme observations or points that do not fit with the rest of the point cloud.
+
+We notice a moderate, positive (that is, increasing) linear relationship between height and handspan.
+
+Recall Figure \@ref(fig:squares-scatterplot), displaying the relationship between side and perimeters of squares.
+In the plot we notice two points on top of each other, reflecting the fact that two squares having the same side will always have the same perimeter.
+In fact, the data from the Scottish National Gallery include two squared paintings with a side of 1.1m, both having a measured perimeter of 4.4m.
+
+Figure \@ref(fig:handheight-scatterplot), instead, displays the relationship between height and handspan of a sample of students. The first thing that grabs our attention is the fact that students having the same height do not necessarily have the same handspan. Rather, we clearly see a variety of handspan values for students all having a height of, for example, 70in. To be more precise, the seven students who are 70 in. tall all have differing handspans.
+`r solend()`
+
+
+`r qbegin("B4")`
+Using the following command, superimpose on top of your scatterplot a best-fit line describing how handspan varies as a function of height.
+For the moment, the argument `se = FALSE` tells R to not display uncertainty bands.
+```
+geom_smooth(method = lm, se = FALSE)
+```
+
+Comment on any differences you notice with the line summarising the linear relationship between side and perimeter.
+`r qend()`
+
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+```{r handheight-fitted-model, fig.cap='The best-fit line.'}
+ggplot(handheight, aes(x = height, y = handspan)) +
+  geom_point(size = 3, alpha = 0.5) +
+  geom_smooth(method = lm, se = FALSE) +
+  labs(x = 'Height (in.)', y = 'Handspan (cm)')
+```
+
+The line representing the relationship between side and perimeter of squares is able to predict the actual perimeter value from the measurement of the side of a square.
+This is possible because the relationship between side and perimeter is an **exact** one. 
+That is, any squares having the same side will have the same perimeter, and there will be no variation in those values.
+
+The line that best fits the relationship between height and handspan, instead, is only able to predict the **average** handspan for a given value of height.
+This is because there will be a distribution of handspans at each value of height.
+The line will fit the trend/pattern in the values, but there will be individual-to-individual variability that we must accept around that average pattern.
+`r solend()`
+
+
+:::frame
+The _mathematical_ model $Perimeter = 4 \times \ Side$ represents the **exact** relationship between side-length and perimeter of squares.
+
+In contrasts, the relationship between height and handspan shows deviations from an "average pattern". Hence, we need to create a model that allows for deviations from the linear relationship. This is called a _statistical_ model.  
+
+A statistical model includes **both** a deterministic function and a random error term:
+$$
+Handspan = \beta_0 + \beta_1 \ Height + \epsilon
+$$
+or, in short,
+$$
+y = \underbrace{\beta_0 + \beta_1 \ x}_{f(x)} + \underbrace{\epsilon}_{\text{random error}}
+$$
+
+The deterministic function need not be linear if the scatterplot displays signs of nonlinearity.
+In the equation above, the terms $\beta_0$ and $\beta_1$ are numbers specifying where the line going through the data meets the y-axis and its slope (rate of increase/decrease). 
+:::
+
+`r qbegin("B5")`
+```{r eval=FALSE, echo=FALSE}
+mdl <- lm(handspan ~ 1 + height, data = handheight)
+equatiomatic::extract_eq(mdl, ital_vars = TRUE, use_coefs = TRUE)
+```
+The line of best-fit is given by:^[Yes, the error term is gone. This is because the line of best-fit gives you the prediction of the average handspan for a given height, and not the individual handspan of a person, which will almost surely be different from the prediction of the line.]
+$$
+\widehat{Handspan} = -3 + 0.35 \ Height
+$$
+
+What is your best guess for the handspan of a student who is 73in tall?
+
+And for students who are 5in?
+`r qend()`
+
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+The predicted average handspan for students who are 73in tall is $-3 + 0.35 * 73 = 22.55$cm.
+
+The predicted average handspan for students who are 5in tall is $-3 + 0.35 * 5 = -1.25$cm. 
+But wait, handspan can not be negative... This does not make any sense!
+That's right, we went too far off the range of the available data on heights, which were between 57in and 78in. We extrapolated. This is very dangerous...
+
+```{r, echo=FALSE, fig.cap = 'Source: Randall Munroe, xkcd.com'}
+knitr::include_graphics('https://imgs.xkcd.com/comics/extrapolating.png')
+```
+`r solend()`
+
+# References
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
+
