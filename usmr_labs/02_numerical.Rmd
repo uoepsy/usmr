@@ -14,14 +14,14 @@ library(patchwork)
 ```
 
 
-:::red
+:::lo
 **Preliminaries**  
 
 <!-- - Be sure to check the [**solutions to last week's exercises**](01_categorical.html). You can still ask any questions about previous weeks' materials if things aren't clear!     -->
 
-1. Open Rstudio, make sure you have the USMR project open, and create a new RMarkdown document (giving it a title for this week). 
+1. Open Rstudio, make sure you have the USMR project open, and create a new R Script (giving it a title for this week). 
 
-2. Make sure you regularly save the Rmarkdown files you are writing in, and it might help to close the ones from previous weeks to make your RStudio experience less busy. You should still be able to see in the bottom right window of RStudio, there is a "Files" tab. When this is open, you are able to see the various files within your project. 
+2. Make sure you regularly save the R scripts you are writing in, and it might help to close the ones from previous weeks to make your RStudio experience less busy. You should still be able to see in the bottom right window of RStudio, there is a "Files" tab. When this is open, you are able to see the various files within your project. 
 
 :::
 
@@ -43,7 +43,7 @@ And we have seen how we might wrap functions inside functions:
 barplot(table(somedata$somevariable))
 ```
 
-:::yellow
+:::rtip
 __R evaluates code from the inside-out!__ 
 
 You can end up with functions inside functions inside functions ... 
@@ -54,12 +54,17 @@ round(mean(log(cumsum(diff(1:10)))))
 ```
 :::
 
+:::rtip
+__Piping__
+
 We can write in a different style, however, and this may help to keep code tidy and easily readable - we can write __sequentially__:  
 
 ![](images/numeric/pipes.png)
 
 Notice that what we are doing is using a new symbol: `%>%`  
-This symbol takes the output of whatever is on it's left-hand side, and uses it as an _input_ for whatever is on the right-hand side. The `%>%` symbol gets called a "pipe".  
+This symbol takes the output of whatever is on it's left-hand side, and uses it as an _input_ for whatever is on the right-hand side.   
+The `%>%` symbol gets called a "pipe".  
+:::
 
 Let's see it in action with the starwars2 dataset from the previous lab. First we need to load the tidyverse packages, because that is where `%>%` and `read_csv()` are found.
 ```{r}
@@ -67,7 +72,7 @@ library(tidyverse)
 starwars2 <- read_csv("https://uoepsy.github.io/data/starwars2.csv")
 ```
 
-:::yellow
+:::rtip
 __Reading data from a URL__ 
 
 Note that when you have a url for some data, such as [https://uoepsy.github.io/data/starwars2.csv](https://raw.githubusercontent.com/uoepsy/data/master/starwars2.csv), you can read it in directly by giving functions like `read_csv()` the url inside quotation marks. 
@@ -156,7 +161,7 @@ mean(simdata$height)
 ```
 `r solend()`
 
-:::yellow
+:::rtip
 __mutate()__  
 
 The `mutate()` function is used to add or modify variables to data.  
@@ -323,8 +328,12 @@ summary(wechsler)
 
 For categorical data there are two different measures of central tendency:
 
+:::statbox
+
 + __Mode:__ The most frequent value (the value that occurs the greatest number of times).  
 + __Median:__ The value for which 50% of observations a lower and 50% are higher. It is the mid-point of the values when they are rank-ordered. 
+
+:::
 
 We can apply these to categorical data, but we can also use them for __numeric__ data.
 
@@ -361,7 +370,7 @@ median(wechsler$iq)
 
 One of the most frequently used measures of central tendency for __numeric__ data is the __mean__. 
 
-:::yellow
+:::statbox
 __Mean:__ $\bar{x}$  
 
 The mean is calculated by summing all of the observations together and then dividing by the total number of obervations ($n$). 
@@ -413,7 +422,7 @@ mean(wechsler$iq)
 
 Functions such as `mean()`, `median()`, `min()` and `max()` can quickly summarise data, and we can use them together really easily in combination with `summarise()`.  
 
-:::yellow
+:::rtip
 __Summarise()__
 
 The `summarise()` function is used to reduce variables down to a single summary value.
@@ -484,7 +493,7 @@ The deviations can be visualised by the red lines in Figure \@ref(fig:deviations
 knitr::include_graphics("images/numeric/deviations.png")
 ```
 
-:::frame
+:::statbox
 __The sum of the deviations from the mean, $x_i - \bar x$, is always zero__
 
 $$
@@ -497,7 +506,7 @@ The mean is like a center of gravity - the sum of the positive deviations (where
 Because deviations around the mean always sum to zero, in order to express how spread out the data are around the mean, we must we consider __squared deviations__.  
 Squaring the deviations makes them all positive. Observations far away from the mean _in either direction_ will have large, positive squared deviations. The average squared deviation is known as the __variance,__ and denoted by $s^2$
 
-:::yellow
+:::statbox
 __Variance:__ $s^2$
 
 The variance is calculated as the average of the squared deviations from the mean.  
@@ -540,7 +549,7 @@ wechsler %>%
 One difficulty in interpreting __variance__ as a measure of spread is that it is in units of __squared deviations.__  It reflects the typical _squared_ distance from a value to the mean.  
 Conveniently, by taking the square root of the variance, we can translate the measure back into the units of our original variable. This is known as the __standard deviation.__  
 
-:::yellow
+:::statbox
 __Standard Deviation:__ $s$
 
 The standard deviation, denoted by $s$, is a rough estimate of the typical distance from a value to the mean.  
@@ -673,6 +682,35 @@ ggplot(data = wechsler, aes(x = iq)) +
   geom_density()+
   xlim(50,150)
 ```
+
+Recall that we saw this idea last week briefly, when we talked about a uniform distribution:
+
+```{r echo=FALSE, fig.asp=.5}
+tibble(response = c(1,2,5), prob = rep(1/6,3)) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(size=3)+
+  geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
+  geom_segment(aes(x=2.9, xend=3.1, y=prob,yend=prob),lty="dotted")+
+  geom_segment(aes(x=3.9, xend=4.1, y=prob,yend=prob),lty="dotted")+
+  scale_x_continuous("possible responses", breaks=1:5, labels=c("1","2","...","...","n"))+
+  scale_y_continuous("probability", limits = c(0,1/5), breaks=1/6, labels="1/n")+
+  theme_classic()-> p1 
+
+tibble(response = 1:6, prob = rep(1/6,6)) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(aes(x=2,y=prob), size=3)+
+  geom_point(aes(x=5,y=prob), size=3)+
+  geom_segment(aes(x=2,xend=5,y=prob, yend=prob))+
+  geom_segment(aes(x=2,xend=2,y=0, yend=prob),lty="dotted")+
+  geom_segment(aes(x=5,xend=5,y=0, yend=prob), lty="dotted")+
+  scale_x_continuous("possible response", limits = c(1,6), breaks=c(2,5), labels=c("a","b"))+
+  scale_y_continuous("probability density", limits = c(0,1/5), breaks=1/6, labels="1/(b-a)")+
+  theme_classic() -> p2
+
+p1 + p2
+```
+
+
 
 ## Skew 
 
@@ -843,7 +881,7 @@ stroopdata[stroopdata$practice == "no", ]
 In the **tidyverse** way of doing things, there are two functions which provide similar functionality - `filter()` and `select()`.  
 They are designed to work well with the rest of tidyverse (e.g., `mutate()` and `summarise()`) and are often used in conjunction with the `%>%` operator to tell the functions where to find the variables (meaning we don't need to use `data$variable`, we can just use the variable name)
 
-:::yellow
+:::rtip
 __filter()__ 
 
 The `filter()` function allows us to filter a dataframe down to those rows which meet a given condition. It will return all columns.  
@@ -857,7 +895,7 @@ data %>%
 ```
 :::  
 
-:::yellow  
+:::rtip
 __select()__  
 
 The `select()` function allows us to choose certain columns in a dataframe. It will return all rows. 

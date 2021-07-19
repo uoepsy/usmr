@@ -13,23 +13,21 @@ source('assets/setup.R')
 ```
 
 
-:::red
+:::lo
 **Preliminaries**  
 
-1. Please ensure you have successfully installed R and RStudio, or are working on RStudio Cloud, and that you have completed the tasks on the [Getting started in R & RStudio](00_intro.html) page, which introduced the basics of a) how to navigate around Rstudio, b) how to create a Rmarkdown document, c) how to read data into R, and d) how to use R to do basic arithmetic.  
+1. Please ensure you have successfully installed R and RStudio, or are working on RStudio Cloud, and that you have completed the tasks on the [Getting started in R & RStudio](00_intro.html) page, which introduced the basics of a) how to navigate around Rstudio, b) how to create and write in an R script, c) how to read data into R, and d) how to use R to do basic arithmetic.  
 
 2. Open Rstudio, and make sure you have your USMR course project open.  
 
-3. Open a new Rmarkdown document:    
-__File > New File > R Markdown..__  
+3. Open a new R script document:    
+__File > New File > R Script..__  
 :::
 
 # Exercises: Dice Simulations
 
 `r qbegin("A1")`
-You can add a code-chunk with the "Insert" button in the top right of your Rmarkdown document and clicking "R", or you can use the shortcut of **Ctrl + Alt + i**.  
-  
-In your first code-chunk, copy the code from the lecture which creates a custom function called `dice()` (copied below). Be sure to run the code-chunk.  
+At the top of your script, copy the code from the lecture which creates a custom function called `dice()` (copied below). Be sure to *run* the code (highlight it all with your cursor, and hit "run" in the top right, or press Ctrl/Cmd+Enter).  
 ```{r}
 dice <- function(num = 1) {
   sum(sample(1:6, num, replace=TRUE))
@@ -45,15 +43,15 @@ knitr::include_graphics("images/categorical/freshrmd2.png")
 `r qend()`
 
 <div style="border-radius: 5px; padding: 20px 20px 10px 20px; margin-top: 20px; margin-bottom: 20px; border: 1px solid #333333 !important;">
-**What did that code-chunk do?**
+**What did that code do?**
 
-In a sense, this code-chunk does *nothing*:  It won't give you any output when you run it.  What it is actually doing, though, is defining a *function* called `dice()`.  If you look at your *environment* panel (top right), you'll see `dice` appear when you run the code.
+In a sense, this code does *nothing*:  It won't give you any output when you run it.  What it is actually doing, though, is defining a *function* called `dice()`.  If you look at your *environment* panel (top right), you'll see `dice` appear when you run the code.
   
 To produce some output, we have to *call* the function `dice()` (by writing it into code:  `dice(4)`, for example).  `dice()` wants to be supplied with some information (in the *argument* `num`).  If no information is supplied, num will take a *default value* of `1`.  (So writing `dice()` is equivalent to writing `dice(1)`).
 
 What does `dice()` do with `num`?  It calls another function, `sample()`, with *3* arguments.  We didn't write `sample()`:  it's a function that's "supplied with" R.  To find out more about what `sample()` does:
 
-* click inside the brackets just after `sample()` in your RMarkdown document (not this document; the one in RStudio);
+* click inside the brackets just after `sample()` in your R script;
 
 * press `TAB` (`⇥`), then `F1`
 
@@ -125,8 +123,63 @@ The more rolls we do of the dice, the flatter the graph becomes. This is because
 :::
 `r solend()`
 
+
+:::statbox
+__Uniformity__
+
+The idea of a die having equal probability of landing on any of the responses is, in its abstract form is known as a **probability distribution**.  
+For a fair 6-sided die, the probability of the die landing on each side is 1/6. The probabilities of all the possible responses sum to 1, because it has to land on *one of* the sides. 
+
+```{r echo=FALSE, out.width="40%"}
+tibble(response = 1:6, prob = rep(1/6,6)) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(size=3)+
+  geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
+  scale_x_continuous("faces of a die", breaks=1:6)+
+  scale_y_continuous("probability", limits = c(0,1), breaks=map_dbl(1:6,~./6), labels=c(paste0(1:5,"/6"),"1"))+
+  theme_classic()+
+  theme(text = element_text(size = 24))
+```
+We can generalise from the example of a die to any variable which has a set of discrete response options. If it follows a uniform probability distribution, and there are $n$ possible responses, then the probability of each response ocurring is $1/n$. 
+
+```{r echo=FALSE, out.width="40%"}
+tibble(response = c(1,2,5), prob = rep(1/6,3)) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(size=3)+
+  geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
+  geom_segment(aes(x=2.9, xend=3.1, y=prob,yend=prob),lty="dotted")+
+  geom_segment(aes(x=3.9, xend=4.1, y=prob,yend=prob),lty="dotted")+
+  scale_x_continuous("possible responses", breaks=1:5, labels=c("1","2","...","...","n"))+
+  scale_y_continuous("probability", limits = c(0,1/5), breaks=1/6, labels="1/n")+
+  theme_classic()+
+  theme(text = element_text(size = 24))
+```
+The focus of this week is about categorical data - i.e. data which has a discrete set of response options. 
+However, it is worth briefly thinking about how the uniform probability distribution can be utilised for a continuous numeric variable (e.g. something which as well as taking the values 4 and 5 can also take 4.1, 4.11, 4.1111111111, 4.764968473 etc.. - they can take *any* real value). 
+
+We can preserve the idea that probability sums to 1 for this sort of variable by having the probability as $\frac{1}{b-a}$, where $a$ and $b$ are the lower and upper bounds of the response domain. 
+Why? Because this makes the **area** of the distribution equal to 1 (area of a rectangle = width $\times$ height. $(b-a) \times \frac{1}{(b-a)} = \frac{b-a}{b-a} = 1)$. This means we can compute areas of parts of the distribution in order to calculate probabilities! 
+
+```{r echo=FALSE, out.width="40%"}
+tibble(response = 1:6, prob = rep(1/6,6)) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(aes(x=2,y=prob), size=3)+
+  geom_point(aes(x=5,y=prob), size=3)+
+  geom_segment(aes(x=2,xend=5,y=prob, yend=prob))+
+  geom_segment(aes(x=2,xend=2,y=0, yend=prob),lty="dotted")+
+  geom_segment(aes(x=5,xend=5,y=0, yend=prob), lty="dotted")+
+  scale_x_continuous("possible response", limits = c(1,6), breaks=c(2,5), labels=c("a","b"))+
+  scale_y_continuous("probability density", limits = c(0,1/5), breaks=1/6, labels="1/(b-a)")+
+  theme_classic()+
+  theme(text = element_text(size = 24))
+```
+We will see more about this sort of stuff next week.
+:::
+
+
+
 `r qbegin("A4")`
-Copy the code below into a code-chunk and run it. 
+Copy the code below into your script and run it. 
 It creates a new function called `wdice()` which simulates the rolling of `num` dice which are slightly weighted. 
 
 Roll a single weighted die 100 times and plot the frequency distribution. Do the same for 1,000 and 10,000 rolls of a single die.  
@@ -236,7 +289,7 @@ library(tidyverse)
 starwars2 <- read_csv("https://uoepsy.github.io/data/starwars2.csv")
 ```
 
-:::yellow
+:::rtip
 __Reading data from a URL__ 
 
 Note that when you have a url for some data (e.g. [this](https://raw.githubusercontent.com/uoepsy/data/master/starwars2.csv)) you can read it in directly by giving functions like `read_csv()` the url inside quotation marks. 
@@ -250,7 +303,7 @@ head(starwars2, n = 10)
 
 _(Don't worry about the_ NAs _for now, they are just how R tells you an entry is missing, i.e. Not Available.)_  
 
-:::green
+:::rtip
 __Tip:__ Try clicking on the data in your __environment__ (the top right window of RStudio). It will open the data in a tab in the editor window - this is another way of looking at the data, more like you would in spreadsheet software like Microsoft Excel.
 This can be time-consuming if your data file is big.
 :::
@@ -263,7 +316,7 @@ dim(starwars2)
 We can see that there are `r nrow(starwars2)` rows and `r ncol(starwars2)` columns.  
 In the __starwars2__ data, each character is an __observational unit__, and there are 6 __variables__ (things which vary between units) such as their _height_, _species_, _homeworld_, etc.  
 
-:::yellow  
+:::statbox
 __Units and variables__
 
 The individual entities on which data are collected are called __observational units__ or __cases__. Often (but not always), these equate to the rows of a dataset.  
@@ -276,7 +329,7 @@ A __variable__ is any characteristic that varies from observational unit to obse
 What if we want to extract certain subsections of our dataset, such as specific observational units or variables? 
 This is where we learn about two important bits of R code used to access parts of data - the dollar sign `$`, and the square brackets `[]`.
 
-:::frame
+:::rtip
 __The dollar sign $__  
   
 The dollar sign allows us to extract a specific variable from a dataframe.
@@ -289,7 +342,7 @@ starwars2$eye_color
 Each variable in a dataframe is a vector (a set of values). Once extracted, we will have a vector and not a dataframe.
 
 
-:::frame
+:::rtip
 __The square brackets []__  
   
 Square brackets are used to do what is known as __indexing__ (finding specific entries in your data).  
@@ -375,7 +428,7 @@ So when you are using `[]` with a __vector__ (1 dimension) rather than a __dataf
 `r optend()`
 
 
-:::yellow
+:::rtip
 __The dollar sign $__ 
 
 Used to extract a variable from a dataframe:   
@@ -404,7 +457,7 @@ To only select values which are greater than 20, we can use:
 somevalues[somevalues > 20]
 ```
 
-:::frame
+:::rtip
 Unpacking: `somevalues[somevalues > 20]`  
 <br>
 First, let's look at what `somevalues > 20` does. It returns TRUE for the entries of `somevalues` which are greater than 20, and FALSE for the entries of `somevalues` that are not (that is, which are less than, or equal to, 20. 
@@ -501,7 +554,7 @@ starwars2[2,6] <- "Droid"
 starwars2[2, ]
 ```
 
-:::frame
+:::rtip
 We have _replaced_ / _overwritten_ / _reassigned_ , the entry in the 2nd row and 6th column of the data (`starwars2[2,6]`) with the value "Droid". 
 :::
 
@@ -597,7 +650,7 @@ In the dice-rolling example, each roll of the die could take one of a discrete s
 
 There are many different things we can measure / record on observational units, and the data we collect will also have different characteristics. Some data will be similar to rolling a die in that values take on **categories**, and others could take any value on a **continuous** scale.  Many of you filled out our little survey in welcome week. Consider the how we captured data on your heights (we asked you to answer in cm, and you could be precise as you liked) and the colours of your eyes (we gave you a set of options to choose from). We distinguish between these different types of data by talking about __categorical__ and __numerical__ variables. Within each, there also are a few important sub-classes.
 
-:::yellow
+:::statbox
 __Categorical__ variables tell us what group or category each individual belongs to. Each distinct group or category is called a __level__ of the variable.
 :::
 
@@ -609,7 +662,7 @@ __Categorical__ variables tell us what group or category each individual belongs
 
 <br>
 
-:::yellow
+:::statbox
 __Numerical__ (or quantitative) variables consist of numbers, and represent a measurable quantity. Operations like adding and averaging make sense only for numeric variables.
 :::
 |  __Type__ | __Description__ |  __Example__|
@@ -758,7 +811,7 @@ _"By visualizing information, we turn it into a landscape that you can explore w
 
 We're going to now make our first steps into the world of data visualisation. R is an incredibly capable language for creating visualisations of almost any kind. It is used by many media companies (e.g., the BBC), and has the capability of producing 3d visualisations, animations, interactive graphs, and more.  
 
-We are going to use the most popular R package for visualisation, __ggplot2__. This is actually part of the __tidyverse__, so if we have an Rmarkdown document and have loaded the __tidyverse__ packages at the start (by using `library(tidyverse)`), then __ggplot2__ will be loaded too).  
+We are going to use the most popular R package for visualisation, __ggplot2__. This is actually part of the __tidyverse__, so if we have an R script, and we have loaded the __tidyverse__ packages at the start (by using `library(tidyverse)`), then __ggplot2__ will be loaded too).  
 
 Recall our way of plotting frequencies that we have seen so far: 
 ```{r}
@@ -778,7 +831,7 @@ ggplot(data = pwords, aes(x = strength)) +
   
 ```
 
-:::yellow
+:::rtip
 __Basic ggplot components__  
 
 Note the key components of the ggplot code. 
