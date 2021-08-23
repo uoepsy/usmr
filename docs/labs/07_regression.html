@@ -1,0 +1,2945 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>Linear Regression</title>
+
+<script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
+<link href="site_libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet" />
+<script>
+function toggle_visibility(id1, id2) {
+var e = document.getElementById(id1);
+var f = document.getElementById(id2);
+e.style.display = ((e.style.display!='none') ? 'none' : 'block');
+if(f.classList.contains('fa-chevron-circle-right')) {
+    f.classList.add('fa-chevron-circle-down')
+    f.classList.remove('fa-chevron-circle-right')
+} else {
+    f.classList.add('fa-chevron-circle-right')
+    f.classList.remove('fa-chevron-circle-down')
+}
+}
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+<style type="text/css">
+/* for pandoc --citeproc since 2.11 */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}
+</style>
+
+<link rel="stylesheet" href="assets/style-labs.css" type="text/css" />
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html"></a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="https://uoepsy.github.io/usmr/">
+    <span class="fas fa-home"></span>
+     
+  </a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    USMR Starts Here!
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="00_introPG.html">Getting started with R &amp; RStudio</a>
+    </li>
+  </ul>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Data &amp; Distributions
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="01_categorical.html">1: Categorical Data</a>
+    </li>
+    <li>
+      <a href="02_numerical.html">2: Numeric Data</a>
+    </li>
+  </ul>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Tests, Models &amp; Data Wrangling
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="03_nhst.html">3: Hypothesis testing</a>
+    </li>
+    <li>
+      <a href="04_tests.html">4: More tests</a>
+    </li>
+    <li>
+      <a href="05_covcor.html">5: Cov, Cor, Functions &amp; Models</a>
+    </li>
+    <li class="dropdown-header">--- 6: Break Week ---</li>
+    <li>
+      <a href="06_messy.html">7: Messy data</a>
+    </li>
+  </ul>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Regression models
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="07_regression.html">8: Linear Regression</a>
+    </li>
+    <li>
+      <a href="08_regression2.html">9: More Linear Regression</a>
+    </li>
+    <li>
+      <a href="09_glm.html">10: GLM!</a>
+    </li>
+    <li>
+      <a href="10_sswriting.html">11: Writing up</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Extras
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="zz_assumpt.html">LM Assumptions: Recipe book</a>
+    </li>
+    <li>
+      <a href="zz_modelselect.html">Model Selection</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">Linear Regression</h1>
+
+</div>
+
+
+<!-- w7 -->
+<!-- correlation ++ -->
+<!-- significance -->
+<!--   - coefficients -->
+<!-- - F, R^2 -->
+<!-- w8 -->
+<!-- - assumptions & diagnostics -->
+<!-- - multiple regression -->
+<!-- - model comparison -->
+<!-- - SS types -->
+<!-- # Regression introduction -->
+<!-- - write out model, consider hypotheses -->
+<!-- - first explore the data -->
+<!-- - fitting a model -->
+<!-- - interpreting coefficients -->
+<!-- - interpreting sigma -->
+<!-- - fitted and predicted values -->
+<!-- # Inference for regression coefficients -->
+<!-- # Model Fit: -->
+<!--  - partitioning variation -->
+<!--  - testing model utility -->
+<!-- # A categorical predictor -->
+<!--  - (this will be covered in week 9 lecture, but the general idea is) -->
+<!-- # extending to multiple predictors -->
+<!-- ## ~ numeric + numeric -->
+<!-- # assumptions -->
+<!-- # choose > fit > assess > use -->
+<!-- optbegin: a recipe book: LINE -->
+<!--   ## linearity -->
+<!--   ## equal variances -->
+<!--   ## independence -->
+<!--   ## normality of errors -->
+<!-- # the general idea -->
+<!-- # multicollinearity -->
+<!-- # diagnostics -->
+<!-- ## individual cases -->
+<!-- ## other influence.measures() -->
+<div class="lo">
+<div style="width:60%; display: inline-block;">
+<p>This lab is a long one! It takes us quite slowly through simple and multiple regression, but the broader ideas being introduced a actually quite simple - we are just drawing a straight line through some datapoints!<br />
+Try to take regular breaks during these exercises. This will help (a bit) with not getting overwhelmed - these things (both the statistics side and the programming side) take time - and repeated practice - to sink in.</p>
+</div>
+<div style="width:30%; display: inline-block; vertical-align: top">
+<p><img src="images/slr/catworking.gif" width="80%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="simple-regression" class="section level1">
+<h1>Simple regression</h1>
+<p>Let’s imagine a study into income disparity for workers in a local authority. We might carry out interviews and find that there is a link between the level of education and an employee’s income. Those with more formal education seem to be better paid.
+Now we wouldn’t have time to interview everyone who works for the local authority so we would have to interview a sample, say 10%.</p>
+<p>In this lab we will use the riverview data (available at <a href="https://uoepsy.github.io/data/riverview.csv" class="uri">https://uoepsy.github.io/data/riverview.csv</a>) to examine whether education level is related to income among the employees working for the city of Riverview, a hypothetical midwestern city in the US.</p>
+<div class="optional-begin">
+<span id="opt-start-96" class="fa fa-chevron-circle-right optional-icon clickable" onclick="toggle_visibility(&#39;opt-body-96&#39;, &#39;opt-start-96&#39;)"> Data: riverview.csv</span>
+</div>
+<div id="opt-body-96" class="optional-body" style="display: none;">
+<p><strong>Download link</strong></p>
+<p>The data is available at <a href="https://uoepsy.github.io/data/riverview.csv" target="_blank">https://uoepsy.github.io/data/riverview.csv.</a></p>
+<p><strong>Description</strong></p>
+<p>The riverview data come from <span class="citation"><a href="#ref-Lewis-Beck2015" role="doc-biblioref">Lewis-Beck and Lewis-Beck</a> (<a href="#ref-Lewis-Beck2015" role="doc-biblioref">2015</a>)</span> and contain five attributes collected from a random sample of <span class="math inline">\(n=32\)</span> employees working for the city of Riverview, a hypothetical midwestern city in the US. The attributes include:</p>
+<ul>
+<li><code>education</code>: Years of formal education</li>
+<li><code>income</code>: Annual income (in thousands of U.S. dollars)</li>
+<li><code>seniority</code>: Years of seniority</li>
+<li><code>gender</code>: Employee’s gender</li>
+<li><code>male</code>: Dummy coded gender variable (0 = Female, 1 = Male)</li>
+<li><code>party</code>: Political party affiliation</li>
+</ul>
+<p><strong>Preview</strong></p>
+<p>The first six rows of the data are:</p>
+<table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:center;">
+education
+</th>
+<th style="text-align:center;">
+income
+</th>
+<th style="text-align:center;">
+seniority
+</th>
+<th style="text-align:center;">
+gender
+</th>
+<th style="text-align:center;">
+male
+</th>
+<th style="text-align:center;">
+party
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center;">
+8
+</td>
+<td style="text-align:center;">
+37.449
+</td>
+<td style="text-align:center;">
+7
+</td>
+<td style="text-align:center;">
+male
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+Democrat
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+8
+</td>
+<td style="text-align:center;">
+26.430
+</td>
+<td style="text-align:center;">
+9
+</td>
+<td style="text-align:center;">
+female
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+Independent
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+10
+</td>
+<td style="text-align:center;">
+47.034
+</td>
+<td style="text-align:center;">
+14
+</td>
+<td style="text-align:center;">
+male
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+Democrat
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+10
+</td>
+<td style="text-align:center;">
+34.182
+</td>
+<td style="text-align:center;">
+16
+</td>
+<td style="text-align:center;">
+female
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+Independent
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+10
+</td>
+<td style="text-align:center;">
+25.479
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+female
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+Republican
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+12
+</td>
+<td style="text-align:center;">
+46.488
+</td>
+<td style="text-align:center;">
+11
+</td>
+<td style="text-align:center;">
+female
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+Democrat
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="optional-end">
+</p>
+<div class="question-begin">
+Question A1
+</div>
+<div class="question-body">
+<p>Load the required libraries and import the riverview data into a variable named <code>riverview</code>.</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-97" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-97&#39;, &#39;sol-start-97&#39;)"> Solution </span>
+</div>
+<div id="sol-body-97" class="solution-body" style="display: none;">
+<pre class="r"><code>library(tidyverse)
+
+riverview &lt;- read_csv(file = &quot;https://uoepsy.github.io/data/riverview.csv&quot;)
+head(riverview)</code></pre>
+<pre><code>## # A tibble: 6 × 6
+##   education income seniority gender  male party      
+##       &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt; &lt;chr&gt;      
+## 1         8   37.4         7 male       1 Democrat   
+## 2         8   26.4         9 female     0 Independent
+## 3        10   47.0        14 male       1 Democrat   
+## 4        10   34.2        16 female     0 Independent
+## 5        10   25.5         1 female     0 Republican 
+## 6        12   46.5        11 female     0 Democrat</code></pre>
+</div>
+<p class="solution-end">
+</p>
+<div id="exploring-the-data" class="section level2">
+<h2>Exploring the data</h2>
+<div class="question-begin">
+Question A2
+</div>
+<div class="question-body">
+<p>We first want to visualise and describe the <em>marginal distributions</em> (the distribution of each variable without reference to the values of the other variables) of employee incomes and education levels.</p>
+<ul>
+<li>You could use, for example, <code>geom_density()</code> for a density plot or <code>geom_histogram()</code> for a histogram.</li>
+<li>Look at the shape, centre and spread of the distribution. Is it symmetric or skewed? Is it unimodal or bimodal?</li>
+<li>Do you notice any extreme observations?</li>
+</ul>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-98" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-98&#39;, &#39;sol-start-98&#39;)"> Solution </span>
+</div>
+<div id="sol-body-98" class="solution-body" style="display: none;">
+<p>We can plot the marginal distribution of employee incomes as a density curve, and add a boxplot underneath to check for the presence of outliers.</p>
+<p><strong>Note:</strong> The function <code>ggMarginal()</code> from the <code>ggExtra</code> library that we saw briefly in the solutions on exercises on <a href="05_covcor.html#Functions_and_Models">functions &amp; models</a> only works with scatterplots.</p>
+<pre class="r"><code>ggplot(data = riverview, aes(x = income)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = &quot;Income (in thousands of U.S. dollars)&quot;, 
+       y = &quot;Probability density&quot;)</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-4"></span>
+<img src="07_regression_files/figure-html/unnamed-chunk-4-1.png" alt="Density plot and boxplot of employee incomes." width="80%" />
+<p class="caption">
+Figure 1: Density plot and boxplot of employee incomes.
+</p>
+</div>
+<p>The plot suggests that the distribution of employee incomes is unimodal and most of the incomes are between roughly $45,000 and $70,000.
+The smallest income in the sample is about $25,000 and the largest income is over $80,000. (We could find the exact values using the <code>summary()</code> function).
+This suggests there is a fair amount of variation in the data.
+Furthermore, the boxplot does not highlight any outliers in the data.</p>
+<pre class="r"><code>ggplot(data = riverview, aes(x = education)) +
+  geom_density() +
+  geom_boxplot(width = 1/100) +
+  labs(x = &quot;Education (in years)&quot;, 
+       y = &quot;Probability density&quot;)</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-5"></span>
+<img src="07_regression_files/figure-html/unnamed-chunk-5-1.png" alt="Density plot and boxplot of employee education levels." width="80%" />
+<p class="caption">
+Figure 2: Density plot and boxplot of employee education levels.
+</p>
+</div>
+<p>To further summarize a distribution, it is typical to compute and report numerical summary statistics such as the mean and standard deviation. One way to compute these values is to use the <code>summarise()/summarize()</code> function from the <code>tidyverse</code> library:</p>
+<pre class="r"><code>riverview %&gt;% 
+  summarize(
+    mean_incom = mean(income), 
+    sd_income = sd(income),
+    mean_edu = mean(education),
+    sd_edu = sd(education)
+    )</code></pre>
+<pre><code>## # A tibble: 1 × 4
+##   mean_incom sd_income mean_edu sd_edu
+##        &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;
+## 1       53.7      14.6       16   4.36</code></pre>
+<div class="int">
+<p>The marginal distribution of income is unimodal with a mean of approximately $53,700. There is variation in employees’ salaries (SD = $14,553).<br />
+The marginal distribution of education is unimodal with a mean of 16 years. There is variation in employees’ level of education (SD = 4.4 years).</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question A3
+</div>
+<div class="question-body">
+<p>After examining the marginal distributions of the variables of interest in the analysis, we typically move on to examining relationships between the variables.</p>
+<p>Visualise and describe the relationship between income and level of education among the employees in the sample.</p>
+<p>Think about:</p>
+<ul>
+<li><em>Direction</em> of association</li>
+<li><em>Form</em> of association (can it be summarised well with a straight line?)<br />
+</li>
+<li><em>Strength</em> of association (how closely do points fall to a recognizable pattern such as a line?)</li>
+<li><em>Unusual observations</em> that do not fit the pattern of the rest of the observations and which are worth examining in more detail.</li>
+</ul>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-99" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-99&#39;, &#39;sol-start-99&#39;)"> Solution </span>
+</div>
+<div id="sol-body-99" class="solution-body" style="display: none;">
+<p>We are trying to investigate how income varies when varying years of formal education.
+Hence income is the dependent variable (on the y-axis), and education is the independent variable (on the x-axis).</p>
+<pre class="r"><code>ggplot(data = riverview, aes(x = education, y = income)) +
+  geom_point(alpha = 0.5) +
+  labs(x = &quot;Education (in years)&quot;, 
+       y = &quot;Income (in thousands of U.S. dollars)&quot;)</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:riverview-scatterplot"></span>
+<img src="07_regression_files/figure-html/riverview-scatterplot-1.png" alt="The relationship between employees' education level and income." width="80%" />
+<p class="caption">
+Figure 3: The relationship between employees’ education level and income.
+</p>
+</div>
+<p>To comment on the strength of the linear association we compute the correlation coefficient:</p>
+<pre class="r"><code>riverview %&gt;%
+  select(education, income) %&gt;%
+  cor()</code></pre>
+<pre><code>##           education    income
+## education 1.0000000 0.7947847
+## income    0.7947847 1.0000000</code></pre>
+<p>that is,
+<span class="math display">\[
+r_{\text{education, income}} = 0.79
+\]</span></p>
+<p>We might write:</p>
+<div class="int">
+<p>There is a strong positive linear relationship between education level and income for the employees in the sample.
+High incomes tend to be observed, on average, with more years of formal education.
+The scatterplot does not highlight any outliers.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="fitting-a-linear-model" class="section level2">
+<h2>Fitting a Linear Model</h2>
+<div class="statbox">
+<p><strong>A note on notation</strong></p>
+<p>You will see a variety of different ways of specifying the linear model form in different resources.
+Some use <span class="math inline">\(\beta\)</span>, some use <span class="math inline">\(b\)</span>.<br />
+In the lectures, you have seen the form <span class="math inline">\(\color{red}{y} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x} + \epsilon\)</span>.</p>
+<p>In the exercises below, we will tend to use <span class="math inline">\(\color{red}{Y} = \color{blue}{\beta_0 \cdot{} 1 + \beta_1 \cdot{} X} + \epsilon\)</span>, to denote our population model, which when fitted on some sample data becomes <span class="math inline">\(\color{red}{\hat{Y}} = \color{blue}{\hat{\beta}_0 \cdot{} 1 + \hat{\beta_1} \cdot{} X} + \hat{\epsilon}\)</span> (the little hats indicate that they are fitted estimates).</p>
+</div>
+<div class="question-begin">
+Question A4
+</div>
+<div class="question-body">
+<p>The plot created in the previous question highlights a linear relationship, where the data points are scattered around an underlying linear pattern with a roughly-constant spread as x varies.</p>
+<p>We will try to fit a simple (one <span class="math inline">\(x\)</span> variable only) linear regression model:</p>
+<p><span class="math display">\[
+Income = \beta_0 + \beta_1 \ Education + \epsilon \quad \\
+\text{where} \quad \epsilon \sim N(0, \sigma) \text{ independently}
+\]</span></p>
+<p>where “<span class="math inline">\(\epsilon \sim N(0, \sigma) \text{ independently}\)</span>” means that the errors around the line have mean zero and constant spread as x varies.</p>
+<p><strong>Fit the linear model to the sample data using the <code>lm()</code> function and assign it to a name to store it in your environment</strong></p>
+<p><em><strong>Hint:</strong></em>
+<em>The syntax of the <code>lm()</code> function is: </em></p>
+<pre><code>lm(&lt;response variable&gt; ~ 1 + &lt;explanatory variable&gt;, data = &lt;dataframe&gt;)</code></pre>
+<div class="optional-begin">
+<span id="opt-start-100" class="fa fa-chevron-circle-right optional-icon clickable" onclick="toggle_visibility(&#39;opt-body-100&#39;, &#39;opt-start-100&#39;)"> Why ~ 1?</span>
+</div>
+<div id="opt-body-100" class="optional-body" style="display: none;">
+<p>The fitted model can be written as
+<span class="math display">\[
+\widehat{Income} = \hat \beta_0 + \hat \beta_1 \ Education
+\]</span>
+or
+<span class="math display">\[
+\widehat{Income} = \hat \beta_0 \cdot 1 + \hat \beta_1 \cdot Education
+\]</span></p>
+<p>When we specify the linear model in R, we include after the tilde sign, <code>~</code>, the variables that appear to the right of the <span class="math inline">\(\hat \beta\)</span>s. That’s why the 1 is included.</p>
+</div>
+<p class="optional-end">
+</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-101" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-101&#39;, &#39;sol-start-101&#39;)"> Solution </span>
+</div>
+<div id="sol-body-101" class="solution-body" style="display: none;">
+<p>As the variables are in the <code>riverview</code> dataframe, we would write:</p>
+<pre class="r"><code>model1 &lt;- lm(income ~ 1 + education, data = riverview)</code></pre>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="interpreting-coefficients" class="section level2">
+<h2>Interpreting coefficients</h2>
+<div class="question-begin">
+Question A5
+</div>
+<div class="question-body">
+<p>Interpret the estimated intercept and slope in the context of the question of interest.</p>
+<p>Let’s suppose we assigned our linear model object to the name “model1” in R. To obtain the estimated regression coefficients we can use it’s name in various ways and with various functions.</p>
+<ul>
+<li>type <code>model1</code>, i.e. simply invoke the name of the fitted model;</li>
+<li>type <code>model1$coefficients</code>;</li>
+<li>use the <code>coef(model1)</code> function;</li>
+<li>use the <code>coefficients(model1)</code> function;</li>
+<li>use the <code>summary(model1)</code> function and look under the “Estimate” column.</li>
+</ul>
+<p>The estimated parameters returned by the above methods are all equivalent. However, <code>summary()</code> returns more information and you need to look under the column “Estimate.”</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-102" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-102&#39;, &#39;sol-start-102&#39;)"> Solution </span>
+</div>
+<div id="sol-body-102" class="solution-body" style="display: none;">
+<pre class="r"><code>coef(model1)</code></pre>
+<pre><code>## (Intercept)   education 
+##   11.321379    2.651297</code></pre>
+<p>The fitted line is:
+<span class="math display">\[
+\widehat{Income} = 11.32 + 2.65 \ Education \\
+\]</span></p>
+<p>We can interpret the estimated intercept as follows,</p>
+<div class="int">
+<p>The estimated average income associated with zero years of formal education is $11,321.</p>
+</div>
+<p>For the estimated slope we might write,</p>
+<div class="int">
+<p>The estimated increase in average income associated with a one year increase in education is $2,651.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="statbox">
+<p>The parameter estimates from our simple linear regression model take the form of a line, representing the systematic part of our model <span class="math inline">\(\beta_0 + \beta_1 \ x\)</span>, which in our case is <span class="math inline">\(11.32 + 2.65 \ Education\)</span>. Deviations from the line are determined by the random error component <span class="math inline">\(\hat \epsilon\)</span> (the red lines in Figure <a href="#fig:figslr">4</a> below).</p>
+<div class="figure" style="text-align: center"><span id="fig:figslr"></span>
+<img src="07_regression_files/figure-html/figslr-1.png" alt="Simple linear regression model, with systematic part of the model in blue and residuals in red" width="80%" />
+<p class="caption">
+Figure 4: Simple linear regression model, with systematic part of the model in blue and residuals in red
+</p>
+</div>
+</div>
+</div>
+<div id="interpreting-sigma" class="section level2">
+<h2>Interpreting <span class="math inline">\(\sigma\)</span></h2>
+<div class="question-begin">
+Question A6
+</div>
+<div class="question-body">
+<p>Consider the following:</p>
+<ol style="list-style-type: decimal">
+<li>In fitting a linear regression model, we make the assumption that the errors around the line are normally distributed around zero (this is the <span class="math inline">\(\epsilon \sim N(0, \sigma)\)</span> bit.)<br />
+</li>
+<li>About 95% of values from a normal distribution fall within two standard deviations of the centre.</li>
+</ol>
+<p>We can obtain the estimated standard deviation of the errors (<span class="math inline">\(\hat \sigma\)</span>) from the fitted model using <code>sigma()</code> and giving it the name of our model.<br />
+What does this tell us?</p>
+<div class="optional-begin">
+<span id="opt-start-103" class="fa fa-chevron-circle-right optional-icon clickable" onclick="toggle_visibility(&#39;opt-body-103&#39;, &#39;opt-start-103&#39;)"> Huh? What is <span class="math inline">\(\sigma\)</span>?</span>
+</div>
+<div id="opt-body-103" class="optional-body" style="display: none;">
+<p>The standard deviation of the errors, denoted by <span class="math inline">\(\sigma\)</span> is an important quantity to estimate because it measures how much individual data points tend to deviate above and below the regression line.</p>
+<p>A small <span class="math inline">\(\sigma\)</span> indicates that the points hug the line closely and we should expect fairly accurate predictions, while a large <span class="math inline">\(\sigma\)</span> suggests that, even if we estimate the line perfectly, we can expect individual values to deviate from it by substantial amounts.</p>
+<p>The <em>estimated</em> standard deviation of the errors is (surprisingly) denoted <span class="math inline">\(\hat \sigma\)</span> and is equal to
+<span class="math display">\[
+\hat \sigma = \sqrt{\frac{SS_{Residual}}{n - 2}} \\
+\begin{align}
+&amp; \text{where} \\
+&amp; SS_{Residual} = \sum_{i=1}^n{(\epsilon_i)^2}
+\end{align}
+\]</span></p>
+</div>
+<p class="optional-end">
+</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-104" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-104&#39;, &#39;sol-start-104&#39;)"> Solution </span>
+</div>
+<div id="sol-body-104" class="solution-body" style="display: none;">
+<p>The estimated standard deviation of the errors can be equivalently obtained by:</p>
+<ul>
+<li>typing <code>sigma(model1)</code>;</li>
+<li>looking at the “Residual standard error” entry of the <code>summary(model1)</code> output.</li>
+</ul>
+<p><em><strong>Note:</strong> The term “Residual standard error” is a misnomer, as the help page for <code>sigma</code> says (check <code>?sigma</code>). However, it’s hard to get rid of this bad name as it has been used in too many books showing R output.</em></p>
+<pre class="r"><code>sigma(model1)</code></pre>
+<pre><code>## [1] 8.978116</code></pre>
+<div class="int">
+<p>For any particular level of education, employee incomes should be distributed above and below the regression line with standard deviation estimated to be <span class="math inline">\(\hat \sigma = 8.98\)</span>.
+Since <span class="math inline">\(2 \hat \sigma = 2 (8.98) = 17.96\)</span>, we expect most (about 95%) of the employee incomes to be within about $18,000 from the regression line.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="fitted-and-predicted-values" class="section level2">
+<h2>Fitted and predicted values</h2>
+<div class="rtip">
+<p>To compute the model-predicted values for the data in the sample using various functions. Again, if our model object is named “model1” in our environment, we can use:</p>
+<ul>
+<li><code>predict(model1)</code></li>
+<li><code>fitted(model1)</code></li>
+<li><code>fitted.values(model1)</code></li>
+<li><code>model1$fitted.values</code></li>
+</ul>
+<pre class="r"><code>predict(model1)</code></pre>
+<pre><code>##        1        2        3        4        5        6        7        8 
+## 32.53175 32.53175 37.83435 37.83435 37.83435 43.13694 43.13694 43.13694 
+##        9       10       11       12       13       14       15       16 
+## 43.13694 48.43953 48.43953 48.43953 51.09083 53.74212 53.74212 53.74212 
+##       17       18       19       20       21       22       23       24 
+## 53.74212 53.74212 56.39342 59.04472 59.04472 61.69601 61.69601 64.34731 
+##       25       26       27       28       29       30       31       32 
+## 64.34731 64.34731 64.34731 66.99861 66.99861 69.64990 69.64990 74.95250</code></pre>
+<p>To compute model-predicted values for other data:</p>
+<ul>
+<li><code>predict(&lt;fitted model&gt;, newdata = &lt;dataframe&gt;)</code></li>
+</ul>
+<pre class="r"><code># make a tibble/dataframe with values for the predictor:
+education_query &lt;- tibble(education = c(11, 18))
+# model predicted values of income, for the values of education
+# inside the &quot;education_query&quot; data
+predict(model1, newdata = education_query)</code></pre>
+<pre><code>##        1        2 
+## 40.48564 59.04472</code></pre>
+</div>
+<div class="question-begin">
+Question A6
+</div>
+<div class="question-body">
+<p>Compute the model-predicted income for someone with 1 year of education.</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-105" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-105&#39;, &#39;sol-start-105&#39;)"> Solution </span>
+</div>
+<div id="sol-body-105" class="solution-body" style="display: none;">
+<pre class="r"><code>education_query &lt;- tibble(education = c(1))
+predict(model1, newdata = education_query)</code></pre>
+<pre><code>##        1 
+## 13.97268</code></pre>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="inference-for-regression-coefficients" class="section level2">
+<h2>Inference for regression coefficients</h2>
+<div class="statbox">
+<p>To quantify the amount of uncertainty in each estimated coefficient that is due to sampling variability, we use the standard error (SE) of the coefficient.
+<em>Recall that a standard error gives a numerical answer to the question of how variable a statistic will be because of random sampling.</em></p>
+<p>The standard errors are found in the column “Std. Error” of the <code>summary()</code> of a model:</p>
+<pre><code>##              Estimate Std. Error  t value     Pr(&gt;|t|)
+## (Intercept) 11.321379  6.1232350 1.848921 7.434602e-02
+## education    2.651297  0.3696232 7.172972 5.562116e-08</code></pre>
+<p>In this example the slope, 2.651, has a standard error of 0.37. One way to envision this is as a distribution. Our best guess (mean) for the slope parameter is 2.651. The standard deviation of this distribution is 0.37, which indicates the precision (uncertainty) of our estimate.</p>
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-15"></span>
+<img src="07_regression_files/figure-html/unnamed-chunk-15-1.png" alt="Sampling distribution of the slope coefficient. The distribution is approximately bell-shaped with a mean of 2.651 and a standard error of 0.37." width="80%" />
+<p class="caption">
+Figure 5: Sampling distribution of the slope coefficient. The distribution is approximately bell-shaped with a mean of 2.651 and a standard error of 0.37.
+</p>
+</div>
+<p>We can perform a test against the null hypothesis that the estimate is zero. Our test statistic:
+The reference distribution in this case is a t-distribution with <span class="math inline">\(n-2\)</span> degrees of freedom, where <span class="math inline">\(n\)</span> is the sample size, and our test statistic is:<br />
+<span class="math display">\[
+t = \frac{\hat \beta_1 - 0}{SE(\hat \beta_1)}
+\]</span></p>
+</div>
+<div class="question-begin">
+Question A8
+</div>
+<div class="question-body">
+<p>Test the hypothesis that the population slope is zero — that is, that there is no linear association between income and education level in the population.<br />
+(Hint: you can find all the necessary information in <code>summary()</code> of your model)</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-106" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-106&#39;, &#39;sol-start-106&#39;)"> Solution </span>
+</div>
+<div id="sol-body-106" class="solution-body" style="display: none;">
+<p>The information is already contained in the row corresponding to the variable “education” in the output of <code>summary()</code>, which reports the t-statistic under <code>t value</code> and the p-value under <code>Pr(&gt;|t|)</code>:</p>
+<pre class="r"><code>summary(model1)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = income ~ 1 + education, data = riverview)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -15.809  -5.783   2.088   5.127  18.379 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  11.3214     6.1232   1.849   0.0743 .  
+## education     2.6513     0.3696   7.173 5.56e-08 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 8.978 on 30 degrees of freedom
+## Multiple R-squared:  0.6317, Adjusted R-squared:  0.6194 
+## F-statistic: 51.45 on 1 and 30 DF,  p-value: 5.562e-08</code></pre>
+<p>Before we interpret the results, recall that the p-value <code>5.56e-08</code> in the <code>Pr(&gt;|t|)</code> column simply means <span class="math inline">\(5.56 \times 10^{-8}\)</span>. This is a very small value, hence we will report it as &lt;.001 following the APA guidelines.</p>
+<div class="int">
+<p>We performed a t-test against the null hypothesis that education is not a significant predictor of income: <span class="math inline">\(t(30) = 7.173,\ p &lt; .001\)</span>, two-sided.
+The large t-statistic leads to a very small p-value, meaning that we have strong evidence against the null hypothesis.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="model-evaluation" class="section level2">
+<h2>Model evaluation</h2>
+<div class="statbox">
+<p><strong>Partitioning variation: <span class="math inline">\(R^2\)</span></strong></p>
+<p>We might ask ourselves if the model is useful. To quantify and assess model utility, we split the total variability of the response into two terms: the variability explained by the model plus the variability left unexplained in the residuals.</p>
+<p><span class="math display">\[
+\text{total variability in response = variability explained by model + unexplained variability in residuals}
+\]</span></p>
+<p>Each term is quantified by a sum of squares:</p>
+<p><span class="math display">\[
+\begin{aligned}
+SS_{Total} &amp;= SS_{Model} + SS_{Residual} \\
+\sum_{i=1}^n (y_i - \bar y)^2 &amp;= \sum_{i=1}^n (\hat y_i - \bar y)^2 + \sum_{i=1}^n (y_i - \hat y_i)^2 \\
+\quad \\
+\text{Where:} \\
+y_i = \text{observed value} \\
+\bar{y} = \text{mean} \\
+\hat{y}_i = \text{model predicted value} \\
+\end{aligned}
+\]</span></p>
+<p>The R-squared coefficient is defined as the proportion of the total variability in the outcome variable which is explained by our model:<br />
+<span class="math display">\[
+R^2 = \frac{SS_{Model}}{SS_{Total}} = 1 - \frac{SS_{Residual}}{SS_{Total}}
+\]</span></p>
+</div>
+<div class="question-begin">
+Question A9
+</div>
+<div class="question-body">
+<p>What is the proportion of the total variability in incomes explained by the linear relationship with education level?</p>
+<p><em><strong>Hint:</strong> The question asks to compute the value of <span class="math inline">\(R^2\)</span>, but you might be able to find it already computed somewhere.</em></p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-107" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-107&#39;, &#39;sol-start-107&#39;)"> Solution </span>
+</div>
+<div id="sol-body-107" class="solution-body" style="display: none;">
+<pre class="r"><code>summary(model1)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = income ~ 1 + education, data = riverview)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -15.809  -5.783   2.088   5.127  18.379 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  11.3214     6.1232   1.849   0.0743 .  
+## education     2.6513     0.3696   7.173 5.56e-08 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 8.978 on 30 degrees of freedom
+## Multiple R-squared:  0.6317, Adjusted R-squared:  0.6194 
+## F-statistic: 51.45 on 1 and 30 DF,  p-value: 5.562e-08</code></pre>
+<p>The output of <code>summary()</code> displays the R-squared value in the following line:</p>
+<pre><code>Multiple R-squared:  0.6317</code></pre>
+<p>For the moment, ignore “Adjusted R-squared.” We will come back to this later on.</p>
+<div class="optional-begin">
+<span id="opt-start-108" class="fa fa-chevron-circle-right optional-icon clickable" onclick="toggle_visibility(&#39;opt-body-108&#39;, &#39;opt-start-108&#39;)"> Optional - Manual calculation of R-Squared</span>
+</div>
+<div id="opt-body-108" class="optional-body" style="display: none;">
+<pre class="r"><code>riverview_fitted &lt;- riverview %&gt;%
+  mutate(
+    income_hat = predict(model1),
+    resid = income - income_hat
+  )
+head(riverview_fitted)</code></pre>
+<pre><code>## # A tibble: 6 × 8
+##   education income seniority gender  male party       income_hat  resid
+##       &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt; &lt;chr&gt;            &lt;dbl&gt;  &lt;dbl&gt;
+## 1         8   37.4         7 male       1 Democrat          32.5   4.92
+## 2         8   26.4         9 female     0 Independent       32.5  -6.10
+## 3        10   47.0        14 male       1 Democrat          37.8   9.20
+## 4        10   34.2        16 female     0 Independent       37.8  -3.65
+## 5        10   25.5         1 female     0 Republican        37.8 -12.4 
+## 6        12   46.5        11 female     0 Democrat          43.1   3.35</code></pre>
+<pre class="r"><code>riverview_fitted %&gt;%
+  summarise(
+    SSModel = sum( (income_hat - mean(income))^2 ),
+    SSTotal = sum( (income - mean(income))^2 )
+  ) %&gt;%
+  summarise(
+    RSquared = SSModel / SSTotal
+  )</code></pre>
+<pre><code>## # A tibble: 1 × 1
+##   RSquared
+##      &lt;dbl&gt;
+## 1    0.632</code></pre>
+</div>
+<p class="optional-end">
+</p>
+<div class="int">
+<p>Approximately 63% of the total variability in employee incomes is explained by the linear association with education level.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="statbox">
+<p><strong>Testing Model Utility: <span class="math inline">\(F\)</span> Statistic</strong></p>
+<p>To test if the model is useful — that is, if the explanatory variable is a useful predictor of the response — we test the following hypotheses:</p>
+<p><span class="math display">\[
+\begin{aligned}
+H_0 &amp;: \text{the model is ineffective, } \beta_1 = 0 \\
+H_1 &amp;: \text{the model is effective, } \beta_1 \neq 0
+\end{aligned}
+\]</span>
+The relevant test-statistic is the F-statistic:</p>
+<p><span class="math display">\[
+\begin{split}
+F = \frac{MS_{Model}}{MS_{Residual}} = \frac{SS_{Model} / 1}{SS_{Residual} / (n-2)}
+\end{split}
+\]</span></p>
+<p>which compares the amount of variation in the response explained by the model to the amount of variation left unexplained in the residuals.</p>
+<p>The sample F-statistic is compared to an F-distribution with <span class="math inline">\(df_{1} = 1\)</span> and <span class="math inline">\(df_{2} = n - 2\)</span> degrees of freedom.<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a></p>
+<div class="optional-begin">
+<span id="opt-start-109" class="fa fa-chevron-circle-right optional-icon clickable" onclick="toggle_visibility(&#39;opt-body-109&#39;, &#39;opt-start-109&#39;)"> Optional: Another formula for the F-test. Click the plus to expand →</span>
+</div>
+<div id="opt-body-109" class="optional-body" style="display: none;">
+<p>With some algebra we can also show that:
+<span class="math display">\[
+F = \frac{R^2 / 1}{(1 - R^2) / (n - 2) } = \frac{R^2 / df_{Model}}{(1 - R^2) / df_{Residual} }
+\]</span></p>
+<p>Proof:</p>
+<p><span class="math display">\[
+\begin{aligned}
+F = \frac{SS_{Model} / 1}{SS_{Residual} / (n - 2)} 
+= \frac{\frac{SS_{Model}}{SS_{Total}}}{\frac{SS_{Residual}}{SS_{Total}} \cdot \frac{1}{(n - 2)}} 
+= \frac{R^2 / 1}{(1 - R^2) / (n - 2)}
+\end{aligned}
+\]</span></p>
+</div>
+<p class="optional-end">
+</p>
+</div>
+<div class="question-begin">
+Question A10
+</div>
+<div class="question-body">
+<p>Look at the output of <code>summary()</code> of your model. Identify the relevant information to conduct an F-test against the null hypothesis that the model is ineffective at predicting income using education level.</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-110" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-110&#39;, &#39;sol-start-110&#39;)"> Solution </span>
+</div>
+<div id="sol-body-110" class="solution-body" style="display: none;">
+<pre class="r"><code>summary(model1)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = income ~ 1 + education, data = riverview)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -15.809  -5.783   2.088   5.127  18.379 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  11.3214     6.1232   1.849   0.0743 .  
+## education     2.6513     0.3696   7.173 5.56e-08 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 8.978 on 30 degrees of freedom
+## Multiple R-squared:  0.6317, Adjusted R-squared:  0.6194 
+## F-statistic: 51.45 on 1 and 30 DF,  p-value: 5.562e-08</code></pre>
+<p>The relevant row is the following:</p>
+<pre><code>F-statistic: 51.45 on 1 and 30 DF,  p-value: 5.562e-08</code></pre>
+<p>We might write up the test results as,</p>
+<div class="int">
+<p>We performed an F-test for the overall significance of the regression, <span class="math inline">\(F(1, 30) = 51.45, p &lt; .001\)</span>.
+The large F-statistic leads to a very small p-value (<span class="math inline">\(&lt;.001\)</span>), meaning that we have very strong evidence against the null hypothesis that the model is ineffective.</p>
+<p>In other words, the data provide strong evidence that education is an effective predictor of income.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="optional-begin">
+<span id="opt-start-111" class="fa fa-chevron-circle-right optional-icon clickable" onclick="toggle_visibility(&#39;opt-body-111&#39;, &#39;opt-start-111&#39;)"> Optional: Equivalence of t-test for the slope and model utility F-test in SLR. Click the plus to expand →</span>
+</div>
+<div id="opt-body-111" class="optional-body" style="display: none;">
+<p><strong>In simple linear regression only</strong>, the F-statistic for overall model significance is equal to the square of the t-statistic for <span class="math inline">\(H_0: \beta_1 = 0\)</span>.</p>
+<p>You can check that the squared t-statistic is equal, up to rounding error, to the F-statistic:</p>
+<pre class="r"><code>summary(model1)$fstatistic[&#39;value&#39;]</code></pre>
+<pre><code>##    value 
+## 51.45152</code></pre>
+<pre class="r"><code>summary(model1)$coefficients[&#39;education&#39;,&#39;t value&#39;]</code></pre>
+<pre><code>## [1] 7.172972</code></pre>
+<p><span class="math display">\[
+t^2 = F \\
+7.173^2 = 51.452
+\]</span></p>
+<p>Here we will show the equivalence of the F-test for model effectiveness and t-test for the slope.</p>
+<p>Recall the formula of the sum of squares due to the model. We will rewrite it in an equivalent form below:
+<span class="math display">\[
+\begin{aligned}
+SS_{Model} &amp;= \sum_i (\hat y_i - \bar y)^2 \\
+&amp;= \sum_i (\hat \beta_0 + \hat \beta_1 x_i - \bar y)^2 \\
+&amp;= \sum_i (\bar y - \hat \beta_1 \bar x + \hat \beta_1 x_i - \bar y)^2 \\
+&amp;= \sum_i (\hat \beta_1 (x_i - \bar x))^2 \\
+&amp;= \hat \beta_1^2 \sum_i (x_i - \bar x)^2
+\end{aligned}
+\]</span></p>
+<p>The F-statistic is given by:
+<span class="math display">\[
+\begin{aligned}
+F = \frac{SS_{Model} / 1}{SS_{Residual} / (n - 2)} 
+= \frac{\hat \beta_1^2 \sum_i (x_i - \bar x)^2}{\hat \sigma^2} 
+= \frac{\hat \beta_1^2 }{\hat \sigma^2 / \sum_i (x_i - \bar x)^2}
+\end{aligned}
+\]</span></p>
+<p>Now recall the formula of the t-statistic,
+<span class="math display">\[
+t = \frac{\hat \beta_1}{SE(\hat \beta_1)} = \frac{\hat \beta_1}{\hat \sigma / \sqrt{\sum_i (x_i - \bar x)^2}}
+\]</span></p>
+<p>It is evident that the latter is obtained as the square root of the former.</p>
+</div>
+<p class="optional-end">
+</p>
+</div>
+<div id="binary-predictors" class="section level2">
+<h2>Binary predictors</h2>
+<p>Let’s suppose that instead of having measured education in years, we had data instead on “Obtained College Degree: Yes/No.” Our explanatory variable would be binary categorical (think back to our discussion of <a href="01_categorical.html#Types_of_Data">types of data</a>).</p>
+<p>Let us pretend that everyone with &gt;18 years of education has a college degree:</p>
+<pre class="r"><code>riverview &lt;- 
+  riverview %&gt;%
+    mutate(
+      degree = ifelse(education &gt; 18, &quot;Yes&quot;, &quot;No&quot;)
+    )</code></pre>
+<p>We may then plot our relationship as a boxplot. If you want to see the individual points, you could always “jitter” them (right-hand plot below)</p>
+<pre class="r"><code>ggplot(riverview, aes(x = degree, y = income)) + 
+  geom_boxplot() +
+ggplot(riverview, aes(x = degree, y = income)) + 
+  geom_jitter(height=0, width=.05)</code></pre>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-22-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<div class="statbox">
+<p><strong>Binary predictors in linear regression</strong></p>
+<p>We can include categorical predictors in a linear regression, but the interpretation of the coefficients is very specific. Whereas we talked about coefficients being interpreted as “the change in <span class="math inline">\(y\)</span> associated with a 1-unit increase in <span class="math inline">\(x\)</span>,” for categorical explanatory variables, coefficients can be considered to examine differences in group means. However, they are actually doing exactly the same thing - the model is simply translating the levels (like “Yes”/“No”) in to 0s and 1s!</p>
+<p>So while we may have in our dataframe a categorical predictor like the middle column “degree,” below, what is inputted into our model is more like the third column, “isYes.”</p>
+<pre><code>## # A tibble: 32 × 3
+##    income degree isYes
+##     &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt;
+##  1   50.3 No         0
+##  2   32.6 No         0
+##  3   65.1 Yes        1
+##  4   54.7 Yes        1
+##  5   56.0 Yes        1
+##  6   38.6 No         0
+##  7   60.1 No         0
+##  8   61.6 Yes        1
+##  9   34.2 No         0
+## 10   70.0 Yes        1
+## # … with 22 more rows</code></pre>
+<p>Our coefficients are just the same as before. The intercept is where our predictor equals zero, and the slope is the change in our outcome variable associated with a 1-unit change in our predictor.<br />
+However, “zero” for this predictor variable now corresponds to a whole level. This is known as the “reference level.” Accordingly, the 1-unit change in our predictor (the move from “zero” to “one”) corresponds to the difference between the two levels.</p>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-24-1.png" width="80%" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+</div>
+<div id="section" class="section level1">
+<h1>–</h1>
+<p><img src="images/slr/catwalking.jpg" width="80%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="multiple-regression" class="section level1">
+<h1>Multiple Regression</h1>
+<p>In this next block of exercises, we move from the simple linear regression model (one outcome variable, one explanatory variable) to the <em>multiple regression model</em> (one outcome variable, multiple explanatory variables).<br />
+Everything we just learned about simple linear regression can be extended (with minor modification) to the multiple regression model. The key conceptual difference is that for simple linear regression we think of the distribution of errors at some fixed value of the explanatory variable, and for multiple linear regression, we think about the distribution of errors at fixed set of values for all our explanatory variables.</p>
+<div id="numeric-numeric" class="section level2">
+<h2>~ Numeric + Numeric</h2>
+<blockquote>
+<p><strong>Research question</strong><br />
+Reseachers are interested in the relationship between psychological wellbeing and time spent outdoors.<br />
+The researchers know that other aspects of peoples’ lifestyles such as how much social interaction they have can influence their mental well-being. They would like to study whether there is a relationship between well-being and time spent outdoors <em>after</em> taking into account the relationship between well-being and social interactions.</p>
+</blockquote>
+<!-- We previously used simple linear regression to examine whether score on the WMBWS was related to the amount of time spent outdoors (self-reported as the average number of hours per week). We will now extend this and build a multiple regression model which we can use to predict WEMWBS score based on both outdoor time *and* number of social interactions.   -->
+<div class="optional-begin">
+<span id="opt-start-112" class="fa fa-chevron-circle-right optional-icon clickable" onclick="toggle_visibility(&#39;opt-body-112&#39;, &#39;opt-start-112&#39;)"> Wellbeing data codebook</span>
+</div>
+<div id="opt-body-112" class="optional-body" style="display: none;">
+<p><strong>Download link</strong></p>
+<p>The data is available at <a href="https://uoepsy.github.io/data/wellbeing.csv" class="uri">https://uoepsy.github.io/data/wellbeing.csv</a>.</p>
+<p><strong>Description</strong></p>
+<p>Researchers interviewed 32 participants, selected at random from the population of residents of Edinburgh &amp; Lothians. They used the Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS), a self-report measure of mental health and well-being. The scale is scored by summing responses to each item, with items answered on a 1 to 5 Likert scale. The minimum scale score is 14 and the maximum is 70.<br />
+The researchers also asked participants to estimate the average number of hours they spend outdoors each week, the average number of social interactions they have each week (whether on-line or in-person), and whether they believe that they stick to a routine throughout the week (Yes/No).</p>
+<p>The data in <code>wellbeing.csv</code> contain five attributes collected from a random sample of <span class="math inline">\(n=32\)</span> hypothetical residents over Edinburgh &amp; Lothians, and include:</p>
+<ul>
+<li><code>wellbeing</code>: Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS), a self-report measure of mental health and well-being. The scale is scored by summing responses to each item, with items answered on a 1 to 5 Likert scale. The minimum scale score is 14 and the maximum is 70.<br />
+</li>
+<li><code>outdoor_time</code>: Self report estimated number of hours per week spent outdoors<br />
+</li>
+<li><code>social_int</code>: Self report estimated number of social interactions per week (both online and in-person)</li>
+<li><code>routine</code>: Binary Yes/No response to the question “Do you follow a daily routine throughout the week?”</li>
+<li><code>location</code>: Location of primary residence (City, Suburb, Rural)</li>
+</ul>
+<p><strong>Preview</strong></p>
+<p>The first six rows of the data are:</p>
+<div id="sbgjustikv" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>html {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
+}
+
+#sbgjustikv .gt_table {
+  display: table;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#sbgjustikv .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#sbgjustikv .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#sbgjustikv .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 0;
+  padding-bottom: 4px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#sbgjustikv .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#sbgjustikv .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#sbgjustikv .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#sbgjustikv .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#sbgjustikv .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#sbgjustikv .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#sbgjustikv .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#sbgjustikv .gt_group_heading {
+  padding: 8px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#sbgjustikv .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#sbgjustikv .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#sbgjustikv .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#sbgjustikv .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#sbgjustikv .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 12px;
+}
+
+#sbgjustikv .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#sbgjustikv .gt_first_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+}
+
+#sbgjustikv .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#sbgjustikv .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#sbgjustikv .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#sbgjustikv .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#sbgjustikv .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#sbgjustikv .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding: 4px;
+}
+
+#sbgjustikv .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#sbgjustikv .gt_sourcenote {
+  font-size: 90%;
+  padding: 4px;
+}
+
+#sbgjustikv .gt_left {
+  text-align: left;
+}
+
+#sbgjustikv .gt_center {
+  text-align: center;
+}
+
+#sbgjustikv .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#sbgjustikv .gt_font_normal {
+  font-weight: normal;
+}
+
+#sbgjustikv .gt_font_bold {
+  font-weight: bold;
+}
+
+#sbgjustikv .gt_font_italic {
+  font-style: italic;
+}
+
+#sbgjustikv .gt_super {
+  font-size: 65%;
+}
+
+#sbgjustikv .gt_footnote_marks {
+  font-style: italic;
+  font-weight: normal;
+  font-size: 65%;
+}
+</style>
+<table class="gt_table">
+  
+  <thead class="gt_col_headings">
+    <tr>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">wellbeing</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">outdoor_time</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">social_int</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1">location</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1">routine</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td class="gt_row gt_right">30</td>
+<td class="gt_row gt_right">7</td>
+<td class="gt_row gt_right">8</td>
+<td class="gt_row gt_left">Suburb</td>
+<td class="gt_row gt_left">Routine</td></tr>
+    <tr><td class="gt_row gt_right">21</td>
+<td class="gt_row gt_right">9</td>
+<td class="gt_row gt_right">8</td>
+<td class="gt_row gt_left">City</td>
+<td class="gt_row gt_left">No Routine</td></tr>
+    <tr><td class="gt_row gt_right">38</td>
+<td class="gt_row gt_right">14</td>
+<td class="gt_row gt_right">10</td>
+<td class="gt_row gt_left">Suburb</td>
+<td class="gt_row gt_left">Routine</td></tr>
+    <tr><td class="gt_row gt_right">27</td>
+<td class="gt_row gt_right">16</td>
+<td class="gt_row gt_right">10</td>
+<td class="gt_row gt_left">City</td>
+<td class="gt_row gt_left">No Routine</td></tr>
+    <tr><td class="gt_row gt_right">20</td>
+<td class="gt_row gt_right">1</td>
+<td class="gt_row gt_right">10</td>
+<td class="gt_row gt_left">Rural</td>
+<td class="gt_row gt_left">No Routine</td></tr>
+    <tr><td class="gt_row gt_right">37</td>
+<td class="gt_row gt_right">11</td>
+<td class="gt_row gt_right">12</td>
+<td class="gt_row gt_left">Suburb</td>
+<td class="gt_row gt_left">No Routine</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+<p class="optional-end">
+</p>
+<div class="question-begin">
+Question B1
+</div>
+<div class="question-body">
+<p>Create a new section heading in your RMarkdown document for the multiple regression exercises.<br />
+Import the wellbeing data into R. Assign them to a object called <code>mwdata</code>.</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-113" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-113&#39;, &#39;sol-start-113&#39;)"> Solution </span>
+</div>
+<div id="sol-body-113" class="solution-body" style="display: none;">
+<pre class="r"><code>library(tidyverse)
+# Read in data
+mwdata = read_csv(file = &quot;https://uoepsy.github.io/data/wellbeing.csv&quot;)
+head(mwdata)</code></pre>
+<pre><code>## # A tibble: 6 × 5
+##   wellbeing outdoor_time social_int location routine   
+##       &lt;dbl&gt;        &lt;dbl&gt;      &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt;     
+## 1        30            7          8 Suburb   Routine   
+## 2        21            9          8 City     No Routine
+## 3        38           14         10 Suburb   Routine   
+## 4        27           16         10 City     No Routine
+## 5        20            1         10 Rural    No Routine
+## 6        37           11         12 Suburb   No Routine</code></pre>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B2
+</div>
+<div class="question-body">
+<p>Produce plots of the <em>marginal distributions</em> (the distributions of each variable in the analysis without reference to the other variables) of the <code>wellbeing</code>, <code>outdoor_time</code>, and <code>social_int</code> variables.</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-114" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-114&#39;, &#39;sol-start-114&#39;)"> Solution </span>
+</div>
+<div id="sol-body-114" class="solution-body" style="display: none;">
+<p>We should be familiar now with how to visualise a marginal distribution. You might choose histograms, density curves, or boxplots, or a combination:</p>
+<pre class="r"><code>library(patchwork) #used to arrange plots
+
+wellbeing_plot &lt;- 
+  ggplot(data = mwdata, aes(x = wellbeing)) +
+  geom_density() +
+  geom_boxplot(width = 1/250) +
+  labs(x = &quot;Score on WEMWBS (range 14-70)&quot;, y = &quot;Probability\ndensity&quot;)
+
+outdoortime_plot &lt;- 
+  ggplot(data = mwdata, aes(x = outdoor_time)) +
+  geom_density() +
+  geom_boxplot(width = 1/200) +
+  labs(x = &quot;Time spent outdoors per week (hours)&quot;, y = &quot;Probability\ndensity&quot;)
+
+social_plot &lt;- 
+  ggplot(data = mwdata, aes(x = social_int)) +
+  geom_density() +
+  geom_boxplot(width = 1/150) +
+  labs(x = &quot;Number of social interactions per week&quot;, y = &quot;Probability\ndensity&quot;)
+
+# the &quot;patchwork&quot; library allows us to arrange multiple plots
+wellbeing_plot / outdoortime_plot / social_plot</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-28"></span>
+<img src="07_regression_files/figure-html/unnamed-chunk-28-1.png" alt="Marginal distribution plots of wellbeing sores, weekly hours spent outdoors, and social interactions" width="80%" />
+<p class="caption">
+Figure 6: Marginal distribution plots of wellbeing sores, weekly hours spent outdoors, and social interactions
+</p>
+</div>
+<div class="int">
+<ul>
+<li>The marginal distribution of scores on the WEMWBS is unimodal with a mean of approximately 43. There is variation in scores (SD = 11.7).<br />
+</li>
+<li>The marginal distribution of weekly hours spend outdoors is unimodal with a mean of approximately 14.8 hours. There is variation in outdoor time (SD = 6.9 hours).<br />
+</li>
+<li>The marginal distribution of numbers of social interactions per week is unimodal with a mean of approximately 16. There is variation in in numbers of social interactions per week (SD = 4.4).</li>
+</ul>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B3
+</div>
+<div class="question-body">
+<p>Produce plots of the <em>marginal relationships</em> between the outcome variable (<code>wellbeing</code>) and each of the explanatory variables.</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-115" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-115&#39;, &#39;sol-start-115&#39;)"> Solution </span>
+</div>
+<div id="sol-body-115" class="solution-body" style="display: none;">
+<pre class="r"><code>wellbeing_outdoor &lt;- 
+  ggplot(data = mwdata, aes(x = outdoor_time, y = wellbeing)) +
+  geom_point(alpha = 0.5) +
+  labs(x = &quot;Time spent outdoors per week (hours)&quot;, y = &quot;Wellbeing score (WEMWBS)&quot;)
+
+wellbeing_social &lt;- 
+  ggplot(data = mwdata, aes(x = social_int, y = wellbeing)) +
+  geom_point(alpha = 0.5) +
+  labs(x = &quot;Number of social interactions per week&quot;, y = &quot;Wellbeing score (WEMWBS)&quot;)
+
+wellbeing_outdoor | wellbeing_social</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:mwdata-mlr-rels"></span>
+<img src="07_regression_files/figure-html/mwdata-mlr-rels-1.png" alt="Scatterplots displaying the relationships between scores on the WEMWBS and a) weekly outdoor time (hours), and b) weekly number of social interactions" width="80%" />
+<p class="caption">
+Figure 7: Scatterplots displaying the relationships between scores on the WEMWBS and a) weekly outdoor time (hours), and b) weekly number of social interactions
+</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B4
+</div>
+<div class="question-body">
+<p>Produce a correlation matrix of the variables which are to be used in the analysis, and write a short paragraph describing the relationships.</p>
+<div class="statbox">
+<p><strong>Correlation matrix</strong></p>
+<p>A table showing the correlation coefficients - <span class="math inline">\(r_{(x,y)}=\frac{\mathrm{cov}(x,y)}{s_xs_y}\)</span> - between variables. Each cell in the table shows the relationship between two variables. The diagonals show the correlation of a variable with itself (and are therefore always equal to 1).</p>
+</div>
+<div class="rtip">
+<p>We can create a correlation matrix easily by giving the <code>cor()</code> function a dataframe. However, we only want to give it 3 columns here. Think about how we select specific columns, either using <code>select()</code>, or giving the column numbers inside <code>[]</code>.</p>
+</div>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-116" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-116&#39;, &#39;sol-start-116&#39;)"> Solution </span>
+</div>
+<div id="sol-body-116" class="solution-body" style="display: none;">
+<p>We can either use:</p>
+<pre class="r"><code># correlation matrix of the first 3 columns
+cor(mwdata[,1:3])</code></pre>
+<p>or:</p>
+<pre class="r"><code># select only the columns we want by name, and pass this to cor()
+mwdata %&gt;% 
+  select(wellbeing, outdoor_time, social_int) %&gt;%
+  cor()</code></pre>
+<pre><code>##              wellbeing outdoor_time social_int
+## wellbeing    1.0000000    0.5815613  0.7939003
+## outdoor_time 0.5815613    1.0000000  0.3394469
+## social_int   0.7939003    0.3394469  1.0000000</code></pre>
+<div class="int">
+<p>There is a moderate, positive, linear relationship between weekly outdoor time and WEMWBS scores for the participants in the sample.
+Participants’ wellbeing scores tend to increase, on average, with the number of hours spent outdoors each week.<br />
+There is a moderate, positive, linear relationship between the weekly number of social interactions and WEMWBS scores for the participants in the sample.
+Participants’ wellbeing scores tend to increase, on average, with the weekly number of social interactions.
+There is also a weak positive correlation between weekly outdoor time and the weekly number of social interactions.</p>
+</div>
+<p><br>
+Note that there is a weak correlation between our two explanatory variables (outdoor_time and social_int). We will return to how this might affect our model when later on we look at the assumptions of multiple regression.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="statbox">
+<p><strong>Model formula</strong></p>
+<p>For multiple linear regression, the model formula is an extension of the one predictor (“simple”) regression model, to include any number of predictors:<br />
+<span class="math display">\[
+y = \beta_0 \ + \ \beta_1 x_1 \ + \ \beta_2 x_2 \ + \ ... \ + \beta_k x_k \ + \ \epsilon \\ 
+\quad \\ 
+\text{where} \quad \epsilon \sim N(0, \sigma) \text{ independently}
+\]</span></p>
+<p>In the model specified above,</p>
+<ul>
+<li><span class="math inline">\(\mu_{y|x_1, x_2, ..., x_k} = \beta_0 + \beta_1 x + \beta_2 x_2 + ... \beta_k x_k\)</span> represents the systematic part of the model giving the mean of <span class="math inline">\(y\)</span> at each combination of values of variables <span class="math inline">\(x_1\)</span>-<span class="math inline">\(x_k\)</span>;</li>
+<li><span class="math inline">\(\epsilon\)</span> represents the error (deviation) from that mean, and the errors are independent from one another.</li>
+</ul>
+<p><strong>Visual</strong></p>
+<p>Note that for simple linear regression we talked about our model as a <em>line</em> in 2 dimensions: the systematic part <span class="math inline">\(\beta_0 + \beta_1 x\)</span> defined a line for <span class="math inline">\(\mu_y\)</span> across the possible values of <span class="math inline">\(x\)</span>, with <span class="math inline">\(\epsilon\)</span> as the random deviations from that line. But in multiple regression we have more than two variables making up our model.</p>
+<p>In this particular case of three variables (one outcome + two explanatory), we can think of our model as a <em>regression surface</em> (See Figure <a href="#fig:regsurf">8</a>). The systematic part of our model defines the surface across a range of possible values of both <span class="math inline">\(x_1\)</span> <em>and</em> <span class="math inline">\(x_2\)</span>. Deviations from the surface are determined by the random error component, <span class="math inline">\(\hat \epsilon\)</span>.</p>
+<div class="figure" style="text-align: center"><span id="fig:regsurf"></span>
+<img src="07_regression_files/figure-html/regsurf-1.png" alt="Regression surface for wellbeing ~ outdoor_time + social_int, from two different angles" width="100%" />
+<p class="caption">
+Figure 8: Regression surface for wellbeing ~ outdoor_time + social_int, from two different angles
+</p>
+</div>
+<p>Don’t worry about trying to figure out how to visualise it if we had any more explanatory variables! We can only concieve of 3 spatial dimensions. One could imagine this surface changing over time, which would bring in a 4th dimension, but beyond that, it’s not worth trying!.</p>
+</div>
+<div class="question-begin">
+Question B5
+</div>
+<div class="question-body">
+<p>The scatterplots we created in an earlier exercise show moderate, positive, and linear relationships both between outdoor time and wellbeing, and between numbers of social interactions and wellbeing.</p>
+<p>In R, using <code>lm()</code>, fit the linear model specified by the formula below, assigning the output to a name to store it in your environment.</p>
+<p><span class="math display">\[
+Wellbeing = \beta_0 \ + \ \beta_1 \cdot Outdoor Time \ + \ \beta_2 \cdot Social Interactions \ + \ \epsilon
+\]</span></p>
+<p><em>Tip:</em>
+As we did for simple linear regression, we can fit our multiple regression model using the <code>lm()</code> function. We can add as many explanatory variables as we like, separating them with a <code>+</code>.</p>
+<pre><code>lm( &lt;response variable&gt; ~ 1 + &lt;explanatory variable 1&gt; + &lt;explanatory variable 2&gt; + ... , data = &lt;dataframe&gt;)</code></pre>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-117" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-117&#39;, &#39;sol-start-117&#39;)"> Solution </span>
+</div>
+<div id="sol-body-117" class="solution-body" style="display: none;">
+<pre class="r"><code>wbmodel &lt;- lm(wellbeing ~ 1 + outdoor_time + social_int, data = mwdata)</code></pre>
+</div>
+<p class="solution-end">
+</p>
+<div class="statbox">
+<p><strong>Interpretation of Muliple Regression Coefficients</strong></p>
+<p>The parameters of a multiple regression model are:</p>
+<ul>
+<li><span class="math inline">\(\beta_0\)</span> (The intercept);</li>
+<li><span class="math inline">\(\beta_1\)</span> (The slope across values of <span class="math inline">\(x_1\)</span>);</li>
+<li>…<br />
+</li>
+<li>…</li>
+<li><span class="math inline">\(\beta_k\)</span> (The slope across values of <span class="math inline">\(x_k\)</span>);</li>
+<li><span class="math inline">\(\sigma\)</span> (The standard deviation of the errors).</li>
+</ul>
+<p><br>
+You’ll hear a lot of different ways that people explain multiple regression coefficients.<br />
+For the model <span class="math inline">\(y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \epsilon\)</span>, the estimate <span class="math inline">\(\hat \beta_1\)</span> will often be reported as:</p>
+<p>the increase in <span class="math inline">\(y\)</span> for a one unit increase in <span class="math inline">\(x_1\)</span> when…</p>
+<ul>
+<li>holding the effect of <span class="math inline">\(x_2\)</span> constant.</li>
+<li>controlling for differences in <span class="math inline">\(x_2\)</span>.</li>
+<li>partialling out the effects of <span class="math inline">\(x_2\)</span>.</li>
+<li>holding <span class="math inline">\(x_2\)</span> equal.</li>
+<li>accounting for effects of <span class="math inline">\(x_2\)</span>.</li>
+</ul>
+<div class="int">
+<pre><code>##               Estimate Std. Error  t value     Pr(&gt;|t|)
+## (Intercept)  5.3703775  4.3205141 1.242995 2.238259e-01
+## outdoor_time 0.5923673  0.1689445 3.506284 1.499467e-03
+## social_int   1.8034489  0.2690982 6.701825 2.369845e-07</code></pre>
+<p>The coefficient 0.59 of weekly outdoor time for predicting wellbeing score says that among those with the same number of social interactions per week, those who have one additional hour of outdoor time tend to, on average, score 0.59 higher on the WEMWBS wellbeing scale. The multiple regression coefficient measures that average <em>conditional</em> relationship.</p>
+</div>
+</div>
+<div class="question-begin">
+Question B6
+</div>
+<div class="question-body">
+<div class="statbox">
+<p>Just like the simple linear regression, when we estimate parameters from the available data, we have:</p>
+<ul>
+<li>A <em>fitted model</em> (recall that the h<span class="math inline">\(\hat{\textrm{a}}\)</span>ts are used to distinguish our <em>estimates</em> from the <em>true unknown parameters</em>):
+<span class="math display">\[
+\widehat{Wellbeing} = \hat \beta_0 + \hat \beta_1 \cdot Outdoor Time + \hat \beta_2 \cdot Social Interactions
+\]</span></li>
+<li>And we have the residuals <span class="math inline">\(\hat \epsilon = y - \hat y\)</span> which are the deviations from the observed values and our model-predicted responses.</li>
+</ul>
+</div>
+<ol style="list-style-type: decimal">
+<li>Extract <em>and interpret</em> the parameter estimates (the “coefficients”) from your model.<br />
+(<code>summary()</code>, <code>coef()</code>, <code>$coefficients</code> etc will be useful here)<br />
+</li>
+<li>Within what distance from the model predicted values (the regression surface) would we expect 95% of WEMWBS wellbeing scores to be?
+(Either <code>sigma()</code> or part of the output from <code>summary()</code> will help you for this)</li>
+</ol>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-118" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-118&#39;, &#39;sol-start-118&#39;)"> Solution </span>
+</div>
+<div id="sol-body-118" class="solution-body" style="display: none;">
+<pre class="r"><code>coef(wbmodel)</code></pre>
+<pre><code>##  (Intercept) outdoor_time   social_int 
+##    5.3703775    0.5923673    1.8034489</code></pre>
+<ul>
+<li><span class="math inline">\(\hat \beta_0\)</span> = 5.37, the estimated average wellbeing score associated with zero hours of outdoor time and zero social interactions per week.<br />
+</li>
+<li><span class="math inline">\(\hat \beta_1\)</span> = 0.59, the estimated increase in average wellbeing score associated with one hour increase in weekly outdoor time, <em>holding the number of social interactions constant</em> (i.e., when the remaining explanatory variables are held at the same value or are fixed).</li>
+<li><span class="math inline">\(\hat \beta_2\)</span> = 1.8, the estimated increase in average wellbeing score associated with an additional social interaction per week (an increase of one), <em>holding weekly outdoor time constant</em>.</li>
+</ul>
+<pre class="r"><code>sigma(wbmodel)</code></pre>
+<pre><code>## [1] 6.148276</code></pre>
+<p>The estimated standard deviation of the errors is <span class="math inline">\(\hat \sigma\)</span> = 6.15. We would expect 95% of wellbeing scores to be within about 12.3 (<span class="math inline">\(2 \hat \sigma\)</span>) from the model fit.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question B7
+</div>
+<div class="question-body">
+<p>Obtain 95% <a href="https://lmgtfy.com/?q=confidence+intervals+for+lm+in+r" target="_blank">confidence intervals for the regression coefficients</a>, and write a sentence describing each.</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-119" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-119&#39;, &#39;sol-start-119&#39;)"> Solution </span>
+</div>
+<div id="sol-body-119" class="solution-body" style="display: none;">
+<pre class="r"><code>confint(wbmodel, level = 0.95)</code></pre>
+<pre><code>##                   2.5 %     97.5 %
+## (Intercept)  -3.4660660 14.2068209
+## outdoor_time  0.2468371  0.9378975
+## social_int    1.2530813  2.3538164</code></pre>
+<div class="int">
+<ul>
+<li>The average wellbeing score for all those with zero hours of outdoor time and zero social interactions per week is between -3.47 and 14.21.<br />
+</li>
+<li>When <em>holding the number of social interactions per week constant</em>, each one hour increase in weekly outdoor time is associated with a difference in wellbeing scores between 0.25 and 0.94, on average.<br />
+</li>
+<li>When <em>holding weekly outdoor time constant</em>, each increase of one social interaction per week is associated with a difference in wellbeing scores between 1.25 and 2.35, on average.</li>
+</ul>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<p>In last week’s exercises, we extended the simple linear regression model to <em>multiple regression</em> (one outcome variable, multiple explanatory variables). Specifically, we looked at the case of when we had multiple numeric (or ‘continuous’) explanatory variables.<br />
+We’re now going to start by taking a look at a model with a mix of <em>numeric</em> and <em>categorical</em> explanatory variables.</p>
+</div>
+<div id="numeric-categorical" class="section level2">
+<h2>~ Numeric + Categorical</h2>
+<p>Suppose that the group of researchers were instead wanting to study the relationship between well-being and time spent outdoors after taking into account the relationship between well-being and <em>having a routine</em>.</p>
+<p>Note that in the dataset, ‘having a routine’ is <em>categorical</em> (participants either do, or don’t have a routine).
+So let’s go over the modelling process again, but paying careful attention to where and how the process differs when we have a <em>categorical</em> predictor.</p>
+<div class="question-begin">
+Question A1
+</div>
+<div class="question-body">
+<p>We have already visualised the marginal distribution of weekly outdoor time in questions last week, as well as its relationship with wellbeing scores.</p>
+<p>Read in the wellbeing data (<a href="https://uoepsy.github.io/data/wellbeing.csv" class="uri">https://uoepsy.github.io/data/wellbeing.csv</a>) and produce visualisations of:</p>
+<ol style="list-style-type: decimal">
+<li>the distribution of the <code>routine</code> variable</li>
+<li>the relationship between <code>routine</code> and <code>wellbeing</code>.</li>
+</ol>
+<p><strong>Note:</strong> We cannot visualise the distribution of <code>routine</code> as a density curve or boxplot, because it is a <em>categorical</em> variable (observations can only take one of a set of discrete response values).</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-120" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-120&#39;, &#39;sol-start-120&#39;)"> Solution </span>
+</div>
+<div id="sol-body-120" class="solution-body" style="display: none;">
+<pre class="r"><code>library(tidyverse)
+# Read in data
+mwdata = read_csv(file = &quot;https://uoepsy.github.io/data/wellbeing.csv&quot;)</code></pre>
+<p><code>geom_bar()</code> will count the number of observations falling into each unique level of the routine variable:</p>
+<pre class="r"><code>ggplot(data = mwdata, aes(x = routine)) +
+  geom_bar()+
+  labs(x = &quot;Routine&quot;, y = &quot;Frequency&quot;)</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-37"></span>
+<img src="07_regression_files/figure-html/unnamed-chunk-37-1.png" alt="Marginal distribution plots of Routine (y/n)" width="80%" />
+<p class="caption">
+Figure 9: Marginal distribution plots of Routine (y/n)
+</p>
+</div>
+<p>We might plot the relationship between routine and wellbeing as two boxplots:</p>
+<pre class="r"><code>ggplot(data = mwdata, aes(x = routine, y = wellbeing)) +
+  geom_boxplot()+
+  labs(x = &quot;Routine&quot;, y = &quot;Wellbeing score (WEMWBS)&quot;)</code></pre>
+<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-38"></span>
+<img src="07_regression_files/figure-html/unnamed-chunk-38-1.png" alt="Relationship between wellbeing and presence of routine" width="80%" />
+<p class="caption">
+Figure 10: Relationship between wellbeing and presence of routine
+</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question A2
+</div>
+<div class="question-body">
+<p>Fit the multiple regression model below using <code>lm()</code>, and assign it to an object to store it in your environment. Examine the summary output of the model.</p>
+<p><span class="math display">\[
+Wellbeing = \beta_0 + \beta_1 \cdot OutdoorTime + \beta_2 \cdot Routine + \epsilon
+\]</span></p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-121" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-121&#39;, &#39;sol-start-121&#39;)"> Solution </span>
+</div>
+<div id="sol-body-121" class="solution-body" style="display: none;">
+<pre class="r"><code>wbmodel2 &lt;- lm(wellbeing ~ 1 + outdoor_time + routine, data = mwdata)
+summary(wbmodel2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = wellbeing ~ 1 + outdoor_time + routine, data = mwdata)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -16.3597  -5.7983   0.1047   7.2899  12.5957 
+## 
+## Coefficients:
+##                Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)     26.2525     3.9536   6.640  2.8e-07 ***
+## outdoor_time     0.9152     0.2358   3.881 0.000552 ***
+## routineRoutine   7.2947     3.2507   2.244 0.032633 *  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 9.06 on 29 degrees of freedom
+## Multiple R-squared:  0.4361, Adjusted R-squared:  0.3972 
+## F-statistic: 11.21 on 2 and 29 DF,  p-value: 0.0002467</code></pre>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question A3
+</div>
+<div class="question-body">
+<p><span class="math inline">\(\hat \beta_0\)</span> (the intercept) is the estimated average wellbeing score associated with zero hours of weekly outdoor time and zero in the routine variable.</p>
+<p>What group is the intercept the estimated wellbeing score for when they have zero hours of outdoor time? Why (think about what zero in the routine variable means)?</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-122" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-122&#39;, &#39;sol-start-122&#39;)"> Solution </span>
+</div>
+<div id="sol-body-122" class="solution-body" style="display: none;">
+<p>As you can see in the output of the model, we have a coefficient called <code>routineRoutine</code>. This is the parameter estimate for a dummy variable which has been inputted into the model. The <code>lm()</code> function will automatically name the dummy variables (and therefore the coefficients) according to what level is identified by the 1. It names them <code>&lt;variable&gt;&lt;Level&gt;</code>, so we can tell that <code>routineRoutine</code> is 1 for “Routine” and 0 for “No Routine.”</p>
+<p>The intercept is therefore the estimated wellbeing score for those with No Routine and zero hours of outdoor time.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question A4
+</div>
+<div class="question-body">
+<p>In <a href="07_regression.html/#numeric-numeric">the previous example</a>, we had a visualisation of our model as a regression surface.<br />
+Here, one of our explanatory variables has only two possible responses. How might we best visualise the model?</p>
+<ol style="list-style-type: lower-alpha">
+<li>one line</li>
+<li>one surface</li>
+<li>two lines</li>
+<li>two surfaces</li>
+<li>a curved (not flat) surface</li>
+</ol>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-123" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-123&#39;, &#39;sol-start-123&#39;)"> Solution </span>
+</div>
+<div id="sol-body-123" class="solution-body" style="display: none;">
+<p>We can visualise the model <span class="math inline">\(\widehat{Wellbeing} = \hat \beta_0 + \hat \beta_1 \cdot OutdoorTime + \hat \beta_2 \cdot Routine\)</span> as two lines.<br />
+Each line represents the model predicted values for wellbeing scores across the range of weekly outdoor time, with one line for those who report having “Routine” and one for those with “No Routine.”</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question A5
+</div>
+<div class="question-body">
+<p>Get a pen and paper, and sketch out the plot shown in Figure <a href="#fig:plot-annotate">11</a>.</p>
+<div class="figure" style="text-align: center"><span id="fig:plot-annotate"></span>
+<img src="07_regression_files/figure-html/plot-annotate-1.png" alt="Multiple regression model: Wellbeing ~ Outdoor Time + Routine" width="80%" />
+<p class="caption">
+Figure 11: Multiple regression model: Wellbeing ~ Outdoor Time + Routine
+</p>
+</div>
+<p>Annotate your plot with labels for each of parameter estimates from your model:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Parameter Estimate</th>
+<th align="center">Model Coefficient</th>
+<th align="right">Estimate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(\hat \beta_0\)</span></td>
+<td align="center"><code>(Intercept)</code></td>
+<td align="right">26.25</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\hat \beta_1\)</span></td>
+<td align="center"><code>outdoor_time</code></td>
+<td align="right">0.92</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(\hat \beta_2\)</span></td>
+<td align="center"><code>routineRoutine</code></td>
+<td align="right">7.29</td>
+</tr>
+</tbody>
+</table>
+<div class="optional-begin">
+<span id="opt-start-124" class="fa fa-chevron-circle-right optional-icon clickable" onclick="toggle_visibility(&#39;opt-body-124&#39;, &#39;opt-start-124&#39;)"> Hint</span>
+</div>
+<div id="opt-body-124" class="optional-body" style="display: none;">
+<p>Below you can see where to add the labels, but we have not said which is which.</p>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-40-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<ul>
+<li>A is the vertical distance between the red and blue lines (the lines are parallel, so this distance is the same wherever you cut it on the x-axis).<br />
+</li>
+<li>B is the point at which the blue line cuts the y-axis.<br />
+</li>
+<li>C is the vertical increase (increase on the y-axis) for the blue line associated with a 1 unit increase on the x-axis (the lines are parallel, so this is the same for the red line).</li>
+</ul>
+</div>
+<p class="optional-end">
+</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-125" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-125&#39;, &#39;sol-start-125&#39;)"> Solution </span>
+</div>
+<div id="sol-body-125" class="solution-body" style="display: none;">
+<ul>
+<li>A = <span class="math inline">\(\hat \beta_2\)</span> = <code>routineRoutine</code> coefficient = 7.29</li>
+<li>B = <span class="math inline">\(\hat \beta_0\)</span> = <code>(Intercept)</code> coefficient = 26.25</li>
+<li>C = <span class="math inline">\(\hat \beta_1\)</span> = <code>outdoor_time</code> coefficient = 0.92</li>
+</ul>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-41-1.png" width="80%" style="display: block; margin: auto;" /></p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question A6
+</div>
+<div class="question-body">
+<p>Load the <strong>sjPlot</strong> package using <code>library(sjPlot)</code> and try running the code below (changing to use the name of your fitted model). You may already have the <strong>sjPlot</strong> package installed from previous exercises. If not, you will need to install it first.</p>
+<pre class="r"><code>library(sjPlot)
+plot_model(wbmodel2)
+plot_model(wbmodel2, type = &quot;pred&quot;)
+plot_model(wbmodel2, type = &quot;pred&quot;,  terms=c(&quot;outdoor_time&quot;,&quot;routine&quot;), show.data=TRUE)</code></pre>
+<p>What do you think each one is showing?</p>
+<div class="rtip">
+<p>The <code>plot_model</code> function (and the <strong>sjPlot</strong> package) can do a lot of different things. Most packages in R come with tutorials (or “vignettes”), for instance: <a href="https://strengejacke.github.io/sjPlot/articles/plot_model_estimates.html" class="uri">https://strengejacke.github.io/sjPlot/articles/plot_model_estimates.html</a></p>
+</div>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-126" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-126&#39;, &#39;sol-start-126&#39;)"> Solution </span>
+</div>
+<div id="sol-body-126" class="solution-body" style="display: none;">
+<pre class="r"><code>library(sjPlot)
+plot_model(wbmodel2)</code></pre>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-43-1.png" width="80%" style="display: block; margin: auto;" />
+These are the parameter estimates (the <span class="math inline">\(\hat \beta\)</span>’s), and the confidence intervals.</p>
+<pre class="r"><code>confint(wbmodel2)</code></pre>
+<pre><code>##                     2.5 %    97.5 %
+## (Intercept)    18.1665376 34.338493
+## outdoor_time    0.4329433  1.397409
+## routineRoutine  0.6462090 13.943226</code></pre>
+<p>When we add <code>type="pred"</code> we are asking for the predicted values. It will provide a separate plot for each explanatory variable, showing the predicted values at each level of that variable:</p>
+<pre class="r"><code>plot_model(wbmodel2, type = &quot;pred&quot;)</code></pre>
+<pre><code>## $outdoor_time</code></pre>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-45-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<pre><code>## 
+## $routine</code></pre>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-45-2.png" width="80%" style="display: block; margin: auto;" /></p>
+<p>We can combine these into one plot, and ask it to show the raw data as well:</p>
+<pre class="r"><code>plot_model(wbmodel2, type = &quot;pred&quot;,  terms=c(&quot;outdoor_time&quot;,&quot;routine&quot;), show.data=TRUE)</code></pre>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-46-1.png" width="80%" style="display: block; margin: auto;" /></p>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="categorical-predictors-with-k-levels" class="section level2">
+<h2>Categorical Predictors with <span class="math inline">\(k\)</span> levels</h2>
+<p>We saw that a <em>binary categorical</em> variable gets inputted into our model as a variable of 0s and 1s (these typically get called <strong>“dummy variables”</strong>).</p>
+<div class="statbox">
+<p><strong>Dummy variables</strong> are numeric variables that represent categorical data.</p>
+</div>
+<p>When we have a <em>categorical</em> explanatory variable with <strong>more than 2 levels</strong>, our model gets a bit more - it needs not just one, but <em>a number of</em> dummy variables. For a categorical variable with <span class="math inline">\(k\)</span> levels, we can express it in <span class="math inline">\(k-1\)</span> dummy variables.</p>
+<p>For example, the “species” column below has three levels, and can be expressed by the two variables “species_dog” and “species_parrot”:</p>
+<pre><code>##   species species_dog species_parrot
+## 1     cat           0              0
+## 2     cat           0              0
+## 3     dog           1              0
+## 4  parrot           0              1
+## 5     dog           1              0
+## 6     cat           0              0
+## 7     ...         ...            ...</code></pre>
+<ul>
+<li>The “cat” level is expressed whenever both the “species_dog” and “species_parrot” variables are 0.</li>
+<li>The “dog” level is expressed whenever the “species_dog” variable is 1 and the “species_parrot” variable is 0.</li>
+<li>The “parrot” level is expressed whenever the “species_dog” variable is 0 and the “species_parrot” variable is 1.</li>
+</ul>
+<p>R will do all of this re-expression for us. If we include in our model a categorical explanatory variable with 4 different levels, the model will estimate 3 parameters - one for each dummy variable. We can interpret the parameter estimates (the coefficients we obtain using <code>coefficients()</code>,<code>coef()</code> or <code>summary()</code>) as the estimated increase in the outcome variable associated with an increase of one in each dummy variable (holding all other variables equal).</p>
+<table style="width:92%;">
+<colgroup>
+<col width="27%" />
+<col width="15%" />
+<col width="18%" />
+<col width="13%" />
+<col width="16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">Estimate</th>
+<th align="center">Std. Error</th>
+<th align="center">t value</th>
+<th align="center">Pr(&gt;|t|)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>(Intercept)</strong></td>
+<td align="center">60.28</td>
+<td align="center">1.209</td>
+<td align="center">49.86</td>
+<td align="center">5.273e-39</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>speciesdog</strong></td>
+<td align="center">-11.47</td>
+<td align="center">1.71</td>
+<td align="center">-6.708</td>
+<td align="center">3.806e-08</td>
+</tr>
+<tr class="odd">
+<td align="center"><strong>speciesparrot</strong></td>
+<td align="center">-4.916</td>
+<td align="center">1.71</td>
+<td align="center">-2.875</td>
+<td align="center">0.006319</td>
+</tr>
+</tbody>
+</table>
+<p>Note that in the above example, an increase in 1 of “species_dog” is the difference between a “cat” and a “dog.” An increase in one of “species_parrot” is the difference between a “cat” and a “parrot.” We think of the “cat” category in this example as the <em>reference level</em> - it is the category against which other categories are compared against.</p>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-49-1.png" width="80%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="more-model-evaluation" class="section level2">
+<h2>More Model Evaluation</h2>
+<div class="statbox">
+<p><strong>Adjusted <span class="math inline">\(R^2\)</span></strong></p>
+<p>We know from our work on simple linear regression that the R-squared can be obtained as:
+<span class="math display">\[
+R^2 = \frac{SS_{Model}}{SS_{Total}} = 1 - \frac{SS_{Residual}}{SS_{Total}}
+\]</span></p>
+<p>However, when we add more and more predictors into a multiple regression model, <span class="math inline">\(SS_{Residual}\)</span> cannot increase, and may decrease by pure chance alone, even if the predictors are unrelated to the outcome variable. Because <span class="math inline">\(SS_{Total}\)</span> is constant, the calculation <span class="math inline">\(1-\frac{SS_{Residual}}{SS_{Total}}\)</span> will increase by chance alone.</p>
+<p>An alternative, the Adjusted-<span class="math inline">\(R^2\)</span>, does not necessarily increase with the addition of more explanatory variables, by including a penalty according to the number of explanatory variables in the model. It is not by itself meaningful, but can be useful in determining what predictors to include in a model.
+<span class="math display">\[
+Adjusted{-}R^2=1-\frac{(1-R^2)(n-1)}{n-k-1} \\
+\quad \\
+\begin{align}
+&amp; \text{Where:} \\
+&amp; n = \text{sample size} \\
+&amp; k = \text{number of explanatory variables} \\
+\end{align}
+\]</span></p>
+<hr />
+<p><strong>In R,</strong> you can view the mutiple and adjusted <span class="math inline">\(R^2\)</span> at the bottom of the output of <code>summary(&lt;modelname&gt;)</code>:</p>
+<div class="figure" style="text-align: left"><span id="fig:mlroutputrsq"></span>
+<img src="images/mlroutputrsq.png" alt="Multiple regression output in R, summary.lm(). R-squared highlighted" width="80%" />
+<p class="caption">
+Figure 12: Multiple regression output in R, summary.lm(). R-squared highlighted
+</p>
+</div>
+</div>
+<div class="statbox">
+<p><strong>F-ratio</strong></p>
+<p>As in simple linear regression, the F-ratio is used to test the null hypothesis that <strong>all</strong> regression slopes are zero.</p>
+<p>It is called the F-ratio because it is the ratio of the how much of the variation is explained by the model (per parameter) versus how much of the variation is unexplained (per remaining degrees of freedom).</p>
+<p><span class="math display">\[
+F_{df_{model},df_{residual}} = \frac{MS_{Model}}{MS_{Residual}} = \frac{SS_{Model}/df_{Model}}{SS_{Residual}/df_{Residual}} \\
+\quad \\
+\begin{align}
+&amp; \text{Where:} \\
+&amp; df_{model} = k \\
+&amp; df_{error} = n-k-1 \\
+&amp; n = \text{sample size} \\
+&amp; k  = \text{number of explanatory variables} \\
+\end{align}
+\]</span></p>
+<hr />
+<p><strong>In R,</strong> at the bottom of the output of <code>summary(&lt;modelname&gt;)</code>, you can view the F ratio, along with an hypothesis test against the alternative hypothesis that the at least one of the coefficients <span class="math inline">\(\neq 0\)</span> (under the null hypothesis that all coefficients = 0, the ratio of explained:unexplained variance should be approximately 1):</p>
+<div class="figure" style="text-align: left"><span id="fig:mlroutputrf"></span>
+<img src="images/mlroutputf.png" alt="Multiple regression output in R, summary.lm(). F statistic highlighted" width="80%" />
+<p class="caption">
+Figure 13: Multiple regression output in R, summary.lm(). F statistic highlighted
+</p>
+</div>
+</div>
+<div class="question-begin">
+Question D1
+</div>
+<div class="question-body">
+<p>Using the wellbeing data, fit the following model.</p>
+<ul>
+<li><span class="math inline">\(\text{Wellbeing} = \beta_0 + \beta_1 \cdot \text{Social Interactions} + \beta_2 \cdot \text{HasRoutine} + \beta_3 \cdot \text{Outdoor Time} + \epsilon\)</span></li>
+</ul>
+<p>Does the model provide a better fit to the data than a model with no explanatory variables? (i.e., test against the alternative hypothesis that at least one of the explanatory variables significantly predicts wellbeing scores).</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-127" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-127&#39;, &#39;sol-start-127&#39;)"> Solution </span>
+</div>
+<div id="sol-body-127" class="solution-body" style="display: none;">
+<pre class="r"><code>wbmodel2 &lt;- lm(wellbeing ~ social_int + routine + outdoor_time, data=mwdata)
+summary(wbmodel2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = wellbeing ~ social_int + routine + outdoor_time, 
+##     data = mwdata)
+## 
+## Residuals:
+##    Min     1Q Median     3Q    Max 
+## -9.354 -3.840 -1.071  2.671  8.859 
+## 
+## Coefficients:
+##                Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)      3.4097     3.5908   0.950 0.350463    
+## social_int       1.7859     0.2214   8.065 8.81e-09 ***
+## routineRoutine   6.9937     1.8152   3.853 0.000623 ***
+## outdoor_time     0.5371     0.1397   3.844 0.000638 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 5.058 on 28 degrees of freedom
+## Multiple R-squared:  0.8303, Adjusted R-squared:  0.8121 
+## F-statistic: 45.67 on 3 and 28 DF,  p-value: 6.525e-11</code></pre>
+<div class="int">
+<p>Weekly social interactions, outdoor time, and having a routine explained 81.2% of the variance (adjusted <span class="math inline">\(R^2\)</span> =0.812, <span class="math inline">\(F\)</span>(3,28)=45.7, p&lt;.001)</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+</div>
+<div id="section-1" class="section level1">
+<h1>–</h1>
+<p><img src="images/slr/snoopy.gif" width="80%" style="display: block; margin: auto;" /></p>
+</div>
+<div id="making-valid-inferences" class="section level1">
+<h1>Making Valid Inferences</h1>
+<div class="statbox">
+<p>So far, we have been fitting and interpreting our regression models. In each case, we first specified the model, then visually explored the marginal distributions and relationships of variables which would be used in the analysis. Then, once we fitted the model, we began to examine the fit by studying what the various parameter estimates represented, and the spread of the residuals. We saw these in the output of <code>summary()</code> of a model - they were shown in the parts of the output inside the red boxes in Figure <a href="#fig:mlroutput">14</a>).</p>
+<div class="figure" style="text-align: center"><span id="fig:mlroutput"></span>
+<img src="images/mlroutput.png" alt="Multiple regression output in R, summary.lm(). Residuals and Coefficients highlighted" width="80%" />
+<p class="caption">
+Figure 14: Multiple regression output in R, summary.lm(). Residuals and Coefficients highlighted
+</p>
+</div>
+We also discussed drawing inferences using our model estimates, as well as using a model to make predictions.
+However, we should really not have done this prior to being satisfied that our model meets a certain set of assumptions. All of the estimates, intervals and hypothesis tests (see Figure <a href="#fig:mlroutputhyp">15</a>) resulting from a regression analysis <em>assume</em> a certain set of conditions have been met. Meeting these conditions is what allows us to generalise our findings beyond our sample (i.e., to the population).<br />
+
+<div class="figure" style="text-align: center"><span id="fig:mlroutputhyp"></span>
+<img src="images/mlrhyp.png" alt="Multiple regression output in R, summary.lm(). Hypothesis tests highlighted" width="80%" />
+<p class="caption">
+Figure 15: Multiple regression output in R, summary.lm(). Hypothesis tests highlighted
+</p>
+</div>
+</div>
+<div id="choose-fit-assess-use" class="section level2">
+<h2>Choose &gt; Fit &gt; Assess &gt; Use</h2>
+<div class="lo">
+<p><strong>IMPORTANT!</strong></p>
+<p>It may help to think of the sequence of steps involved in statistical modeling as:<br />
+<span class="math display">\[
+\text{Choose} \rightarrow \text{Fit} \rightarrow \text{Assess} \rightarrow \text{Use}
+\]</span>
+<br></p>
+<ol style="list-style-type: decimal">
+<li>We explore/visualise our data and <strong>Choose</strong> our model specification.<br />
+</li>
+<li>Then we <strong>Fit</strong> the model in R.<br />
+</li>
+<li>Next, we <strong>Assess</strong> the fit, to ensure that it meets all the underlying assumptions?<br />
+</li>
+<li><em>Finally</em>, we <strong>Use</strong> our model to draw statistical inferences about the world, or to make predictions.</li>
+</ol>
+<strong>A general rule</strong><br />
+
+<center>
+Do not <strong>use</strong> (draw inferences or predictions from) a model <em>before</em> you have <strong>assessed</strong> that the model satisfies the underlying assumptions
+</center>
+</div>
+</div>
+<div id="assumptions-the-broad-idea" class="section level2">
+<h2>Assumptions: The broad idea</h2>
+<p>TODO - mention recipe book</p>
+<div class="statbox">
+<p><strong>Multicollinearity</strong></p>
+For the linear model with multiple explanatory variables, we need to also think about <strong>multicollinearity</strong> - this is when two (or more) of the predictors in our regression model are moderately or highly correlated.<br />
+Recall our interpretation of multiple regression coefficients as<br />
+
+<center>
+“the effect of <span class="math inline">\(x_1\)</span> on <span class="math inline">\(y\)</span> when <em>holding the values of <span class="math inline">\(x_2\)</span>, <span class="math inline">\(x_3\)</span>, … <span class="math inline">\(x_k\)</span> constant</em>”
+</center>
+<p>This interpretation falls down if predictors are highly correlated because if, e.g., predictors <span class="math inline">\(x_1\)</span> and <span class="math inline">\(x_2\)</span> are highly correlated, then changing the value of <span class="math inline">\(x_1\)</span> necessarily entails a change the value of <span class="math inline">\(x_2\)</span> meaning that it no longer makes sense to talk about <em>holding <span class="math inline">\(x_2\)</span> constant.</em><br />
+<br>
+We can assess multicollinearity using the <strong>variance inflation factor (VIF)</strong>, which for a given predictor <span class="math inline">\(x_j\)</span> is calculated as:<br />
+<span class="math display">\[
+VIF_j = \frac{1}{1-R_j^2} \\
+\]</span>
+Where <span class="math inline">\(R_j^2\)</span> is the coefficient of determination (the R-squared) resulting from a regression of <span class="math inline">\(x_j\)</span> on to all the other predictors in the model (<span class="math inline">\(x_j = x_1 + ... x_k + \epsilon\)</span>).<br />
+The more highly correlated <span class="math inline">\(x_j\)</span> is with other predictors, the bigger <span class="math inline">\(R_j^2\)</span> becomes, and thus the bigger <span class="math inline">\(VIF_j\)</span> becomes.<br />
+<br>
+The square root of VIF indicates how much the SE of the coefficient has been inflated due to multicollinearity. For example, if the VIF of a predictor variable were 4.6 (<span class="math inline">\(\sqrt{4.6} = 2.1\)</span>), then the standard error of the coefficient of that predictor is 2.1 times larger than if the predictor had zero correlation with the other predictor variables. Suggested cut-offs for VIF are varied. Some suggest 10, others 5. Define what you will consider an acceptable value <em>prior</em> to calculating it.</p>
+<div class="rtip">
+<p><strong>In R</strong>, the <code>vif()</code> function from the <strong>car</strong> package will provide VIF values for each predictor in your model.</p>
+</div>
+</div>
+<div class="question-begin">
+Question C7
+</div>
+<div class="question-body">
+<p>Calculate the variance inflation factor (VIF) for the predictors in the model.</p>
+<p>Write a sentence summarising whether or not you consider multicollinearity to be a problem here.</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-128" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-128&#39;, &#39;sol-start-128&#39;)"> Solution </span>
+</div>
+<div id="sol-body-128" class="solution-body" style="display: none;">
+<pre class="r"><code>library(car)
+vif(wbmodel)</code></pre>
+<pre><code>## outdoor_time   social_int 
+##      1.13023      1.13023</code></pre>
+<div class="int">
+<p>VIF values &lt;5 indicate that multicollinearity is not adversely affecting model estimates.</p>
+</div>
+</div>
+<p class="solution-end">
+</p>
+<p>ASSUMPTIONS RECIPE BOOK LINK
+TODO</p>
+</div>
+<div id="individual-case-diagnostics" class="section level2">
+<h2>Individual Case Diagnostics</h2>
+<div class="statbox">
+<p>In linear regression, individual cases in our data can influence our model more than others. There are a variety of measures we can use to evaluate the amount of misfit and influence that single observations have on our model and our model estimates.</p>
+<div class="imp">
+<p>TODO
+there are many ways to make a cake. recipes can be useful, but you really need to think about what ingredients you actually have (what data you have).</p>
+<p>don’t <em>have</em> to exclude these observations.</p>
+<p>Do not simply blindly follow cut-offs, think carefully about outliers and influential points and whether you want to exclude them</p>
+</div>
+<ul>
+<li><strong>Regression outliers:</strong> A large residual <span class="math inline">\(\hat \epsilon_i\)</span> - i.e., a big discrepancy between their predicted y-value and their observed y-value.
+<ul>
+<li><strong>Standardised residuals:</strong> For residual <span class="math inline">\(\hat \epsilon_i\)</span>, divide by the estimate of the standard deviation of the residuals. In R, the <code>rstandard()</code> function will give you these</li>
+<li><strong>Studentised residuals:</strong> For residual <span class="math inline">\(\hat \epsilon_i\)</span>, divide by the estimate of the standard deviation of the residuals excluding case <span class="math inline">\(i\)</span>. In R, the <code>rstudent()</code> function will give you these. Values <span class="math inline">\(&gt;|2|\)</span> (greater in magnitude than two) are considered potential outliers.<br />
+</li>
+</ul></li>
+<li><strong>High leverage cases:</strong> These are cases which have considerable <em>potential</em> to influence the regression model (e.g., cases with an unusual combination of predictor values).
+<ul>
+<li><strong>Hat values:</strong> are used to assess leverage. In R, The <code>hatvalues()</code> function will retrieve these.<br />
+Hat values of more than <span class="math inline">\(2 \bar{h}\)</span> (2 times the average hat value) are considered high leverage. <span class="math inline">\(\bar{h}\)</span> is calculated as <span class="math inline">\(\frac{k + 1}{n}\)</span>, where <span class="math inline">\(k\)</span> is the number of predictors, and <span class="math inline">\(n\)</span> is the sample size.<br />
+</li>
+</ul></li>
+<li><strong>High influence cases:</strong> When a case has high leverage <em>and</em> is an outlier, it will have a large influence on the regression model.
+<ul>
+<li><strong>Cook’s Distance:</strong> combines <em>leverage</em> (hatvalues) with <em>outlying-ness</em> to capture influence. In R, the <code>cooks.distance()</code> function will provide these.<br />
+There are many suggested <a href="https://en.wikipedia.org/wiki/Cook%27s_distance#Detecting_highly_influential_observations">Cook’s Distance cut-offs</a>.</li>
+</ul></li>
+</ul>
+</div>
+<div class="question-begin">
+Question C8
+</div>
+<div class="question-body">
+<p>Create a new tibble which contains:</p>
+<ol style="list-style-type: decimal">
+<li>The original variables from the model (Hint, what does <code>&lt;fitted model&gt;$model</code> give you?)</li>
+<li>The fitted values from the model <span class="math inline">\(\hat y\)</span><br />
+</li>
+<li>The residuals <span class="math inline">\(\hat epsilon\)</span></li>
+<li>The studentised residuals</li>
+<li>The hat values</li>
+<li>The Cook’s Distance values.</li>
+</ol>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-129" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-129&#39;, &#39;sol-start-129&#39;)"> Solution </span>
+</div>
+<div id="sol-body-129" class="solution-body" style="display: none;">
+<pre class="r"><code>mdl_diagnost &lt;- 
+  tibble(
+  wbmodel$model,
+  fitted = fitted(wbmodel),
+  resid = residuals(wbmodel),
+  studres = rstudent(wbmodel),
+  hats = hatvalues(wbmodel),
+  cooksd = cooks.distance(wbmodel)
+)</code></pre>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question C9
+</div>
+<div class="question-body">
+<p>Looking at the studentised residuals, are there any outliers?</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-130" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-130&#39;, &#39;sol-start-130&#39;)"> Solution </span>
+</div>
+<div id="sol-body-130" class="solution-body" style="display: none;">
+<p>Recall from the lectures, studentised residuals of <span class="math inline">\(&gt;2\)</span> or <span class="math inline">\(&lt; -2\)</span> indicate potential outlyingness.</p>
+<p>We can ask R whether the <em>absolute</em> values are <span class="math inline">\(&gt;2\)</span>:</p>
+<pre class="r"><code>abs(mdl_diagnost$studres) &gt; 2</code></pre>
+<pre><code>##     1     2     3     4     5     6     7     8     9    10    11    12    13 
+## FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE 
+##    14    15    16    17    18    19    20    21    22    23    24    25    26 
+## FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE 
+##    27    28    29    30    31    32 
+## FALSE FALSE FALSE FALSE FALSE FALSE</code></pre>
+<p>We could <em>filter</em> our newly created tibble to these observations:</p>
+<pre class="r"><code>mdl_diagnost %&gt;% 
+  filter(abs(studres)&gt;2)</code></pre>
+<pre><code>## # A tibble: 0 × 8
+## # … with 8 variables: wellbeing &lt;dbl&gt;, outdoor_time &lt;dbl&gt;, social_int &lt;dbl&gt;,
+## #   fitted &lt;dbl&gt;, resid &lt;dbl&gt;, studres &lt;dbl&gt;, hats &lt;dbl&gt;, cooksd &lt;dbl&gt;</code></pre>
+<p>There are zero rows.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question C10
+</div>
+<div class="question-body">
+<p>Looking at the hat values, are there any observations with high leverage?</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-131" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-131&#39;, &#39;sol-start-131&#39;)"> Solution </span>
+</div>
+<div id="sol-body-131" class="solution-body" style="display: none;">
+<p>For our model, the average hat value <span class="math inline">\(\bar h\)</span> is:<br />
+<span class="math display">\[
+\bar h = \frac{k+1}{n} = \frac{2+1}{32} = \frac{3}{32} = 0.094
+\]</span></p>
+<p>We can ask whether any of observations have hat values which are greater than <span class="math inline">\(2 \times \bar h\)</span>:</p>
+<pre class="r"><code>mdl_diagnost %&gt;%
+  filter(hats &gt; (2*0.094))</code></pre>
+<pre><code>## # A tibble: 0 × 8
+## # … with 8 variables: wellbeing &lt;dbl&gt;, outdoor_time &lt;dbl&gt;, social_int &lt;dbl&gt;,
+## #   fitted &lt;dbl&gt;, resid &lt;dbl&gt;, studres &lt;dbl&gt;, hats &lt;dbl&gt;, cooksd &lt;dbl&gt;</code></pre>
+<p>Note that 0 observations have high leverage.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question C11
+</div>
+<div class="question-body">
+<p>Plot the Cook’s Distance values, does it look like there may be any highly influential points?<br />
+(You can use <code>plot(model, which = 4)</code> and <code>plot(model, which = 5)</code>).</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-132" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-132&#39;, &#39;sol-start-132&#39;)"> Solution </span>
+</div>
+<div id="sol-body-132" class="solution-body" style="display: none;">
+<!-- For our model, one proposed cut-off for Cook's Distance is: -->
+<!-- $$ -->
+<!-- D_{cutoff} = \frac{4}{n-k-1} = \frac{4}{32 - 2 - 1} = \frac{4}{29} = 0.138 -->
+<!-- $$ -->
+<!-- There are no observations which have a high influence on our model estimates: -->
+<!-- ```{r} -->
+<!-- mdl_diagnost %>% -->
+<!--   filter(cooksd > 0.138) -->
+<!-- ``` -->
+<pre class="r"><code>plot(wbmodel, which = 4)</code></pre>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-58-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot(wbmodel, which = 5)</code></pre>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-58-2.png" width="80%" style="display: block; margin: auto;" /></p>
+</div>
+<p class="solution-end">
+</p>
+<div class="statbox">
+<p><strong>Other influence.measures()</strong></p>
+<p>Alongside Cook’s Distance, we can examine the extent to which model estimates and predictions are affected when an entire case is dropped from the dataset and the model is refitted.</p>
+<ul>
+<li><strong>DFFit:</strong> the change in the predicted value at the <span class="math inline">\(i^{th}\)</span> observation with and without the <span class="math inline">\(i^{th}\)</span> observation is included in the regression.<br />
+</li>
+<li><strong>DFbeta:</strong> the change in a specific coefficient with and without the <span class="math inline">\(i^{th}\)</span> observation is included in the regression.<br />
+</li>
+<li><strong>DFbetas:</strong> the change in a specific coefficient divided by the standard error, with and without the <span class="math inline">\(i^{th}\)</span> observation is included in the regression.<br />
+</li>
+<li><strong>COVRATIO:</strong> measures the effect of an observation on the covariance matrix of the parameter estimates. In simpler terms, it captures an observation’s influence on standard errors. Values which are <span class="math inline">\(&gt;1+\frac{3(k+1)}{n}\)</span> or <span class="math inline">\(&lt;1-\frac{3(k+1)}{n}\)</span> are considered as having strong influence.</li>
+</ul>
+</div>
+<div class="question-begin">
+Question C12
+</div>
+<div class="question-body">
+<p>Use the function <code>influence.measures()</code> to extract these delete-1 measures of influence.</p>
+<p>Try plotting the distributions of some of these measures.</p>
+<p><strong>Tip:</strong> the function <code>influence.measures()</code> returns an <code>infl</code>-type object. To plot this, we need to find a way to extract the actual numbers from it.<br />
+What do you think <code>names(influence.measures(&lt;fitted model&gt;))</code> shows you? How can we use <code>influence.measures(&lt;fitted model&gt;)$ ????</code> to extract the matrix of numbers?</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-133" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-133&#39;, &#39;sol-start-133&#39;)"> Solution </span>
+</div>
+<div id="sol-body-133" class="solution-body" style="display: none;">
+<pre class="r"><code>influence.measures(wbmodel)</code></pre>
+<pre><code>## Influence measures of
+##   lm(formula = wellbeing ~ 1 + outdoor_time + social_int, data = mwdata) :
+## 
+##      dfb.1_ dfb.otd_ dfb.scl_   dffit cov.r   cook.d    hat inf
+## 1   0.43653 -0.11116 -0.32167  0.4477 1.157 0.066470 0.1489    
+## 2  -0.28160  0.03170  0.22954 -0.2917 1.225 0.028838 0.1414    
+## 3   0.29581  0.07604 -0.29025  0.3540 1.088 0.041520 0.0967    
+## 4  -0.26445 -0.13055  0.29341 -0.3508 1.117 0.040991 0.1071    
+## 5  -0.27084  0.22733  0.10472 -0.3290 1.279 0.036700 0.1766    
+## 6   0.12462 -0.02693 -0.08288  0.1460 1.141 0.007277 0.0604    
+## 7  -0.17361 -0.03392  0.15313 -0.2235 1.087 0.016770 0.0597    
+## 8  -0.02879 -0.07259  0.06069 -0.0918 1.309 0.002906 0.1556    
+## 9   0.16925  0.08820 -0.17834  0.2477 1.088 0.020553 0.0668    
+## 10 -0.24768  0.33112 -0.00551 -0.4267 1.027 0.059217 0.0956    
+## 11 -0.02018 -0.02535  0.02534 -0.0492 1.166 0.000834 0.0518    
+## 12  0.04644  0.38731 -0.22045  0.4474 1.164 0.066462 0.1517    
+## 13 -0.15606  0.21587 -0.02477 -0.3135 1.017 0.032241 0.0626    
+## 14  0.13390 -0.31537  0.10705  0.3905 1.039 0.049887 0.0899    
+## 15  0.14774 -0.25595  0.08688  0.4273 0.815 0.055918 0.0487    
+## 16 -0.11881  0.17855 -0.06061 -0.3502 0.873 0.038519 0.0422    
+## 17  0.00121 -0.07684  0.02608 -0.1031 1.177 0.003653 0.0703    
+## 18  0.00329  0.04637 -0.01574  0.0739 1.159 0.001877 0.0516    
+## 19  0.04301 -0.15310  0.09227  0.2432 1.055 0.019693 0.0546    
+## 20  0.05819 -0.10961 -0.03803 -0.2189 1.065 0.016025 0.0508    
+## 21 -0.01498  0.00131  0.03428  0.0875 1.131 0.002622 0.0380    
+## 22  0.12553 -0.15510 -0.09098 -0.3084 1.020 0.031247 0.0622    
+## 23 -0.03324 -0.00580  0.05840  0.1049 1.138 0.003770 0.0466    
+## 24  0.24606 -0.23731 -0.18568 -0.4783 0.911 0.071967 0.0774    
+## 25  0.06123  0.10878 -0.16017 -0.2209 1.131 0.016498 0.0771    
+## 26 -0.02732 -0.29363  0.23790  0.3643 1.243 0.044752 0.1666    
+## 27 -0.30514  0.33726  0.20108  0.5966 0.830 0.108234 0.0858    
+## 28  0.06176 -0.07036 -0.03455 -0.1080 1.263 0.004013 0.1280    
+## 29 -0.15327 -0.04611  0.23001  0.3039 1.067 0.030646 0.0754    
+## 30  0.11226  0.25745 -0.30386 -0.3826 1.238 0.049262 0.1686    
+## 31 -0.07637 -0.05313  0.12879  0.1542 1.214 0.008153 0.1047    
+## 32  0.10249 -0.07000 -0.07662 -0.1399 1.353 0.006736 0.1864   *</code></pre>
+<p>Let’s plot the distribution of COVRATIO statistics.<br />
+Recall that values which are <span class="math inline">\(&gt;1+\frac{3(k+1)}{n}\)</span> or <span class="math inline">\(&lt;1-\frac{3(k+1)}{n}\)</span> are considered as having strong influence.<br />
+For our model:
+<span class="math display">\[
+1 \pm \frac{3(k+1)}{n} \quad = \quad 1 \pm\frac{3(2+1)}{32} \quad = \quad 1\pm \frac{9}{32} \quad = \quad 1\pm0.28
+\]</span></p>
+<p>The “infmat” bit of an <code>infl</code>-type object contains the numbers. To use it with ggplot, we will need to turn it into a dataframe (<code>as.data.frame()</code>), or a tibble (<code>as_tibble()</code>):</p>
+<pre class="r"><code>infdata &lt;- influence.measures(wbmodel)$infmat %&gt;%
+  as_tibble()
+
+ggplot(data = infdata, aes(x = cov.r)) + 
+  geom_histogram() +
+  geom_vline(aes(xintercept = c(1-0.28)))+
+  geom_vline(aes(xintercept = c(1+0.28)))</code></pre>
+<p><img src="07_regression_files/figure-html/unnamed-chunk-60-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<p>It looks like a few observations may be having quite a high influence here. This is perhaps not that surprising as we only have 32 datapoints.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;">
+
+</div>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-Lewis-Beck2015" class="csl-entry">
+Lewis-Beck, Colin, and Michael Lewis-Beck. 2015. <em>Applied Regression: An Introduction</em>. Vol. 22. Sage publications.
+</div>
+</div>
+</div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>
+<span class="math inline">\(SS_{Total}\)</span> has <span class="math inline">\(n - 1\)</span> degrees of freedom as one degree of freedom is lost in estimating the population mean with the sample mean <span class="math inline">\(\bar{y}\)</span>.
+<span class="math inline">\(SS_{Residual}\)</span> has <span class="math inline">\(n - 2\)</span> degrees of freedom. There are <span class="math inline">\(n\)</span> residuals, but two degrees of freedom are lost in estimating the intercept and slope of the line used to obtain the <span class="math inline">\(\hat y_i\)</span>s.
+Hence, by difference, <span class="math inline">\(SS_{Model}\)</span> has <span class="math inline">\(n - 1 - (n - 2) = 1\)</span> degree of freedom.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
+
+<div>
+  <hr/>
+  <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br/>
+  This workbook was written by Josiah King, Umberto Noe, and Martin
+  Corley, and is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+</div>
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
