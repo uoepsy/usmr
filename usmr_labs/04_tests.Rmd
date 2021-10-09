@@ -4,7 +4,7 @@ bibliography: references.bib
 biblio-style: apalike
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -13,6 +13,7 @@ source('assets/setup.R')
 library(tidyverse)
 library(patchwork)
 set.seed(017)
+survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv") 
 ```
 
 <!-- :::red -->
@@ -26,11 +27,22 @@ set.seed(017)
 
 # $\chi^2$ Goodness of Fit Test 
 
+:::frame
+As you may remember, in the survey we asked students to complete in welcome week, one of the questions concerned the month in which you were born. You can download the data from https://uoepsy.github.io/data/surveydata_allcourse.csv.  
+
+We need to make sure we know how many observations we have. While there are currently `r nrow(survey_data)` observations in our sample, we may have missing data in our variable of interest! 
+
+We can use filter to remove any which are missing (or `NA`s).  
+Take a bit of time to look at what each bit of this does. To help figure it out, try seeing what `is.na(c(NA,1,2))` does. Then try `!is.na(c(NA,1,2))`.  
+```{r}
+survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv") 
+survey_data <-
+  survey_data %>% filter(!is.na(birthmonth))
+```
+:::
+
 `r qbegin("A1")`
-Starting in the 2020/21 academic year, we ask students on all the statistics courses to complete a short survey during the welcome week. 
-One of the questions concerns the month in which you were born. You can download the data from https://uoepsy.github.io/data/surveydata_allcourse.csv.  
-  
-What is your intuition about the distribution of students' birth-months?  
+What is your intuition about the distribution of all students' birth-months?  
 Do you think they will be spread uniformly across all months of the year (like a fair 12-sided dice), or do you think people are more likely to be born in certain months more than others?  
 
 Plot the distribution and get an initial idea of how things are looking.  
@@ -39,10 +51,7 @@ Plot the distribution and get an initial idea of how things are looking.
   
 *(We've made the solutions visible immediately for this question, because they contain some useful little bits of code for re-ordering the months)*
 `r qend()`
-`r solbegin(show=TRUE, toggle=TRUE)`
-```{r}
-survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv") 
-```
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
 The quick and dirty way:
 ```{r}
 barplot(table(survey_data$birthmonth))
@@ -79,6 +88,7 @@ ggplot(data = survey_data, aes(x = birthmonth)) +
 ```
 `r solend()`
 
+
 `r qbegin("A2")`
 We're going to perform a statistical test to assess the extent to which our data conforms to the hypothesis that people are no more likely to be born on one month than another.  
 
@@ -100,7 +110,7 @@ $$
 `r solend()`
 
 `r qbegin("A3")`
-Given that there `r nrow(survey_data)` observations in our sample, how many observations would we *expect* to find with a birthday in January? And in February? ... and so on? 
+Given that there are there are `r nrow(survey_data)` people who entered their birth-month, how many observations would we *expect* to find with a birthday in January? And in February? ... and so on? 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 We would expect $\frac{1}{12} \times$ `r nrow(survey_data)` = `r round(nrow(survey_data)/12,2)` observations in each month. 
@@ -369,7 +379,7 @@ Can you create an RMarkdown document which:
 
 `r qend()`
 
-# Revisiting NHST.  
+# Revisiting NHST  
 
 Now that you have performed a number of different types of statistical hypothesis test, it is worth revisiting the general concept in order to consolidate what you've been doing. 
 
@@ -401,7 +411,7 @@ knitr::include_graphics("images/moretests/playmo_investors.jpg")
 
 
 
-# "Statistically Significant" 
+# Statistical vs Practical Significance
 
 `r qbegin("C1")`
 An agricultural company is testing out a new fertiliser they have developed to improve tomato growth.  
