@@ -33,6 +33,255 @@ library(patchwork)
 <!-- ## model fit (move to prev week?) -->
 <!-- ## comparison -->
 
+    
+# ~ Numeric + Categorical
+
+:::
+__What if one of our predictors is categorical?__  
+
+Extending multiple regression to include categorical variables is Now that we have extended our simple linear regression model to a *multiple* regression model, lets take a look at a model with a mix of *numeric* and *categorical* explanatory variables. 
+
+Suppose that the group of researchers were instead wanting to study the relationship between well-being and time spent outdoors after taking into account the relationship between well-being and _having a routine_.  
+
+Note that in the dataset, 'having a routine' is *categorical* (participants either do, or don't have a routine).
+So let's go over the modelling process again, but paying careful attention to where and how the process differs when we have a _categorical_ predictor. 
+
+`r qbegin("C1")`
+We have already visualised the marginal distribution of weekly outdoor time in questions earlier, as well as its relationship with wellbeing scores.  
+  
+Read in the wellbeing data (https://uoepsy.github.io/data/wellbeing.csv) and produce visualisations of:  
+
+1. the distribution of the `routine` variable
+2. the relationship between `routine` and `wellbeing`. 
+
+**Note:** We cannot visualise the distribution of `routine` as a density curve or boxplot, because it is a _categorical_ variable (observations can only take one of a set of discrete response values).  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+library(tidyverse)
+# Read in data
+mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
+```
+
+`geom_bar()` will count the number of observations falling into each unique level of the routine variable:
+```{r, fig.cap="Marginal distribution plots of Routine (y/n)"}
+ggplot(data = mwdata, aes(x = routine)) +
+  geom_bar()+
+  labs(x = "Routine", y = "Frequency")
+```
+
+We might plot the relationship between routine and wellbeing as two boxplots:
+```{r, fig.cap="Relationship between wellbeing and presence of routine"}
+ggplot(data = mwdata, aes(x = routine, y = wellbeing)) +
+  geom_boxplot()+
+  labs(x = "Routine", y = "Wellbeing score (WEMWBS)")
+```
+`r solend()`  
+
+`r qbegin("C2")`
+Fit the multiple regression model below using `lm()`, and assign it to an object to store it in your environment. Examine the summary output of the model. 
+
+$$
+Wellbeing = \beta_0 + \beta_1 \cdot OutdoorTime + \beta_2 \cdot Routine + \epsilon
+$$
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+wbmodel2 <- lm(wellbeing ~ 1 + outdoor_time + routine, data = mwdata)
+summary(wbmodel2)
+```
+`r solend()`
+
+`r qbegin("C3")`
+$\hat \beta_0$ (the intercept) is the estimated average wellbeing score associated with zero hours of weekly outdoor time and zero in the routine variable.  
+
+What group is the intercept the estimated wellbeing score for when they have zero hours of outdoor time? Why (think about what zero in the routine variable means)?  
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+As you can see in the output of the model, we have a coefficient called `routineRoutine`. This is the parameter estimate for a dummy variable which has been inputted into the model. The `lm()` function will automatically name the dummy variables (and therefore the coefficients) according to what level is identified by the 1. It names them `<variable><Level>`, so we can tell that `routineRoutine` is 1 for "Routine" and 0 for "No Routine".  
+
+The intercept is therefore the estimated wellbeing score for those with No Routine and zero hours of outdoor time.   
+`r solend()`
+
+`r qbegin("C4")`
+In [the previous example](07_regression.html/#numeric-numeric), we had a visualisation of our model as a regression surface.  
+Here, one of our explanatory variables has only two possible responses. How might we best visualise the model?    
+
+a. one line
+a. one surface
+a. two lines
+a. two surfaces
+a. a curved (not flat) surface 
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+We can visualise the model $\widehat{Wellbeing} = \hat \beta_0 + \hat \beta_1 \cdot OutdoorTime + \hat \beta_2 \cdot Routine$ as two lines.  
+Each line represents the model predicted values for wellbeing scores across the range of weekly outdoor time, with one line for those who report having "Routine" and one for those with "No Routine".  
+`r solend()`
+
+`r qbegin("C5")`
+Get a pen and paper, and sketch out the plot shown in Figure \@ref(fig:plot-annotate).  
+
+```{r plot-annotate, echo=FALSE, fig.cap="Multiple regression model: Wellbeing ~ Outdoor Time + Routine"}
+sjPlot::plot_model(wbmodel2, type="pred", terms=c("outdoor_time","routine"), show.data=FALSE)+
+  scale_fill_manual(NULL, values=c(NA,NA))
+```
+
+Annotate your plot with labels for each of parameter estimates from your model: 
+
+| Parameter Estimate   |      Model Coefficient      |  Estimate |
+|----------|:-------------:|------:|
+| $\hat \beta_0$ | `(Intercept)` | `r round(coef(wbmodel2)[1],2)` |
+| $\hat \beta_1$ | `outdoor_time`   |  `r round(coef(wbmodel2)[2],2)` |
+| $\hat \beta_2$ | `routineRoutine` | `r round(coef(wbmodel2)[3],2)` |
+
+
+`r optbegin("Hint",olabel=FALSE, toggle=params$TOGGLE)`
+Below you can see where to add the labels, but we have not said which is which. 
+
+```{r echo=FALSE}
+sjPlot::plot_model(wbmodel2, type="pred", terms=c("outdoor_time","routine"), show.data=FALSE)+
+  scale_fill_manual(NULL, values=c(NA,NA))+
+  geom_vline(xintercept = 0) +
+  geom_segment(aes(x=1,xend=0,
+                   y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=0))-1,
+                   yend=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=0))),
+               col="black",lwd=.2)+
+  geom_label(aes(x=2,y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=0))-3), 
+             label="B", col="black")+
+  geom_segment(aes(x=20,xend=20,
+                   y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=20)),
+                   yend=predict(wbmodel2,newdata=data.frame(routine="Routine",outdoor_time=20))),
+               col="black",lwd=.2,
+               arrow = arrow(length = unit(3, "mm")))+
+  geom_label(aes(x=21,y=predict(wbmodel2,newdata=data.frame(routine="Routine",outdoor_time=20))-5),
+               label="A", col="black")+
+  geom_segment(aes(x=10,xend=11,
+                 y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=10)),
+                 yend=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=10))),
+             col="black",lwd=.2)+
+  geom_segment(aes(x=11,xend=11,
+                 y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=10)),
+                 yend=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=11))),
+             col="black",lwd=.2)+
+  geom_label(aes(x=12,y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=10))),
+                 label="C",col="black")+
+  NULL -> plot_annotate
+
+plot_annotate
+
+```
+
++ A is the vertical distance between the red and blue lines (the lines are parallel, so this distance is the same wherever you cut it on the x-axis).  
++ B is the point at which the blue line cuts the y-axis.  
++ C is the vertical increase (increase on the y-axis) for the blue line associated with a 1 unit increase on the x-axis (the lines are parallel, so this is the same for the red line).  
+
+`r optend()`
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
++ A = $\hat \beta_2$ = `routineRoutine` coefficient = `r round(coef(wbmodel2)[3],2)`
++ B = $\hat \beta_0$ = `(Intercept)` coefficient  = `r round(coef(wbmodel2)[1],2)`
++ C = $\hat \beta_1$ = `outdoor_time` coefficient = `r round(coef(wbmodel2)[2],2)` 
+
+```{r echo=FALSE}
+plot_annotate
+```
+
+`r solend()`
+
+`r qbegin("C6")`
+Load the __sjPlot__ package using `library(sjPlot)` and try running the code below (changing to use the name of your fitted model). You may already have the __sjPlot__ package installed from previous exercises. If not, you will need to install it first. 
+
+```{r eval=FALSE}
+library(sjPlot)
+plot_model(wbmodel2)
+plot_model(wbmodel2, type = "pred")
+plot_model(wbmodel2, type = "pred",  terms=c("outdoor_time","routine"), show.data=TRUE)
+```
+
+What do you think each one is showing?  
+
+:::rtip
+The `plot_model` function (and the __sjPlot__ package) can do a lot of different things. Most packages in R come with tutorials (or "vignettes"), for instance: https://strengejacke.github.io/sjPlot/articles/plot_model_estimates.html 
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+library(sjPlot)
+plot_model(wbmodel2)
+```
+These are the parameter estimates (the $\hat \beta$'s), and the confidence intervals. 
+```{r}
+confint(wbmodel2)
+```
+
+When we add `type="pred"` we are asking for the predicted values. It will provide a separate plot for each explanatory variable, showing the predicted values at each level of that variable:
+```{r}
+plot_model(wbmodel2, type = "pred")
+```
+
+We can combine these into one plot, and ask it to show the raw data as well:
+```{r}
+plot_model(wbmodel2, type = "pred",  terms=c("outdoor_time","routine"), show.data=TRUE)
+```
+`r solend()`
+
+
+# Categorical Predictors with $k$ levels
+
+We saw [above](#binpred) that a _binary categorical_ variable gets inputted into our model as a variable of 0s and 1s (these typically get called __"dummy variables"__).  
+
+:::statbox
+__Dummy variables__ are numeric variables that represent categorical data.  
+
+When we have a _categorical_ explanatory variable with __more than 2 levels__, our model gets a bit more - it needs not just one, but _a number of_ dummy variables. For a categorical variable with $k$ levels, we can express it in $k-1$ dummy variables.  
+
+For example, the "species" column below has three levels, and can be expressed by the two variables "species_dog" and "species_parrot":  
+```{r echo=FALSE, out.width="80%"}
+data.frame(
+  species = c("cat","cat","dog","parrot","dog","cat","..."),
+  species_dog = c(0,0,1,0,1,0,"..."),
+  species_parrot = c(0,0,0,1,0,0,"...")
+)
+```
+
++ The "cat" level is expressed whenever both the "species_dog" and "species_parrot" variables are 0.
++ The "dog" level is expressed whenever the "species_dog" variable is 1 and the "species_parrot" variable is 0.
++ The "parrot" level is expressed whenever the "species_dog" variable is 0 and the "species_parrot" variable is 1.  
+
+R will do all of this re-expression for us. If we include in our model a categorical explanatory variable with 4 different levels, the model will estimate 3 parameters - one for each dummy variable. We can interpret the parameter estimates (the coefficients we obtain using `coefficients()`,`coef()` or `summary()`) as the estimated increase in the outcome variable associated with an increase of one in each dummy variable (holding all other variables equal).  
+```{r echo=FALSE}
+set.seed(348)
+catplot <- tibble(
+  species = rep(c("cat","dog","parrot"), each = 15),
+  outcome = c(rnorm(15,60,5), rnorm(15,50,5), rnorm(15,55,5))
+)
+cstat = coef(lm(outcome~species,catplot))
+pander::pander(summary(lm(outcome~species,catplot))$coefficients)
+```
+
+Note that in the above example, an increase in 1 of "species_dog" is the difference between a "cat" and a "dog". An increase in one of "species_parrot" is the difference between a "cat" and a "parrot". We think of the "cat" category in this example as the _reference level_ - it is the category against which other categories are compared against. 
+
+```{r echo=FALSE}
+ggplot(catplot, aes(x=species, y=outcome))+
+  #geom_boxplot(fatten=NULL)+
+  geom_jitter(height=0,width=.05, alpha=.4)+
+  geom_point(x=1,y=cstat[1], col="blue",size=3)+
+  annotate("text",x=1,y=cstat[1],label=expression(paste(beta[0], " (intercept)")), col="blue", hjust=1.1)+
+  geom_segment(aes(x=1,xend=2,y=cstat[1],yend=cstat[1]+cstat[2]),col="blue")+
+  geom_segment(aes(x=1,xend=2,y=cstat[1],yend=cstat[1]),col="blue", lty="dashed")+
+  geom_segment(aes(x=2,xend=2,y=cstat[1],yend=cstat[1]+cstat[2]),col="blue", lty="dashed")+
+  annotate("text",x=2.15,y=mean(c(cstat[1],sum(cstat[1:2]))),label=expression(paste(beta[1], " (slope)")), col="blue", hjust=.35)+
+  
+  geom_segment(aes(x=1,xend=3,y=cstat[1],yend=cstat[1]+cstat[3]),col="blue")+
+  geom_segment(aes(x=1,xend=3,y=cstat[1],yend=cstat[1]),col="blue", lty="dashed")+
+  geom_segment(aes(x=3,xend=3,y=cstat[1],yend=cstat[1]+cstat[3]),col="blue", lty="dashed")+
+  annotate("text",x=3.15,y=mean(c(cstat[1],sum(cstat[c(1,3)]))),label=expression(paste(beta[2], " (slope)")), col="blue", hjust=.35)
+```
+
+:::
 
 # Interactions  
 
@@ -743,122 +992,6 @@ Film an ostrich running backwards and its legs look like a human's legs running 
 knitr::include_graphics("images/mlr/backwards ostrich.gif")
 ```
 `r optend()`
-
-# Model Comparison  
-```{r}
-wb_mdl1 <- lm(wellbeing ~ social_int + isRural, data=mwdata2)
-```
-
-
-:::statbox
-### Incremental F-test  
-
-:::imp
-If (*and only if*) two models are __nested__ (one model contains all the predictors of the other and is fitted to the same data), we can compare them using an __incremental F-test.__  
-
-This is a formal test of whether the additional predictors provide a better fitting model.  
-Formally this is the test of:  
-
-+ $H_0:$ coefficients for the added/ommitted variables are all zero.
-+ $H_1:$ at least one of the added/ommitted variables has a coefficient that is not zero. 
-:::
-
-The F-ratio for comparing the residual sums of squares between two models can be calculated as:
-
-$$
-F_{(df_R-df_F),df_F} = \frac{(SSR_R-SSR_F)/(df_R-df_F)}{SSR_F / df_F} \\
-\quad \\
-\begin{align}
-& \text{Where:} \\
-& SSR_R = \text{residual sums of squares for the restricted model} \\
-& SSR_F = \text{residual sums of squares for the full model} \\
-& df_R = \text{residual degrees of freedom from the restricted model} \\
-& df_F = \text{residual degrees of freedom from the full model} \\
-\end{align}
-$$
-:::
-:::rtip
-
-**In R,** we can conduct an incremental F-test by constructing two models, and passing them to the `anova()` function: `anova(model1, model2)`. 
-
-:::
-
-
-`r qbegin("D2")`
-The F-ratio you see at the bottom of `summary(model)` is actually a comparison between two models: your model (with some explanatory variables in predicting $y$) and __the null model.__ In regression, the null model can be thought of as the model in which all explanatory variables have zero regression coefficients. It is also referred to as the __intercept-only model__, because if all predictor variable coefficients are zero, then the only we are only estimating $y$ via an intercept (which will be the mean - $\bar y$).  
-
-Use the code below to fit the null model.  
-Then, use the `anova()` function to perform a model comparison between your earlier model (**wb_mdl1**) and the null model.  
-Check that the F statistic is the same as that which is given at the bottom of `summary(wb_mdl1)`.  
-
-```{r}
-null_model <- lm(wellbeing ~ 1, data = mwdata2)
-```
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-```{r}
-# fit the null model
-null_model <- lm(wellbeing ~ 1, data = mwdata2)
-
-# model comparison null vs wb_mdl1
-anova(null_model, wb_mdl1)
-
-# extract f statistic from summary of wb_mdl1
-summary(wb_mdl1)$fstatistic
-# we can retrieve the p-value:
-fstat = summary(wb_mdl1)$fstatistic[1]
-df_1 = summary(wb_mdl1)$fstatistic[2]
-df_2 = summary(wb_mdl1)$fstatistic[3]
-pf(fstat, df_1, df_2, lower.tail = FALSE)
-```
-`r solend()`
-
-
-`r qbegin("D3")`
-Does weekly outdoor time explain a significant amount of variance in wellbeing scores over and above weekly social interactions and location (rural vs not-rural)?  
-
-Provide an answer to this question by fitting and comparing two models (one of them you may already have fitted in an earlier question). 
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-We can compare the following models which predict wellbeing scores from weekly social interactions and location, with and without weekly outdoor time.  
-
-+ $\text{Wellbeing} = \beta_0 + \beta_1 \cdot \text{Social Interactions} + \beta_2 \cdot \text{IsRural} + \epsilon$ 
-+ $\text{Wellbeing} = \beta_0 + \beta_1 \cdot \text{Social Interactions} + \beta_2 \cdot \text{IsRural} + \beta_3 \cdot \text{Outdoor time} +  \epsilon$ 
-
-We have already fitted the first model and assigned it the name `wb_mdl1`.  
-We need to fit the second:
-```{r}
-wb_mdl2 <- lm(wellbeing ~ 1 + social_int + isRural + outdoor_time, data=mwdata2)
-```
-
-Let's look at the amount of variation in wellbeing scores explained by each model:
-```{r}
-summary(wb_mdl1)$adj.r.squared
-summary(wb_mdl2)$adj.r.squared
-```
-
-The model *with* weekly outdoor time as a predictor explains 30\% of the variance, and the model *without* explains 25\%.  
-Does including weekly outdoor time as a predictor provide a significantly better fit of the data (**wb_mdl2** compared to **wb_mdl1**)?  
-```{r}
-anova(wb_mdl1, wb_mdl2)
-```
-```{r include=FALSE}
-mc <- anova(wb_mdl1, wb_mdl2)
-names(mc)[6]<-"p"
-```
-
-:::int
-Weekly outdoor time was found to explain a significant amount of variance in wellbeing scores over and above weekly social interactions and location (rural vs not-rural)  
-$F$(`r paste(mc$Df[2],mc$Res.df[2],collapse=",")`)=`r round(mc$F,2)`, p`r map_chr(mc$p[2], ~ifelse(.<001,"<.001",paste0("=",round(.,2))))`.
-:::
-
-`r solend()`
-
-
-TODO link to extras.
 
 
 

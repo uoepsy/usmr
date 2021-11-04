@@ -4,7 +4,7 @@ bibliography: references.bib
 biblio-style: apalike
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -65,7 +65,7 @@ library(patchwork)
 
 <div style="width:60%; display: inline-block;">
 
-This lab is a long one! It takes us quite slowly through simple and multiple regression, but the broader ideas being introduced a actually quite simple - we are just drawing a straight line through some datapoints!  
+This lab is a long one! It takes us quite slowly through simple and multiple regression, but the broader ideas being introduced are actually quite simple - we are just drawing a straight line through some datapoints!  
 Try to take regular breaks during these exercises. This will help (a bit) with not getting overwhelmed - these things (both the statistics side and the programming side) take time - and repeated practice - to sink in.
 </div>
 <div style="width:30%; display: inline-block; vertical-align: top">
@@ -78,20 +78,15 @@ knitr::include_graphics("images/slr/catworking.gif")
 
 
 # Simple regression  
-
-Let’s imagine a study into income disparity for workers in a local authority. We might carry out interviews and find that there is a link between the level of education and an employee’s income. Those with more formal education seem to be better paid. 
-Now we wouldn’t have time to interview everyone who works for the local authority so we would have to interview a sample, say 10%.  
-
-In this lab we will use the riverview data (available at https://uoepsy.github.io/data/riverview.csv) to examine whether education level is related to income among the employees working for the city of Riverview, a hypothetical midwestern city in the US.  
+ 
 
 :::frame
 __Data: riverview.csv__  
 
-The data is available at [https://uoepsy.github.io/data/riverview.csv.](https://uoepsy.github.io/data/riverview.csv){target="_blank"}
+Let’s imagine a study into income disparity for workers in a local authority. We might carry out interviews and find that there is a link between the level of education and an employee’s income. Those with more formal education seem to be better paid. 
+Now we wouldn’t have time to interview everyone who works for the local authority so we would have to interview a sample, say 10%.  
 
-**Description**
-
-The riverview data come from @Lewis-Beck2015 and contain five attributes collected from a random sample of $n=32$ employees working for the city of Riverview, a hypothetical midwestern city in the US. The attributes include:
+In this next set of exercises we will use the riverview data, which come from [Lewis-Beck, 2015](https://methods.sagepub.com/book/applied-regression-an-introduction-second-edition) and contain five attributes collected from a random sample of $n=32$ employees working for the city of Riverview, a hypothetical midwestern city in the US. The attributes include:  
 
 - `education`: Years of formal education
 - `income`: Annual income (in thousands of U.S. dollars)
@@ -112,29 +107,39 @@ library(kableExtra)
 riverview <- read_csv('https://uoepsy.github.io/data/riverview.csv')
 kable(head(riverview), align='c') %>% kable_styling(full_width = FALSE)
 ```
+
+
+The data is available at [https://uoepsy.github.io/data/riverview.csv.](https://uoepsy.github.io/data/riverview.csv){target="_blank"}
+
 :::
 
 
 `r qbegin("A1")` 
-Load the required libraries and import the riverview data into a variable named `riverview`.
+Load the required libraries (probably just __tidyverse__ for now), and read in the riverview data to your R session.  
+I'm going to name it `riverview` in my environment.  
 `r qend()`
 
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
 ```{r, warning=FALSE, message=FALSE}
 library(tidyverse)
 
-riverview <- read_csv(file = "https://uoepsy.github.io/data/riverview.csv")
+riverview <- read_csv("https://uoepsy.github.io/data/riverview.csv")
 head(riverview)
 ```
 `r solend()`
 
 ## Exploring the data
 
+:::statbox
+Probably the first port of call for almost any statistical analysis is to just explore the data and make sure that things look as you would expect them to look. We can do this visually, or numerically, using the skills we saw in weeks 1 and 2. 
+:::
+
 `r qbegin("A2")`  
-We first want to visualise and describe the *marginal distributions* (the distribution of each variable without reference to the values of the other variables) of employee incomes and education levels.
+Let us first visualise and describe the *marginal distributions* of those variables which are of interest to us. 
+These are the distribution of each variable (employee incomes and education levels) *without* reference to the values of the other variables.
 
 - You could use, for example, `geom_density()` for a density plot or `geom_histogram()` for a histogram.
-- Look at the shape, centre and spread of the distribution. Is it symmetric or skewed? Is it unimodal or bimodal? 
+- Look at the shape, center and spread of the distribution. Is it symmetric or skewed? Is it unimodal or bimodal? 
 - Do you notice any extreme observations?
   
 `r qend()`
@@ -142,7 +147,7 @@ We first want to visualise and describe the *marginal distributions* (the distri
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
 We can plot the marginal distribution of employee incomes as a density curve, and add a boxplot underneath to check for the presence of outliers.  
 
-**Note:** The function `ggMarginal()` from the `ggExtra` library that we saw briefly in the solutions on exercises on [functions & models](05_covcor.html#Functions_and_Models) only works with scatterplots.
+The `width` of the geom_boxplot() is always quite wide, so I want to make it narrower so that we can see it at the same time as the density plot. Deciding on the exact value for the width here is just trial and error. 
 
 ```{r fig.cap="Density plot and boxplot of employee incomes."}
 ggplot(data = riverview, aes(x = income)) +
@@ -171,7 +176,7 @@ To further summarize a distribution, it is typical to compute and report numeric
 ```{r}
 riverview %>% 
   summarize(
-    mean_incom = mean(income), 
+    e = mean(income), 
     sd_income = sd(income),
     mean_edu = mean(education),
     sd_edu = sd(education)
@@ -186,9 +191,9 @@ The marginal distribution of education is unimodal with a mean of 16 years. Ther
 `r solend()`
 
 `r qbegin("A3")`  
-After examining the marginal distributions of the variables of interest in the analysis, we typically move on to examining relationships between the variables.  
+After we've looked at the marginal distributions of the variables of interest in the analysis, we typically move on to examining *relationships* between the variables.  
   
-Visualise and describe the relationship between income and level of education among the employees in the sample.  
+Visualise and describe (just in words) the relationship between income and level of education among the employees in the sample.  
 
 Think about:  
 
@@ -210,7 +215,17 @@ ggplot(data = riverview, aes(x = education, y = income)) +
        y = "Income (in thousands of U.S. dollars)")
 ```
 
-To comment on the strength of the linear association we compute the correlation coefficient:
+We might write:
+
+:::int
+There is a strong positive linear relationship between education level and income for the employees in the sample.
+High incomes tend to be observed, on average, with more years of formal education.
+The scatterplot does not highlight any outliers.
+:::
+`r solend()`
+
+:::frame
+To comment numerically on the strength of the linear association we might compute the correlation coefficient that we were introduced to in [Week 5](05_covcor.html):
 ```{r}
 riverview %>%
   select(education, income) %>%
@@ -222,14 +237,8 @@ $$
 r_{\text{education, income}} = 0.79
 $$
 
-We might write:
-
-:::int
-There is a strong positive linear relationship between education level and income for the employees in the sample.
-High incomes tend to be observed, on average, with more years of formal education.
-The scatterplot does not highlight any outliers.
 :::
-`r solend()`
+
 
 ## Fitting a Linear Model
 
@@ -244,12 +253,11 @@ In the lectures, you have seen the form $\color{red}{y} = \color{blue}{b_0 \cdot
 In the exercises below, we will tend to use $\color{red}{Y} = \color{blue}{\beta_0 \cdot{} 1 + \beta_1 \cdot{} X} + \epsilon$, to denote our population model, which when fitted on some sample data becomes $\color{red}{\hat{Y}} = \color{blue}{\hat{\beta}_0 \cdot{} 1 + \hat{\beta_1} \cdot{} X} + \hat{\epsilon}$ (the little hats indicate that they are fitted estimates).  
 
 :::
-  
 
-`r qbegin("A4")`
+:::frame
 The plot created in the previous question highlights a linear relationship, where the data points are scattered around an underlying linear pattern with a roughly-constant spread as x varies.
 
-We will try to fit a simple (one $x$ variable only) linear regression model:
+We will try to fit a simple (one explanatory variable only) linear regression model:
 
 $$
 Income = \beta_0 + \beta_1 \ Education + \epsilon \quad \\
@@ -258,28 +266,37 @@ $$
 
 where "$\epsilon \sim N(0, \sigma) \text{ independently}$" means that the errors around the line have mean zero and constant spread as x varies (we'll read more about what this means later in this lab in the section on [Making Valid Inferences](#making)). 
 
-
-**Fit the linear model to the sample data using the `lm()` function and assign it to a name to store it in your environment**
-
-
-_**Hint:**_
-_The syntax of the `lm()` function is: _
+:::rtip
+To fit linear models, we use the `lm()` function.  
+The syntax of the `lm()` function is:  
 ```
-lm(<response variable> ~ 1 + <explanatory variable>, data = <dataframe>)
+[model name] <- lm([response variable] ~ 1 + [explanatory variable], data = [dataframe])
 ```
 
-`r optbegin("Why ~ 1?", olabel=FALSE, toggle=params$TOGGLE)`
+:::
+:::
+
+
+:::rtip
+__Why `~1`?__  
+
 The fitted model can be written as
 $$
-\widehat{Income} = \hat \beta_0 + \hat \beta_1 \ Education
+\hat y = \hat \beta_0 + \hat \beta_1 (x)
 $$
-or
+The predicted values for the outcome are equal to our intercept, $\hat \beta_0$, plus our slope $\hat \beta_1$ multiplied by the value on our explanatory variable $x$.  
+The intercept is a _constant_. That is, we could write it as multiplied by 1:
 $$
-\widehat{Income} = \hat \beta_0 \cdot 1 + \hat \beta_1 \cdot Education
+\hat y = \color{blue}{\hat \beta_0}(\color{green}{1})\color{blue}{ + \hat \beta_1 }(\color{green}{x})
 $$
 
-When we specify the linear model in R, we include after the tilde sign, `~`, the variables that appear to the right of the $\hat \beta$s. That's why the 1 is included.  
-`r optend()`
+When we specify the linear model in R, we include after the tilde sign `~` all the things which appear to the right of each of the $\hat \beta$s (the bits in green in the equartion above). That's why the 1 is included. It is just saying "we want the intercept, $\beta_0$, to be estimated".   
+
+:::
+
+`r qbegin("A4")`
+Using the `lm()` function, fit a linear model to the sample data, in which employee income is explained by education level. Assign it to a name to store it in your environment.
+
 `r qend()`
 
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
@@ -330,8 +347,12 @@ The estimated increase in average income associated with a one year increase in 
 :::
 `r solend()`
 
+
+## Interpreting $\sigma$
+
+
 :::statbox
-The parameter estimates from our simple linear regression model take the form of a line, representing the systematic part of our model $\beta_0 + \beta_1 \ x$, which in our case is $11.32 + 2.65 \ Education$. Deviations from the line are determined by the random error component $\hat \epsilon$ (the red lines in Figure \@ref(fig:figslr) below).  
+The parameter estimates from our simple linear regression model take the form of a line, representing the systematic part of our model $\beta_0 + \beta_1 \ x$, which in our case is $11.32 + 2.65 \ Education$. Deviations from the line are determined by the random error component $\hat \epsilon$, or "residuals" (the red lines in Figure \@ref(fig:figslr) below).  
 
 ```{r figslr, echo=FALSE, fig.cap="Simple linear regression model, with systematic part of the model in blue and residuals in red"}
 betas <- coef(model1)
@@ -348,9 +369,9 @@ ggplot(., aes(x = education, y = income)) +
   geom_segment(aes(x=education, xend=education, y=income, yend=.fitted), col="red",lty="dotted")
 ```
 
-:::
+We use $\sigma$ to denote the standard deviation of all the residuals
 
-## Interpreting $\sigma$
+:::
 
 `r qbegin("A6")`
 Consider the following:  
@@ -366,12 +387,12 @@ The standard deviation of the errors, denoted by $\sigma$ is an important quanti
 
 A small $\sigma$ indicates that the points hug the line closely and we should expect fairly accurate predictions, while a large $\sigma$ suggests that, even if we estimate the line perfectly, we can expect individual values to deviate from it by substantial amounts.
 
-The *estimated* standard deviation of the errors is (surprisingly) denoted $\hat \sigma$ and is equal to
+When we actually **estimate** this quantity, we might put a hat on it, and write $\hat \sigma$. It is equal to
 $$
 \hat \sigma = \sqrt{\frac{SS_{Residual}}{n - 2}} \\
 \begin{align}
 & \text{where} \\
-& SS_{Residual} = \sum_{i=1}^n{(\epsilon_i)^2}
+& SS_{Residual} = \textrm{Sum of Squared Residuals} = \sum_{i=1}^n{(\epsilon_i)^2}
 \end{align}
 $$
 `r optend()`
@@ -401,32 +422,32 @@ Since $2 \hat \sigma = 2 (8.98) = 17.96$, we expect most (about 95\%) of the emp
 ## Fitted and predicted values  
 
 :::rtip
-To compute the model-predicted values for the data in the sample using various functions. Again, if our model object is named "model1" in our environment, we can use:
+To compute the model-predicted values for the data in the sample we can use various functions. Again, if our model object is named "model1" in our environment, we can use:
 
 - `predict(model1)`
 - `fitted(model1)`
 - `fitted.values(model1)`
 - `model1$fitted.values`
 
+For example, this will give us the estimated income (point on our regression line) for each observed value of education level.
 ```{r}
 predict(model1)
 ```
 
+We can also compute model-predicted values for other (unobserved) data:
 
-To compute model-predicted values for other data:
-
-- `predict(<fitted model>, newdata = <dataframe>)`
+- `predict([fitted model], newdata = [dataframe])`
 
 ```{r}
 # make a tibble/dataframe with values for the predictor:
-education_query <- tibble(education = c(11, 18))
+education_query <- tibble(education = c(11, 18, 50))
 # model predicted values of income, for the values of education
 # inside the "education_query" data
 predict(model1, newdata = education_query)
 ```
 :::
 
-`r qbegin("A6")`
+`r qbegin("A7")`
 Compute the model-predicted income for someone with 1 year of education.  
 `r qend()`
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
@@ -435,6 +456,29 @@ education_query <- tibble(education = c(1))
 predict(model1, newdata = education_query)
 ```
 `r solend()`
+
+`r qbegin("A8")`
+Given that our fitted model takes the form: 
+
+$$
+Income = 11.32 + 2.65\cdot Education
+$$
+How can we get to this same answer manually?
+`r qend()`
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+We are asking what the predicted income is for someone with 1 year of education. So we can substitute in "1" for the Education variable:
+$$
+\begin{align}
+Income &= 11.32 + 2.65\cdot Education \\
+Income &= 11.32 + 2.65\cdot 1 \\
+Income &= 11.32 + 2.65\\
+Income &= 13.97 \\
+\end{align}
+$$
+
+
+`r solend()`
+
 
 ## Inference for regression coefficients  
 
@@ -471,9 +515,10 @@ $$
 :::
 
 
-`r qbegin("A8")`
+`r qbegin("A9")`
 Test the hypothesis that the population slope is zero --- that is, that there is no linear association between income and education level in the population.  
-(Hint: you can find all the necessary information in `summary()` of your model)
+
+(Hint: you don't need to *do* anything for this, you can find all the necessary information in `summary()` of your model)
 `r qend()`
 
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
@@ -529,10 +574,10 @@ $$
 :::
 
 
-`r qbegin("A9")`
+`r qbegin("A10")`
 What is the proportion of the total variability in incomes explained by the linear relationship with education level?
 
-_**Hint:** The question asks to compute the value of $R^2$, but you might be able to find it already computed somewhere._
+_**Hint:** The question asks to compute the value of $R^2$, but you might be able to find it already computed somewhere (so much stuff is already in `summary()` of the model._
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
@@ -620,7 +665,7 @@ $$
 
 :::
 
-`r qbegin("A10")`
+`r qbegin("A11")`
 Look at the output of `summary()` of your model. Identify the relevant information to conduct an F-test against the null hypothesis that the model is ineffective at predicting income using education level.
 `r qend()`
 
@@ -633,11 +678,10 @@ The relevant row is the following:
 ```
 F-statistic: 51.45 on 1 and 30 DF,  p-value: 5.562e-08
 ```
-We might write up the test results as,
+We might interpret this as:
 
 :::int
-We performed an F-test for the overall significance of the regression, $F(1, 30) = 51.45, p < .001$.
-The large F-statistic leads to a very small p-value ($<.001$), meaning that we have very strong evidence against the null hypothesis that the model is ineffective.
+We performed an F-test for the overall significance of the regression, $F(1, 30) = 51.45, p < .001$, indicating very strong evidence against the null hypothesis that the model is ineffective.
 
 In other words, the data provide strong evidence that education is an effective predictor of income.
 :::
@@ -690,7 +734,7 @@ It is evident that the latter is obtained as the square root of the former.
 `r optend()`
 
 
-## Binary predictors
+## Binary predictors {#binpred}
 
 Let's suppose that instead of having measured education in years, we had data instead on "Obtained College Degree: Yes/No". Our explanatory variable would be binary categorical (think back to our discussion of [types of data](01_categorical.html#Types_of_Data)).  
 
@@ -747,7 +791,7 @@ riverview %>%
 :::  
 
 
-# --
+
 
 ```{r echo=FALSE}
 knitr::include_graphics("images/slr/catwalking.jpg")
@@ -760,13 +804,82 @@ knitr::include_graphics("images/slr/catwalking.jpg")
 In this next block of exercises, we move from the simple linear regression model (one outcome variable, one explanatory variable) to the _multiple regression model_ (one outcome variable, multiple explanatory variables).  
 Everything we just learned about simple linear regression can be extended (with minor modification) to the multiple regression model. The key conceptual difference is that for simple linear regression we think of the distribution of errors at some fixed value of the explanatory variable, and for multiple linear regression, we think about the distribution of errors at fixed set of values for all our explanatory variables. 
 
-## ~ Numeric + Numeric
+:::statbox
+**Model formula**
 
-> **Research question**  
-> Reseachers are interested in the relationship between psychological wellbeing and time spent outdoors.  
-The researchers know that other aspects of peoples' lifestyles such as how much social interaction they have can influence their mental well-being. They would like to study whether there is a relationship between well-being and time spent outdoors *after* taking into account the relationship between well-being and social interactions.  
+For multiple linear regression, the model formula is an extension of the one predictor ("simple") regression model, to include any number of predictors:  
+$$
+y = \beta_0 \ + \ \beta_1 x_1 \ + \ \beta_2 x_2 \ + \ ... \ + \beta_k x_k \ + \ \epsilon \\ 
+\quad \\ 
+\text{where} \quad \epsilon \sim N(0, \sigma) \text{ independently}
+$$
+
+In the model specified above,
+
+- $\mu_{y|x_1, x_2, ..., x_k} = \beta_0 + \beta_1 x + \beta_2 x_2 + ... \beta_k x_k$ represents the systematic part of the model giving the mean of $y$ at each combination of values of variables $x_1$-$x_k$;
+- $\epsilon$ represents the error (deviation) from that mean, and the errors are independent from one another.    
+  
+__Visual__
+
+Note that for simple linear regression we talked about our model as a _line_ in 2 dimensions: the systematic part $\beta_0 + \beta_1 x$ defined a line for $\mu_y$ across the possible values of $x$, with $\epsilon$ as the random deviations from that line. But in multiple regression we have more than two variables making up our model. 
+
+In this particular case of three variables (one outcome + two explanatory), we can think of our model as a _regression surface_ (See Figure \@ref(fig:regsurf)). The systematic part of our model defines the surface across a range of possible values of both $x_1$ *and* $x_2$. Deviations from the surface are determined by the random error component, $\hat \epsilon$.  
+
+```{r regsurf, echo=FALSE, fig.cap = "Regression surface for wellbeing ~ outdoor_time + social_int, from two different angles", out.width="100%"}
+mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
+mwdata %>% rename(y=wellbeing,x1=outdoor_time,x2=social_int) -> mwdata
+fit<-lm(y~x1+x2, data=mwdata)
+steps=50
+x1 <- with(mwdata, seq(min(x1),max(x1),length=steps))
+x2 <- with(mwdata, seq(min(x2),max(x2),length=steps))
+newdat <- expand.grid(x1=x1, x2=x2)
+y <- matrix(predict(fit, newdat), steps, steps)
+
+
+par(mfrow=c(1,2))
+p <- persp(x1,x2,y, theta = 35,phi=10, col = NA)
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+#points(pred, col = "blue", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y)
+
+p <- persp(x1,x2,y, theta = -35,phi=10, col = NA)
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+#points(pred, col = "blue", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y)
+
+par(mfrow=c(1,1))
+```
+
+Don't worry about trying to figure out how to visualise it if we had any more explanatory variables! We can only concieve of 3 spatial dimensions. One could imagine this surface changing over time, which would bring in a 4th dimension, but beyond that, it's not worth trying!.
+
+:::
 
 <!-- We previously used simple linear regression to examine whether score on the WMBWS was related to the amount of time spent outdoors (self-reported as the average number of hours per week). We will now extend this and build a multiple regression model which we can use to predict WEMWBS score based on both outdoor time *and* number of social interactions.   -->
+
+`r qbegin("B1")`
+Let's imagine that some reseachers are interested in the relationship between psychological wellbeing and time spent outdoors. They know that other aspects of peoples' lifestyles such as how much social interaction they have can influence their mental well-being. They would like to study whether there is a relationship between well-being and time spent outdoors *after* taking into account the relationship between well-being and social interactions.   
+
+To evaluate this hypothesis, we are going to fit the following model:  
+
+$$
+Wellbeing = \beta_0 \ + \ \beta_1 \cdot Outdoor Time \ + \ \beta_2 \cdot Social Interactions \ + \ \epsilon
+$$
+
+First, create a new section heading in your R script or RMarkdown document (whichever you are using) for the multiple regression exercises.  
+Import the wellbeing data (detailed below) into R. We'll give them the name `mwdata`.    
+  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+library(tidyverse)
+# Read in data
+mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
+```
+`r solend()`
 
 :::frame
 __Data: Wellbeing__  
@@ -797,23 +910,28 @@ read_csv('https://uoepsy.github.io/data/wellbeing.csv') %>% head %>% gt::gt()
 
 :::
 
-`r qbegin("B1")`
-Create a new section heading in your R script or RMarkdown document (whichever you are using) for the multiple regression exercises.  
-Import the wellbeing data into R. Assign them to a object called `mwdata`.   
-
-`r qend()`
-
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r, warning=FALSE, message=FALSE}
-library(tidyverse)
-# Read in data
-mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
-head(mwdata)
-```
-`r solend()`
-
 `r qbegin("B2")`
-Produce plots of the _marginal distributions_ (the distributions of each variable in the analysis without reference to the other variables) of the `wellbeing`, `outdoor_time`, and `social_int` variables. 
+Explore and describe the relevant variables and relationships.
+
+`r optbegin("Hints", olabel=F,toggle=params$TOGGLE)`
+- Produce plots of the _marginal distributions_ (the distributions of each variable in the analysis without reference to the other variables) of the `wellbeing`, `outdoor_time`, and `social_int` variables. 
+- Produce plots of the _marginal relationships_ between the outcome variable (`wellbeing`) and each of the explanatory variables.  
+- Produce a correlation matrix of the variables which are to be used in the analysis, and write a short paragraph describing the relationships. 
+
+
+:::statbox
+__Correlation matrix__  
+
+A table showing the correlation coefficients - $r_{(x,y)}=\frac{\mathrm{cov}(x,y)}{s_xs_y}$ - between variables. Each cell in the table shows the relationship between two variables. The diagonals show the correlation of a variable with itself (and are therefore always equal to 1).  
+
+:::
+
+:::rtip
+We can create a correlation matrix easily by giving the `cor()` function a dataframe. However, we only want to give it 3 columns here. Think about how we select specific columns, either using `select()`, or giving the column numbers inside `[]`. 
+:::
+
+`r optend()`
+
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 We should be familiar now with how to visualise a marginal distribution. You might choose histograms, density curves, or boxplots, or a combination:   
@@ -850,12 +968,6 @@ wellbeing_plot / outdoortime_plot / social_plot
 
 :::
 
-`r solend()`
-
-`r qbegin("B3")`
-Produce plots of the _marginal relationships_ between the outcome variable (`wellbeing`) and each of the explanatory variables.  
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r mwdata-mlr-rels, fig.cap='Scatterplots displaying the relationships between scores on the WEMWBS and a) weekly outdoor time (hours), and b) weekly number of social interactions'}
 wellbeing_outdoor <- 
   ggplot(data = mwdata, aes(x = outdoor_time, y = wellbeing)) +
@@ -869,24 +981,7 @@ wellbeing_social <-
 
 wellbeing_outdoor | wellbeing_social
 ```
-`r solend()`
-  
-`r qbegin("B4")`
-Produce a correlation matrix of the variables which are to be used in the analysis, and write a short paragraph describing the relationships. 
 
-:::statbox
-__Correlation matrix__  
-
-A table showing the correlation coefficients - $r_{(x,y)}=\frac{\mathrm{cov}(x,y)}{s_xs_y}$ - between variables. Each cell in the table shows the relationship between two variables. The diagonals show the correlation of a variable with itself (and are therefore always equal to 1).  
-
-:::
-
-:::rtip
-We can create a correlation matrix easily by giving the `cor()` function a dataframe. However, we only want to give it 3 columns here. Think about how we select specific columns, either using `select()`, or giving the column numbers inside `[]`. 
-:::
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 We can either use:
 ```{r eval=FALSE}
 # correlation matrix of the first 3 columns
@@ -913,61 +1008,7 @@ There is also a weak positive correlation between weekly outdoor time and the we
 Note that there is a weak correlation between our two explanatory variables (outdoor_time and social_int). We will return to how this might affect our model when later on we look at the assumptions of multiple regression.  
 `r solend()`
 
-:::statbox
-**Model formula**
-
-For multiple linear regression, the model formula is an extension of the one predictor ("simple") regression model, to include any number of predictors:  
-$$
-y = \beta_0 \ + \ \beta_1 x_1 \ + \ \beta_2 x_2 \ + \ ... \ + \beta_k x_k \ + \ \epsilon \\ 
-\quad \\ 
-\text{where} \quad \epsilon \sim N(0, \sigma) \text{ independently}
-$$
-
-In the model specified above,
-
-- $\mu_{y|x_1, x_2, ..., x_k} = \beta_0 + \beta_1 x + \beta_2 x_2 + ... \beta_k x_k$ represents the systematic part of the model giving the mean of $y$ at each combination of values of variables $x_1$-$x_k$;
-- $\epsilon$ represents the error (deviation) from that mean, and the errors are independent from one another.    
-  
-__Visual__
-
-Note that for simple linear regression we talked about our model as a _line_ in 2 dimensions: the systematic part $\beta_0 + \beta_1 x$ defined a line for $\mu_y$ across the possible values of $x$, with $\epsilon$ as the random deviations from that line. But in multiple regression we have more than two variables making up our model. 
-
-In this particular case of three variables (one outcome + two explanatory), we can think of our model as a _regression surface_ (See Figure \@ref(fig:regsurf)). The systematic part of our model defines the surface across a range of possible values of both $x_1$ *and* $x_2$. Deviations from the surface are determined by the random error component, $\hat \epsilon$.  
-
-```{r regsurf, echo=FALSE, fig.cap = "Regression surface for wellbeing ~ outdoor_time + social_int, from two different angles", out.width="100%"}
-fit<-lm(wellbeing~outdoor_time+social_int, data=mwdata)
-steps=50
-outdoor_time <- with(mwdata, seq(min(outdoor_time),max(outdoor_time),length=steps))
-social_int <- with(mwdata, seq(min(social_int),max(social_int),length=steps))
-newdat <- expand.grid(outdoor_time=outdoor_time, social_int=social_int)
-wellbeing <- matrix(predict(fit, newdat), steps, steps)
-
-
-par(mfrow=c(1,2))
-p <- persp(outdoor_time,social_int,wellbeing, theta = 35,phi=10, col = NA)
-obs <- with(mwdata, trans3d(outdoor_time,social_int, wellbeing, p))
-pred <- with(mwdata, trans3d(outdoor_time, social_int, fitted(fit), p))
-points(obs, col = "red", pch = 16)
-#points(pred, col = "blue", pch = 16)
-segments(obs$x, obs$y, pred$x, pred$y)
-
-p <- persp(outdoor_time,social_int,wellbeing, theta = -35,phi=10, col = NA)
-obs <- with(mwdata, trans3d(outdoor_time,social_int, wellbeing, p))
-pred <- with(mwdata, trans3d(outdoor_time, social_int, fitted(fit), p))
-points(obs, col = "red", pch = 16)
-#points(pred, col = "blue", pch = 16)
-segments(obs$x, obs$y, pred$x, pred$y)
-
-par(mfrow=c(1,1))
-```
-
-Don't worry about trying to figure out how to visualise it if we had any more explanatory variables! We can only concieve of 3 spatial dimensions. One could imagine this surface changing over time, which would bring in a 4th dimension, but beyond that, it's not worth trying!.
-
-:::
-
-`r qbegin("B5")`  
-The scatterplots we created in an earlier exercise show moderate, positive, and linear relationships both between outdoor time and wellbeing, and between numbers of social interactions and wellbeing.  
-
+`r qbegin("B3")`  
 In R, using `lm()`, fit the linear model specified by the formula below, assigning the output to a name to store it in your environment.   
 
 $$
@@ -977,7 +1018,7 @@ $$
 *Tip:*
 As we did for simple linear regression, we can fit our multiple regression model using the `lm()` function. We can add as many explanatory variables as we like, separating them with a `+`.  
 ```
-lm( <response variable> ~ 1 + <explanatory variable 1> + <explanatory variable 2> + ... , data = <dataframe>)
+[model name] <- lm([response variable] ~ 1 + [explanatory variable 1] + [explanatory variable 2] + ... , data = [dataframe])
 ```
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -1021,22 +1062,21 @@ The coefficient `r round(coef(wbmodel)[2],2)` of weekly outdoor time for predict
 
 :::
 
-`r qbegin("B6")`
-:::statbox
-Just like the simple linear regression, when we estimate parameters from the available data, we have:
+<!-- :::statbox -->
+<!-- Just like the simple linear regression, when we estimate parameters from the available data, we have: -->
 
-- A _fitted model_ (recall that the h$\hat{\textrm{a}}$ts are used to distinguish our _estimates_ from the _true unknown parameters_): 
-$$
-\widehat{Wellbeing} = \hat \beta_0 + \hat \beta_1 \cdot Outdoor Time + \hat \beta_2 \cdot Social Interactions
-$$
-- And we have the residuals $\hat \epsilon = y - \hat y$ which are the deviations from the observed values and our model-predicted responses.  
+<!-- - A _fitted model_ (recall that the h$\hat{\textrm{a}}$ts are used to distinguish our _estimates_ from the _true unknown parameters_):  -->
+<!-- $$ -->
+<!-- \widehat{Wellbeing} = \hat \beta_0 + \hat \beta_1 \cdot Outdoor Time + \hat \beta_2 \cdot Social Interactions -->
+<!-- $$ -->
+<!-- - And we have the residuals $\hat \epsilon = y - \hat y$ which are the deviations from the observed values and our model-predicted responses.   -->
 
-:::
+<!-- ::: -->
 
-1. Extract *and interpret* the parameter estimates (the "coefficients") from your model.  
-  (`summary()`, `coef()`, `$coefficients` etc will be useful here)  
-2. Within what distance from the model predicted values (the regression surface) would we expect 95% of WEMWBS wellbeing scores to be? 
-  (Either `sigma()` or part of the output from `summary()` will help you for this)  
+`r qbegin("B4")`
+
+- Extract *and interpret* the parameter estimates (the "coefficients") from your model (`summary()`, `coef()`, `$coefficients` etc will be useful here).  
+- Within what distance from the model predicted values (the regression surface) would we expect 95% of WEMWBS wellbeing scores to be? (Either `sigma()` or part of the output from `summary()` will help you for this)  
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -1056,8 +1096,19 @@ The estimated standard deviation of the errors is $\hat \sigma$ = `r round(sigma
 
 `r solend()`
 
-`r qbegin("B7")`
-Obtain 95\% [confidence intervals for the regression coefficients](https://lmgtfy.com/?q=confidence+intervals+for+lm+in+r){target="_blank"}, and write a sentence describing each.  
+`r qbegin("B5")`
+We can obtain confidence intervals for our estimates. These provide a means of quantifying the uncertainty (or precision) of our estimates.  
+
+:::statbox
+
+Think of a confidence interval like a ring-toss.  
+The population parameter is some value, but we only have a sample, with which we use to *estimate* the value in the population. 
+95% Confidence Intervals are a way of saying "95% of the times I might throw this ring, it will land on the stake". 
+(see @EpiEllie https://twitter.com/epiellie/status/1073385427317465089 )
+
+:::
+
+Look up the function `confint()` and obtain some 95% Confidence Intervals for the coefficients. 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
@@ -1074,250 +1125,8 @@ confint(wbmodel, level = 0.95)
 
 `r solend()`
 
-In last week's exercises, we extended the simple linear regression model to *multiple regression* (one outcome variable, multiple explanatory variables). Specifically, we looked at the case of when we had multiple numeric (or 'continuous') explanatory variables.  
-We're now going to start by taking a look at a model with a mix of *numeric* and *categorical* explanatory variables. 
-    
-## ~ Numeric + Categorical
-
-Suppose that the group of researchers were instead wanting to study the relationship between well-being and time spent outdoors after taking into account the relationship between well-being and _having a routine_.  
-
-Note that in the dataset, 'having a routine' is *categorical* (participants either do, or don't have a routine).
-So let's go over the modelling process again, but paying careful attention to where and how the process differs when we have a _categorical_ predictor. 
-
-`r qbegin("A1")`
-We have already visualised the marginal distribution of weekly outdoor time in questions last week, as well as its relationship with wellbeing scores.  
-  
-Read in the wellbeing data (https://uoepsy.github.io/data/wellbeing.csv) and produce visualisations of:  
-
-1. the distribution of the `routine` variable
-2. the relationship between `routine` and `wellbeing`. 
-
-**Note:** We cannot visualise the distribution of `routine` as a density curve or boxplot, because it is a _categorical_ variable (observations can only take one of a set of discrete response values).  
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-library(tidyverse)
-# Read in data
-mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
-```
-
-`geom_bar()` will count the number of observations falling into each unique level of the routine variable:
-```{r, fig.cap="Marginal distribution plots of Routine (y/n)"}
-ggplot(data = mwdata, aes(x = routine)) +
-  geom_bar()+
-  labs(x = "Routine", y = "Frequency")
-```
-
-We might plot the relationship between routine and wellbeing as two boxplots:
-```{r, fig.cap="Relationship between wellbeing and presence of routine"}
-ggplot(data = mwdata, aes(x = routine, y = wellbeing)) +
-  geom_boxplot()+
-  labs(x = "Routine", y = "Wellbeing score (WEMWBS)")
-```
-`r solend()`  
-
-`r qbegin("A2")`
-Fit the multiple regression model below using `lm()`, and assign it to an object to store it in your environment. Examine the summary output of the model. 
-
-$$
-Wellbeing = \beta_0 + \beta_1 \cdot OutdoorTime + \beta_2 \cdot Routine + \epsilon
-$$
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-wbmodel2 <- lm(wellbeing ~ 1 + outdoor_time + routine, data = mwdata)
-summary(wbmodel2)
-```
-`r solend()`
-
-`r qbegin("A3")`
-$\hat \beta_0$ (the intercept) is the estimated average wellbeing score associated with zero hours of weekly outdoor time and zero in the routine variable.  
-
-What group is the intercept the estimated wellbeing score for when they have zero hours of outdoor time? Why (think about what zero in the routine variable means)?  
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-As you can see in the output of the model, we have a coefficient called `routineRoutine`. This is the parameter estimate for a dummy variable which has been inputted into the model. The `lm()` function will automatically name the dummy variables (and therefore the coefficients) according to what level is identified by the 1. It names them `<variable><Level>`, so we can tell that `routineRoutine` is 1 for "Routine" and 0 for "No Routine".  
-
-The intercept is therefore the estimated wellbeing score for those with No Routine and zero hours of outdoor time.   
-`r solend()`
-
-`r qbegin("A4")`
-In [the previous example](07_regression.html/#numeric-numeric), we had a visualisation of our model as a regression surface.  
-Here, one of our explanatory variables has only two possible responses. How might we best visualise the model?    
-
-a. one line
-a. one surface
-a. two lines
-a. two surfaces
-a. a curved (not flat) surface 
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-We can visualise the model $\widehat{Wellbeing} = \hat \beta_0 + \hat \beta_1 \cdot OutdoorTime + \hat \beta_2 \cdot Routine$ as two lines.  
-Each line represents the model predicted values for wellbeing scores across the range of weekly outdoor time, with one line for those who report having "Routine" and one for those with "No Routine".  
-`r solend()`
-
-`r qbegin("A5")`
-Get a pen and paper, and sketch out the plot shown in Figure \@ref(fig:plot-annotate).  
-
-```{r plot-annotate, echo=FALSE, fig.cap="Multiple regression model: Wellbeing ~ Outdoor Time + Routine"}
-sjPlot::plot_model(wbmodel2, type="pred", terms=c("outdoor_time","routine"), show.data=FALSE)+
-  scale_fill_manual(NULL, values=c(NA,NA))
-```
-
-Annotate your plot with labels for each of parameter estimates from your model: 
-
-| Parameter Estimate   |      Model Coefficient      |  Estimate |
-|----------|:-------------:|------:|
-| $\hat \beta_0$ | `(Intercept)` | `r round(coef(wbmodel2)[1],2)` |
-| $\hat \beta_1$ | `outdoor_time`   |  `r round(coef(wbmodel2)[2],2)` |
-| $\hat \beta_2$ | `routineRoutine` | `r round(coef(wbmodel2)[3],2)` |
 
 
-`r optbegin("Hint",olabel=FALSE, toggle=params$TOGGLE)`
-Below you can see where to add the labels, but we have not said which is which. 
-
-```{r echo=FALSE}
-sjPlot::plot_model(wbmodel2, type="pred", terms=c("outdoor_time","routine"), show.data=FALSE)+
-  scale_fill_manual(NULL, values=c(NA,NA))+
-  geom_vline(xintercept = 0) +
-  geom_segment(aes(x=1,xend=0,
-                   y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=0))-1,
-                   yend=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=0))),
-               col="black",lwd=.2)+
-  geom_label(aes(x=2,y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=0))-3), 
-             label="B", col="black")+
-  geom_segment(aes(x=20,xend=20,
-                   y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=20)),
-                   yend=predict(wbmodel2,newdata=data.frame(routine="Routine",outdoor_time=20))),
-               col="black",lwd=.2,
-               arrow = arrow(length = unit(3, "mm")))+
-  geom_label(aes(x=21,y=predict(wbmodel2,newdata=data.frame(routine="Routine",outdoor_time=20))-5),
-               label="A", col="black")+
-  geom_segment(aes(x=10,xend=11,
-                 y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=10)),
-                 yend=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=10))),
-             col="black",lwd=.2)+
-  geom_segment(aes(x=11,xend=11,
-                 y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=10)),
-                 yend=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=11))),
-             col="black",lwd=.2)+
-  geom_label(aes(x=12,y=predict(wbmodel2,newdata=data.frame(routine="No Routine",outdoor_time=10))),
-                 label="C",col="black")+
-  NULL -> plot_annotate
-
-plot_annotate
-
-```
-
-+ A is the vertical distance between the red and blue lines (the lines are parallel, so this distance is the same wherever you cut it on the x-axis).  
-+ B is the point at which the blue line cuts the y-axis.  
-+ C is the vertical increase (increase on the y-axis) for the blue line associated with a 1 unit increase on the x-axis (the lines are parallel, so this is the same for the red line).  
-
-`r optend()`
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-+ A = $\hat \beta_2$ = `routineRoutine` coefficient = `r round(coef(wbmodel2)[3],2)`
-+ B = $\hat \beta_0$ = `(Intercept)` coefficient  = `r round(coef(wbmodel2)[1],2)`
-+ C = $\hat \beta_1$ = `outdoor_time` coefficient = `r round(coef(wbmodel2)[2],2)` 
-
-```{r echo=FALSE}
-plot_annotate
-```
-
-`r solend()`
-
-`r qbegin("A6")`
-Load the __sjPlot__ package using `library(sjPlot)` and try running the code below (changing to use the name of your fitted model). You may already have the __sjPlot__ package installed from previous exercises. If not, you will need to install it first. 
-
-```{r eval=FALSE}
-library(sjPlot)
-plot_model(wbmodel2)
-plot_model(wbmodel2, type = "pred")
-plot_model(wbmodel2, type = "pred",  terms=c("outdoor_time","routine"), show.data=TRUE)
-```
-
-What do you think each one is showing?  
-
-:::rtip
-The `plot_model` function (and the __sjPlot__ package) can do a lot of different things. Most packages in R come with tutorials (or "vignettes"), for instance: https://strengejacke.github.io/sjPlot/articles/plot_model_estimates.html 
-:::
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-library(sjPlot)
-plot_model(wbmodel2)
-```
-These are the parameter estimates (the $\hat \beta$'s), and the confidence intervals. 
-```{r}
-confint(wbmodel2)
-```
-
-When we add `type="pred"` we are asking for the predicted values. It will provide a separate plot for each explanatory variable, showing the predicted values at each level of that variable:
-```{r}
-plot_model(wbmodel2, type = "pred")
-```
-
-We can combine these into one plot, and ask it to show the raw data as well:
-```{r}
-plot_model(wbmodel2, type = "pred",  terms=c("outdoor_time","routine"), show.data=TRUE)
-```
-`r solend()`
-
-## Categorical Predictors with $k$ levels
-
-We saw that a _binary categorical_ variable gets inputted into our model as a variable of 0s and 1s (these typically get called __"dummy variables"__).  
-
-:::statbox
-__Dummy variables__ are numeric variables that represent categorical data.  
-:::
-
-When we have a _categorical_ explanatory variable with __more than 2 levels__, our model gets a bit more - it needs not just one, but _a number of_ dummy variables. For a categorical variable with $k$ levels, we can express it in $k-1$ dummy variables.  
-
-For example, the "species" column below has three levels, and can be expressed by the two variables "species_dog" and "species_parrot":  
-```{r echo=FALSE, out.width="80%"}
-data.frame(
-  species = c("cat","cat","dog","parrot","dog","cat","..."),
-  species_dog = c(0,0,1,0,1,0,"..."),
-  species_parrot = c(0,0,0,1,0,0,"...")
-)
-```
-
-+ The "cat" level is expressed whenever both the "species_dog" and "species_parrot" variables are 0.
-+ The "dog" level is expressed whenever the "species_dog" variable is 1 and the "species_parrot" variable is 0.
-+ The "parrot" level is expressed whenever the "species_dog" variable is 0 and the "species_parrot" variable is 1.  
-
-R will do all of this re-expression for us. If we include in our model a categorical explanatory variable with 4 different levels, the model will estimate 3 parameters - one for each dummy variable. We can interpret the parameter estimates (the coefficients we obtain using `coefficients()`,`coef()` or `summary()`) as the estimated increase in the outcome variable associated with an increase of one in each dummy variable (holding all other variables equal).  
-```{r echo=FALSE}
-set.seed(348)
-catplot <- tibble(
-  species = rep(c("cat","dog","parrot"), each = 15),
-  outcome = c(rnorm(15,60,5), rnorm(15,50,5), rnorm(15,55,5))
-)
-cstat = coef(lm(outcome~species,catplot))
-pander::pander(summary(lm(outcome~species,catplot))$coefficients)
-```
-
-Note that in the above example, an increase in 1 of "species_dog" is the difference between a "cat" and a "dog". An increase in one of "species_parrot" is the difference between a "cat" and a "parrot". We think of the "cat" category in this example as the _reference level_ - it is the category against which other categories are compared against. 
-
-```{r echo=FALSE}
-ggplot(catplot, aes(x=species, y=outcome))+
-  #geom_boxplot(fatten=NULL)+
-  geom_jitter(height=0,width=.05, alpha=.4)+
-  geom_point(x=1,y=cstat[1], col="blue",size=3)+
-  annotate("text",x=1,y=cstat[1],label=expression(paste(beta[0], " (intercept)")), col="blue", hjust=1.1)+
-  geom_segment(aes(x=1,xend=2,y=cstat[1],yend=cstat[1]+cstat[2]),col="blue")+
-  geom_segment(aes(x=1,xend=2,y=cstat[1],yend=cstat[1]),col="blue", lty="dashed")+
-  geom_segment(aes(x=2,xend=2,y=cstat[1],yend=cstat[1]+cstat[2]),col="blue", lty="dashed")+
-  annotate("text",x=2.15,y=mean(c(cstat[1],sum(cstat[1:2]))),label=expression(paste(beta[1], " (slope)")), col="blue", hjust=.35)+
-  
-  geom_segment(aes(x=1,xend=3,y=cstat[1],yend=cstat[1]+cstat[3]),col="blue")+
-  geom_segment(aes(x=1,xend=3,y=cstat[1],yend=cstat[1]),col="blue", lty="dashed")+
-  geom_segment(aes(x=3,xend=3,y=cstat[1],yend=cstat[1]+cstat[3]),col="blue", lty="dashed")+
-  annotate("text",x=3.15,y=mean(c(cstat[1],sum(cstat[c(1,3)]))),label=expression(paste(beta[2], " (slope)")), col="blue", hjust=.35)
-```
 
 ## More Model Evaluation
 
@@ -1347,7 +1156,7 @@ $$
 **In R,** you can view the mutiple and adjusted $R^2$ at the bottom of the output of `summary(<modelname>)`:
 
 ```{r mlroutputrsq, echo=FALSE, fig.cap="Multiple regression output in R, summary.lm(). R-squared highlighted",fig.align = 'left'}
-knitr::include_graphics("images/mlroutputrsq.png")
+knitr::include_graphics("images/mlr/mlroutputrsq.png")
 ```
 
 :::  
@@ -1355,7 +1164,7 @@ knitr::include_graphics("images/mlroutputrsq.png")
 :::statbox
 __F-ratio__  
 
-As in simple linear regression, the F-ratio is used to test the null hypothesis that __all__ regression slopes are zero.  
+As in simple linear regression, the F-ratio is used to test the null hypothesis that __all__ regression slopes are zero (it is just that now that we have multiple predictors, "all" is more than 1).  
 
 It is called the F-ratio because it is the ratio of the how much of the variation is explained by the model (per parameter) versus how much of the variation is unexplained (per remaining degrees of freedom). 
 
@@ -1376,46 +1185,197 @@ $$
 **In R,** at the bottom of the output of `summary(<modelname>)`, you can view the F ratio, along with an hypothesis test against the alternative hypothesis that the at least one of the coefficients $\neq 0$ (under the null hypothesis that all coefficients = 0, the ratio of explained:unexplained variance should be approximately 1):
 
 ```{r mlroutputrf, echo=FALSE, fig.cap="Multiple regression output in R, summary.lm(). F statistic highlighted", fig.align = 'left'}
-knitr::include_graphics("images/mlroutputf.png")
+knitr::include_graphics("images/mlr/mlroutputf.png")
 ```
   
 :::
 
 
-`r qbegin("D1")`
-Using the wellbeing data, fit the following model.
+`r qbegin("C1")`
+$$
+Wellbeing = \beta_0 \ + \ \beta_1 \cdot Outdoor Time \ + \ \beta_2 \cdot Social Interactions \ + \ \epsilon
+$$    
 
-+ $\text{Wellbeing} = \beta_0 + \beta_1 \cdot \text{Social Interactions} + \beta_2 \cdot \text{HasRoutine} + \beta_3 \cdot \text{Outdoor Time} + \epsilon$  
+Does our model (above) provide a better fit to the data than a model with no explanatory variables? (i.e., test against the alternative hypothesis that at least one of the explanatory variables significantly predicts wellbeing scores). 
 
-Does the model provide a better fit to the data than a model with no explanatory variables? (i.e., test against the alternative hypothesis that at least one of the explanatory variables significantly predicts wellbeing scores). 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+summary(wbmodel)
+```
+
+:::int
+```{r echo=FALSE}
+mdl1<-wbmodel
+```
+Weekly social interactions and outdoor time explained `r paste0(round(summary(mdl1)$adj.r.squared*100,1),"%")` of the variance (adjusted $R^2$ =`r round(summary(mdl1)$adj.r.squared,3)`, $F$(`r paste(summary(mdl1)$fstatistic[2:3],collapse=",")`)=`r round(summary(mdl1)$fstatistic,1)[1]`, p`r map_chr(pf(summary(mdl1)$fstatistic[1],summary(mdl1)$fstatistic[2],summary(mdl1)$fstatistic[3], lower.tail = FALSE), ~ifelse(.<001,"<.001",paste0("=",round(.,2))))`)
+:::
+  
+`r solend()`
+
+# Model Comparison
+
+:::statbox
+### Incremental F-test  
+
+The F-ratio we see at the bottom of `summary(model)` is actually a comparison between two models: our model (with some explanatory variables in predicting $y$) and __the null model.__ In regression, the null model can be thought of as the model in which all explanatory variables have zero regression coefficients. It is also referred to as the __intercept-only model__, because if all predictor variable coefficients are zero, then the only we are only estimating $y$ via an intercept (which will be the mean: $\bar y$).  
+
+
+But we don't always have to comare our model to the null model. We can compare it to all the intermediate models which vary in the complexity, from the null model to our full model.  
+
+:::imp
+If (*and only if*) two models are __nested__ (one model contains all the predictors of the other and is fitted to the same data), we can compare them using an __incremental F-test.__  
+:::
+
+This is a formal test of whether the additional predictors provide a better fitting model.  
+Formally this is the test of:  
+
++ $H_0:$ coefficients for the added/ommitted variables are all zero.
++ $H_1:$ at least one of the added/ommitted variables has a coefficient that is not zero. 
+
+:::rtip
+
+**In R,** we can conduct an incremental F-test by constructing two models, and passing them to the `anova()` function: `anova(model1, model2)`. 
+
+:::
+
+`r optbegin("Optional: F-ratio written for model comparison", olabel=FALSE, toggle=params$TOGGLE)`
+The F-ratio for comparing the residual sums of squares between two models can be written as:
+
+$$
+F_{(df_R-df_F),df_F} = \frac{(SSR_R-SSR_F)/(df_R-df_F)}{SSR_F / df_F} \\
+\quad \\
+\begin{align}
+& \text{Where:} \\
+& SSR_R = \text{residual sums of squares for the restricted model} \\
+& SSR_F = \text{residual sums of squares for the full model} \\
+& df_R = \text{residual degrees of freedom from the restricted model} \\
+& df_F = \text{residual degrees of freedom from the full model} \\
+\end{align}
+$$
+`r optend()`
+
+:::
+
+`r qbegin("C2")`
+Use the code below to fit the null model.  
+Then, use the `anova()` function to perform a model comparison between our earlier model and the null model.  
+Check that the F statistic is the same as that which is given at the bottom of the `summary()` output of our model.  
+
+```{r}
+null_model <- lm(wellbeing ~ 1, data = mwdata)
+```
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+
+```{r}
+# fit the null model
+null_model <- lm(wellbeing ~ 1, data = mwdata)
+
+# model comparison null vs wb_mdl1
+anova(null_model, wbmodel)
+
+# extract f statistic from summary of wb_mdl1
+summary(wbmodel)$fstatistic
+# we can retrieve the p-value:
+fstat = summary(wbmodel)$fstatistic[1]
+df_1 = summary(wbmodel)$fstatistic[2]
+df_2 = summary(wbmodel)$fstatistic[3]
+pf(fstat, df_1, df_2, lower.tail = FALSE)
+```
+`r solend()`
+
+`r qbegin("C3")`
+We can also see quickly all the F-ratios at the addition of each explanatory variable incrementally, by just using `anova(model)`.  
+
+Fit these models:
+```{r}
+null_model <- lm(wellbeing ~ 1, data = mwdata)
+model1 <- lm(wellbeing ~ 1 + outdoor_time, data = mwdata)
+model2 <- lm(wellbeing ~ 1 + outdoor_time + social_int, data = mwdata)
+```
+
+And compare the different outputs from each of these lines of code:
+```{r eval=F}
+anova(null_model, model1, model2)
+anova(model2)
+```
+
+__Using either of the outputs from the above two lines of code, does weekly outdoor time explain a significant amount of variance in wellbeing scores over and above weekly social interactions?__
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 ```{r}
-wbmodel2 <- lm(wellbeing ~ social_int + routine + outdoor_time, data=mwdata)
-summary(wbmodel2)
+null_model <- lm(wellbeing ~ 1, data = mwdata)
+model1 <- lm(wellbeing ~ 1 + outdoor_time, data = mwdata)
+model2 <- lm(wellbeing ~ 1 + outdoor_time + social_int, data = mwdata)
+summary(model1)$adj.r.sq
+summary(model2)$adj.r.sq
 ```
 
 :::int
-```{r echo=FALSE}
-mdl1<-wbmodel2
-```
-Weekly social interactions, outdoor time, and having a routine explained `r paste0(round(summary(mdl1)$adj.r.squared*100,1),"%")` of the variance (adjusted $R^2$ =`r round(summary(mdl1)$adj.r.squared,3)`, $F$(`r paste(summary(mdl1)$fstatistic[2:3],collapse=",")`)=`r round(summary(mdl1)$fstatistic,1)[1]`, p`r map_chr(pf(summary(mdl1)$fstatistic[1],summary(mdl1)$fstatistic[2],summary(mdl1)$fstatistic[3], lower.tail = FALSE), ~ifelse(.<001,"<.001",paste0("=",round(.,2))))`)
+The model *with* weekly outdoor time as a predictor explains `r round(summary(model2)$adj.r.sq, 1)`\% of the variance, and the model *without* explains `r round(summary(model1)$adj.r.sq,1)`\%.  
 :::
-  
+
+```{r}
+anova(model1, model2)
+```
+```{r include=FALSE}
+mc <- anova(model1, model2)
+names(mc)[6]<-"p"
+```
+
+:::int
+Weekly outdoor time was found to explain a significant amount of variance in wellbeing scores over and above weekly social interactions  
+$F$(`r paste(mc$Df[2],mc$Res.df[2],collapse=",")`)=`r round(mc$F,2)`, p`r map_chr(mc$p[2], ~ifelse(.<001,"<.001",paste0("=",round(.,2))))`.
+:::
+
+`r solend()`
+
+`r qbegin("C4")`
+Play around with changing the _order_ of the explanatory variables in our model. This will __not__ change the `summary()` output, but it __will__ change the `anova(model)` output. 
+```{r eval=F}
+model2 <- lm(wellbeing ~ 1 + outdoor_time + social_int, data = mwdata)
+model2a <- lm(wellbeing ~ 1 + social_int + outdoor_time, data = mwdata)
+summary(model2)
+summary(model2a)
+anova(model2)
+anova(model2a)
+```
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+The `summary()` output for these two models will be the same numbers, but just in a different order.
+```{r}
+model2 <- lm(wellbeing ~ 1 + outdoor_time + social_int, data = mwdata)
+model2a <- lm(wellbeing ~ 1 + social_int + outdoor_time, data = mwdata)
+summary(model2)$coefficients
+summary(model2a)$coefficients
+```
+
+The `anova()` output will be _different_ for these two models, because it tests the __incremental__ addition of each explanatory variable in the order in which they are inputted into the model. 
+```{r}
+anova(model2)
+anova(model2a)
+```
 `r solend()`
 
 
-# --
+:::lo
+We should be careful when we conduct research and take the time to think about _what_ exactly we are measuring, and _how._  
 
-```{r echo=FALSE}
-knitr::include_graphics("images/slr/snoopy.gif")
-```
+The notion of performing the "incremental tests" that we have just seen provides a good example of when we can fall foul of "measurement error".   
+If you're interested, we have written up a fun little example on incremental validity, which you can [find here.](https://uoepsy.github.io/usmr/labs/zz_incrementalvalidity.html)
+
+:::
+
 
 # Making Valid Inferences {#making}
 
-:::statbox
+:::lo
 So far, we have been fitting and interpreting our regression models. In each case, we first specified the model, then visually explored the marginal distributions and relationships of variables which would be used in the analysis. Then, once we fitted the model, we began to examine the fit by studying what the various parameter estimates represented, and the spread of the residuals. We saw these in the output of `summary()` of a model - they were shown in the parts of the output inside the red boxes in Figure \@ref(fig:mlroutput)). 
 
 ```{r mlroutput, echo=FALSE, fig.cap="Multiple regression output in R, summary.lm(). Residuals and Coefficients highlighted"}
@@ -1429,34 +1389,204 @@ knitr::include_graphics("images/mlrhyp.png")
 ```
 :::
 
-## Choose > Fit > Assess > Use  
 
-:::lo 
-__IMPORTANT!__
+## Assumptions 
 
-It may help to think of the sequence of steps involved in statistical modeling as:  
-$$
-\text{Choose} \rightarrow \text{Fit} \rightarrow \text{Assess} \rightarrow \text{Use}
-$$
-<br>
-  
-1. We explore/visualise our data and **Choose** our model specification.   
-2. Then we **Fit** the model in R.  
-3. Next, we **Assess** the fit, to ensure that it meets all the underlying assumptions?  
-4. *Finally*, we **Use** our model to draw statistical inferences about the world, or to make predictions.  
+:::statbox
+__Assumptions: The broad idea__  
 
-**A general rule**  
-<center>We can't **use** (draw inferences or predictions from) a model *before* we have **assessed** that the model satisfies the underlying assumptions</center>  
+All our work here is in aim of making **models of the world**.  
+
+- Models are models. They are simplifications. They are therefore wrong.  
+- Our residuals ( $y - \hat{y}$ ) reflect everything that we **don't** account for in our model.  
+- In an ideal world, our model accounts for _all_ the systematic relationships. The leftovers (our residuals) are just random noise.  
+- If our model is mis-specified, or we don't measure some systematic relationship, then our residuals will reflect this.  
+We check by examining how much "like randomness" the residuals appear to be (zero mean, normally distributed, constant variance, i.i.d ("independent and identically distributed"). These ideas tend to get referred to as our __"assumptions".__  
+- While we will **never** know whether our residuals contain only randomness (we can never observe everything), our ability to generalise from the model we fit on sample data to the wider population relies on these assumptions.  
+
+---
+
+__Assumptions in a nutshell__   
+
+In using linear regression, we have assumptions about our model in that we assume that modelling the outcome variable as a **linear** combination of the explanatory variables is an appropriate thing to do.  
+We also make certain assumptions about what we have _left out_ of our model - the **errors** component.    
+<!-- $$ -->
+<!-- \color{red}{y} = \color{blue}{\underbrace{\beta_0 \cdot{} 1 + \beta_1 \cdot{} x_1 + ... + \beta_k \cdot x_k}_{X \boldsymbol \beta}} + \varepsilon -->
+<!-- $$ -->
+
+Specifically, we assume that our errors have __"zero mean and constant variance"__.  
+
+- mean of the residuals = zero across the predicted values on the linear predictor.  
+- spread of residuals is normally distributed and constant across the predicted values on the linear predictor.  
+
+
+`r optbegin("What does it look like?",olabel=FALSE,toggle=params$TOGGLE)`
+```{r echo=FALSE, fig.height=4}
+library(ggdist)
+library(tidyverse)
+df<-tibble(x=runif(1000,1,10),xr = round(x), y=1*x+rnorm(1000))
+df$y2 <- resid(lm(y~x,df))
+#df$y[df$x==6]<-6+rnorm(100,0,3)
+df %>% group_by(xr) %>% summarise(m=mean(y2), s=sd(y2)) -> dfd
+p1 <- ggplot(df, aes(x=x,y=y))+
+  geom_point()+
+  geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("y")
+p2 <- ggplot(df, aes(x=xr,y=y2))+
+  geom_jitter(height=0,width=1, alpha=.3)+
+  stat_dist_halfeye(inherit.aes=F,data=dfd, aes(x=xr,dist="norm",arg1=m,arg2=s),alpha=.6, fill="orange")+
+  #geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("residuals")
+
+p1 + p2
+```
+`r optend()`
+
+`r optbegin("What does it <b>not</b> look like?",olabel=FALSE,toggle=params$TOGGLE)`
+Things look a bit wrong (like there is something systematic that we haven't accounted for), when our residuals do not have mean zero:  
+```{r echo=FALSE, fig.height=4}
+library(ggdist)
+library(tidyverse)
+tibble(x = runif(1000,1,10),
+       xr = round(x),
+       s = abs(5-x)*2,
+       e = map_dbl(s,~rnorm(1,0,1)),
+       y = x + s + e) -> df
+df$y2 <- resid(lm(y~x,df))
+#df$y[df$x==6]<-6+rnorm(100,0,3)
+df %>% group_by(xr) %>% summarise(m=mean(y2), s=sd(y2)) -> dfd
+p1 <- ggplot(df, aes(x=x,y=y))+
+  geom_point()+
+  geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("y")
+p2 <- ggplot(df, aes(x=xr,y=y2))+
+  geom_jitter(height=0,width=1, alpha=.3)+
+  stat_dist_halfeye(inherit.aes=F,data=dfd, aes(x=xr,dist="norm",arg1=m,arg2=s),alpha=.6, fill="orange")+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("residuals")
+
+p1 + p2
+```
+
+Or do not have constant variance: 
+```{r echo=FALSE, fig.height=4}
+library(ggdist)
+library(tidyverse)
+tibble(x = runif(1000,1,10),
+       xr = round(x),
+       s = abs(x)/2,
+       e = map_dbl(s,~rnorm(1,0,.)),
+       y = x + e) -> df
+df$y2 <- resid(lm(y~x,df))
+#df$y[df$x==6]<-6+rnorm(100,0,3)
+df %>% group_by(xr) %>% summarise(m=mean(y2), s=sd(y2)) -> dfd
+p1 <- ggplot(df, aes(x=x,y=y))+
+  geom_point()+
+  geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("y")
+p2 <- ggplot(df, aes(x=xr,y=y2))+
+  geom_jitter(height=0,width=1, alpha=.3)+
+  stat_dist_halfeye(inherit.aes=F,data=dfd, aes(x=xr,dist="norm",arg1=m,arg2=s),alpha=.6, fill="orange")+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("residuals")
+
+p1 + p2
+```
+`r optend()`
+:::
+
+:::rtip
+__Assumptions in R__  
+
+We can get a lot of plots for this kind of thing by using __plot(model)__
+
+Here's what it looks like for a nice neat model:  
+```{r echo=FALSE}
+set.seed(993)
+df<-tibble(x=runif(1000,1,10),xr = round(x), y=1*x+rnorm(1000))
+my_model <- lm(y ~ x, data = df)
+```
+
+```{r eval=FALSE}
+plot(my_model)
+```
+```{r echo=FALSE}
+par(mfrow=c(2,2))
+plot(my_model)
+par(mfrow=c(1,1))
+```
+
+---
+
+:::lo
+
+Some people don't like the higher-level/broad picture approach to thinking about assumptions of our analysis, and prefer a step-by-step list of things to make sure they tick off. For those of you who would like this, you can find our page on ["assumptions & diagnostics: the recipe book way"](zz_assumpt.html).  
 
 :::
 
-## Assumptions: The broad idea
+:::
 
-TODO - exercises
+Recall the last model we fitted which assessed how we might explain wellbeing by the combination of social interactions, routine, and outdoor time.  
+The code for this model is given below.  
+Let's take a look at the diagnostic plots given by passing the model to the `plot()` function.  
+```{r eval=F,echo=T}
+mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
+wbmodel2 <- lm(wellbeing ~ social_int + routine + outdoor_time, data=mwdata)
+plot(wbmodel2)
+```
+```{r echo=FALSE}
+mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
+wbmodel2 <- lm(wellbeing ~ social_int + routine + outdoor_time, data=mwdata)
+par(mfrow=c(2,2))
+plot(wbmodel2)
+par(mfrow=c(1,1))
+```
+The model doesn't look too bad.  
+
+:::int
+
+- The top left plot (residuals vs fitted) shows a reasonably straight red line, which indicates that the mean of the residuals is close to zero across the fitted values.  
+- The top right plot (QQplot of residuals) shows that the residuals are fairly close to the dotted line, indicating they follow close to a normal distribution _(QQplots plot the values against the associated percentiles of the normal distribution. So if we had ten values, it would order them lowest to highest, then plot them on the y against the 10th, 20th, 30th.. and so on percentiles of the standard normal distribution (mean 0, SD 1))_.  
+- The bottom left plot (scale location plot) shows the square-root of the absolute value of the standardised residuals. This allows us to examine the extent to which the variance of the residuals changes accross the fitted values. A straight red line indicates reasonably constant variance. It's a bit wiggly here!  
+- The bottom right plot (residuals vs leverage plot) shows the extent to which datapoints that have higher residuals (are far away from our regression line) have the potential to unduly influence our line. We'll look at this idea of influence later on.  
+
+:::
+
+`r qbegin("D1")`
+We can perform tests to examine how (un)likely we would be to see some residuals like those we have got, if they were sampled from a normally distribution. 
+
+The Shapiro-Wilk test is a test against the alternative hypothesis that the residuals were not sampled from a normally distributed population. We can perform this test quickly in R using `shapiro.test(residuals(modelname))`.  
+Conduct this test now on the model we just plotted above. What do you conclude? 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+shapiro.test(residuals(wbmodel2))
+```
+:::int
+A Shapiro-Wilk test failed to reject the null hypothesis that the residuals were drawn from a normally distributed population ($W = 0.97$, $p = .44$)
+:::
+`r qend()`
+
+`r qbegin("D2")`
+The `ncvTest(model)` function (from the **car** package) performs a test against the alternative hypothesis that the error variance changes with the level of the fitted value (also known as the "Breusch-Pagan test"). $p >.05$ indicates that we do _not_ have evidence that the assumption has been violated.  
+Try conducting this test now, on the same model as the previous question. 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+library(car)
+ncvTest(wbmodel2)
+```
+:::int
+Visual inspection of suggested little sign of non-constant variance, with the Breusch-Pagan test failing to reject the null that error variance does not change across the fitted values ($\chi^2(1)=0.102$, $p = .75$)
+:::
+`r qend()`
 
 :::statbox
 __Multicollinearity__  
-
 
 For the linear model with multiple explanatory variables, we need to also think about **multicollinearity** - this is when two (or more) of the predictors in our regression model are moderately or highly correlated.  
 Recall our interpretation of multiple regression coefficients as  
@@ -1478,15 +1608,14 @@ The square root of VIF indicates how much the SE of the coefficient has been inf
 :::
 
 
-`r qbegin("C7")`
+`r qbegin("D3")`
 Calculate the variance inflation factor (VIF) for the predictors in the model.  
 
 Write a sentence summarising whether or not you consider multicollinearity to be a problem here.  
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
-library(car)
-vif(wbmodel)
+vif(wbmodel2)
 ```
 
 :::int
@@ -1495,179 +1624,70 @@ VIF values <5 indicate that multicollinearity is not adversely affecting model e
 
 `r solend()`
 
-TODO link to extras assumptions
-
 ## Individual Case Diagnostics
 
-
-
 :::statbox
+
 In linear regression, individual cases in our data can influence our model more than others. There are a variety of measures we can use to evaluate the amount of misfit and influence that single observations have on our model and our model estimates. 
 
 :::imp
-TODO 
-there are many ways to make a cake. recipes can be useful, but you really need to think about what ingredients you actually have (what data you have). 
+__THERE ARE NO HARD RULES FOR WHAT COUNTS AS "INFLUENTIAL" AND HOW WE SHOULD DEAL WITH THESE CASES__  
 
-don't _have_ to exclude these observations.
+There are many ways to make a cake. recipes can be useful, but you really need to think about what ingredients you actually have (what data you have). 
 
-Do not simply blindly follow cut-offs, think carefully about outliers and influential points and whether you want to exclude them
-
-:::
-
-
-
-+ **Regression outliers:** A large residual $\hat \epsilon_i$ - i.e., a big discrepancy between their predicted y-value and their observed y-value.  
-    + **Standardised residuals:** For residual $\hat \epsilon_i$, divide by the estimate of the standard deviation of the residuals. In R, the `rstandard()` function will give you these
-    + **Studentised residuals:** For residual $\hat \epsilon_i$, divide by the estimate of the standard deviation of the residuals excluding case $i$. In R, the `rstudent()` function will give you these. Values $>|2|$ (greater in magnitude than two) are considered potential outliers.  
-+ **High leverage cases:** These are cases which have considerable _potential_ to influence the regression model (e.g., cases with an unusual combination of predictor values). 
-    + **Hat values:** are used to assess leverage. In R, The `hatvalues()` function will retrieve these.  
-    Hat values of more than $2 \bar{h}$ (2 times the average hat value) are considered high leverage. $\bar{h}$ is calculated as $\frac{k + 1}{n}$, where $k$ is the number of predictors, and $n$ is the sample size.  
-+ **High influence cases:** When a case has high leverage *and* is an outlier, it will have a large influence on the regression model. 
-    + **Cook's Distance:** combines *leverage* (hatvalues) with *outlying-ness* to capture influence. In R, the `cooks.distance()` function will provide these.  
-    There are many suggested [Cook's Distance cut-offs](https://en.wikipedia.org/wiki/Cook%27s_distance#Detecting_highly_influential_observations). 
+You don't __have__ to exclude influential observations. Try to avoid blindly following cut-offs, and try to think carefully about outliers and influential points and whether you want to exclude them, and whether there might be some other model specification that captures this in some estimable way. Do these observations change the conclusions you make (you can try running models with and without certain cases).
 
 :::
 
-`r qbegin("C8")`
-Create a new tibble which contains:  
+There are various measures of outlyngness and influence. 
+Here are a few. <b style="color:red">You do not need to remember all of these!</b>  
 
-1. The original variables from the model (Hint, what does `<fitted model>$model` give you?)
-2. The fitted values from the model $\hat y$  
-3. The residuals $\hat epsilon$
-4. The studentised residuals
-5. The hat values
-6. The Cook's Distance values. 
+**Regression outliers:**  
+A large residual $\hat \epsilon_i$ - i.e., a big discrepancy between their predicted y-value and their observed y-value.  
 
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
++ **Standardised residuals:** For residual $\hat \epsilon_i$, divide by the estimate of the standard deviation of the residuals. In R, the `rstandard()` function will give you these
++ **Studentised residuals:** For residual $\hat \epsilon_i$, divide by the estimate of the standard deviation of the residuals excluding case $i$. In R, the `rstudent()` function will give you these. Values $>|2|$ (greater in magnitude than two) are considered *potential* outliers.  
 
-```{r}
-mdl_diagnost <- 
-  tibble(
-  wbmodel$model,
-  fitted = fitted(wbmodel),
-  resid = residuals(wbmodel),
-  studres = rstudent(wbmodel),
-  hats = hatvalues(wbmodel),
-  cooksd = cooks.distance(wbmodel)
-)
-```
+**High leverage cases:**  
+These are cases which have considerable _potential_ to influence the regression model (e.g., cases with an unusual combination of predictor values).  
 
-`r solend()`
++ **Hat values:** are used to assess leverage. In R, The `hatvalues()` function will retrieve these.  
+Hat values of more than $2 \bar{h}$ (2 times the average hat value) are often worth looking at. $\bar{h}$ is calculated as $\frac{k + 1}{n}$, where $k$ is the number of predictors, and $n$ is the sample size.  
 
-`r qbegin("C9")`
-Looking at the studentised residuals, are there any outliers?  
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-Recall from the lectures, studentised residuals of $>2$ or $< -2$ indicate potential outlyingness.  
+**High influence cases:**  
+When a case has high leverage *and* is an outlier, it will have a large influence on the regression model. 
 
-We can ask R whether the *absolute* values are $>2$:
-```{r}
-abs(mdl_diagnost$studres) > 2
-```
++ **Cook's Distance:** combines *leverage* (hatvalues) with *outlying-ness* to capture influence. In R, the `cooks.distance()` function will provide these.  
+There are many suggested [Cook's Distance cut-offs](https://en.wikipedia.org/wiki/Cook%27s_distance#Detecting_highly_influential_observations). 
++ **DFFit:** the change in the predicted value at the $i^{th}$ observation with and without the $i^{th}$ observation is included in the regression.  
++ **DFbeta:**  the change in a specific coefficient with and without the $i^{th}$ observation is included in the regression.  
++ **DFbetas:**  the change in a specific coefficient divided by the standard error, with and without the $i^{th}$ observation is included in the regression.  
++ **COVRATIO:** measures the effect of an observation on the covariance matrix of the parameter estimates. In simpler terms, it captures an observation's influence on standard errors. Values which are $>1+\frac{3(k+1)}{n}$ or $<1-\frac{3(k+1)}{n}$ are *sometimes* considered as having strong influence.  
 
-We could *filter* our newly created tibble to these observations:
-```{r}
-mdl_diagnost %>% 
-  filter(abs(studres)>2)
-```
-There are zero rows. 
+:::rtip
+You can get a whole bucket-load of these measures with the `influence.measures()` function.  
 
-`r solend()`
+- `influence.measures(my_model)` will give you out a dataframe of the various measures.  
+- `summary(influence.measures(my_model))` will provide a nice summary of what R deems to be the influential points. 
 
-`r qbegin("C10")`
-Looking at the hat values, are there any observations with high leverage?  
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-For our model, the average hat value $\bar h$ is:  
-$$
-\bar h = \frac{k+1}{n} = \frac{2+1}{32} = \frac{3}{32} = 0.094
-$$
+:::
 
-We can ask whether any of observations have hat values which are greater than $2 \times \bar h$:
+:::
 
-```{r}
-mdl_diagnost %>%
-  filter(hats > (2*0.094))
-```
-
-Note that `r sum(mdl_diagnost$hats > (2*0.094))` observations have high leverage. 
-
-`r solend()`
-  
-`r qbegin("C11")`  
+`r qbegin("D4")`  
 Plot the Cook's Distance values, does it look like there may be any highly influential points?  
 (You can use `plot(model, which = 4)` and `plot(model, which = 5)`). 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-<!-- For our model, one proposed cut-off for Cook's Distance is: -->
-<!-- $$ -->
-<!-- D_{cutoff} = \frac{4}{n-k-1} = \frac{4}{32 - 2 - 1} = \frac{4}{29} = 0.138 -->
-<!-- $$ -->
-
-<!-- There are no observations which have a high influence on our model estimates: -->
-<!-- ```{r} -->
-<!-- mdl_diagnost %>% -->
-<!--   filter(cooksd > 0.138) -->
-<!-- ``` -->
+These don't look too bad to me - there aren't a small number of cases which have exceptionally high values (relative to the others) for Cook's D.  
 
 ```{r}
-plot(wbmodel, which = 4)
-plot(wbmodel, which = 5)
+plot(wbmodel2, which = 4)
+plot(wbmodel2, which = 5)
 ```
 
 `r solend()`
 
-:::statbox
-__Other influence.measures()__  
-
-Alongside Cook's Distance, we can examine the extent to which model estimates and predictions are affected when an entire case is dropped from the dataset and the model is refitted.  
-
-+ **DFFit:** the change in the predicted value at the $i^{th}$ observation with and without the $i^{th}$ observation is included in the regression.  
-+ **DFbeta:**  the change in a specific coefficient with and without the $i^{th}$ observation is included in the regression.  
-+ **DFbetas:**  the change in a specific coefficient divided by the standard error, with and without the $i^{th}$ observation is included in the regression.  
-+ **COVRATIO:** measures the effect of an observation on the covariance matrix of the parameter estimates. In simpler terms, it captures an observation's influence on standard errors. Values which are $>1+\frac{3(k+1)}{n}$ or $<1-\frac{3(k+1)}{n}$ are considered as having strong influence.  
-
-:::
-
-
-`r qbegin("C12")`
-
-Use the function `influence.measures()` to extract these delete-1 measures of influence.  
-
-Try plotting the distributions of some of these measures.  
-
-**Tip:** the function `influence.measures()` returns an `infl`-type object. To plot this, we need to find a way to extract the actual numbers from it.  
-What do you think `names(influence.measures(<fitted model>))` shows you? How can we use `influence.measures(<fitted model>)$ ???? ` to extract the matrix of numbers?  
-
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-influence.measures(wbmodel)
-```
-  
-Let's plot the distribution of COVRATIO statistics.  
-Recall that values which are $>1+\frac{3(k+1)}{n}$ or $<1-\frac{3(k+1)}{n}$ are considered as having strong influence.  
-For our model:
-$$
-1 \pm \frac{3(k+1)}{n} \quad = \quad 1 \pm\frac{3(2+1)}{32} \quad = \quad 1\pm \frac{9}{32} \quad = \quad 1\pm0.28
-$$
-
-The "infmat" bit of an `infl`-type object contains the numbers. To use it with ggplot, we will need to turn it into a dataframe (`as.data.frame()`), or a tibble (`as_tibble()`):   
-```{r}
-infdata <- influence.measures(wbmodel)$infmat %>%
-  as_tibble()
-
-ggplot(data = infdata, aes(x = cov.r)) + 
-  geom_histogram() +
-  geom_vline(aes(xintercept = c(1-0.28)))+
-  geom_vline(aes(xintercept = c(1+0.28)))
-```
-
-It looks like a few observations may be having quite a high influence here. This is perhaps not that surprising as we only have 32 datapoints. 
-
-`r solend()`
 
 
 

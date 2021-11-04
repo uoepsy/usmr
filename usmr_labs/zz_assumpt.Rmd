@@ -1,11 +1,11 @@
 ---
-title: "Recipe Book: LM Assumptions"
+title: "Assumptions & Diagnostics: The Recipe Book"
 bibliography: references.bib
 biblio-style: apalike
 link-citations: yes
 params: 
     SHOW_SOLS: TRUE
-    TOGGLE: FALSE
+    TOGGLE: TRUE
 ---
 
 ```{r setup, include=FALSE}
@@ -14,11 +14,9 @@ library(tidyverse)
 library(patchwork)
 ```
 
-# Choose > Fit > Assess > Use  
+# Helpful Mnemonics
 
 :::lo 
-__IMPORTANT!__
-
 It may help to think of the sequence of steps involved in statistical modeling as:  
 $$
 \text{Choose} \rightarrow \text{Fit} \rightarrow \text{Assess} \rightarrow \text{Use}
@@ -35,50 +33,45 @@ $$
 
 :::
 
-# The LINE Mnemonic  
-
-The assumptions of the linear model can be committed to memory using the **LINE** mnemonic:   
-  
-:::statbox
+:::lo
+The assumptions of the linear model can be committed to memory using the **LINE** mnemonic:  
 
 + **L**inearity: The relationship between $y$ and $x$ is linear.
 + **I**ndependence of errors: The error terms should be independent from one another.
 + **N**ormality: The errors $\epsilon$ are normally distributed
 + **E**qual variances ("Homoscedasticity"): The scale of the variability of the errors  $\epsilon$ is constant at all values of $x$.  
 
-:::
-
 When we fit a model, we evaluate many of these assumptions by looking at the *residuals*  
 (the deviations from the observed values $y_i$ and the model estimated value $\hat y_i$).   
   
 The residuals, $\hat \epsilon$ are our estimates of the actual unknown true error term $\epsilon$. These assumptions hold both for a regression model with a single predictor and for one with multiple predictors.
 
+:::
+
 # Setup
 
-`r optbegin("Data", olabel=F, show=T, toggle=F)`
+:::
 
-```{r}
-library(tidyverse)
-# Read in data
-mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
-```
-
-Recall the form of our model which we fitted and stored as `wbmodel`:  
+For this guide, we are going to use the following model: 
 
 $$ 
 \text{Wellbeing} = \beta_0 + \beta_1 \cdot \text{Outdoor Time} + \beta_2 \cdot \text{Social Interactions} + \epsilon
 $$
 
-Which we fitted in R using:
+Which we fitted in R as follows:
 ```{r}
+library(tidyverse)
+# Read in data
+mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
+# fit the model 
 wbmodel <- lm(wellbeing ~ outdoor_time + social_int, data = mwdata)
 ```
 
-**Note:** We have have forgone writing the `1` in `lm(y ~ 1 + x...`. The 1 just tells R that we want to estimate the Intercept, and it will do this by default even if we leave it out. 
+:::
 
-`r optend()`
+# Checking Each Assumption
 
-# Linearity  
+## Linearity  
 :::statbox
 In simple linear regression with only one explanatory variable, we can assess linearity through a simple scatterplot of the outcome variable against the explanatory. In multiple regression, however, it becomes more necessary to rely on diagnostic plots of the model residuals. This is because we need to know whether the relations are linear between the outcome and each predictor _after accounting for the other predictors in the model._  
 
@@ -93,7 +86,7 @@ $$
 **In R** we can easily create these plots for all predictors in the model by using the `crPlots()` function from the **car** package.  
 :::
 
-`r qbegin("Q1")`
+`r qbegin("1")`
 Create partial-residual plots for the `wbmodel` model.  
 Remember to load the **car** package first. If it does not load correctly, it might mean that you have need to install it.  
 
@@ -111,7 +104,7 @@ The smoother (the pink line) follows quite closely to a linear relationship (the
 
 `r solend()`
 
-# Equal variances (Homoscedasticity)  
+## Equal variances (Homoscedasticity)  
 :::statbox
 The equal variances assumption is that the error variance $\sigma^2$ is constant across values of the predictors $x_1$, ... $x_k$, and across values of the fitted values $\hat y$. This sometimes gets termed "Constant" vs "Non-constant" variance. Figures \@ref(fig:ncv1) & \@ref(fig:ncv2) shows what these look like visually. 
 
@@ -160,7 +153,7 @@ p4<-ggplot(NULL, aes(x=fitted(lm.good)<mean(fitted(lm.good)), y=resid(lm.good)))
 `ncvTest(model)` (also from the **car** package) performs a test against the alternative hypothesis that the error variance changes with the level of the fitted value (also known as the "Breusch-Pagan test"). $p >.05$ indicates that we do _not_ have evidence that the assumption has been violated.
 :::
 
-`r qbegin("Q2")`
+`r qbegin("2")`
 Use `residualPlots()` to plot residuals against each predictor, and use `ncvTest()` to perform a test against the alternative hypothesis that the error variance changes with the level of the fitted value.  
 
 Write a sentence summarising whether or not you consider the assumption to have been met. Justify your answer with reference to plots and/or formal tests where available.
@@ -180,7 +173,7 @@ Visual inspection of suggested little sign of non-constant variance, with the Br
 
 `r solend()`
 
-`r qbegin("Q3")`
+`r qbegin("3")`
 Create the "residuals vs. fitted plot" - a scatterplot with the residuals $\hat \epsilon$ on the y-axis and the fitted values $\hat y$ on the x-axis.  
 <br>
 You can either do this: 
@@ -225,7 +218,7 @@ The spread of the residuals remains reasonably constant across the fitted values
 
 
 
-# Independence
+## Independence
 :::statbox
 The "independence of errors" assumption is the condition that the errors do not have some underlying relationship which is causing them to influence one another. 
 <br>
@@ -237,7 +230,7 @@ One form of dependence is **autocorrelation** - this is when observations influe
 **In R** we can test against the alternative hypothesis that there is autocorrelation in our errors using the `durbinWatsonTest()` (an abbreviated function `dwt()` is also available) in the **car** package.  
 :::
 
-`r qbegin("Q4")`
+`r qbegin("4")`
 Perform a test against the alternative hypothesis that there is autocorrelation in the error terms.  
   
 Write a sentence summarising whether or not you consider the assumption of independence to have been met (you may have to assume certain aspects of the study design).  
@@ -253,7 +246,7 @@ A Durbin-Watson test of autocorrelation failed to reject the null hypothesis tha
 
 `r solend()`
 
-# Normality of errors  
+## Normality of errors  
 :::statbox
 The normality assumption is the condition that the errors $\epsilon$ are normally distributed. 
 
@@ -269,7 +262,7 @@ We can also perform a Shapiro-Wilk test against the alternative hypothesis that 
 :::
 
 
-`r qbegin("Q5")`
+`r qbegin("5")`
 Assess the normality assumption by producing a qqplot of the residuals (either manually or using `plot(model, which = ???)`), and conducting a Shapiro-Wilk test.  
   
 Write a sentence summarising whether or not you consider the assumption to have been met. Justify your answer with reference to plots and/or formal tests where available.
@@ -321,7 +314,7 @@ The square root of VIF indicates how much the SE of the coefficient has been inf
 :::
 
 
-`r qbegin("Q6")`
+`r qbegin("6")`
 Calculate the variance inflation factor (VIF) for the predictors in the model.  
 
 Write a sentence summarising whether or not you consider multicollinearity to be a problem here.  
@@ -336,5 +329,167 @@ VIF values <5 indicate that multicollinearity is not adversely affecting model e
 :::
 
 `r solend()`
+
+# Individual Case Diagnostics
+
+In linear regression, individual cases in our data can influence our model more than others. There are a variety of measures we can use to evaluate the amount of misfit and influence that single observations have on our model and our model estimates. 
+
+:::imp
+__THERE ARE NO HARD RULES FOR WHAT COUNTS AS "INFLUENTIAL" AND HOW WE SHOULD DEAL WITH THESE CASES__  
+
+There are many ways to make a cake. recipes can be useful, but you really need to think about what ingredients you actually have (what data you have). 
+
+You don't __have__ to exclude influential observations. Try to avoid blindly following cut-offs, and try to think carefully about outliers and influential points and whether you want to exclude them, and whether there might be some other model specification that captures this in some estimable way. Do these observations change the conclusions you make (you can try running models with and without certain cases).
+
+:::
+
+:::statbox
+There are various measures of outlyngness and influence. 
+Here are a few:  
+  
++ **Regression outliers:** A large residual $\hat \epsilon_i$ - i.e., a big discrepancy between their predicted y-value and their observed y-value.  
+    + **Standardised residuals:** For residual $\hat \epsilon_i$, divide by the estimate of the standard deviation of the residuals. In R, the `rstandard()` function will give you these
+    + **Studentised residuals:** For residual $\hat \epsilon_i$, divide by the estimate of the standard deviation of the residuals excluding case $i$. In R, the `rstudent()` function will give you these. Values $>|2|$ (greater in magnitude than two) are considered potential outliers.  
++ **High leverage cases:** These are cases which have considerable _potential_ to influence the regression model (e.g., cases with an unusual combination of predictor values). 
+    + **Hat values:** are used to assess leverage. In R, The `hatvalues()` function will retrieve these.  
+    Hat values of more than $2 \bar{h}$ (2 times the average hat value) are considered high leverage. $\bar{h}$ is calculated as $\frac{k + 1}{n}$, where $k$ is the number of predictors, and $n$ is the sample size.  
++ **High influence cases:** When a case has high leverage *and* is an outlier, it will have a large influence on the regression model. 
+    + **Cook's Distance:** combines *leverage* (hatvalues) with *outlying-ness* to capture influence. In R, the `cooks.distance()` function will provide these.  
+    There are many suggested [Cook's Distance cut-offs](https://en.wikipedia.org/wiki/Cook%27s_distance#Detecting_highly_influential_observations). 
+
+:::
+
+`r qbegin("7")`
+Create a new tibble which contains:  
+
+1. The original variables from the model (Hint, what does `<fitted model>$model` give you?)
+2. The fitted values from the model $\hat y$  
+3. The residuals $\hat epsilon$
+4. The studentised residuals
+5. The hat values
+6. The Cook's Distance values. 
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+mdl_diagnost <- 
+  tibble(
+  wbmodel$model,
+  fitted = fitted(wbmodel),
+  resid = residuals(wbmodel),
+  studres = rstudent(wbmodel),
+  hats = hatvalues(wbmodel),
+  cooksd = cooks.distance(wbmodel)
+)
+```
+
+`r solend()`
+
+`r qbegin("8")`
+Looking at the studentised residuals, are there any extreme values? 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+Let's use studentised residuals of $>2$ or $< -2$ indicate __potential__ outlyingness.  
+
+We can ask R whether the *absolute* values are $>2$:
+```{r}
+abs(mdl_diagnost$studres) > 2
+```
+
+We could *filter* our newly created tibble to these observations:
+```{r}
+mdl_diagnost %>% 
+  filter(abs(studres)>2)
+```
+There are zero rows. 
+
+`r solend()`
+
+`r qbegin("9")`
+Looking at the hat values, are there any observations with high leverage?  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+For our model, the average hat value $\bar h$ is:  
+$$
+\bar h = \frac{k+1}{n} = \frac{2+1}{32} = \frac{3}{32} = 0.094
+$$
+
+We can ask whether any of observations have hat values which are greater than $2 \times \bar h$:
+
+```{r}
+mdl_diagnost %>%
+  filter(hats > (2*0.094))
+```
+
+Note that `r sum(mdl_diagnost$hats > (2*0.094))` observations have high leverage. 
+
+`r solend()`
+  
+`r qbegin("10")`  
+Plot the Cook's Distance values, does it look like there may be any highly influential points?  
+(You can use `plot(model, which = 4)` and `plot(model, which = 5)`). 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+These don't look too bad to me - there aren't a small number of cases which have exceptionally high values (relative to the others) for Cook's D.  
+
+```{r}
+plot(wbmodel, which = 4)
+plot(wbmodel, which = 5)
+```
+
+`r solend()`
+
+:::statbox
+__Other influence.measures()__  
+
+Alongside Cook's Distance, we can examine the extent to which model estimates and predictions are affected when an entire case is dropped from the dataset and the model is refitted.  
+
++ **DFFit:** the change in the predicted value at the $i^{th}$ observation with and without the $i^{th}$ observation is included in the regression.  
++ **DFbeta:**  the change in a specific coefficient with and without the $i^{th}$ observation is included in the regression.  
++ **DFbetas:**  the change in a specific coefficient divided by the standard error, with and without the $i^{th}$ observation is included in the regression.  
++ **COVRATIO:** measures the effect of an observation on the covariance matrix of the parameter estimates. In simpler terms, it captures an observation's influence on standard errors. Values which are $>1+\frac{3(k+1)}{n}$ or $<1-\frac{3(k+1)}{n}$ are sometimes considered as having strong influence.  
+
+:::
+
+
+`r qbegin("11")`
+
+Use the function `influence.measures()` to extract these delete-1 measures of influence.  
+
+Try plotting the distributions of some of these measures.  
+
+**Tip:** the function `influence.measures()` returns an `infl`-type object. To plot this, we need to find a way to extract the actual numbers from it.  
+What do you think `names(influence.measures(<fitted model>))` shows you? How can we use `influence.measures(<fitted model>)$ ???? ` to extract the matrix of numbers?  
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+influence.measures(wbmodel)
+```
+  
+Let's plot the distribution of COVRATIO statistics.  
+Recall that values which are $>1+\frac{3(k+1)}{n}$ or $<1-\frac{3(k+1)}{n}$ are considered as having strong influence.  
+For our model:
+$$
+1 \pm \frac{3(k+1)}{n} \quad = \quad 1 \pm\frac{3(2+1)}{32} \quad = \quad 1\pm \frac{9}{32} \quad = \quad 1\pm0.28
+$$
+
+The "infmat" bit of an `infl`-type object contains the numbers. To use it with ggplot, we will need to turn it into a dataframe (`as.data.frame()`), or a tibble (`as_tibble()`):   
+```{r}
+infdata <- influence.measures(wbmodel)$infmat %>%
+  as_tibble()
+
+ggplot(data = infdata, aes(x = cov.r)) + 
+  geom_histogram() +
+  geom_vline(aes(xintercept = c(1-0.28)))+
+  geom_vline(aes(xintercept = c(1+0.28)))
+```
+
+It looks like a few observations may be having quite a high influence here. This is perhaps not that surprising as we only have 32 datapoints. 
+
+`r solend()`
+
 
 <div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>

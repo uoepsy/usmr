@@ -11,10 +11,10 @@
 
 
 
-<title>Recipe Book: LM Assumptions</title>
+<title>Assumptions &amp; Diagnostics: The Recipe Book</title>
 
-<script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/header-attrs-2.11/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -418,7 +418,7 @@ div.tocify {
       <ul class="nav navbar-nav">
         <li>
   <a href="https://uoepsy.github.io/usmr/">
-    <span class="fas fa-home"></span>
+    <span class="fa fa-home"></span>
      
   </a>
 </li>
@@ -478,7 +478,9 @@ div.tocify {
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu">
-    <li class="dropdown-header">8: Linear Regression</li>
+    <li>
+      <a href="07_regression.html">8: Linear Regression</a>
+    </li>
     <li class="dropdown-header">9: More Linear Regression</li>
     <li class="dropdown-header">10: GLM!</li>
     <li class="dropdown-header">11: Writing up</li>
@@ -507,15 +509,14 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">Recipe Book: LM Assumptions</h1>
+<h1 class="title toc-ignore">Assumptions &amp; Diagnostics: The Recipe Book</h1>
 
 </div>
 
 
-<div id="choose-fit-assess-use" class="section level1">
-<h1>Choose &gt; Fit &gt; Assess &gt; Use</h1>
+<div id="helpful-mnemonics" class="section level1">
+<h1>Helpful Mnemonics</h1>
 <div class="lo">
-<p><strong>IMPORTANT!</strong></p>
 <p>It may help to think of the sequence of steps involved in statistical modeling as:<br />
 <span class="math display">\[
 \text{Choose} \rightarrow \text{Fit} \rightarrow \text{Assess} \rightarrow \text{Use}
@@ -536,44 +537,38 @@ div.tocify {
 Do not <strong>use</strong> (draw inferences or predictions from) a model <em>before</em> you have <strong>assessed</strong> that the model satisfies the underlying assumptions
 </center>
 </div>
-</div>
-<div id="the-line-mnemonic" class="section level1">
-<h1>The LINE Mnemonic</h1>
+<div class="lo">
 <p>The assumptions of the linear model can be committed to memory using the <strong>LINE</strong> mnemonic:</p>
-<div class="statbox">
 <ul>
 <li><strong>L</strong>inearity: The relationship between <span class="math inline">\(y\)</span> and <span class="math inline">\(x\)</span> is linear.</li>
 <li><strong>I</strong>ndependence of errors: The error terms should be independent from one another.</li>
 <li><strong>N</strong>ormality: The errors <span class="math inline">\(\epsilon\)</span> are normally distributed</li>
 <li><strong>E</strong>qual variances (“Homoscedasticity”): The scale of the variability of the errors <span class="math inline">\(\epsilon\)</span> is constant at all values of <span class="math inline">\(x\)</span>.</li>
 </ul>
-</div>
 <p>When we fit a model, we evaluate many of these assumptions by looking at the <em>residuals</em><br />
 (the deviations from the observed values <span class="math inline">\(y_i\)</span> and the model estimated value <span class="math inline">\(\hat y_i\)</span>).</p>
 <p>The residuals, <span class="math inline">\(\hat \epsilon\)</span> are our estimates of the actual unknown true error term <span class="math inline">\(\epsilon\)</span>. These assumptions hold both for a regression model with a single predictor and for one with multiple predictors.</p>
 </div>
+</div>
 <div id="setup" class="section level1">
 <h1>Setup</h1>
-<div class="optional-begin">
-
-</div>
-<div class="optional-body">
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Read in data</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>mwdata <span class="ot">=</span> <span class="fu">read_csv</span>(<span class="at">file =</span> <span class="st">&quot;https://uoepsy.github.io/data/wellbeing.csv&quot;</span>)</span></code></pre></div>
-<p>Recall the form of our model which we fitted and stored as <code>wbmodel</code>:</p>
+<p>:::</p>
+<p>For this guide, we are going to use the following model:</p>
 <p><span class="math display">\[ 
 \text{Wellbeing} = \beta_0 + \beta_1 \cdot \text{Outdoor Time} + \beta_2 \cdot \text{Social Interactions} + \epsilon
 \]</span></p>
-<p>Which we fitted in R using:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>wbmodel <span class="ot">&lt;-</span> <span class="fu">lm</span>(wellbeing <span class="sc">~</span> outdoor_time <span class="sc">+</span> social_int, <span class="at">data =</span> mwdata)</span></code></pre></div>
-<p><strong>Note:</strong> We have have forgone writing the <code>1</code> in <code>lm(y ~ 1 + x...</code>. The 1 just tells R that we want to estimate the Intercept, and it will do this by default even if we leave it out.</p>
+<p>Which we fitted in R as follows:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Read in data</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>mwdata <span class="ot">=</span> <span class="fu">read_csv</span>(<span class="at">file =</span> <span class="st">&quot;https://uoepsy.github.io/data/wellbeing.csv&quot;</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># fit the model </span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>wbmodel <span class="ot">&lt;-</span> <span class="fu">lm</span>(wellbeing <span class="sc">~</span> outdoor_time <span class="sc">+</span> social_int, <span class="at">data =</span> mwdata)</span></code></pre></div>
+<p>:::</p>
 </div>
-<p class="optional-end">
-</p>
-</div>
-<div id="linearity" class="section level1">
-<h1>Linearity</h1>
+<div id="checking-each-assumption" class="section level1">
+<h1>Checking Each Assumption</h1>
+<div id="linearity" class="section level2">
+<h2>Linearity</h2>
 <div class="statbox">
 <p>In simple linear regression with only one explanatory variable, we can assess linearity through a simple scatterplot of the outcome variable against the explanatory. In multiple regression, however, it becomes more necessary to rely on diagnostic plots of the model residuals. This is because we need to know whether the relations are linear between the outcome and each predictor <em>after accounting for the other predictors in the model.</em></p>
 <p>In order to assess this, we use <strong>partial-residual plots</strong> (also known as ‘component-residual plots’). This is a plot with each explanatory variable <span class="math inline">\(x_j\)</span> on the x-axis, and <strong>partial residuals</strong> on the y-axis.</p>
@@ -586,7 +581,7 @@ Do not <strong>use</strong> (draw inferences or predictions from) a model <em>be
 <p><strong>In R</strong> we can easily create these plots for all predictors in the model by using the <code>crPlots()</code> function from the <strong>car</strong> package.</p>
 </div>
 <div class="question-begin">
-Question Q1
+Question 1
 </div>
 <div class="question-body">
 <p>Create partial-residual plots for the <code>wbmodel</code> model.<br />
@@ -596,12 +591,12 @@ Remember to load the <strong>car</strong> package first. If it does not load cor
 <p class="question-end">
 </p>
 <div class="solution-begin">
-
+<span id="sol-start-168" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-168&#39;, &#39;sol-start-168&#39;)"> Solution </span>
 </div>
-<div class="solution-body">
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(car)</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">crPlots</span>(wbmodel)</span></code></pre></div>
-<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-3-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<div id="sol-body-168" class="solution-body" style="display: none;">
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(car)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">crPlots</span>(wbmodel)</span></code></pre></div>
+<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-2-1.png" width="80%" style="display: block; margin: auto;" /></p>
 <div class="int">
 <p>The smoother (the pink line) follows quite closely to a linear relationship (the dashed blue line), suggesting that the linearity assumption is met.</p>
 </div>
@@ -609,17 +604,17 @@ Remember to load the <strong>car</strong> package first. If it does not load cor
 <p class="solution-end">
 </p>
 </div>
-<div id="equal-variances-homoscedasticity" class="section level1">
-<h1>Equal variances (Homoscedasticity)</h1>
+<div id="equal-variances-homoscedasticity" class="section level2">
+<h2>Equal variances (Homoscedasticity)</h2>
 <div class="statbox">
 <p>The equal variances assumption is that the error variance <span class="math inline">\(\sigma^2\)</span> is constant across values of the predictors <span class="math inline">\(x_1\)</span>, … <span class="math inline">\(x_k\)</span>, and across values of the fitted values <span class="math inline">\(\hat y\)</span>. This sometimes gets termed “Constant” vs “Non-constant” variance. Figures <a href="#fig:ncv1">1</a> &amp; <a href="#fig:ncv2">2</a> shows what these look like visually.</p>
-<div class="figure" style="text-align: center"><span id="fig:ncv1"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:ncv1"></span>
 <img src="zz_assumpt_files/figure-html/ncv1-1.png" alt="Non-constant variance for numeric and categorical x" width="80%" />
 <p class="caption">
 Figure 1: Non-constant variance for numeric and categorical x
 </p>
 </div>
-<div class="figure" style="text-align: center"><span id="fig:ncv2"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:ncv2"></span>
 <img src="zz_assumpt_files/figure-html/ncv2-1.png" alt="Constant variance for numeric and categorical x" width="80%" />
 <p class="caption">
 Figure 2: Constant variance for numeric and categorical x
@@ -631,7 +626,7 @@ Figure 2: Constant variance for numeric and categorical x
 <p><code>ncvTest(model)</code> (also from the <strong>car</strong> package) performs a test against the alternative hypothesis that the error variance changes with the level of the fitted value (also known as the “Breusch-Pagan test”). <span class="math inline">\(p &gt;.05\)</span> indicates that we do <em>not</em> have evidence that the assumption has been violated.</p>
 </div>
 <div class="question-begin">
-Question Q2
+Question 2
 </div>
 <div class="question-body">
 <p>Use <code>residualPlots()</code> to plot residuals against each predictor, and use <code>ncvTest()</code> to perform a test against the alternative hypothesis that the error variance changes with the level of the fitted value.</p>
@@ -640,17 +635,17 @@ Question Q2
 <p class="question-end">
 </p>
 <div class="solution-begin">
-
+<span id="sol-start-169" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-169&#39;, &#39;sol-start-169&#39;)"> Solution </span>
 </div>
-<div class="solution-body">
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">residualPlots</span>(wbmodel)</span></code></pre></div>
-<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-4-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<div id="sol-body-169" class="solution-body" style="display: none;">
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">residualPlots</span>(wbmodel)</span></code></pre></div>
+<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-3-1.png" width="80%" style="display: block; margin: auto;" /></p>
 <pre><code>##              Test stat Pr(&gt;|Test stat|)
 ## outdoor_time   -0.3478           0.7306
 ## social_int     -0.1068           0.9157
 ## Tukey test     -0.4189           0.6753</code></pre>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">#test against the alternative hypothesis that error variance changes with level of fitted value</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ncvTest</span>(wbmodel)</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">#test against the alternative hypothesis that error variance changes with level of fitted value</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ncvTest</span>(wbmodel)</span></code></pre></div>
 <pre><code>## Non-constant Variance Score Test 
 ## Variance formula: ~ fitted.values 
 ## Chisquare = 0.001925809, Df = 1, p = 0.965</code></pre>
@@ -662,7 +657,7 @@ Visual inspection of suggested little sign of non-constant variance, with the Br
 <p class="solution-end">
 </p>
 <div class="question-begin">
-Question Q3
+Question 3
 </div>
 <div class="question-body">
 <p>Create the “residuals vs. fitted plot” - a scatterplot with the residuals <span class="math inline">\(\hat \epsilon\)</span> on the y-axis and the fitted values <span class="math inline">\(\hat y\)</span> on the x-axis.<br />
@@ -682,25 +677,25 @@ You can either do this:</p>
 <p class="question-end">
 </p>
 <div class="solution-begin">
-
+<span id="sol-start-170" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-170&#39;, &#39;sol-start-170&#39;)"> Solution </span>
 </div>
-<div class="solution-body">
+<div id="sol-body-170" class="solution-body" style="display: none;">
 <p>The long way:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Notice that we create a tibble and pass it directly to ggplot()</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co"># using the %&gt;%.</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># This means we don&#39;t have to store it as an object in the environment,</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># it is just being used to create the plot</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">residuals =</span> <span class="fu">residuals</span>(wbmodel),</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">fitted =</span> <span class="fu">fitted</span>(wbmodel)</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span> </span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> fitted, <span class="at">y =</span> residuals)) <span class="sc">+</span> </span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span> </span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">color=</span><span class="st">&quot;red&quot;</span>,<span class="at">se=</span><span class="cn">FALSE</span>)</span></code></pre></div>
-<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-5-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Notice that we create a tibble and pass it directly to ggplot()</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co"># using the %&gt;%.</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># This means we don&#39;t have to store it as an object in the environment,</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># it is just being used to create the plot</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">residuals =</span> <span class="fu">residuals</span>(wbmodel),</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">fitted =</span> <span class="fu">fitted</span>(wbmodel)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span> </span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> fitted, <span class="at">y =</span> residuals)) <span class="sc">+</span> </span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span> </span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">color=</span><span class="st">&quot;red&quot;</span>,<span class="at">se=</span><span class="cn">FALSE</span>)</span></code></pre></div>
+<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-4-1.png" width="80%" style="display: block; margin: auto;" /></p>
 <p>The quick way:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(wbmodel, <span class="at">which=</span><span class="dv">1</span>)</span></code></pre></div>
-<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-6-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(wbmodel, <span class="at">which=</span><span class="dv">1</span>)</span></code></pre></div>
+<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-5-1.png" width="80%" style="display: block; margin: auto;" /></p>
 <div class="int">
 <p>The horizontal red line shows that the average of the residual remains close to zero across the fitted values.<br />
 The spread of the residuals remains reasonably constant across the fitted values.</p>
@@ -709,8 +704,8 @@ The spread of the residuals remains reasonably constant across the fitted values
 <p class="solution-end">
 </p>
 </div>
-<div id="independence" class="section level1">
-<h1>Independence</h1>
+<div id="independence" class="section level2">
+<h2>Independence</h2>
 <div class="statbox">
 <p>The “independence of errors” assumption is the condition that the errors do not have some underlying relationship which is causing them to influence one another.
 <br>
@@ -722,7 +717,7 @@ One form of dependence is <strong>autocorrelation</strong> - this is when observ
 <p><strong>In R</strong> we can test against the alternative hypothesis that there is autocorrelation in our errors using the <code>durbinWatsonTest()</code> (an abbreviated function <code>dwt()</code> is also available) in the <strong>car</strong> package.</p>
 </div>
 <div class="question-begin">
-Question Q4
+Question 4
 </div>
 <div class="question-body">
 <p>Perform a test against the alternative hypothesis that there is autocorrelation in the error terms.</p>
@@ -731,10 +726,10 @@ Question Q4
 <p class="question-end">
 </p>
 <div class="solution-begin">
-
+<span id="sol-start-171" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-171&#39;, &#39;sol-start-171&#39;)"> Solution </span>
 </div>
-<div class="solution-body">
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dwt</span>(wbmodel)</span></code></pre></div>
+<div id="sol-body-171" class="solution-body" style="display: none;">
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dwt</span>(wbmodel)</span></code></pre></div>
 <pre><code>##  lag Autocorrelation D-W Statistic p-value
 ##    1       -0.318249      2.600574    0.16
 ##  Alternative hypothesis: rho != 0</code></pre>
@@ -745,8 +740,8 @@ Question Q4
 <p class="solution-end">
 </p>
 </div>
-<div id="normality-of-errors" class="section level1">
-<h1>Normality of errors</h1>
+<div id="normality-of-errors" class="section level2">
+<h2>Normality of errors</h2>
 <div class="statbox">
 <p>The normality assumption is the condition that the errors <span class="math inline">\(\epsilon\)</span> are normally distributed.</p>
 <p>We can visually assess this condition through histograms, density plots, and quantile-quantile plots (QQplots) of our residuals <span class="math inline">\(\hat \epsilon\)</span>.<br />
@@ -759,7 +754,7 @@ We can also perform a Shapiro-Wilk test against the alternative hypothesis that 
 </ul>
 </div>
 <div class="question-begin">
-Question Q5
+Question 5
 </div>
 <div class="question-body">
 <p>Assess the normality assumption by producing a qqplot of the residuals (either manually or using <code>plot(model, which = ???)</code>), and conducting a Shapiro-Wilk test.</p>
@@ -768,20 +763,20 @@ Question Q5
 <p class="question-end">
 </p>
 <div class="solution-begin">
-
+<span id="sol-start-172" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-172&#39;, &#39;sol-start-172&#39;)"> Solution </span>
 </div>
-<div class="solution-body">
+<div id="sol-body-172" class="solution-body" style="display: none;">
 <p>We can get the QQplot from one of the <code>plot(model)</code> plots:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(wbmodel, <span class="at">which =</span> <span class="dv">2</span>)</span></code></pre></div>
-<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-8-1.png" width="80%" style="display: block; margin: auto;" />
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(wbmodel, <span class="at">which =</span> <span class="dv">2</span>)</span></code></pre></div>
+<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-7-1.png" width="80%" style="display: block; margin: auto;" />
 Or we can make our own:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">resids =</span> <span class="fu">residuals</span>(wbmodel)</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span> <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">sample=</span>resids))<span class="sc">+</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_qq</span>()<span class="sc">+</span></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_qq_line</span>()</span></code></pre></div>
-<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-9-1.png" width="80%" style="display: block; margin: auto;" /></p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">shapiro.test</span>(<span class="fu">residuals</span>(wbmodel))</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">resids =</span> <span class="fu">residuals</span>(wbmodel)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span> <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">sample=</span>resids))<span class="sc">+</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_qq</span>()<span class="sc">+</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_qq_line</span>()</span></code></pre></div>
+<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-8-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">shapiro.test</span>(<span class="fu">residuals</span>(wbmodel))</span></code></pre></div>
 <pre><code>## 
 ##  Shapiro-Wilk normality test
 ## 
@@ -793,6 +788,7 @@ Or we can make our own:</p>
 </div>
 <p class="solution-end">
 </p>
+</div>
 </div>
 <div id="multicollinearity" class="section level1">
 <h1>Multicollinearity</h1>
@@ -818,7 +814,7 @@ The square root of VIF indicates how much the SE of the coefficient has been inf
 <p><strong>In R</strong>, the <code>vif()</code> function from the <strong>car</strong> package will provide VIF values for each predictor in your model.</p>
 </div>
 <div class="question-begin">
-Question Q6
+Question 6
 </div>
 <div class="question-body">
 <p>Calculate the variance inflation factor (VIF) for the predictors in the model.</p>
@@ -827,15 +823,242 @@ Question Q6
 <p class="question-end">
 </p>
 <div class="solution-begin">
-
+<span id="sol-start-173" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-173&#39;, &#39;sol-start-173&#39;)"> Solution </span>
 </div>
-<div class="solution-body">
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vif</span>(wbmodel)</span></code></pre></div>
+<div id="sol-body-173" class="solution-body" style="display: none;">
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vif</span>(wbmodel)</span></code></pre></div>
 <pre><code>## outdoor_time   social_int 
 ##      1.13023      1.13023</code></pre>
 <div class="int">
 <p>VIF values &lt;5 indicate that multicollinearity is not adversely affecting model estimates.</p>
 </div>
+</div>
+<p class="solution-end">
+</p>
+</div>
+<div id="individual-case-diagnostics" class="section level1">
+<h1>Individual Case Diagnostics</h1>
+<p>In linear regression, individual cases in our data can influence our model more than others. There are a variety of measures we can use to evaluate the amount of misfit and influence that single observations have on our model and our model estimates.</p>
+<div class="imp">
+<p><strong>THERE ARE NO HARD RULES FOR WHAT COUNTS AS “INFLUENTIAL” AND HOW WE SHOULD DEAL WITH THESE CASES</strong></p>
+<p>There are many ways to make a cake. recipes can be useful, but you really need to think about what ingredients you actually have (what data you have).</p>
+<p>You don’t <strong>have</strong> to exclude influential observations. Try to avoid blindly following cut-offs, and try to think carefully about outliers and influential points and whether you want to exclude them, and whether there might be some other model specification that captures this in some estimable way. Do these observations change the conclusions you make (you can try running models with and without certain cases).</p>
+</div>
+<div class="statbox">
+<p>There are various measures of outlyngness and influence.
+Here are a few:</p>
+<ul>
+<li><strong>Regression outliers:</strong> A large residual <span class="math inline">\(\hat \epsilon_i\)</span> - i.e., a big discrepancy between their predicted y-value and their observed y-value.
+<ul>
+<li><strong>Standardised residuals:</strong> For residual <span class="math inline">\(\hat \epsilon_i\)</span>, divide by the estimate of the standard deviation of the residuals. In R, the <code>rstandard()</code> function will give you these</li>
+<li><strong>Studentised residuals:</strong> For residual <span class="math inline">\(\hat \epsilon_i\)</span>, divide by the estimate of the standard deviation of the residuals excluding case <span class="math inline">\(i\)</span>. In R, the <code>rstudent()</code> function will give you these. Values <span class="math inline">\(&gt;|2|\)</span> (greater in magnitude than two) are considered potential outliers.<br />
+</li>
+</ul></li>
+<li><strong>High leverage cases:</strong> These are cases which have considerable <em>potential</em> to influence the regression model (e.g., cases with an unusual combination of predictor values).
+<ul>
+<li><strong>Hat values:</strong> are used to assess leverage. In R, The <code>hatvalues()</code> function will retrieve these.<br />
+Hat values of more than <span class="math inline">\(2 \bar{h}\)</span> (2 times the average hat value) are considered high leverage. <span class="math inline">\(\bar{h}\)</span> is calculated as <span class="math inline">\(\frac{k + 1}{n}\)</span>, where <span class="math inline">\(k\)</span> is the number of predictors, and <span class="math inline">\(n\)</span> is the sample size.<br />
+</li>
+</ul></li>
+<li><strong>High influence cases:</strong> When a case has high leverage <em>and</em> is an outlier, it will have a large influence on the regression model.
+<ul>
+<li><strong>Cook’s Distance:</strong> combines <em>leverage</em> (hatvalues) with <em>outlying-ness</em> to capture influence. In R, the <code>cooks.distance()</code> function will provide these.<br />
+There are many suggested <a href="https://en.wikipedia.org/wiki/Cook%27s_distance#Detecting_highly_influential_observations">Cook’s Distance cut-offs</a>.</li>
+</ul></li>
+</ul>
+</div>
+<div class="question-begin">
+Question 7
+</div>
+<div class="question-body">
+<p>Create a new tibble which contains:</p>
+<ol style="list-style-type: decimal">
+<li>The original variables from the model (Hint, what does <code>&lt;fitted model&gt;$model</code> give you?)</li>
+<li>The fitted values from the model <span class="math inline">\(\hat y\)</span><br />
+</li>
+<li>The residuals <span class="math inline">\(\hat epsilon\)</span></li>
+<li>The studentised residuals</li>
+<li>The hat values</li>
+<li>The Cook’s Distance values.</li>
+</ol>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-174" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-174&#39;, &#39;sol-start-174&#39;)"> Solution </span>
+</div>
+<div id="sol-body-174" class="solution-body" style="display: none;">
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>mdl_diagnost <span class="ot">&lt;-</span> </span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tibble</span>(</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  wbmodel<span class="sc">$</span>model,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">fitted =</span> <span class="fu">fitted</span>(wbmodel),</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">resid =</span> <span class="fu">residuals</span>(wbmodel),</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">studres =</span> <span class="fu">rstudent</span>(wbmodel),</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">hats =</span> <span class="fu">hatvalues</span>(wbmodel),</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">cooksd =</span> <span class="fu">cooks.distance</span>(wbmodel)</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question 8
+</div>
+<div class="question-body">
+<p>Looking at the studentised residuals, are there any extreme values?</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-175" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-175&#39;, &#39;sol-start-175&#39;)"> Solution </span>
+</div>
+<div id="sol-body-175" class="solution-body" style="display: none;">
+<p>Let’s use studentised residuals of <span class="math inline">\(&gt;2\)</span> or <span class="math inline">\(&lt; -2\)</span> indicate <strong>potential</strong> outlyingness.</p>
+<p>We can ask R whether the <em>absolute</em> values are <span class="math inline">\(&gt;2\)</span>:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">abs</span>(mdl_diagnost<span class="sc">$</span>studres) <span class="sc">&gt;</span> <span class="dv">2</span></span></code></pre></div>
+<pre><code>##     1     2     3     4     5     6     7     8     9    10    11    12    13 
+## FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE 
+##    14    15    16    17    18    19    20    21    22    23    24    25    26 
+## FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE 
+##    27    28    29    30    31    32 
+## FALSE FALSE FALSE FALSE FALSE FALSE</code></pre>
+<p>We could <em>filter</em> our newly created tibble to these observations:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>mdl_diagnost <span class="sc">%&gt;%</span> </span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">abs</span>(studres)<span class="sc">&gt;</span><span class="dv">2</span>)</span></code></pre></div>
+<pre><code>## # A tibble: 0 x 8
+## # ... with 8 variables: wellbeing &lt;dbl&gt;, outdoor_time &lt;dbl&gt;, social_int &lt;dbl&gt;,
+## #   fitted &lt;dbl&gt;, resid &lt;dbl&gt;, studres &lt;dbl&gt;, hats &lt;dbl&gt;, cooksd &lt;dbl&gt;</code></pre>
+<p>There are zero rows.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question 9
+</div>
+<div class="question-body">
+<p>Looking at the hat values, are there any observations with high leverage?</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-176" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-176&#39;, &#39;sol-start-176&#39;)"> Solution </span>
+</div>
+<div id="sol-body-176" class="solution-body" style="display: none;">
+<p>For our model, the average hat value <span class="math inline">\(\bar h\)</span> is:<br />
+<span class="math display">\[
+\bar h = \frac{k+1}{n} = \frac{2+1}{32} = \frac{3}{32} = 0.094
+\]</span></p>
+<p>We can ask whether any of observations have hat values which are greater than <span class="math inline">\(2 \times \bar h\)</span>:</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>mdl_diagnost <span class="sc">%&gt;%</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(hats <span class="sc">&gt;</span> (<span class="dv">2</span><span class="sc">*</span><span class="fl">0.094</span>))</span></code></pre></div>
+<pre><code>## # A tibble: 0 x 8
+## # ... with 8 variables: wellbeing &lt;dbl&gt;, outdoor_time &lt;dbl&gt;, social_int &lt;dbl&gt;,
+## #   fitted &lt;dbl&gt;, resid &lt;dbl&gt;, studres &lt;dbl&gt;, hats &lt;dbl&gt;, cooksd &lt;dbl&gt;</code></pre>
+<p>Note that 0 observations have high leverage.</p>
+</div>
+<p class="solution-end">
+</p>
+<div class="question-begin">
+Question 10
+</div>
+<div class="question-body">
+<p>Plot the Cook’s Distance values, does it look like there may be any highly influential points?<br />
+(You can use <code>plot(model, which = 4)</code> and <code>plot(model, which = 5)</code>).</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-177" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-177&#39;, &#39;sol-start-177&#39;)"> Solution </span>
+</div>
+<div id="sol-body-177" class="solution-body" style="display: none;">
+<p>These don’t look too bad to me - there aren’t a small number of cases which have exceptionally high values (relative to the others) for Cook’s D.</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(wbmodel, <span class="at">which =</span> <span class="dv">4</span>)</span></code></pre></div>
+<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-15-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(wbmodel, <span class="at">which =</span> <span class="dv">5</span>)</span></code></pre></div>
+<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-15-2.png" width="80%" style="display: block; margin: auto;" /></p>
+</div>
+<p class="solution-end">
+</p>
+<div class="statbox">
+<p><strong>Other influence.measures()</strong></p>
+<p>Alongside Cook’s Distance, we can examine the extent to which model estimates and predictions are affected when an entire case is dropped from the dataset and the model is refitted.</p>
+<ul>
+<li><strong>DFFit:</strong> the change in the predicted value at the <span class="math inline">\(i^{th}\)</span> observation with and without the <span class="math inline">\(i^{th}\)</span> observation is included in the regression.<br />
+</li>
+<li><strong>DFbeta:</strong> the change in a specific coefficient with and without the <span class="math inline">\(i^{th}\)</span> observation is included in the regression.<br />
+</li>
+<li><strong>DFbetas:</strong> the change in a specific coefficient divided by the standard error, with and without the <span class="math inline">\(i^{th}\)</span> observation is included in the regression.<br />
+</li>
+<li><strong>COVRATIO:</strong> measures the effect of an observation on the covariance matrix of the parameter estimates. In simpler terms, it captures an observation’s influence on standard errors. Values which are <span class="math inline">\(&gt;1+\frac{3(k+1)}{n}\)</span> or <span class="math inline">\(&lt;1-\frac{3(k+1)}{n}\)</span> are sometimes considered as having strong influence.</li>
+</ul>
+</div>
+<div class="question-begin">
+Question 11
+</div>
+<div class="question-body">
+<p>Use the function <code>influence.measures()</code> to extract these delete-1 measures of influence.</p>
+<p>Try plotting the distributions of some of these measures.</p>
+<p><strong>Tip:</strong> the function <code>influence.measures()</code> returns an <code>infl</code>-type object. To plot this, we need to find a way to extract the actual numbers from it.<br />
+What do you think <code>names(influence.measures(&lt;fitted model&gt;))</code> shows you? How can we use <code>influence.measures(&lt;fitted model&gt;)$ ????</code> to extract the matrix of numbers?</p>
+</div>
+<p class="question-end">
+</p>
+<div class="solution-begin">
+<span id="sol-start-178" class="fa fa-chevron-circle-right solution-icon clickable" onclick="toggle_visibility(&#39;sol-body-178&#39;, &#39;sol-start-178&#39;)"> Solution </span>
+</div>
+<div id="sol-body-178" class="solution-body" style="display: none;">
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">influence.measures</span>(wbmodel)</span></code></pre></div>
+<pre><code>## Influence measures of
+##   lm(formula = wellbeing ~ outdoor_time + social_int, data = mwdata) :
+## 
+##      dfb.1_ dfb.otd_ dfb.scl_   dffit cov.r   cook.d    hat inf
+## 1   0.43653 -0.11116 -0.32167  0.4477 1.157 0.066470 0.1489    
+## 2  -0.28160  0.03170  0.22954 -0.2917 1.225 0.028838 0.1414    
+## 3   0.29581  0.07604 -0.29025  0.3540 1.088 0.041520 0.0967    
+## 4  -0.26445 -0.13055  0.29341 -0.3508 1.117 0.040991 0.1071    
+## 5  -0.27084  0.22733  0.10472 -0.3290 1.279 0.036700 0.1766    
+## 6   0.12462 -0.02693 -0.08288  0.1460 1.141 0.007277 0.0604    
+## 7  -0.17361 -0.03392  0.15313 -0.2235 1.087 0.016770 0.0597    
+## 8  -0.02879 -0.07259  0.06069 -0.0918 1.309 0.002906 0.1556    
+## 9   0.16925  0.08820 -0.17834  0.2477 1.088 0.020553 0.0668    
+## 10 -0.24768  0.33112 -0.00551 -0.4267 1.027 0.059217 0.0956    
+## 11 -0.02018 -0.02535  0.02534 -0.0492 1.166 0.000834 0.0518    
+## 12  0.04644  0.38731 -0.22045  0.4474 1.164 0.066462 0.1517    
+## 13 -0.15606  0.21587 -0.02477 -0.3135 1.017 0.032241 0.0626    
+## 14  0.13390 -0.31537  0.10705  0.3905 1.039 0.049887 0.0899    
+## 15  0.14774 -0.25595  0.08688  0.4273 0.815 0.055918 0.0487    
+## 16 -0.11881  0.17855 -0.06061 -0.3502 0.873 0.038519 0.0422    
+## 17  0.00121 -0.07684  0.02608 -0.1031 1.177 0.003653 0.0703    
+## 18  0.00329  0.04637 -0.01574  0.0739 1.159 0.001877 0.0516    
+## 19  0.04301 -0.15310  0.09227  0.2432 1.055 0.019693 0.0546    
+## 20  0.05819 -0.10961 -0.03803 -0.2189 1.065 0.016025 0.0508    
+## 21 -0.01498  0.00131  0.03428  0.0875 1.131 0.002622 0.0380    
+## 22  0.12553 -0.15510 -0.09098 -0.3084 1.020 0.031247 0.0622    
+## 23 -0.03324 -0.00580  0.05840  0.1049 1.138 0.003770 0.0466    
+## 24  0.24606 -0.23731 -0.18568 -0.4783 0.911 0.071967 0.0774    
+## 25  0.06123  0.10878 -0.16017 -0.2209 1.131 0.016498 0.0771    
+## 26 -0.02732 -0.29363  0.23790  0.3643 1.243 0.044752 0.1666    
+## 27 -0.30514  0.33726  0.20108  0.5966 0.830 0.108234 0.0858    
+## 28  0.06176 -0.07036 -0.03455 -0.1080 1.263 0.004013 0.1280    
+## 29 -0.15327 -0.04611  0.23001  0.3039 1.067 0.030646 0.0754    
+## 30  0.11226  0.25745 -0.30386 -0.3826 1.238 0.049262 0.1686    
+## 31 -0.07637 -0.05313  0.12879  0.1542 1.214 0.008153 0.1047    
+## 32  0.10249 -0.07000 -0.07662 -0.1399 1.353 0.006736 0.1864   *</code></pre>
+<p>Let’s plot the distribution of COVRATIO statistics.<br />
+Recall that values which are <span class="math inline">\(&gt;1+\frac{3(k+1)}{n}\)</span> or <span class="math inline">\(&lt;1-\frac{3(k+1)}{n}\)</span> are considered as having strong influence.<br />
+For our model:
+<span class="math display">\[
+1 \pm \frac{3(k+1)}{n} \quad = \quad 1 \pm\frac{3(2+1)}{32} \quad = \quad 1\pm \frac{9}{32} \quad = \quad 1\pm0.28
+\]</span></p>
+<p>The “infmat” bit of an <code>infl</code>-type object contains the numbers. To use it with ggplot, we will need to turn it into a dataframe (<code>as.data.frame()</code>), or a tibble (<code>as_tibble()</code>):</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>infdata <span class="ot">&lt;-</span> <span class="fu">influence.measures</span>(wbmodel)<span class="sc">$</span>infmat <span class="sc">%&gt;%</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as_tibble</span>()</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> infdata, <span class="fu">aes</span>(<span class="at">x =</span> cov.r)) <span class="sc">+</span> </span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>() <span class="sc">+</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="fu">aes</span>(<span class="at">xintercept =</span> <span class="fu">c</span>(<span class="dv">1</span><span class="fl">-0.28</span>)))<span class="sc">+</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="fu">aes</span>(<span class="at">xintercept =</span> <span class="fu">c</span>(<span class="dv">1</span><span class="fl">+0.28</span>)))</span></code></pre></div>
+<p><img src="zz_assumpt_files/figure-html/unnamed-chunk-17-1.png" width="80%" style="display: block; margin: auto;" /></p>
+<p>It looks like a few observations may be having quite a high influence here. This is perhaps not that surprising as we only have 32 datapoints.</p>
 </div>
 <p class="solution-end">
 </p>
@@ -888,6 +1111,9 @@ $(document).ready(function () {
 
 <script>
 $(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
 
     // move toc-ignore selectors from section div to header
     $('div.section.toc-ignore')
