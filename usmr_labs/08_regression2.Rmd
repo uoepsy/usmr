@@ -4,7 +4,7 @@ bibliography: references.bib
 biblio-style: apalike
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: inline
@@ -37,6 +37,20 @@ library(patchwork)
 
 # Standardising Coefficients 
 
+:::statbox
+
+Often it is useful to make distinctions in notation between the effects that we are interested in (the _population parameter_) and our best guess (the _estimate_). With regression coefficients this is the notation we tend to use in this course _(there are many other conventions for notation)_:    
+
+| Population parameter | Fitted estimate |
+|:-----|:-----|
+| $b$ | $\hat b$ |
+
+:::
+
+
+:::lo
+__Remember the scale of your variables!__  
+
 Recall one of our models from last week, explaining wellbeing by the combination of social interactions and outdoor time:  
 $$
 \textrm{Wellbeing} = b_0 \ + \ b_1 (\textrm{Outdoor Time}) \ + \ b_2 (\textrm{Social Interactions}) \ +\ \epsilon
@@ -47,14 +61,12 @@ mwdata <- read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
 wbmodel2 <- lm(wellbeing ~ outdoor_time + social_int, data=mwdata)
 ```
 
-:::lo
-__Remember the scale of your variables!__  
 
 - **Wellbeing:** Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS), a self-report measure of mental health and well-being. The scale is scored by summing responses to each item, with items answered on a 1 to 5 Likert scale. The minimum scale score is 14 and the maximum is 70.  
 - **Social Interactions:** Self report estimated number of social interactions per week (both online and in-person)
 - **Outdoor Time:** Self report estimated number of hours per week spent outdoors  
 
-This influences our interpretation of the coefficients (the $b$'s):  
+This influences our interpretation of the coefficients (the $\hat b$'s):  
 
 - $\hat b_0$ = the estimated mean score on the WEMWBS for someone who has __zero__ social interactions per week and __zero__ hours of outdoor time per week.  
 - $\hat b_1$ = for every increase in __1 hour__ of outdoor time per week, scores on the WEMWBS are estimated to change by $\hat b_1$ __points__. 
@@ -77,7 +89,7 @@ library(patchwork)
 ggplot(mwdata,aes(x=outdoor_time))+geom_histogram(binwidth = 1) + 
   ggplot(mwdata,aes(x=outdoor_time_scaled))+geom_histogram(binwidth=1/sd(mwdata$outdoor_time))
 ```
-How does the interpretation of $b_0$ and $b_1$ change for the model:
+How does the interpretation of $\hat b_0$ and $\hat b_1$ change for the model:
 ```{r eval=F}
 lm(wellbeing ~ social_int + outdoor_time_scaled, data=mwdata)
 ```
@@ -136,7 +148,19 @@ coef(wbmodel2)['social_int'] / sd(mwdata$wellbeing)
 :::rtip
 
 We can actually standardise all the variables in our model by using the function `standardCoefs()` from the __lsr__ package.  
-In some notations, the distinction between these __"standardised coefficients"__ and the original coefficients in the raw units, gets denoted by $b$ changing to $\beta$ for the standardised coefficients:  
+
+In some notations, the distinction between these __"standardised coefficients"__ and the original coefficients in the raw units, gets denoted by $\hat b$ changing to $\hat \beta$ for the standardised coefficients^[A common alternative is to use $\beta$ for the population parameter, $\hat \beta$ for the fitted estimate, and something like $\hat \beta^*$ for the standardised estimate.]:  
+
+
+:::statbox
+__Notation__  
+
+| Population parameter | Fitted estimate | Standardised Estimate |
+|:-----|:-----|:-----|
+| $b$ | $\hat b$ | $\hat \beta$ |
+
+:::
+
 ```{r}
 library(lsr)
 standardCoefs(wbmodel2)
@@ -147,8 +171,9 @@ The interpretation of $\hat \beta$s (the "beta") column, is now:
 - $\hat \beta_1$: The estimated change in standard deviations of wellbeing scores associated with a change of 1 standard deviation of number of hours of outdoor time per week.   
 - $\hat \beta_2$: The estimated change in standard deviations of wellbeing scores associated with a change of 1 standard deviation of number of social interactions per week.
 
-A benefit of this is that the standardised coefficients are much more comparable. Comparing $\hat b_1$ and $\hat b_2$ is asking whether 1 hour of outdoor time has a bigger effect than 1 social interaction. But this is 'comparing apples and oranges'.  
-If we compare $\hat \beta_1$ and $\hat \beta_2$, then the comparisons we make are in terms of standard deviations of each predictor. Thus we might consider increasing the number of social interactions each week to have a greater effect on wellbeing than increasing the hours of outdoor time (because $0.67 > 0.35$).  
+A benefit of this is that the standardised coefficients are much more comparable. Comparing $\hat b_1$ and $\hat b_2$ is asking whether 1 hour of outdoor time has a bigger effect than 1 social interaction. This is a bit like 'comparing apples and oranges'.  
+  
+If instead we compare $\hat \beta_1$ and $\hat \beta_2$, then the comparisons we make are in terms of standard deviations of each predictor. Thus we might consider increasing the number of social interactions each week to have a greater effect on wellbeing than increasing the hours of outdoor time (because $0.67 > 0.35$).  
 
 :::
 
@@ -296,14 +321,14 @@ sjPlot::plot_model(wbmodel3, type="pred", terms=c("outdoor_time","routine"), sho
                    yend=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=0))),
                col="black",lwd=.2)+
   geom_label(aes(x=2,y=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=0))-3), 
-             label="B", col="black")+
+             label="B")+
   geom_segment(aes(x=20,xend=20,
                    y=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=20)),
                    yend=predict(wbmodel3,newdata=data.frame(routine="Routine",outdoor_time=20))),
                col="black",lwd=.2,
                arrow = arrow(length = unit(3, "mm")))+
   geom_label(aes(x=21,y=predict(wbmodel3,newdata=data.frame(routine="Routine",outdoor_time=20))-5),
-               label="A", col="black")+
+               label="A")+
   geom_segment(aes(x=10,xend=11,
                  y=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=10)),
                  yend=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=10))),
@@ -313,7 +338,7 @@ sjPlot::plot_model(wbmodel3, type="pred", terms=c("outdoor_time","routine"), sho
                  yend=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=11))),
              col="black",lwd=.2)+
   geom_label(aes(x=12,y=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=10))),
-                 label="C",col="black")+
+                 label="C")+
   NULL -> plot_annotate
 
 plot_annotate
@@ -328,9 +353,9 @@ plot_annotate
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
-+ A = $\hat \b_2$ = `routineRoutine` coefficient = `r round(coef(wbmodel3)[3],2)`
-+ B = $\hat \b_0$ = `(Intercept)` coefficient  = `r round(coef(wbmodel3)[1],2)`
-+ C = $\hat \b_1$ = `outdoor_time` coefficient = `r round(coef(wbmodel3)[2],2)` 
++ A = $\hat b_2$ = `routineRoutine` coefficient = `r round(coef(wbmodel3)[3],2)`
++ B = $\hat b_0$ = `(Intercept)` coefficient  = `r round(coef(wbmodel3)[1],2)`
++ C = $\hat b_1$ = `outdoor_time` coefficient = `r round(coef(wbmodel3)[2],2)` 
 
 ```{r echo=FALSE}
 plot_annotate
@@ -359,7 +384,7 @@ The `plot_model` function (and the __sjPlot__ package) can do a lot of different
 library(sjPlot)
 plot_model(wbmodel3)
 ```
-These are the parameter estimates (the $\hat \b$'s), and the confidence intervals. 
+These are the parameter estimates (the $\hat b$'s), and the confidence intervals. 
 ```{r}
 confint(wbmodel3)
 ```
@@ -494,7 +519,7 @@ contrasts(mwdata$location)
 ```
 In the output of `contrasts()`, the columns are the dummy variables which go into our model. So we know that if we use `location` in a model, the reference level will be "City" (where both variables are zero), and we will get a coefficient for "Rural" which will be the difference "Rural - City", and a coefficient for "Suburb" which will be the difference "Suburb - City". 
 
-:::
+:::frame
 We can see that here:
 ```{r}
 coef(lm(wellbeing ~ location, data = mwdata))
@@ -512,132 +537,6 @@ mwdata %>% group_by(location) %>%
 We're not going to delve too much into contrasts in this course, other than to say that we can use them change the way that information in categorical variables get inputted in our model, thereby changing the group differences that we are estimating. If you would like to learn more, then do please email and ask us. There are also lots of great resources around online, such as [this one](https://stats.idre.ucla.edu/r/library/r-library-contrast-coding-systems-for-categorical-variables/).    
 
 `r optend()`
-
-
-# Some More on Sums of Squares
-
-:::lo
-
-```{r echo=F}
-set.seed(93)
-tibble(
-    x1 = rnorm(100),
-    x2 =rnorm(100),
-    y = 2*x1 - 1*x2 + rnorm(100,0,4)
-) -> df
-m <- lm(y~x1+x2,df)
-```
-
-Another venn diagram way of thinking about sums of squares
-In the lecture we saw some venn diagrams, where each circle was variance explained by each predictor.  
-It may also help to think of it in a slightly different visualisation. In Figure \@ref(fig:ssvenn) we see the model $y = b_0 + b_1(x1) + b_2(x2) + \varepsilon$ where the outcome variable, $y$ included as a circle too. The "variance explained" by each predictor is the _overlap_ between each predictor and the outcome variable.  
-Having multiple predictors introduces the likely scenario that our predictors ($x1$ and $x2$) may be to some extent correlated. That is, knowing something about $x1$ will tell us something about $x2$, and vice versa. But this means that we have some joint overlap ($F$ in the \@ref(fig:ssvenn)) which is variance explained in the outcome variable that is __not unique__ to either predictor. We don't want to double count this, we need to decide to which variable we want to attribute this explained variance.  
-
-In Figure \@ref(fig:ssvenn):
- 
-- the total variance in $y$ is represented by the combination of areas $A + D + E + F$.  
-- the covariance between $x1$ and $y$ is $D + F$
-- the covariance between $x2$ and $y$ is $E + F$   
-- the variance in $y$ uniquely explained by $x1$ is $D$
-- the variance in $y$ uniquely explained by $x2$ is $E$
-- the variance in $y$ explained by $x1$ and $x2$ that is not unique to either predictor is $F$. 
-
-
-```{r ssvenn, echo=FALSE, fig.cap="Venn Diagram of variables in multiple regression model, with areas represents variance/shared variance", out.height = "300px", out.width="250px"}
-knitr::include_graphics("images/ss/ss0.png")
-```
-Types of Sums of Squares largely comes down to how we attribute the area $F$. Type 1 Sums of Squares attributes it to whichever of $x1$ and $x2$ is _first_ entered into the model. Type 3 Sums of Squares attributes it to neither. Let's look at these in more depth. 
-
-:::
-
-:::frame 
-__Type 1 Sums of Squares__  
-
-<div style="display:inline-block;max-width:40%;vertical-align:top">
-When we calculate Type 1 sums of squares, _and $x1$ is entered into our model first_, then we are looking at:
-
-- the effect of $x1$ as $D + F$  
-- the effect of $x2$ as $E$   
-
-We get these from functions like `anova()` which test the relative size of these areas to the area of A (after scaling each of these by how much information - the _degrees of freedom_ - are used to create each - this is the __mean squares__ bit).  
-</div><div style="display:inline-block;max-width:40%;vertical-align:top">
-```{r ssvenn1, echo=FALSE, out.height = "250px", out.width="175px"}
-knitr::include_graphics("images/ss/ss1.png")
-```
-</div>
-
-
-```{r eval=F}
-model <- lm(y~x1+x2,data=df)
-anova(model)
-```
-```{r echo=F}
-options(knitr.kable.NA = '')
-m <- lm(y~x1+x2,df)
-tab1 <- anova(m)
-tab1[,2:4] <- round(tab1[,2:4],3)
-tab1[,5] <- ifelse(tab1[,5]<.001, "<.001", round(tab1[,5],3))
-tab1$`Areas in Diagram` <- c("(D + F) vs A", "E vs A","A")
-knitr::kable(tab1) %>% kableExtra::column_spec(7,bold=T) %>% kableExtra::kable_styling(full_width = T)
-```
-
-`r optbegin("Why are these different for lm(y~x1+x2) and lm(y~x1)?", olabel=F,toggle=params$TOGGLE)`  
-Consider three models: 
-```{r}
-m0 <- lm(y ~ 1, data = df)
-m1 <- lm(y ~ 1 + x1, data = df)
-m2 <- lm(y ~ 1 + x1 + x2, data = df)
-```
-Because we think of Type 1 sums of squares as "incremental", then it is tempting to want these following to have the same results regarding the effect of $x1$: 
-```{r}
-anova(m1)
-anova(m2)
-```
-Notice, however, that it is not. This is because the area marked A is now bigger, because the variance which was being explained by $x2$ (the grey area below) is, in this model, simply just more "residual variance".  
-```{r echo=FALSE, out.height = "300px", out.width="200px"}
-knitr::include_graphics("images/ss/sssimple.png")
-```
-
-```{r echo=F}
-m<-lm(y~x1,data=df)
-tab1 <- anova(m)
-tab1[,2:4] <- round(tab1[,2:4],3)
-tab1[,5] <- ifelse(tab1[,5]<.001, "<.001", round(tab1[,5],3))
-tab1$`Areas in Diagram` <- c("G vs A","A")
-knitr::kable(tab1) %>% kableExtra::column_spec(7,bold=T) %>% kableExtra::kable_styling(full_width = T)
-```
-`r optend()`
-:::
-
-:::frame
-__Type 3 Sums of Squares__  
-  
-<div style="display:inline-block;max-width:40%;vertical-align:top">
-When we calculate Type 3 Sums of Squares, we get:
-
-- the effect of $x1$ = $D$  
-- the effect of $x2$ = $E$   
-
-We get these using functions like `drop1(model)` and the `Anova(model, type = 3)` (capital A) from the __car__ package.  
-</div>
-<div style="display:inline-block;max-width:40%;vertical-align:top">
-```{r ssvenn3, echo=FALSE, out.height = "200px", out.width="150px"}
-knitr::include_graphics("images/ss/ss3.png")
-```
-</div>
-
-```{r}
-model <- lm(y~x1+x2,data=df)
-library(car)
-Anova(model, type = 3)
-```
-And these are _also_ the effects that we see as the _coefficients_ in functions like `summary()`,`coef()` and `coefficients()`, but the estimated coefficients are scaled to be in terms of "change in y for every 1 unit change in x".  
-
-```{r}
-summary(model)
-```
-:::
-
 
 
 # Interactions  
