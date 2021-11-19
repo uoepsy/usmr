@@ -4,7 +4,7 @@ bibliography: references.bib
 biblio-style: apalike
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -29,17 +29,18 @@ library(patchwork)
 Things have moved pretty quickly in the last couple of weeks.   
 In the simple linear regression, we defined our model through a number of components:  
 
-- $\beta_0$ / $b_0$ / the "Intercept". This is the predicted value of $y$ where $x = 0$.
+- $b_0$: the "Intercept". This is the predicted value of $y$ where $x = 0$.
     + In the plot below, it is the predicted value of wellbeing where outdoor_time is 0 (where the regression line cuts the y-axis) 
-- $\beta_1$ / $b_1$ / the "Coefficient of $x$". This is the predicted *increase* in $y$ for every unit increase of $x$.  
+- $b_1$: the "Coefficient for $x$". This is the predicted *increase* in $y$ for every unit increase of $x$.  
     + In the plot below, this is the amount the regression line goes up for every one unit we move across.  
-- $\epsilon$ / $e$ / the "Residuals" or "Error term". These are the distances from each of our observed values to the model predicted values. The standard deviation of all these gets denoted $\sigma$. 
+- $\varepsilon$: the "Residuals" or "Error term". These are the distances from each of our observed values to the model predicted values. The standard deviation of all these gets denoted $\sigma_\varepsilon$. 
     + In the plot below, these are the vertical distances from each red dot to the black line.  
     
 ```{r echo=FALSE}
 mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
-with(mwdata, plot(outdoor_time, wellbeing, col="red",pch=16))
-abline(lm(wellbeing~outdoor_time, mwdata))
+mwdata %>% mutate(x=outdoor_time,y=wellbeing) -> mwdata
+with(mwdata, plot(x,y, col="red",pch=16))
+abline(lm(y~x, mwdata))
 ```
 `r optend()`
 
@@ -59,7 +60,7 @@ newdat <- expand.grid(outdoor_time=outdoor_time, social_int=social_int)
 wellbeing <- matrix(predict(fit, newdat), steps, steps)
 
 
-p <- persp(outdoor_time,social_int,wellbeing, theta = 0,phi=0, col = NA)
+p <- persp(outdoor_time,social_int,wellbeing, theta = 40,phi=10, col = NA,xlab="x1",ylab="x2",zlab="y")
 obs <- with(mwdata, trans3d(outdoor_time,social_int, wellbeing, p))
 pred <- with(mwdata, trans3d(outdoor_time, social_int, fitted(fit), p))
 points(obs, col = "red", pch = 16)
@@ -90,8 +91,8 @@ scs <- with(scs_study, seq(min(scs),max(scs),length=steps))
 zn <- with(scs_study, seq(min(zn),max(zn),length=steps))
 newdat <- expand.grid(scs=scs, zn=zn)
 dass <- matrix(predict(fit, newdat), steps, steps)
-p <- persp(scs,zn,dass, theta = 0,phi=10, col = NA,
-           xlab = "X1",zlab="Y (outcome)",ylab="X2")
+p <- persp(scs,zn,dass, theta = 10,phi=15, col = NA,
+           xlab = "x1",zlab="y",ylab="x2")
 
 ```
 `r optend()`  
@@ -103,20 +104,21 @@ Throughout these, we also saw how this applied when we had explanatory variables
 They were entered in to the model as a set of "dummy variables" (zeroes and ones), representing differences between groups. If we had a categorical variable which contained $k$ levels (or "groups", or "categories"), then we R will put $k-1$ dummy variables into the model for us, and we will get out $k-1$ coefficients.  
 
 The default behaviour in R is that, depending on what we set as our **reference level**, the coefficients represent the difference from this group to each of the others.  
-In the plots below, if "City" is the reference, then the coefficient `locationRural` would represent the vertical distance from the red line to the green line, and the coefficient `locationSuburb` would be the vertical distance from the red line to the blue line.  
+In the plots below, if "Group1" is the reference, then the coefficient `groupGroup2` would represent the vertical distance from the red line to the green line, and the coefficient `groupGroup3` would be the vertical distance from the red line to the blue line.  
 
 ```{r echo=FALSE}
 library(patchwork)
-    ggplot(mwdata, aes(x=location, y=wellbeing,col=location))+
+mwdata <- mwdata %>% mutate(group=fct_recode(factor(location), Group1="City",Group2="Rural",Group3="Suburb"))
+    ggplot(mwdata, aes(x=group, y=wellbeing,col=group))+
     geom_jitter(width = .1, height = 0)+
-    stat_summary(fun = mean, geom="errorbar", aes(ymax=..y..,ymin=..y..,col=location),lwd=2) + 
-        labs(title="wellbeing~location",subtitle="separated") + 
+    stat_summary(fun = mean, geom="errorbar", aes(ymax=..y..,ymin=..y..,col=group),lwd=2) + 
+        labs(title="y ~ group",subtitle="separated",y="y") + 
 
-    ggplot(mwdata, aes(x=0, y=wellbeing,col=location))+
+    ggplot(mwdata, aes(x=0, y=wellbeing,col=group))+
     geom_jitter(width = .1, height = 0)+
-    stat_summary(fun = mean, geom="errorbar", aes(x=0,ymax=..y..,ymin=..y..,col=location),lwd=2) + 
+    stat_summary(fun = mean, geom="errorbar", aes(x=0,ymax=..y..,ymin=..y..,col=group),lwd=2) + 
     scale_x_continuous(NULL, breaks=NULL) +
-        labs(title="wellbeing~location",subtitle="(collapsed)")+
+        labs(title="y ~ group",subtitle="(collapsed)",y="y")+
         
     plot_layout(guides="collect")
 
@@ -124,9 +126,13 @@ library(patchwork)
 
 *Note - because categorical predictors are coded as various dummy variables of zeroes and ones, the assumption of linearity is intrinsically there. The only possible way to get from the red line to the green line is via a straight line.*  
 
-We also saw how this same logic applies when categorical explanatory variables are involved in an interaction.  
+We also saw how this same logic applies when categorical explanatory variables are involved in an interaction, as in Figure \@ref(fig:catintglm) 
 
-The coefficients provide  
+```{r catintglm, echo=FALSE, fig.cap="https://uoepsy.github.io/usmr/lectures/lecture_8#58"}
+knitr::include_graphics("images/glm/catint.png")
+```
+
+The coefficients provide:    
 
 1. coefficient for practice: the increase in 'reading age' associated with an increase of 1 unit of 'practice', when the dummy variables for 'method' are all 0  
     + (Where the reference level is *phonics*, this is the slope of the red line)
@@ -134,43 +140,7 @@ The coefficients provide
     + (This is the distance between the two lines where they meet the y-axis).  
 3. the coefficient for the interaction: the adjustment to 1 and 2 associated with an increase of 1 in other variable (which for the categorical variable means the move to the other group).  
 
-```{r echo=FALSE, fig.cap="https://uoepsy.github.io/usmr/lectures/lecture_8#58"}
-knitr::include_graphics("images/glm/catint.png")
-```
-
 `r optend()`  
-
-# Model Building  
-
-it's been a lot, but let's take stock 
-
-what have we seen:
-
-we've seen regression models with one predictor, and with many predictors. 
-we've also seen how categorical predictors are inputted into regression models as a series of dummy variables, with coefficients providing estimates of group differences.
-we've also seen how we can model the effect of one predictor as _depending on_ the level of another, by including the product term (an "interaction").  
-
-we've talked about the hypothesis tests that we can perform with these models, for instance, testing whether a specific slope is different from zero (the coefficients in `summary()`), or testing the improvement in model fit (by reduction in sums of squared residuals) gained from the addition of one (or several) predictors (model comparison with `anova(model1, model2)`).  
-But all this supposes that we already know what to include in our model.  
-
-typically interested in one or more specific predictors, or an interaction. 
-may mention specific things to "control for" (e.g. to also take into account).  
-
-to use a model to predict the world: 
-shove everything, keep whatever sticks
-
-
-to use a model to explain the world:  
-include variables which theoretically make sense as influencing the outcome  
-don't simply exclude predictors that are not significant  
-don't throw the kitchen sink at it. parsimony is also good
-remember the research question
-it may help to think of predictors in sets (e.g. demographic, historical)
-
-
-
-
-
 
 
 # Binary Outcomes!
