@@ -14,10 +14,24 @@ library(ggdist)
 library(patchwork)
 source('assets/setup.R')
 set.seed(953)
+options(digits=3)
 ```
 
 
-`r optbegin("Motor Offences data", olabel=FALSE, show = TRUE, toggle=params$TOGGLE)`
+
+# A sample question  
+
+We saw in the lecture a brief explanation of approaching the following sample question from a previous year's coursework report:  
+
+:::lo
+**Sample Question:  Driving speeds, night vs. day**
+
+Does time of day and speed of driving predict the blood alcohol content over and above driver's age? Fit appropriate model(s) to test this question, and report the results (you may add a figure or table if appropriate). 
+:::
+
+:::frame
+__Drinkdriving Data__  
+
 Two datasets can be loaded from the following url:  
 ```{r, echo=TRUE}
 load(url("https://uoepsy.github.io/data/usmr_1920_assignment.RData"))
@@ -46,17 +60,7 @@ colnames(off)<-c("Offence code","Description")
 gt::gt(as.data.frame(dict))
 ```
 
-`r optend()`  
-
-
-We saw in the lecture a brief explanation of approaching the following sample question from last years coursework report:  
-
-:::frame
-**Sample Question:  Driving speeds, night vs. day**
-
-Does time of day and speed of driving predict the blood alcohol content over and above driver's age? Fit appropriate model(s) to test this question, and report the results (you may add a figure or table if appropriate). 
-:::
-
+:::  
 
 `r qbegin("A1")`
 Explore and clean the dataset (i.e., remove any impossible values etc).  
@@ -69,124 +73,19 @@ Some info on the lecture slides this week will help with guidance on what to loo
 drinkdriving %>% mutate(
   age = case_when(age > 120 | is.na(age) ~ NA_real_, TRUE ~ age),
   outcome = factor(tolower(outcome)),
-  nighttime = factor(ifelse(nighttime %in% c("day","night"), nighttime, NA)),
-  # prior_offence = fct_other(factor(prior_offence), keep=c("N","DR50")),
-  prior_offence = factor(case_when(str_detect(prior_offence, "DR50") ~ "DUI",
-                            str_detect(prior_offence, "N") ~ "None",
-                            TRUE ~ "Other"))
-  ) -> drinkdriving
+  nighttime = factor(ifelse(nighttime %in% c("day","night"), nighttime, NA))
+) -> drinkdriving
 
 ```
 
 `r solend()`
-
 
 `r qbegin("A2")`
-Fit the following models:  
-
-```{r}
-m1<-lm(bac~age + nighttime + speed, data=drinkdriving)
-m2<-lm(bac~speed + age + nighttime, data=drinkdriving)
-m3<-lm(bac~nighttime + speed + age, data=drinkdriving)
-m4<-lm(bac~age + speed + nighttime, data=drinkdriving)
-```
-
-Are they different in any way? Are the coefficients different, or the significance tests different?
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-Nope! They're all the same!  
-
-You can use `summary()` here, but we thought you might also like to learn about the `tidy()` function from the **broom** package:  
-```{r}
-library(broom)
-tidy(m1)
-tidy(m2)
-tidy(m3)
-tidy(m4)
-```
-`r solend()`
-
-# Types of Sums of Squares
-
-`r qbegin("A3")`
-Run the following: 
-
-```{r eval=FALSE}
-anova(m1)
-anova(m2)
-anova(m3)
-anova(m4)
-```
-
-Are they different? In what way?
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-The results below are all different from one another. The astute of you may notice that the last row of each output (i.e., corresponding to the last term specified in m1, m2, and m3, and m4) give the same $p$-values as the coefficients from `summary()` of *any* of m1, m2, m3 or m4. 
-
-```{r}
-anova(m1)
-anova(m2)
-anova(m3)
-anova(m4)
-```
-
-`r solend()`
-
-
-These results are all different from one another, because when we use `anova()`, we are by default using Type 1 Sums of Squares. 
-What does this mean? It means that we're calculating each predictor's improvement to the model in the order that they are specified in the model [(See Week 8 Lecture)](https://uoepsy.github.io/usmr/lectures/lecture_7.html#57).  
-For `anova()`, **order matters**.  
-
-:::statbox
-**Sums of Squares
-
-+ **Type 1 sum of squares (sequential)**: Variables are tested in the order that they are listed in the model.  
-+ **Type 2 sums of squares**: Rarely used. Similar to Type 3 below, but main effects come before interactions, preserving the principle of marginality.  
-+ **Type 3 sum of squares (partial)**: Variables are tested in light of every other term in the model (i.e., as if they are the last term in Type 1).  
-
-::: 
-
-`r optbegin("Demonstration", olabel=FALSE, show=TRUE, toggle=params$TOGGLE)`
-Take, for instance: 
-```{r eval=FALSE}
-m1<-lm(bac ~ age + nighttime + speed, data=drinkdriving)
-```
-```{r}
-anova(m1)
-```
-
-We can see that the result for the *speed* variable is the same as the the coefficient for speed in the `lm()`s of **m1**, **m2**, and **m3**:  
-```{r}
-tidy(m1)
-```
-
-The same applies for *age* in this model: 
-```{r eval=FALSE}
-m3<-lm(bac~nighttime + speed + age, data=drinkdriving)
-```
-```{r}
-anova(m3)
-```
-```{r}
-# These aren't all run here, but they will show exactly the same: 
-# tidy(m1) %>% filter(term=="age")
-# tidy(m2) %>% filter(term=="age")
-# tidy(m3) %>% filter(term=="age")
-tidy(m4) %>% filter(term=="age")
-```
-`r optend()`
-
-
-# A sample question  
-
-`r qbegin("A4")`
-Recall our question:  
+Take another look at our question:  
 
 >Does time of day and speed of driving predict the blood alcohol content over and above driver's age? Fit appropriate model(s) to test this question, and report the results (you may add a figure or table if appropriate). 
 
-How might we use `anova()` and/or `lm()` to best answer this question? Can you give extra context to your answer?  
+Try to provide an answer (hint: we're probably going to want to use `lm()` and/or `anova()`). Can you give extra context to your answer?  
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 "over and above" here indicates that we are looking at the improvement in model RSS (residual sums of squares), i.e., we would ideally want to examine the effect(s) in question *in light of every other term in the model*.  
@@ -239,8 +138,6 @@ With the limited knowledge we have about the data, both approaches are arguably 
 :::
 
 
-
-
 Removing these points from our models does not change the overall conclusion:
 ```{r}
 modA <- lm(bac ~ age, drinkdriving2[-c(101,140), ])
@@ -256,40 +153,36 @@ anova(modB)
 anova(modC)
 ```
 
-Or we can get the addition of speed to (age + nighttime), and the addition of nighttime to (age + speed), which will match the final rows outputted from `anova(modB)` and `anova(modC)` respectively ($t$ = $\sqrt{F}$, see optional box in [Week 8 exercises](https://uoepsy.github.io/usmr/labs/07_slr.html#Testing_Model_Utility)).  
+In this way, we can get the addition of speed to (age + nighttime), and the addition of nighttime to (age + speed), which will match the final rows outputted from `anova(modB)` and `anova(modC)` respectively ($t$ = $\sqrt{F}$, see [this guide on sums of squares for explanation of this](https://uoepsy.github.io/usmr/labs/zz_ss.html)).  
 ```{r}
 # or summary(modC), the results will be the same
 summary(modB)
 ```
 
 
+:::frame
 
 + A good answer to this question could be one which draws on model comparison between a restricted "age only" model, and a model with both additional predictors (speed and nighttime) in it. 
 + It would detail any observations excluded from the analysis and the reasons for doing so (e.g., high influence on model fit). 
 + It could refer back to the research question and state a conclusion. In doing so, it would report in text the results which have a bearing on the question (highlighted below), and include also a table/figure where this provides extra information. 
     ```{r echo=FALSE}
-    library(gt)
-    anova(modA, modB) %>% gt() %>%
-        tab_style(
-        style = list(
-          cell_fill(color = "#D9654B")
-        ),
-        locations = cells_body(
-          rows = 2)
-      )
+    anova(modA, modB) %>% knitr::kable() %>% kableExtra::row_spec(2,bold=T,background="#D9654B")     %>% kableExtra::kable_styling(full_width = TRUE)
     ```
-
 + It could then discuss in more depth an explanation for this finding, for instance by discussing the improvement due to the speed and nighttime variables individually (for instance, the table below), as well as how the age coefficient changes with their inclusion.
+
     ```{r echo=FALSE}
     sjPlot::tab_model(modB)
     ```
 
+:::
 
 `r solend()`
 
-# Write-up task  
+<div style="margin-bottom:50px"></div>
 
-Here, we're going to walk through a high-level step-by-step guide of what to include in a write-up of a statistical analysis. We're going to use an example analysis using one of the datasets we have worked with on a number of exercises in previous labs concerning personality traits, social comparison, and depression and anxiety.  
+# Writing-up Guide
+
+Here, we're going to walk through a __high-level__ step-by-step guide of what to include in a write-up of a statistical analysis. We're going to use an example analysis using one of the datasets we have worked with on a number of exercises in previous labs concerning personality traits, social comparison, and depression and anxiety.  
 
 :::lo
 The aim in writing should be that a reader is able to more or less replicate your analyses **without** referring to your R code. This requires detailing all of the steps you took in conducting the analysis.  
@@ -299,16 +192,14 @@ You can find a .pdf of the take-everywhere write-up checklist [here](https://uoe
 :::
 
 
+## Research Question   
 
-
-`r optbegin("Research question and analysis", olabel=FALSE)`
-> **Research question**   
-> Previous research has identified an association between an individual's perception of their social rank and symptoms of depression, anxiety and stress. We are interested in the individual differences in this relationship.  
+Previous research has identified an association between an individual's perception of their social rank and symptoms of depression, anxiety and stress. We are interested in the individual differences in this relationship.  
 Specifically: 
-> 
-> + Controlling for other personality traits, does neuroticism moderate effects of social comparison on symptoms of depression, anxiety and stress?  
->  
 
+**Research question:** Controlling for other personality traits, does neuroticism moderate effects of social comparison on symptoms of depression, anxiety and stress?  
+
+`r optbegin("Here is our analysis",olabel=F)`
 ```{r}
 library(tidyverse) # for all things!
 library(psych) # good for descriptive stats
@@ -375,7 +266,7 @@ summary(dass_mdl2)
 `r optend()`
 
 
-## Think 
+## 1. Think 
 :::lo
 What do you know? What do you hope to learn? What did you learn during the exploratory analysis?
 :::
@@ -452,7 +343,7 @@ One observation was excluded from the final analysis as it was judged to be too 
 
 `r solend()`
 
-## Show  
+## 2. Show  
 :::lo
 Show the mechanics and visualisations which will support your conclusions
 :::
@@ -560,7 +451,7 @@ plot_model(dass_mdl2, type="pred", terms = c("zscs","zn [-1,1]")) +
 
 `r solend()`
     
-## Tell 
+## 3. Tell 
 :::lo
 Communicate your findings
 :::
@@ -595,116 +486,13 @@ The results presented here indicate that the association between social comparis
 
 All the component parts we have just written in the exercises above can be brought together to make a reasonable draft of a statistical report. There is a lot of variability in how to structure the reporting of statistical analyses, for instance you may be using the same model to test a selection of different hypotheses.  
   
-The answers contained within the solution box below is just an example. While we hope it is useful for you when you are writing your report, it should not be taken as an exemplary template for a report which would score 100%.  
-We have also included the RMarkdown file used to create this, which may be useful to see how things such as formatting and using inline R code can be used.  
+The answers contained within the solution boxes above are an example. While we hope it is useful for you when you are writing reports, dissertations etc, it should not be taken as an exemplary template for a report which would score 100%.  
+You can find an RMarkdown file which contains all these parts [here](https://raw.githubusercontent.com/uoepsy/uoepsy.github.io/master/files/mlr_writeup_example.Rmd), which may be useful to see how things such as formatting and using inline R code can be used.  
 
-`r solbegin("SPOILERS ALERT", show=TRUE,toggle=params$TOGGLE)`
+# Life Beyond USMR  
+
 :::frame
-You can find find the .Rmd file for the draft below at https://uoepsy.github.io/files/mlr_writeup_example.Rmd. 
-Why not try downloading and compiling it to see how it works?  
-
-**PLEASE NOTE:** A weird issue with hosting .Rmd files like this means that when you download it, it will remove the top bit of *meta-data* (i.e., the bit which includes author, title etc) meaning it will not compile without a small amount of editing. You can see the .Rmd file more clearly including these first 6 lines [here](https://raw.githubusercontent.com/uoepsy/uoepsy.github.io/master/files/mlr_writeup_example.Rmd).  
-
-:::
-
-
-
-Data was obtained from https://uoepsy.github.io/data/scs_study.csv: a dataset containing information on `r nrow(scs_study)` participants, including Z-scores on the 5 personality traits assessed by the Big-Five Aspects Scale (BFAS) (Openness, Conscientiousness, Extraversion, Agreeableness and Neuroticism). Participants were also assessed on the Social Comparison Scale (SCS), which is an 11-item scale measuring self-perception (relative to others) of social rank, attractiveness and belonging, and the Depression Anxiety and Stress Scale (DASS-21) - a 21 item measure with higher scores indicating higher severity of symptoms. For both of these measures, only total scores are available. Items in the SCS are measured on a 5-point scale, giving minimum and maximum possible scores of 11 and 55 respectively. Items in the DASS-21 are measured on a 4-point scale, meaning that scores can range from a possible 21 to 84. 
-  
-All participant data was complete (no missing values), with scores on the SCS and the DASS-21 all within possible ranges (see Table \@ref(tab:scsdasstab2)). Bivariate correlations show a moderate negative relationship between DASS-21 and SCS scores; a moderate positive relationship between DASS-21 and Neuroticism, and a weak positive correlation between SCS and Neuroticism. Additionally, a strong positive relationship is evident between Extraversion and Agreeableness (see Figure \@ref(fig:splom2)). 
-
-```{r scsdasstab2, echo = FALSE}
-# the kable() function makes tables nice for html:
-describe(scs_study %>% select(scs, dass))[,c(2:4,8:9)] %>% round(2) %>%
-  knitr::kable(., caption = "SCS and DASS-21 descriptive statistics") %>%
-  kableExtra::kable_styling()
-```
-
-```{r splom2, echo=FALSE, fig.cap="Bivariate scatter plots (below diagonal), histograms (diagonal), and Pearson correlation coefficient (above diagonal), of personality trait measures and scores on the SCS and the DASS-21"}
-# scatterplot matrix of dataset without the zscs variable
-pairs.panels(scs_study %>% select(-zscs))
-```
-^[Created with the `pairs.panels()` function from the **psych** package if you're interested.]
-
-__Analysis__  
-
-To investigate whether, when controlling for other personality traits, neuroticism moderates the effect of social comparison on symptoms of depression, anxiety and stress, total scores on the DASS-21 were modelled using multiple linear regression. The Z-scored measures on each of the big-five personality traits were included as predictors, along with scores on the SCS (Z-scored) and its interaction with the measure of Neuroticism. Effects will be considered statistically significant at $\alpha = 0.01$. One observation was excluded from the final analysis as it was judged to be too influential on the model (Cook's Distance = `r round(cooks.distance(dass_mdl)[35],2)`).  
-The final model was fitted to the remaining 655 observations, and took the form: 
-$$
-\text{DASS-21} = \beta_0 + \beta_1 \text{O} + \beta_2 \text{C} + \beta_3 \text{E} + \beta_4 \text{A} + \beta_5 \text{N} + \beta_6 \text{SCS} + \beta_7 \text{SCS} \cdot \text{N} + \epsilon  \\
-\begin{align}
-\text{Where} \\
-& \text{O = Openness} \\
-& \text{C = Conscientiousness} \\
-& \text{E = Extraversion} \\
-& \text{A = Agreeableness} \\
-& \text{N = Neuroticism} \\
-\end{align}
-$$
-
-To address the research question of whether neuroticism moderates the effect of social comparison on depression and anxiety, we will consider the hypothesis test that the interaction coefficient is equal to zero, where:  
-
-$H_0: \beta_7 = 0$. The interaction between SCS and Neuroticism is equal to zero.  
-$H_1: \beta_7 \neq 0$. The interaction between SCS and Neuroticism is not equal to zero.  
-
-The regression model met assumptions of linearity (see plot of model residuals vs fitted values, Figure \@ref(fig:linearityplot2)), homoscedasticity (non-constant variance test indicated no evidence against the null hypothesis that the error variance is constant across level of the response, $\chi^2(1)$=`r round(test_equalvar$ChiSquare, 2)`, $p$=`r round(test_equalvar$p, 3)`), independence of errors (Durbin-Watson test for autocorrelation of residuals: $DW$=`r round(test_ind$dw,2)`, $p$=`r round(test_ind$p,3)`), and normality of error term (Shapiro-Wilk test indicated no evidence against the null hypothesis that the residuals were drawn from a normally distributed population: $W$=`r round(test_norm$statistic,2)`, $p$=`r round(test_norm$p,3)`). 
-
-```{r linearityplot2, echo=FALSE, fig.cap="Residuals vs Fitted plot demonstrating overall near constant mean and variance of error term across levels of the response"}
-tibble(
-  residuals = resid(dass_mdl2),
-  fitted = fitted(dass_mdl2)
-) %>%
-  ggplot(aes(x=fitted, y=residuals)) +
-  geom_point() + 
-  geom_smooth(method = "loess", se=FALSE) +
-  labs(title = "Residuals vs Fitted", y = "Model residuals", x = "Model fitted values")
-```
-
-```{r echo=FALSE}
-res <- summary(dass_mdl2)$coefficients %>% as.data.frame
-res[,1:3]<-round(res[,1:3],2)
-res[,5] <- ifelse(res[,4]<.01, "<.01",paste0("= ",round(res[,4],3)))
-
-fres <- summary(dass_mdl2)$fstatistic
-fres <- round(fres,2)
-```
-
-__Results__  
-
-Results showed a significant conditional association between SCS scores (Z-scored) and DASS-21 Scores ($\beta$ = `r res[1,1]`,SE = `r res[1,2]`, p `r res[1,5]`), suggesting that for those at the mean level of neuroticism, scores on the DASS-21 decrease by `r res[1,1]` for every 1 standard deviation increase in SCS scores. A significant conditional association was also evident between Neuroticism (Z-scored) and DASS-21 Scores ($\beta$ = `r res[2,1]`,SE = `r res[2,2]`, p `r res[2,5]`), suggesting that for those who score the mean on the SCS, scores on the DASS-21 increase by `r res[2,1]` for every 1 standard deviation increase in neuroticism. 
-Crucially, the association between social comparison and symptoms of depression and anxiety was found to be dependent upon the level of neuroticism, with a greater negative association between the two for those with high levels of neuroticism ($\beta$ = `r res[8,1]`,SE = `r res[8,2]`, p `r res[8,5]`). This interaction is visually presented in Figure \@ref(fig:intplot2).   
-The F-test for model utility was significant (F(`r fres[2]`,`r fres[3]`)=`r fres[1]`, p<.001), with the model explaining approximately `r round(summary(dass_mdl2)$adj.r.squared * 100, 1)`% of the variability in DASS-21 Scores. Full regression results including 95\% Confidence Intervals are shown in Table \@ref(tab:tabmodel2).   
-The results presented here indicate that the association between social comparison and depression and anxiety may depend upon individuals' levels of neuroticism, with perceived social rank perhaps leading to more symptoms of depression and anxiety for highly neurotic individuals. However, it is important to note that we can make no claims on the directions of these associations from these data - it may be that social comparison leads to more depression and anxiety in neurotic individuals, but also consistent is the view that - for these individuals - higher levels of depression leads to a greater reduction in perceived social rank.  
-
-<br>
-```{r intplot2, echo=FALSE, fig.cap="Predicted DASS-21 score across SCS scores, for +/-1 SD Neuroticism"}
-plot_model(dass_mdl2, type="pred", terms = c("zscs","zn [-1,1]")) +
-  labs(title="Neuroticism moderating the effect of\nsocial comparison on depression and anxiety", 
-       x = "Social Comparison Scale (Z-scored)",
-       y = "DASS-21")+
-  scale_color_manual("Neuroticism (Z-scored)", labels = c("-1 SD", "+1 SD"),
-                     values = c("dodgerblue","tomato1")) + 
-  scale_fill_manual("Neuroticism (Z-scored)", labels = c("-1 SD", "+1 SD"),
-                     values = c("dodgerblue","tomato1"))
-```
-<br>
-```{r tabmodel2, echo=FALSE}
-tab_model(dass_mdl2,
-          dv.labels = c("DASS-21"),
-          pred.labels = c("zscs"="Social Comparison Scale", 
-                          "zn"="Neuroticism", 
-                          "zo"="Openness", 
-                          "zc"="Conscientiousness",
-                          "ze"="Extraversion",
-                          "za"="Agreeableness",
-                          "zscs:zn"="Social Comparison Scale : Neutoricism"),
-          title = "(\\#tab:tabmodel2) Regression table for DASS-21 model. Outcome variable is raw total score on DASS-21, all predictors are Z-scored")
-```
-`r solend()`
-
-
-
-# Extra: linear models and other things 
+__Linear models and other things__
 
 Once you start using linear models, you might begin to think about how many other common statistical tests can be put into a linear model framework. Below are some very quick demonstrations of a couple of equivalences, but there are many more, and we encourage you to explore this further by a) playing around with R, and b) reading through some of the examples at [https://lindeloev.github.io/tests-as-linear/](https://lindeloev.github.io/tests-as-linear/).  
 
@@ -722,7 +510,10 @@ summary(lm(bac ~ age, data = drinkdriving))
 ```
 `r optend()`  
   
-# Cheat Sheets
+:::
+
+:::frame
+__Cheat Sheets__  
 
 You can find many RStudio cheatsheets at [https://rstudio.com/resources/cheatsheets/](https://rstudio.com/resources/cheatsheets/), but some of the more relevant ones to this course are listed below: 
 
@@ -734,9 +525,16 @@ You can find many RStudio cheatsheets at [https://rstudio.com/resources/cheatshe
 + [Strings with stringr](https://uoepsy.github.io/usmr/cheatsheet/strings.pdf)  
 + [Factors with forcats](https://uoepsy.github.io/usmr/cheatsheet/factors.pdf)
 
+:::
 
+:::lo
+__Thank you!__  
 
+Lastly, we'd just like to say a big thank you for following all of our ramblings, for your attendance across the various sessions, and for all your excellent questions on Piazza. We hope that you feel that you have learned something this semester, and that it has been (at least in some ways) an enjoyable experience. Those of you who are planning on taking the Multivariate Stats (MSMR) course next semester are not free of us just yet - we'll see you in January! 
 
+Josiah, Umberto & Emma
+
+:::
 
 
 
