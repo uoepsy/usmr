@@ -13,8 +13,8 @@
 
 <title>Linear Regression</title>
 
-<script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/header-attrs-2.11/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -420,7 +420,7 @@ div.tocify {
       <ul class="nav navbar-nav">
         <li>
   <a href="https://uoepsy.github.io/usmr/">
-    <span class="fas fa-home"></span>
+    <span class="fa fa-home"></span>
      
   </a>
 </li>
@@ -514,6 +514,9 @@ div.tocify {
     </li>
     <li>
       <a href="zz_modelselect.html">Model Selection</a>
+    </li>
+    <li>
+      <a href="zz_from_p_to_logit.html">From P to Logit</a>
     </li>
   </ul>
 </li>
@@ -759,7 +762,7 @@ I’m going to name it <code>riverview</code> in my environment.</p>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>riverview <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;https://uoepsy.github.io/data/riverview.csv&quot;</span>)</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(riverview)</span></code></pre></div>
-<pre><code>## # A tibble: 6 × 6
+<pre><code>## # A tibble: 6 x 6
 ##   education income seniority gender  male party      
 ##       &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt; &lt;chr&gt;      
 ## 1         8   37.4         7 male       1 Democrat   
@@ -801,7 +804,7 @@ These are the distribution of each variable (employee incomes and education leve
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="at">width =</span> <span class="dv">1</span><span class="sc">/</span><span class="dv">300</span>) <span class="sc">+</span></span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Income (in thousands of U.S. dollars)&quot;</span>, </span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Probability density&quot;</span>)</span></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-4"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:unnamed-chunk-4"></span>
 <img src="07_regression_files/figure-html/unnamed-chunk-4-1.png" alt="Density plot and boxplot of employee incomes." width="80%" />
 <p class="caption">
 Figure 1: Density plot and boxplot of employee incomes.
@@ -816,7 +819,7 @@ Furthermore, the boxplot does not highlight any outliers in the data.</p>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="at">width =</span> <span class="dv">1</span><span class="sc">/</span><span class="dv">100</span>) <span class="sc">+</span></span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Education (in years)&quot;</span>, </span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Probability density&quot;</span>)</span></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-5"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:unnamed-chunk-5"></span>
 <img src="07_regression_files/figure-html/unnamed-chunk-5-1.png" alt="Density plot and boxplot of employee education levels." width="80%" />
 <p class="caption">
 Figure 2: Density plot and boxplot of employee education levels.
@@ -830,7 +833,7 @@ Figure 2: Density plot and boxplot of employee education levels.
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_edu =</span> <span class="fu">mean</span>(education),</span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd_edu =</span> <span class="fu">sd</span>(education)</span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div>
-<pre><code>## # A tibble: 1 × 4
+<pre><code>## # A tibble: 1 x 4
 ##       e sd_income mean_edu sd_edu
 ##   &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;
 ## 1  53.7      14.6       16   4.36</code></pre>
@@ -868,7 +871,7 @@ Hence income is the dependent variable (on the y-axis), and education is the ind
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Education (in years)&quot;</span>, </span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Income (in thousands of U.S. dollars)&quot;</span>)</span></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:riverview-scatterplot"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:riverview-scatterplot"></span>
 <img src="07_regression_files/figure-html/riverview-scatterplot-1.png" alt="The relationship between employees' education level and income." width="80%" />
 <p class="caption">
 Figure 3: The relationship between employees’ education level and income.
@@ -997,7 +1000,7 @@ Question A5
 <h2>Interpreting <span class="math inline">\(\sigma\)</span></h2>
 <div class="statbox">
 <p>The parameter estimates from our simple linear regression model take the form of a line, representing the systematic part of our model <span class="math inline">\(b_0 + b_1 \ x\)</span>, which in our case is <span class="math inline">\(11.32 + 2.65 \ Education\)</span>. Deviations from the line are determined by the random error component <span class="math inline">\(\hat \epsilon\)</span>, or “residuals” (the red lines in Figure <a href="#fig:figslr">4</a> below).</p>
-<div class="figure" style="text-align: center"><span id="fig:figslr"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:figslr"></span>
 <img src="07_regression_files/figure-html/figslr-1.png" alt="Simple linear regression model, with systematic part of the model in blue and residuals in red" width="80%" />
 <p class="caption">
 Figure 4: Simple linear regression model, with systematic part of the model in blue and residuals in red
@@ -1138,7 +1141,7 @@ Income &amp;= 13.97 \\
 <h2>Inference for regression coefficients</h2>
 <div class="statbox">
 We have fitted a linear model, and we now know how we interpret our coefficients. But this is only part of the story.
-<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-14"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:unnamed-chunk-14"></span>
 <img src="images/slr/conv1.png" alt="Estimates without inference" width="80%" />
 <p class="caption">
 Figure 5: Estimates without inference
@@ -1151,7 +1154,7 @@ Figure 5: Estimates without inference
 ## (Intercept) 11.321379  6.1232350 1.848921 7.434602e-02
 ## education    2.651297  0.3696232 7.172972 5.562116e-08</code></pre>
 <p>In this example the slope, 2.651, has a standard error of 0.37. One way to envision this is as a distribution. Our best guess (mean) for the slope parameter is 2.651. The standard deviation of this distribution is 0.37, which indicates the precision (uncertainty) of our estimate.</p>
-<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-16"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:unnamed-chunk-16"></span>
 <img src="07_regression_files/figure-html/unnamed-chunk-16-1.png" alt="Sampling distribution of the slope coefficient. The distribution is approximately bell-shaped with a mean of 2.651 and a standard error of 0.37." width="80%" />
 <p class="caption">
 Figure 6: Sampling distribution of the slope coefficient. The distribution is approximately bell-shaped with a mean of 2.651 and a standard error of 0.37.
@@ -1201,7 +1204,7 @@ Question A9
 <p>We performed a t-test against the null hypothesis that education is not a significant predictor of income: <span class="math inline">\(t(30) = 7.173,\ p &lt; .001\)</span>, two-sided.
 The large t-statistic leads to a very small p-value, meaning that we have strong evidence against the null hypothesis.</p>
 </div>
-<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-18"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:unnamed-chunk-18"></span>
 <img src="images/slr/conv2.png" alt="conversations with statisticians" width="80%" />
 <p class="caption">
 Figure 7: conversations with statisticians
@@ -1281,7 +1284,7 @@ Question A10
 <span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">resid =</span> income <span class="sc">-</span> income_hat</span>
 <span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(riverview_fitted)</span></code></pre></div>
-<pre><code>## # A tibble: 6 × 8
+<pre><code>## # A tibble: 6 x 8
 ##   education income seniority gender  male party       income_hat  resid
 ##       &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt; &lt;chr&gt;            &lt;dbl&gt;  &lt;dbl&gt;
 ## 1         8   37.4         7 male       1 Democrat          32.5   4.92
@@ -1298,7 +1301,7 @@ Question A10
 <span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
 <span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">RSquared =</span> SSModel <span class="sc">/</span> SSTotal</span>
 <span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div>
-<pre><code>## # A tibble: 1 × 1
+<pre><code>## # A tibble: 1 x 1
 ##   RSquared
 ##      &lt;dbl&gt;
 ## 1    0.632</code></pre>
@@ -1451,7 +1454,7 @@ t = \frac{\hat b_1}{SE(\hat b_1)} = \frac{\hat b_1}{\hat \sigma / \sqrt{\sum_i (
 <p><strong>Binary predictors in linear regression</strong></p>
 <p>We can include categorical predictors in a linear regression, but the interpretation of the coefficients is very specific. Whereas we talked about coefficients being interpreted as “the change in <span class="math inline">\(y\)</span> associated with a 1-unit increase in <span class="math inline">\(x\)</span>,” for categorical explanatory variables, coefficients can be considered to examine differences in group means. However, they are actually doing exactly the same thing - the model is simply translating the levels (like “Yes”/“No”) in to 0s and 1s!</p>
 <p>So while we may have in our dataframe a categorical predictor like the middle column “degree,” below, what is inputted into our model is more like the third column, “isYes.”</p>
-<pre><code>## # A tibble: 32 × 3
+<pre><code>## # A tibble: 32 x 3
 ##    income degree isYes
 ##     &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt;
 ##  1   50.3 No         0
@@ -1464,7 +1467,7 @@ t = \frac{\hat b_1}{SE(\hat b_1)} = \frac{\hat b_1}{\hat \sigma / \sqrt{\sum_i (
 ##  8   61.6 Yes        1
 ##  9   34.2 No         0
 ## 10   70.0 Yes        1
-## # … with 22 more rows</code></pre>
+## # ... with 22 more rows</code></pre>
 <p>Our coefficients are just the same as before. The intercept is where our predictor equals zero, and the slope is the change in our outcome variable associated with a 1-unit change in our predictor.<br />
 However, “zero” for this predictor variable now corresponds to a whole level. This is known as the “reference level.” Accordingly, the 1-unit change in our predictor (the move from “zero” to “one”) corresponds to the difference between the two levels.</p>
 <p><img src="07_regression_files/figure-html/unnamed-chunk-26-1.png" width="80%" style="display: block; margin: auto;" /></p>
@@ -1492,7 +1495,7 @@ y = b_0 \ + \ b_1 x_1 \ + \ b_2 x_2 \ + \ ... \ + b_k x_k \ + \ \epsilon \\
 <p><strong>Visual</strong></p>
 <p>Note that for simple linear regression we talked about our model as a <em>line</em> in 2 dimensions: the systematic part <span class="math inline">\(b_0 + b_1 x\)</span> defined a line for <span class="math inline">\(\mu_y\)</span> across the possible values of <span class="math inline">\(x\)</span>, with <span class="math inline">\(\epsilon\)</span> as the random deviations from that line. But in multiple regression we have more than two variables making up our model.</p>
 <p>In this particular case of three variables (one outcome + two explanatory), we can think of our model as a <em>regression surface</em> (See Figure <a href="#fig:regsurf">8</a>). The systematic part of our model defines the surface across a range of possible values of both <span class="math inline">\(x_1\)</span> <em>and</em> <span class="math inline">\(x_2\)</span>. Deviations from the surface are determined by the random error component, <span class="math inline">\(\hat \epsilon\)</span>.</p>
-<div class="figure" style="text-align: center"><span id="fig:regsurf"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:regsurf"></span>
 <img src="07_regression_files/figure-html/regsurf-1.png" alt="Regression surface for wellbeing ~ outdoor_time + social_int, from two different angles" width="100%" />
 <p class="caption">
 Figure 8: Regression surface for wellbeing ~ outdoor_time + social_int, from two different angles
@@ -1600,7 +1603,7 @@ The researchers also asked participants to estimate the average number of hours 
   font-size: 85%;
   font-weight: initial;
   padding-top: 0;
-  padding-bottom: 4px;
+  padding-bottom: 6px;
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
@@ -1672,7 +1675,7 @@ The researchers also asked participants to estimate the average number of hours 
   border-bottom-color: #D3D3D3;
   vertical-align: bottom;
   padding-top: 5px;
-  padding-bottom: 6px;
+  padding-bottom: 5px;
   overflow-x: hidden;
   display: inline-block;
   width: 100%;
@@ -1984,7 +1987,7 @@ Question B2
 <span id="cb43-20"><a href="#cb43-20" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-21"><a href="#cb43-21" aria-hidden="true" tabindex="-1"></a><span class="co"># the &quot;patchwork&quot; library allows us to arrange multiple plots</span></span>
 <span id="cb43-22"><a href="#cb43-22" aria-hidden="true" tabindex="-1"></a>wellbeing_plot <span class="sc">/</span> outdoortime_plot <span class="sc">/</span> social_plot</span></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:unnamed-chunk-30"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:unnamed-chunk-30"></span>
 <img src="07_regression_files/figure-html/unnamed-chunk-30-1.png" alt="Marginal distribution plots of wellbeing sores, weekly hours spent outdoors, and social interactions" width="80%" />
 <p class="caption">
 Figure 9: Marginal distribution plots of wellbeing sores, weekly hours spent outdoors, and social interactions
@@ -2010,7 +2013,7 @@ Figure 9: Marginal distribution plots of wellbeing sores, weekly hours spent out
 <span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Number of social interactions per week&quot;</span>, <span class="at">y =</span> <span class="st">&quot;Wellbeing score (WEMWBS)&quot;</span>)</span>
 <span id="cb44-10"><a href="#cb44-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb44-11"><a href="#cb44-11" aria-hidden="true" tabindex="-1"></a>wellbeing_outdoor <span class="sc">|</span> wellbeing_social</span></code></pre></div>
-<div class="figure" style="text-align: center"><span id="fig:mwdata-mlr-rels"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:mwdata-mlr-rels"></span>
 <img src="07_regression_files/figure-html/mwdata-mlr-rels-1.png" alt="Scatterplots displaying the relationships between scores on the WEMWBS and a) weekly outdoor time (hours), and b) weekly number of social interactions" width="80%" />
 <p class="caption">
 Figure 10: Scatterplots displaying the relationships between scores on the WEMWBS and a) weekly outdoor time (hours), and b) weekly number of social interactions
@@ -2189,7 +2192,7 @@ Adjusted{-}R^2=1-\frac{(1-R^2)(n-1)}{n-k-1} \\
 \]</span></p>
 <hr />
 <p><strong>In R,</strong> you can view the mutiple and adjusted <span class="math inline">\(R^2\)</span> at the bottom of the output of <code>summary(&lt;modelname&gt;)</code>:</p>
-<div class="figure" style="text-align: left"><span id="fig:mlroutputrsq"></span>
+<div class="figure" style="text-align: left"><span style="display:block;" id="fig:mlroutputrsq"></span>
 <img src="images/mlr/mlroutputrsq.png" alt="Multiple regression output in R, summary.lm(). R-squared highlighted" width="80%" />
 <p class="caption">
 Figure 11: Multiple regression output in R, summary.lm(). R-squared highlighted
@@ -2213,7 +2216,7 @@ F_{df_{model},df_{residual}} = \frac{MS_{Model}}{MS_{Residual}} = \frac{SS_{Mode
 \]</span></p>
 <hr />
 <p><strong>In R,</strong> at the bottom of the output of <code>summary(&lt;modelname&gt;)</code>, you can view the F ratio, along with an hypothesis test against the alternative hypothesis that the at least one of the coefficients <span class="math inline">\(\neq 0\)</span> (under the null hypothesis that all coefficients = 0, the ratio of explained:unexplained variance should be approximately 1):</p>
-<div class="figure" style="text-align: left"><span id="fig:mlroutputrf"></span>
+<div class="figure" style="text-align: left"><span style="display:block;" id="fig:mlroutputrf"></span>
 <img src="images/mlr/mlroutputf.png" alt="Multiple regression output in R, summary.lm(). F statistic highlighted" width="80%" />
 <p class="caption">
 Figure 12: Multiple regression output in R, summary.lm(). F statistic highlighted
@@ -2478,7 +2481,7 @@ Question C5
 <h1>Making Valid Inferences</h1>
 <div class="lo">
 <p>So far, we have been fitting and interpreting our regression models. In each case, we first specified the model, then visually explored the marginal distributions and relationships of variables which would be used in the analysis. Then, once we fitted the model, we began to examine the fit by studying what the various parameter estimates represented, and the spread of the residuals. We saw these in the output of <code>summary()</code> of a model - they were shown in the parts of the output inside the red boxes in Figure <a href="#fig:mlroutput">13</a>).</p>
-<div class="figure" style="text-align: center"><span id="fig:mlroutput"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:mlroutput"></span>
 <img src="images/mlr/mlroutput.png" alt="Multiple regression output in R, summary.lm(). Residuals and Coefficients highlighted" width="80%" />
 <p class="caption">
 Figure 13: Multiple regression output in R, summary.lm(). Residuals and Coefficients highlighted
@@ -2487,7 +2490,7 @@ Figure 13: Multiple regression output in R, summary.lm(). Residuals and Coeffici
 We also discussed drawing inferences using our model estimates, as well as using a model to make predictions.
 However, we should really not have done this prior to being satisfied that our model meets a certain set of assumptions. All of the estimates, intervals and hypothesis tests (see Figure <a href="#fig:mlroutputhyp">14</a>) resulting from a regression analysis <em>assume</em> a certain set of conditions have been met. Meeting these conditions is what allows us to generalise our findings beyond our sample (i.e., to the population).<br />
 
-<div class="figure" style="text-align: center"><span id="fig:mlroutputhyp"></span>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:mlroutputhyp"></span>
 <img src="images/mlr/mlrhyp.png" alt="Multiple regression output in R, summary.lm(). Hypothesis tests highlighted" width="80%" />
 <p class="caption">
 Figure 14: Multiple regression output in R, summary.lm(). Hypothesis tests highlighted
@@ -2794,6 +2797,9 @@ $(document).ready(function () {
 
 <script>
 $(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
 
     // move toc-ignore selectors from section div to header
     $('div.section.toc-ignore')
