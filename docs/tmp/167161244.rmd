@@ -1,0 +1,518 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: "B174780"
+---
+
+
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=2)
+# load any other packages that you require here:
+library(tidyverse)
+library(pander)
+library(broom)
+library(sjPlot)
+library(ggplot2)
+library(RColorBrewer)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+ 
+In the current study we are investigating fictitious data collected in Edinburgh and Glasgow coming from the NHS-sponsored Couch to 5k fitness program. Couch to 5k is a running program lasting 9 weeks. The data collected is from participants who started the program throughout the year.
+
+Disclaimer: Since it is not specified, I have assumed that the season the participants were interviewed in is from the first interview they complete, at the start of the program.
+
+```{r cleaning, include = FALSE}
+couch <- couchto5k
+couch$missing <- NA
+couch$missing[couch$age>100] <- "impossible age"
+couch$missing[couch$selfmot<5] <- "impossible self-motivation score"
+couch$missing[couch$week_stopped>9] <- "impossible week stopped"
+mtab <- table(couch$missing)
+
+couch <- couch %>% filter(is.na(missing))
+
+```
+
+## Cleaning up the data
+The data was inspected and missing or unlikely values were removed, resulting in `r length(couch$city)` observations for analysis. In the following the table the instances of data removal and reasons for data removal are described. 
+
+```{r table, results="asis"}
+mtab %>% pander(caption="Table 1: Summary of missing values.")
+```
+
+```{r season, include = FALSE}
+miscoded <- sum(couch$season=="autunm")
+couch$season[couch$season=="autunm"] <- 'autumn'
+couch$season <- as.factor(couch$season)
+couch$city <- as.factor(couch$city)
+couch$week_stopped_factor <- as.factor(couch$week_stopped)
+```
+Additionally, `r miscoded` season entries were initially misendered as "autunm". These were recorded as "autumn” in the data.
+
+
+## Initial data description
+Out of the total number of participants (`r length(couch$city)`), `r couch %>% filter(couch$city == "Edinburgh") %>% count() / length(couch$city) * 100`% were recruited in Edinburgh and . `r couch %>% filter(couch$city == "Glasgow") %>% count() / length(couch$city) * 100`% were recruited in Glasgow. 
+
+```{r week_stopped, include = FALSE, message=F}
+stopped <- table(couch$week_stopped_factor)
+stopped <- t(as.matrix(stopped))
+stopped <- as_tibble(stopped)
+stopped$'5' <- 0
+stopped <- stopped[, c("1", "2", "3", "4", "5", "6", "7", "8", "9")]
+stopped <- t(stopped)
+stopped <- as_tibble(stopped)
+stopped$week_stopped <- c("1", "2", "3", "4", "5", "6", "7", "8", "9")
+participants <- length(couch$city)
+stopped$percentage_stopped <- (stopped$V1/participants)*100
+```
+ 
+ `r stopped$percentage_stopped[9]`% of participants completed all 9 weeks of the program. The breakdown of the `r 100 - stopped$percentage_stopped[9]`% of participants who did not complete the program, as well as those who did, can be seen below. The week the participant stopped is recorded on the x-axis, the number of participants is recorded in the y-axis. Each bar also displays the percentage breakdown of week stopped.
+
+```{r stopped_to_%, include=FALSE}
+stopped$percentage_stopped <- paste(round(stopped$percentage_stopped, digits=2), "%", sep = " ")
+```
+
+
+```{r week_stopped_graph, fig.asp=.6, fig.cap="Figure 1: Data on how many participants dropped out of the program each week and completed the program, in both participant number and percentage. " , message=F}
+stopped %>% ggplot(aes(x=week_stopped, y=V1, fill=week_stopped)) +
+  geom_bar(stat="identity", color= "grey") +
+  geom_text(aes(label = percentage_stopped), vjust = 0) +
+  xlab("Week participant stopped") +
+  ylab("Number pf participants") +
+  ggtitle("Number of participants and which week they stopped the program") +
+  scale_fill_brewer(palette="Blues") +
+  theme_minimal()
+```
+ 
+```{r season_started, include = FALSE}
+seasonStarted <- couch$season
+seasonStarted <- table(seasonStarted)
+seasonStarted <- t(as.matrix(seasonStarted))
+seasonStarted <- t(as.matrix(seasonStarted))
+seasonStarted <- as_tibble(seasonStarted)
+seasonStarted$season <- c("autumn", "spring", "summer", "winter")
+seasonStarted$percent <- paste(round((seasonStarted$V1/participants)*100, digits=2), "%", sep = " ")
+seasonStarted$season <- factor(seasonStarted$season, levels = c("spring", "summer", "autumn", "winter"))
+```
+
+ 
+Participants in the study started the program throughout the year. The break down is as follows: `r seasonStarted$percent[2]` started in spring, `r seasonStarted$percent[3]` started in summer, `r seasonStarted$percent[1]` started in autumn and `r seasonStarted$percent[4]` started in winter. 
+
+```{r season_started_graph, fig.asp=.6, fig.cap="Figure 2: Data on number of participants started in each month." , message=F}
+seasonStarted %>% ggplot(aes(x=season, y=V1, fill = season)) +
+  geom_text(aes(label = percent), vjust = 0) +
+  geom_bar(stat="identity", color= "grey") +
+  xlab("Season started") +
+  ylab("Number of participants") +
+  ggtitle("Number of participants and which season they started the program") +
+  scale_fill_brewer(palette="Blues") +
+  theme_minimal()
+```
+
+Participants were asked in a questionnaire to rate their self-motivation and accountability before starting the program, and asked to rate their happiness and health upon dropping out of the program or completing the program. 
+
+Both self-motivation and accountability were rated as a sum of 5 questions that were scored 1 - 7, meaning the minimum score attainable was 5 and the maximum score attainable was 35. Displayed below is a graph showing the distribution of these scores for both self-motivation and accountability.
+
+```{r scores1prep, include=FALSE}
+stats1 <- couch %>% select(selfmot, accountability)
+stats1 <- gather(stats1, test, Scores, selfmot:accountability, factor_key=TRUE)
+```
+
+
+
+```{r scores1, fig.asp=.6, fig.cap="Figure 3: Data on the distribution of self-motivation and accountability scores, where the count indicates the number of participants with scores in the vicinity of the score displayed on the graph." , message=F}
+ggplot(stats1, aes(Scores, fill=test)) + 
+  geom_histogram(position="identity", colour="grey40", binwidth=0.2) +
+  facet_grid(test ~ .) +
+  ggtitle("Distribution of self-motivation and accountability scores") +
+  scale_fill_brewer(palette="Set1") +
+  theme_minimal()
+```
+
+Self-scoring of both happiness and health was on a 0 - 100 scale. Displayed below is a graph showing the distribution of scores for both happiness and health. 
+
+```{r scores2prep, include=FALSE}
+stats2 <- couch %>% select(happiness, health)
+stats2 <- gather(stats2, test, Scores, happiness:health, factor_key=TRUE)
+```
+
+
+```{r scores2, fig.asp=.6, fig.cap="Figure 4: Data on happiness and health scores, where the count indicates the number of participants with scores in the vicinity of the score displayed on the graph." , message=F}
+ggplot(stats2, aes(Scores, fill=test)) + 
+  geom_histogram(position="identity", colour="grey40", binwidth=0.5) +
+  facet_grid(test ~ .) +
+  ggtitle("Distribution of happiness and health scores" ) +
+  scale_fill_brewer(palette="Set1") +
+  theme_minimal()
+```
+
+
+
+# Question 1 
+
+In investigating questionnaires from the program, we were curious as to how the data collected compares to both previously attained data and how different parameters interact with each other. 
+
+## Question 1a
+
+```{r q1a, include = FALSE}
+
+before5 <- table(couch$week_stopped<5)
+before9 <- table(couch$week_stopped<9)
+at9 <- table(couch$week_stopped==9)
+dropout5 <- binom.test(before5['TRUE'],sum(before5),0.45,alternative="two.sided")
+dropout9 <- binom.test(before9['TRUE'],sum(before9),0.55,alternative="two.sided")
+tidy5 <- tidy(dropout5)
+tidy9 <- tidy(dropout9)
+```
+
+In a previous sample 45% of participants dropped out of the program before the half way point at week 5, and a further 10% dropped out before the end of the program. In the current study `r tidy5$estimate * 100`% dropped out before the half way point, and a further `r (tidy9$estimate - tidy5$estimate) * 100`% dropped out before the end of the program ended. Using a binomial test, we can evaluate that these values are not statistically different from those of the previous sample (p values of p = `r tidy5$p.value` and p = `r tidy9$p.value` respectively). The current data is therefore in line with the previous study.
+
+
+## Question 1b
+
+```{r q1b , include = FALSE, message=F}
+# I think I need the X2 test. 
+couch$attrition <- "complete"
+couch$attrition[couch$week_stopped<9] <- "before9"
+couch$attrition[couch$week_stopped<5] <- "before5"
+
+#observed
+o <- couch %>%
+  select(city, attrition) %>% table()
+
+#expected
+e <- rowSums(o) %o% colSums(o) / sum(o)
+
+attritionRates <- chisq.test(o)
+```
+
+Using a x^2 test, we found that patterns of attrition rate do not differ by city (p-value= `r attritionRates$p.value[1]`). The figure below displays attrition rates (dropping out before 5 weeks, before 9 weeks, and completing the program) by city.
+
+```{r attritionGraph, fig.asp=.6, fig.cap="Figure 5: Data on attrition rates (dropping out before 5 weeks, before 9 weeks, and completing the program) by city." , message=F}
+plot(o, main = "Attrition rates by city") #mosaic plot
+```
+
+
+
+## Question 1c
+
+```{r q1c, include = FALSE}
+
+glasgow <- couch %>% filter(city == "Glasgow")
+participantsGlas <- length(glasgow$city)
+
+edinburgh <- couch %>% filter(city == "Edinburgh")
+participantsEdi <- length(edinburgh$city)
+
+# linear model
+mod1c <- lm(age~city, data=couch) ##assumptions not met
+av1c <- tidy(mod1c)
+
+ageGlas <- mean(glasgow$age)
+ageEdi <- mean(edinburgh$age)
+
+# t.test to check my work
+t.test(glasgow$age, edinburgh$age, var.equal=TRUE)
+t.test(glasgow$age, edinburgh$age, alternative = "two.sided")
+# checking that variences aren't significantly different
+var.test(glasgow$age,edinburgh$age)
+
+## for the bar chart
+eg <- couch %>% group_by(city) %>%
+  summarise(mean_se(age))
+```
+The average ages of participants do not differ significantly by city (p-value = `r av1c$p.value[2]`). The mean of the participant age  is `r ageEdi` in Edinburgh and `r ageGlas` in Glasgow. In the graph below, average age of participants by city is displayed, as well as error bars reflecting standard error of the mean. 
+
+```{r figureage-city, fig.asp=.6, fig.cap="Figure 6: Data on average age by city. Error bars display standard error of the mean." , message=F}
+eg %>% ggplot(aes(x=city,y=y,
+                  ymin=ymin,ymax=ymax, fill=city)) +
+  geom_bar(stat="identity", color= "grey") +
+  geom_errorbar(width=.2) +
+  ylab("age") +
+  ggtitle("Average age by city" ) +
+  scale_fill_brewer(palette="Blues")+
+  theme_minimal()
+```
+
+# Question 2
+
+In this section we will be investigating whether happiness is influenced by season, age or other mediating factors. 
+
+## Question 2a
+
+```{r q2a , include = FALSE}
+
+## Have to figure out which order I want these in
+couchspring <- couch %>% filter(season=="spring")
+couchsummer <- couch %>% filter(season=="summer")
+couchautumn <- couch %>% filter(season=="autumn")
+couchwinter <- couch %>% filter(season=="winter")
+
+testspring <- t.test(couchspring$happiness, mu = mean(couch$happiness), alternative="two.sided")
+testsummer <- t.test(couchsummer$happiness, mu = mean(couch$happiness), alternative="two.sided")
+testautumn <- t.test(couchautumn$happiness, mu = mean(couch$happiness), alternative="two.sided")
+testwinter <- t.test(couchwinter$happiness, mu = mean(couch$happiness), alternative="two.sided")
+
+tidyspring <- tidy(testspring)
+tidysummer <- tidy(testsummer)
+tidyautumn <- tidy(testautumn)
+tidywinter <- tidy(testwinter)
+
+gd <- couch %>% group_by(season) %>%
+  summarise(mean_se(happiness))
+gd$season <- factor(gd$season, levels = c("spring", "summer", "autumn", "winter"))
+```
+
+Effect of season on happiness has been measured through difference of happiness scores for each separate season from the mean happiness score, which is `r mean(couch$happiness)`. A two-sided Student's t-test found that happiness scores from spring (p-value = `r tidyspring$p.value`), summer (p-value = `r tidysummer$p.value`) and autumn (p-value = `r tidyautumn$p.value`) are not significantly different from the mean happiness score. However, happiness scores from winter are statistically different from the mean happiness score (p-value = `r tidywinter$p.value`). The figure below displays the mean happiness and standard error by season.
+
+```{r figure, fig.asp=.6, fig.cap="Figure 7: Data on average happiness by the season the participant started the program. Error bars display the standard error of the mean." , message=F}
+gd %>% ggplot(aes(x=season,y=y,
+                  ymin=ymin,ymax=ymax, fill=season)) +
+  geom_bar(stat="identity", color = "grey") +
+  geom_errorbar(width=.2) +
+  ylab("happiness") +
+  ggtitle("Average happiness by season") +
+  scale_fill_brewer(palette="Blues") +
+  theme_minimal()
+```
+
+```{r seasonModel, include=FALSE}
+mod2a <- lm(happiness~season, data=couch)
+tidymod2a <- tidy(anova(mod2a))
+```
+
+A model predicting happiness using season as a variable shows that season improves the accuracy of the model over a model without it (p-value = `r tidymod2a$p.value[1]`, F = `r tidymod2a$statistic[1]`), supporting the above results that the season the participant starts the program in has an effect on their happiness. 
+
+
+## Question 2b
+```{r q2b, include=FALSE}
+mod2b <- lm(happiness~season+age, data=couch)
+tidy2b <- tidy(anova(mod2b))
+summary(mod2b)
+
+## CALCULATE R SCORE (CORRELATION)
+```
+Since we know season affects happiness, we can build on the linear model created with it as a predictor to examine whether other factors additionally affect happiness. By this logic, we added age as a predictor. We found that happiness is not significantly affected by age (p-value = `r tidy2b$p.value[2]`, F value = `r tidy2b$statistic[2]`).
+
+
+## Question 2c
+Above it was shown that age does not affect happiness. But do other circumstantial factors affect happiness? Does the city the participants live in, for example, affect their happiness scores? 
+```{r}
+mod2c <- lm(happiness~season + city, data=couch)
+tidymod2c <- tidy(anova(mod2c))
+```
+
+Running an anova on a linear model predicting happiness by season and city shows that the city the participants start in does not affect happiness significantly (p-value = `r tidymod2c$p.value[2]`). The linear model is not improved by city as a predictor over a model without it. 
+
+So, we have determined that out of the circumstantial factors (age, city participants live in, season participants started running in), the only significant predictor of happiness is the season the participants started in. We will therefore use a model where season predicts happiness as our baseline model for further investigation. 
+A question remains however: Is season as a predictor of happiness actually a good model of happiness? One was to check this is by using a Q-Q plot, which plots the distribution of residuals against a normal distribution.
+
+
+```{r figureseasonqq, fig.asp=.6, fig.cap="Figure 9: Q-Q plot showing residuals compares to a normal distribution." , message=F}
+
+plot(mod2a,which=2)
+```
+
+As can be seen above, the residuals do not have a normal distribution, indicating that the model with only season as a predictor does not describe happiness perfectly. One or more variables are missing in the description of data, as we will investigate in question 3. 
+
+```{r changingSeason, include = FALSE}
+gd$season <- factor(gd$season, levels = c("spring", "summer", "autumn", "winter"))
+```
+
+
+
+# Question 3
+
+## Question 3a
+```{r q3a, include=FALSE}
+couch <- couch %>%
+  mutate(
+    is_stopped = ifelse(week_stopped != "9",1,0),
+    is_complete = ifelse(week_stopped == "9",1,0)
+    )
+mod3a <- lm(happiness~season + is_complete, data=couch)
+summary(mod3a)
+tidy3a <- tidy(anova(mod3a))
+```
+
+An assumption one could make is that completing the program would lead to a sense of pride and satisfaction that would bolster a participant's happiness score, and that dropping out of the program would diminish a participant's happiness score. We checked this by adding a predictor to the linear model, which is 1 when a participant has completed the program and 0 when the participant has dropped out. Taking an anova of the model showed that, a participant completing the program does not significantly affect happiness (p-value = `r tidy3a$p.value[2]`). 
+
+
+## Question 3b
+```{r q3b, include=FALSE}
+mod3b <- lm(happiness~season + health, data=couch)
+tidy3b <- tidy(anova(mod3b))
+
+mod3b2 <- lm(happiness~health, data=couch)
+summary(mod3b2)
+```
+
+
+We also hypothesized that the health of the participant at the end of the program, as reported by their health score, might affect their happiness score. Adding the health score into the baseline model and taking an anova of it, however, indicates that happiness is not additionally affected by the health metric (p=`r tidy3b$p.value[2]`). Health additionally is not correlated to happiness as all (adjusted R-squared = -0.01).
+
+## Question 3c
+
+```{r q3c, include = FALSE}
+mod3c <- lm(happiness~season + health:week_stopped, data=couch)
+summary(mod3c)
+tidy3c <- tidy(anova(mod3c))
+```
+
+Additionally, we hypothesized that happiness might be more affected by a participant's health metric the more of the program they completed. We added the interaction of health and weeks completed to the model, but taking an anova of the model showed that happiness is not additionally affected by the interaction (p=`r tidy3c$p.value[2]`). 
+
+## Question 3d
+
+```{r baselineModel, include = FALSE}
+mod3d <- lm(happiness ~ 1  + season + selfmot , data=couch)
+summary(mod3d)
+tidy3d <- tidy(anova(mod3d))
+```
+The last set of values to check as a possible predictor of happiness is self-motivation. In adding it to the model where season is already a predictor of happiness, we find, that self-motivation does in fact significantly affect happiness (p-value = `r tidy3d$p.value[2]`, F = 9.05). Below we can see the model plotted graphically. 
+
+```{r plottingLinearModel, fig.asp=.6, fig.cap="Figure 11: Data on happiness in relation to self-motivation. The linear model plotted includes season and self motivation as predictors." , message=F}
+ plot_model(mod3d, type = "pred", terms=c("selfmot","season"), show.data = 1)
+
+# Currently lines are parallel. How can we stop this?
+```
+
+Is this model a model with season and self-motivation as predictors of happiness a good model? In order to check this we will look at our model's assumptions the following plots: 
+
+```{r goodModel, fig.asp=.9, fig.cap="Figure 10: Plots checking our model's assumptions and goodness of fit." , message=F}
+par(mfrow=c(2,2))
+plot(mod3d,which=1:4)
+```
+The Residuals vs. Fitted graph shows that our model is roughly linear. The Q-Q graph shows that the mean residuals of our model are approximately normal. The Cooks Distance graph shows that no one observation skews the model slope too much. The Scale-Location plot, however, which depicts the homogeneity of variance graphocally seems to indicate there might be one last determiner of happiness that we have not yet found. 
+
+Happiness is significantly affected by both the season the participants started the program in (p-value =  `r tidymod2a$p.value[1]`) and by the self-motivation the participant indicated in the beginning of the program (p-value = `r tidy3d$p.value[2]`). Happiness is not affected, however, by age (p-value = `r av1c$p.value[2]`), city the participant is from (p-value = `r tidymod2c$p.value[2]`)), health (p-value = `r tidy3b$p.value[2]`), or by a participant completing the program (p-value = `r tidy3a$p.value[2]`). Additionally there is no indication that happiness of participants who got further along the program are more affected by the health metric than those who stopped the program earlier (p-value = `r tidy3c$p.value[2]`). 
+Since both the season the participant started the program in, and self-motivation are information the participants gave at the beginning of the program, it might be reasonable to conclude that completion of the program doesn’t affect happiness as much as the circumstances around starting the program do. 
+
+Since self-motivation is a good predictor of happiness, it is possible that the headspace the participant is in upon entering the program is very important. The self-motivation score might act as a window into the belief the participant has in themselves while completing the program. 
+
+```{r testWinter, include=FALSE}
+testwinterLess <- t.test(couchwinter$happiness, mu = mean(couch$happiness), alternative="less")
+tidywinterLess <- tidy(testwinterLess)
+```
+
+
+Happiness of participants who started the program during the month of winter is significantly different that the average happiness of all participants (p-value < 0.05). This might give an indication of why the season the participant starts the program in significantly affects happiness. Staring the program during the dark winter months negatively affects the participants who do. 
+
+
+# Question 4
+The graph below includes only participants ewho have completed the program. It displays average happiness ratings grouped by season and city.
+
+```{r q4, include=FALSE}
+completecouch <- couch %>% filter(week_stopped==9)
+completecouch$season <- factor(completecouch$season, levels = c("spring", "summer", "autumn", "winter"))
+q4couch <- completecouch[,-c(1, 2, 3, 4, 5, 9, 10)]
+
+cc <- completecouch %>% group_by(city, season) %>%
+  summarise(mean_se(happiness))
+```
+
+
+```{r seasonCityGraph, fig.asp=.6, fig.cap="Figure 12: Data on average happiness levels of participants who have completed the program, grouped by season and city. Error bars display standard error of the mean." , message=F}
+cc %>% ggplot(aes(x=city, y=y, fill=season, ymin=ymin, ymax=ymax)) +
+  stat_summary(fun=mean, geom="bar", position = "dodge", color="grey") + 
+  scale_fill_discrete(limits=c("spring", "summer", "autumn", "winter")) +
+  geom_errorbar(position = position_dodge(width=.9), width = .2) +
+  ylab("happiness") +
+  ggtitle("Average happiness of those who completed the program by city and season") +
+  theme_minimal() +
+  scale_fill_brewer(palette="Blues")
+
+```
+
+
+# Question 5
+In the following section we are going to investigate whether we can create a model that determines the probability of dropping out of the program before completing it. 
+
+
+## Question 5a
+```{r q5a, include=FALSE}
+couch$is_stopped <- as.factor(couch$is_stopped)
+```
+
+If we want to determine whether a participant will drop out of the program at the beginning of the program, we need to look at the information the participants give us at the start of the program: City lived in, season started in, self-motivation score and accountability score. 
+
+We can test each of these factors as a possible determiner of dropping out, by adding them into a linear model one at a time. We hypothesize that self-motivation will be the highest determiner of dropping out, since it indicates some of the mental state of the participant when going into this program, as well as the participant's attitude to holding themselves accountable to completing the program. Self-motivation of participants who completed the program or dropped out of the prograp is displayed below. 
+
+```{r selfmotivationGraph, fig.asp=.6, fig.cap="Figure 13: Data self motivation score in participants who either completed the program or dropped out. Mean and range are displayed via the box plots, while the dots indicate one motivation score of one participant." , message=F}
+ggplot(couch, aes(x=selfmot, y=is_stopped))+
+  geom_boxplot(color="black")+
+  geom_jitter(aes(color = is_stopped))+
+  theme_minimal() +
+  ylab("Completed (0) or dropped out (1)") +
+  xlab("Self motivation score") +
+  ggtitle("Motivation scores for participants who completed the program or dropped out" ) +
+  scale_color_brewer(palette="Set1")
+```
+
+
+```{r q5a2, include=FALSE}
+#remove if plot goes later
+couch <- couch %>%
+  mutate(
+    is_stopped = ifelse(week_stopped != "9",1,0),
+    )
+
+couch4drop <- couch %>% 
+  mutate(bin=cut_interval(selfmot,10))
+
+dat <- couch4drop %>% group_by(bin) %>%
+  summarise(prop=mean(is_stopped))
+```
+
+The next highest determiner we would hypothesize is the determiner season, since it is a determiner of happiness, and since we assume that participants are more willing to run in warmer temperatures when it is light outside than in cold temperatures when it is dark. 
+The determiners accountability and city we hypothesize are less influential. 
+
+```{r dropModel, include = FALSE}
+mod5a <- glm(is_stopped ~ selfmot + season + accountability + city , family = binomial, data=couch)
+logLik(mod5a)
+tidydropModel <- tidy(anova(mod5a, test = "Chisq"))
+summary(mod5a)
+anova(mod5a, test = "Chisq")
+```
+These hypotheses are supported by the generalized linear model. Taking a xˆ2 anova shows that both self-motivation (p-value = `r tidydropModel$p.value[2]`) and season the participants started the program (p-value = `r tidydropModel$p.value[3]`) significantly affect the model, and that accountability (p-value = `r tidydropModel$p.value[4]`) and city the participants live in  (p-value = `r tidydropModel$p.value[5]`) do not significantly affect the model. 
+
+```{r motModel, include = FALSE }
+mod5a2 <- glm(is_stopped ~ selfmot + season,
+             family = binomial, 
+             data=couch)
+tidymotModel <- tidy(anova(mod5a2, test = "Chisq"))
+```
+ 
+
+## Question 5b
+We find that the probability of a participant dropping out is predicted by the self-motivation score of the participant and the season the participant started the program in. The model doesn't seem perfect as the deviance is higher than the residual deviance (deviance = `r tidymotModel$Deviance[3]`, residual deviance = `r tidymotModel$Resid..Dev[3]`), but neither accountability nor city participants live in significantly affects it. 
+
+As hypothesized above, we believe that (i) self-motivation is a predictor of dropping out because the self-given score indicates how willing a participant might be to go running for the entire length of the program, and (ii) season the participant started the program in is a predictor because depending on the season, running can be miserable, especially in Scotland. 
+
+
+## Question 5c
+
+Displayed below is a graph with a model of the probability of quitting as a function of self-motivation.
+
+```{r q5c, fig.asp=.6, fig.cap="Figure 14: Probability of quitting as a function of self-motivation, where motivation scores of those who dropped out (1) or completed the program (0) are displayed." , message=F}
+couch %>% ggplot(aes(x=selfmot,y=is_stopped)) +
+  ylab("Completed (0) or dropped out (1)") +
+  xlab("Self Motivation") +
+  ggtitle("Probability of quitting as a function of self-motivation") +
+  geom_jitter(size=3,width=0,height=.2,alpha=.1) +
+  scale_y_continuous(breaks=seq(0,1,by=.2)) +
+  geom_smooth(method="glm",method.args=list(family=binomial)) +
+  theme_minimal()
+```

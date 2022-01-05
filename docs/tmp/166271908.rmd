@@ -1,0 +1,381 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+params:
+  examnumber: B198803
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(pander)
+library(car)
+library(sjPlot)
+library(broom)
+library(psych)
+
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+couchto5k$missing<-NA
+couchto5k$missing[couchto5k$age>100]<-'crazy age'
+couchto5k$missing[couchto5k$selfmot<0]<-'selfmot < 0'
+
+
+mtab<-table(couchto5k$missing)
+
+couchto5k<-
+  couchto5k%>%
+  filter(is.na(missing))
+
+total<-count(couchto5k)
+```
+
+The data were inspected and missing and unlikely values were removed, resulting in `r total` observations for analysis. 
+Table 1 gives a summary of removed data.
+
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+pander(mtab,caption ='Table 1: Summary of missing values.')
+
+```
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+couchto5k<-
+  couchto5k%>%
+  mutate(
+    week5_before=ifelse(week_stopped<5,1,0),
+    week9_before=ifelse(5<=week_stopped&week_stopped<9,1,0),
+    week9_complete=ifelse(week_stopped==9,1,0)
+  )
+
+test1<-t.test(couchto5k$week5_before,mu=0.45,alternative = 'two.sided')
+test2<-t.test(couchto5k$week9_before,mu=0.1,alternative = 'two.sided')
+
+```
+Two two-sided one-sample t-tests were conducted in order to investigate if the percentage of participants abandoning the programme before the halfway point in week 5 and the end of the programme(week 9) were significantly different ($\alpha=.05$) from those in the earlier survey respectively.
+
+The answer is no and no. The mdoel results are summarised below.
+
+```{r}
+pander(test1,caption='Table2: One Sample t-test: investigating if the percentage of participants abandoning the programme before the halfway point in week 5 is different with 45% ')
+
+pander(test2,caption='Table3: One Sample t-test: investigating if the percentage of participants abandoning the programme before the end of the programme(week 9) with 55%.')
+```
+
+
+## Question 1b
+
+```{r q1b}
+
+couchto5k<-
+  couchto5k%>%
+  mutate(
+    week8_5=(week5_before- week9_before),
+    week9_8=(week9_before-week9_complete),
+    week9_5=(week5_before-week9_complete)
+)
+
+test1b1<-t.test(couchto5k$week8_5~couchto5k$city,alternative="two.sided")
+test1b2<-t.test(couchto5k$week9_8~couchto5k$city,alternative="two.sided")
+test1b3<-t.test(couchto5k$week9_complete~couchto5k$city,alternative="two.sided")
+```
+
+There are three patterns of attrition--('stopped before week 5- stopped before week 5'),('stopped after week 5-completed') and ('stopped before week 5-completed') respectively.
+
+Therefore, three independent samples t-tests were conducted in order to determine if the patterns of attrition rates significantly differ ($\alpha=.05$) by city.
+
+The answer for this question is that the three attritions are not significant different by cities. The results are summarised below.
+
+```{r}
+pander(test1b1,caption='Table4: Welch Two Sample t-test: `stopped before week 5- stopped before week 5` by `city` ')
+
+pander(test1b2,caption='Table5: Welch Two Sample t-test: `stopped after week 5-completed` by `city` ')
+
+pander(test1b3,caption='Table6: Welch Two Sample t-test: `stopped before week 5-completed` by `city` ')
+```
+
+
+
+## Question 1c
+
+```{r q1c}
+test1c1<-t.test(couchto5k$age~couchto5k$city,alternative="two.sided")
+```
+
+An independent samples t-tests was conducted in order to investigate if the average ages of participants who commenced the programme differ ($\alpha=.05$) by city.
+
+The answer is no.The result is summarised below.
+
+```{r}
+pander(test1c1,caption='Table7: Welch Two Sample t-test: `age` by `city`  ')
+```
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+
+couchto5k$season[couchto5k$season=='autunm']<-'autumn'
+
+couchto5k<-
+  couchto5k%>%
+  mutate(
+    season=fct_relevel(factor(season),levels=tolower(c('summer','autumn','spring','winter')))
+  )
+
+
+plot_season1<-ggplot(couchto5k,aes(x=season,y=happiness))+
+  geom_boxplot()
+  
+plot_season2<-ggplot(couchto5k,aes(x=season,y=happiness))+
+  geom_jitter()
+
+con1<-contrasts(couchto5k$season)
+
+model2a<-lm(data=couchto5k,happiness~season)
+av4<-summary(model2a)
+av1 <- tidy(model2a)
+av2<-model2a$coefficients
+av3<-tidy(anova(model2a))
+```
+After initial inspection of the model, no influential data point was removed.
+
+The data showed that participants’ happiness ratings were affected by the season they were interviewed in (F(`r av3$df[1]`,`r av3$df[2]`)=`r av1$statistic[1]`, p<.05`).
+
+Specifically, participants who were interviewed in summer was estimated to score average on happiness(mean=`r model2a$coefficients[1]`).For those who were interviewed in spring in autumn, compared to the score for spring, there was a change of `r av1$estimate[2]`on happiness ratings, but this change was not statistically significant (t=`r av1$statistic[2]`,p>.05).For those who were interviewed in spring in spring, compared to the score for summer, there was a change of `r av1$estimate[3]`on happiness ratings, and this change was statistically significant (t=`r av1$statistic[3]`,p<.05).For those who were interviewed in spring in winter, compared to the score for summer, there was a change of `r av1$estimate[4]`on happiness ratings, and this change was statistically significant (t=`r av1$statistic[4]`,p<.05).
+
+## Question 2b
+
+```{r q2b}
+model2b<-lm(data=couchto5k,happiness~1+season+age)
+
+
+b2v4<-summary(model2b)
+b2v1 <- tidy(model2b)
+b2v2<-model2b$coefficients
+b2v3<-tidy(anova(model2b))
+```
+
+Using the linear model to test if happiness is affected by seasons and age shows that participants’ happiness was not affected by age(F(`r b2v3$df[2]`,`r b2v3$df[3]`)=`r b2v3$statistic[2]`, p>.05).
+
+## Question 2c
+
+```{r q2c}
+model_null<-lm(data = couchto5k,happiness~1)
+model2c<-lm(data = couchto5k,happiness~1+age)
+
+compare2c1<-anova(model_null,model2a)
+compare2c2<-anova(model_null,model2c)
+
+
+```
+Comparing null model(linking happiness to no effect) and two models containing the effect of season or age showed that the effect of season improved the null model(F(`r compare2c1$Res.Df[1]`,`r compare2c1$Res.Df[2]`)=`r compare2c1$F[2]`,p<.05), but the effect of age did not improve the null model further(F(`r compare2c2$Res.Df[1]`,`r compare2c2$Res.Df[2]`)=`r compare2c1$F[2]`,p>.05).
+
+Therefore I would choose the baseline model containing the effect of season.
+
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+couchto5k<-
+  couchto5k%>%
+  mutate(
+    iscomplete=ifelse(week_stopped==9,'Y','N')
+  )
+model3a<-lm(data = couchto5k,happiness~1+iscomplete+season)
+
+a3v4<-summary(model3a)
+a3v1 <- tidy(model3a)
+a3v2<-model3a$coefficients
+a3v3<-tidy(anova(model3a))
+```
+
+Using linear regression showed that happiness ratings was not affected by whether or not they completed the programme((F(`r a3v3$df[1]`,`r a3v3$df[3]`)=`r a3v3$statistic[1]`, p=`r a3v3$p.value[1]`).
+
+## Question 3b
+
+```{r q3b}
+model3b<-lm(data = couchto5k,happiness~1+health+iscomplete+season)
+
+b3v4<-summary(model3b)
+b3v1 <- tidy(model3b)
+b3v2<-model3b$coefficients
+b3v3<-tidy(anova(model3b))
+```
+Using linear regression to investigate the association between happiness and health and season showed that happiness ratings was not affected by the health metric (F(`r a3v3$df[1]`,`r a3v3$df[3]`)=`r a3v3$statistic[1]`, p>.05).
+
+## Question 3c
+
+```{r q3c}
+model3c<-lm(data = couchto5k,happiness~1+health+week_stopped+iscomplete+season)
+
+c3v4<-summary(model3c)
+c3v1 <- tidy(model3c)
+c3v2<-model3c$coefficients
+c3v3<-tidy(anova(model3c))
+```
+we compared two linear models. One was the model in Question 3b, the other one added the predictor of participants' stopping week to the first model. 
+
+The results are summerized below.
+
+```{r}
+pander(model3b,caption='Table8: Fitting linear model: happiness ~health+iscomplete+season')
+pander(model3c,caption='Table9: Fitting linear model: happiness ~health+week_stopped+iscomplete+season')
+```
+
+
+As we can see in the last question, the association between happiness and health was not significant. In the new model, which add the stopping week as a predictor, this association was not significant neither. 
+
+In this case, in tthe model without the stopping week, for every increase of 1 score in health, scores on the happiness were estimated to change by `r b3v1$estimate[2]`. In the model with the stopping week, for every increase of 1 score in health, scores on the happiness were estimated to change by `r c3v1$estimate[2]`.
+
+Therefore the hypothesis that the effects of good health are amplified by the feeling of acting healthily was not true.
+
+## Question 3d
+
+From the linear model we tested, it suggested that participants’ happiness ratings were only affected by the season they were interviewed in (F(`r av3$df[1]`,`r av3$df[2]`)=`r av1$statistic[1]`, p<.05`). Data showed that the associations between happiness and age (F(`r b2v3$df[2]`,`r b2v3$df[3]`)=`r b2v3$statistic[2]`, p>.05) or health metric (F(`r a3v3$df[1]`,`r a3v3$df[3]`)=`r a3v3$statistic[1]`, p>.05) were not significant.
+
+# Question 4
+
+A subset of the data, including only those participants who completed the programme was created, named as 'Subset1'
+
+Figure 1 shows the average happiness ratings grouped by season and city.
+
+```{r q4,r figure, fig.asp=.6, fig.cap="Figure 1: The average happiness ratings in different seasons and cities.", message=F}
+
+Subset1<-couchto5k[couchto5k$week9_complete==1,]
+
+citygroup<-
+  Subset1%>%
+  group_by(city,season)%>%
+  summarise(happiness=mean(happiness),digit=3)
+
+#citygroup includes only those participants who completed the programme.
+
+ggplot(citygroup, aes(x = season, y = happiness, color = city, shape = city)) +
+  geom_point(alpha = .4,size = 4) +
+  theme_bw() +
+  guides(color = guide_legend("City"),  shape = guide_legend("City")) +
+  labs(
+    x = "Season",
+    y = "Happiness"
+  )
+
+
+```
+
+# Question 5
+
+## Question 5a
+
+
+
+```{r q5a}
+
+
+model5a1<-glm(data = couchto5k,week9_complete~age+accountability+selfmot+health+happiness+season+city,family='binomial')
+
+a5a1<-summary(model5a1)
+a5a12<-a5a1$coefficients
+
+model5a2<-update(model5a1,.~.-accountability-happiness-city)
+
+a5a2<-summary(model5a2)
+
+
+
+
+```
+Firstly, a model including age, accountability, self-motivation, health, happiness, season and city was created.
+
+After initial inspection of the model, no influential data points was removed.
+Testing the initial model showed that the factors of accountability(F(1,`r model5a1$df.residual`)=`r a5a12[3,3]`, p<1),happiness(F(1,`r model5a1$df[2]`)=`r a5a12[6,3]`, p<1) and city(F(1,`r  model5a1$df.residual`)=`r a5a12[10,3]`, p<1) did not improve the model further ove one which included age,  self-motivation, health, and season.
+
+There the updated model is a general linear model using age,  self-motivation, health, and season to predict the likelihood of dropping out.
+
+The updated model is summarised below.
+
+```{r}
+pander(model5a2,caption='Table2: Fitting generalized (binomial/logit) linear model: week9_complete ~ age + selfmot + health + season.')
+```
+
+## Question 5b
+
+
+```{r q5b}
+a5b1<-exp(coef(model5a2))
+```
+The odds of dropping out for someone age 0,  self-self-motivation 0, health metric 0 and participanting in summer is `r a5b1[1]`.
+
+For every one more score self-motivation is, and holding the rest factors constant, the odds of noticing change  by `r a5b1[3]`.
+
+For every one more score health is, and holding the rest factors constant, the odds of noticing change  by `r a5b1[4]`.
+
+For those participanting in autumn, and holding the rest factors constant, compared to those in summerm the odds of noticing change  by `r a5b1[5]`.
+
+For those participanting in winter, and holding the rest factors constant, compared to those in summerm the odds of noticing change  by `r a5b1[6]`.
+
+
+## Question 5c
+
+Figure 2 shows the probability of quitting as a function of how self motivated participants were.
+
+```{r q5c r figure, fig.asp=.6, fig.cap="Figure 2:  The probability of quitting as a function of how self motivated participants were.", message=F}
+
+model5c<-glm(data = couchto5k,week9_complete~selfmot,family='binomial')
+
+newselfmot<-tibble(selfmot=5:35)
+
+newselfmot<-
+  newselfmot%>%
+  mutate(
+    predprobs=predict(model5c,newdata=newselfmot,type = 'response')
+  )
+
+ggplot(data = newselfmot,aes(x=selfmot,y=predprobs))+
+  geom_line()+
+  labs(x='self-motivation',
+  y='predicted probability of dropping out')
+
+
+
+```
+
+
+
+
+
+
+
+
+
+

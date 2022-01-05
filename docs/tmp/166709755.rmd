@@ -1,0 +1,269 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+params:
+  examnumber: B201758
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(dplyr)
+library(pander)
+library(sjPlot)
+library(car)
+library(patchwork)
+library(viridis)
+library(ggplot2)
+library(broom)
+
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+Have a look at the data. Check for impossible values and deal with these in an appropriate manner. Describe the data, either in words or using suitable graphs (or a combination). Remember to detail the decisions you have made.
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+#summary(couchto5k)
+couchto5k$missing <- NA
+couchto5k$missing[couchto5k$age>100] <- "impossible age"
+couchto5k$missing[couchto5k$week_stopped>9] <- "week_stopped>9"
+couchto5k$missing[couchto5k$selfmot==-99] <- "impossible selfmot"
+mtab <- table(couchto5k$missing)
+
+couchto5k <- couchto5k %>%
+  filter(is.na(missing))
+total <- count(couchto5k)
+
+couchto5k <- couchto5k[,-10]
+```
+The data were inspected and missing or unlikely values were removed, resulting in `r total` observations for analysis. Table 1 gives a summary of the removed data.
+
+```{r table, results = "asis"}
+#install.packages("pander")
+
+mtab %>% pander(caption= "Table 1: Summary of removed or missing values")
+```
+
+```{r season}
+miscoded <- sum(couchto5k$season=="autunm")
+couchto5k$season[couchto5k$season=="autunm"] <- "autumn"
+couchto5k$season <- as.factor(couchto5k$season)
+```
+`r miscoded` season entries were initially coded as "autunm". These were recoded as "autumn".
+
+```{r city}
+couchto5k$city <- as.factor(couchto5k$city)
+```
+
+
+
+```{r descriptives, fig.cap="Figure 1. Plots illustrating the distribution of city, week_stopped, and season"}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+#shapiro.test(couchto5k$happiness)
+pdens <- plot(density(couchto5k$happiness))
+p1 <- ggplot(couchto5k, aes(x = city)) +
+  geom_bar()
+p2 <- ggplot(couchto5k, aes(x = week_stopped)) +
+  geom_bar()
+p1+ p2 
+p3 <- ggplot(couchto5k, aes(x = season)) +
+  geom_bar()
+p3 + pdens
+ 
+```
+To explore the psychological factors that make people continue on the Couch to 5K programme, and the effects of the programme on health and wellbeing, data was collected from two cities (Edinburgh and Glasgow). A total of `r nrow(couchto5k)` participants were included in the final sample. The participants mean age was `r mean(couchto5k$age)` (SD = `r sd(couchto5k$age)`). The participants average scores on a happiness scale were `r mean(couchto5k$happiness)` (SD = `r sd(couchto5k$happiness)`). Their health (M = `r mean(couchto5k$health)`; SD = `r sd(couchto5k$health)`), accountability (M = `r mean(couchto5k$accountability)`; SD = `r sd(couchto5k$accountability)`), and self-motivation (M = `r mean(couchto5k$selfmot)`; SD = `r sd(couchto5k$selfmot)`) were also measured. There were more participants in Edinburgh compared to Glasgow, while more participants were interviewed in spring than other seasons. Most participants completed the programme. The assumption of normality, as tested by the Shapiro-Wilk test, was violated with a p<.05. Moreover, upon visual inspections of the data plotted in a density plot, the average happiness scores did not appear normaly distribute. All statistical tests were performed based on the assumptions that they are relatively robust to account for slight deviations from normality.
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a, include = FALSE}
+#In an earlier nationwide survey, researchers found that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme. Is the data in the sample you have been given in line with data from the earlier survey? Once you have created a suitable variable to map to the information in the question, you should be able to answer this using a simple statistical test.
+couchto5k$completion <- ifelse(couchto5k$week_stopped<5, "before_5", ifelse(couchto5k$week_stopped==9, "completed", "after_5"))
+
+couchto5k$completion <- as.factor(couchto5k$completion)
+unique(couchto5k$completion)
+
+
+completion.percent <- couchto5k %>%
+  group_by(completion) %>%
+  count()
+totalrows <- nrow(couchto5k)
+completion.percent$percent <- (completion.percent$n/totalrows)*100
+
+completion.percent$national <- c(10, 45, 45 )
+
+res <- chisq.test(completion.percent$percent, completion.percent$national)
+
+```
+A Pearson's Chi-squared test was run to determine whether the data in the sample matched the data from the earlier survey suggesting that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme.The chi squared tests showed a non-significant difference between the two samples,  χ2(`r res$parameter`)= `r res$statistic %>% round(2)`, p = `r res$p.value` 
+
+## Question 1b
+
+```{r q1b, include = FALSE}
+#Using the same three categories (stopped before week 5, stopped after week 5, completed), examine whether the patterns of attrition rates differ by city.
+res1 <- chisq.test(couchto5k$completion, couchto5k$city)
+```
+A Pearson's Chi-squared test was run to determine whether the whether the patterns of attrition rates differ by city.The chi squared tests showed a significant difference of attrition rates by city, χ2(`r res1$parameter`)= `r res1$statistic %>% round(2)`, p = `r res1$p.value`
+
+## Question 1c
+
+```{r q1c}
+#Do the average ages of participants who commenced the programme differ by city?
+res2<- with(couchto5k, t.test(age ~ city, alternative = "greater"))
+```
+An independent samples t-test was conducted on a sample of `r nrow(couchto5k)` participants to determine whether the average age of participants who commenced the programme differed by city.
+The results indicated that the average age of the participants in Edinburgh was higher (M = `r res2$estimate[1] %>% round(2)`) than the average ages of of the participants in Glasgow (M = `r res2$estimate[2] %>% round(2)`), with a statistically significant difference considering the `r res$conf.lvl` confidence intervals (t(`r res2$parameter %>% round(0)`) = `r res2$statistic %>% round(2)`, p = `r res2$p.value`, one-tailed).
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+#Are participants’ happiness ratings affected by the season they were interviewed in? Describe the way in which season influences happiness outcomes.
+hapmodel <- lm(happiness ~ season, couchto5k)
+h1 <- tidy(hapmodel)
+#summary(hapmodel)
+
+
+```
+A simple linear regression was run to predict how the season in which the participants were interviewed affected their happiness ratings. The overall regression was not significant (R2=0.02, F(3,116)=0.93, p =0.43). The participants' happiness ratings were significantly affected when they were interviewed in autumn (β = `r h1$estimate[1] %>% round(2)` , p<.05). However, the participant's happiness ratings were not influenced by being interviewed in any other season (all p>.05). The results indicated that for every interview in autumn, the average happiness score increased by `r h1$estimate[1] %>% round(2)`, while the interviews in any other season did not significantly affect the happiness ratings.
+
+## Question 2b
+
+```{r q2b}
+#Accounting for any effects you discovered in (2a), is happiness affected by age?
+hapmodel2 <- lm(happiness ~ season + age, couchto5k)
+h2 <- tidy(hapmodel2)
+#summary(hapmodel2)
+
+```
+A multiple linear regression was run to predict how the age of the participants affected their happiness ratings. The overall regression was not significant (R^2 = 0.03, F(4,115)=0.92, p =0.454) The participants' happiness scores were not significantly affected by age (β = `r h2$estimate[5] %>% round(2)`, p = `r h2$estimate[5]`), while accounting for the significant effect of being interviewed in autumn on happiness ratings.
+
+## Question 2c
+
+```{r q2c}
+#The models you have built above explore ‘baseline’ effects; that is, effects that are not of primary interest to the researchers but which might affect the outcome variable of happiness. For use in question 3, pick a specific baseline model and justify why you are using this.
+#compare models
+ahap <- tidy(anova(hapmodel2))
+```
+An Analysis of Variance Test was run to compare the two linear models. The results indicated that the model which included season as a predictor did not significantly predict the outcome compared to the null modell (p = `r ahap$p.value[1]`). Additionally, the model which included age as a predictor in addition to season did not significanlty predict the outcome compared to the model that included season (F(1,`r ahap$df[3]`)= `r ahap$statistic[2] %>% round(2)`, p= `r ahap$p.value[2]`). To account for any covariants, the model which included both season and age as predictors was used as the baseline model for subsequent analyses.
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+#Building on your baseline model, are participants’ happiness ratings affected by whether or not they completed the programme? Describe the way in which programme completion influences happiness outcomes.
+mod3 <- lm(happiness ~ season + age + completion, couchto5k)
+plot(mod3, which=1:4)
+m3 <- tidy(mod3)
+
+#summary(mod3)
+```
+A multiple regression was conducted to test whether the participants’ happiness ratings were affected by whether or not they completed the programme. The model also included season and age as predictors. The participants' average happiness score was significantly affected by not completing the programme after week 5 (p<.05) and before week 5 (p=.01).The results indicated that for each participant who did not complete the programme after week 5, the average happiness score increased by `r m3$estimate[1] %>% round(2)`, while for each participant who did not complete the programme before 5 the average happiness scores dropped by `r m3$estimate[6] %>% round(2)`. The participants' happiness ratings were not significantly affected by the completion of the programme (p>.05). The assumption checks were performed, identifying no consistent outliers.
+
+
+## Question 3b
+
+```{r q3b}
+#Building on the analysis in (3a), is happiness additionally affected by the “health metric”?
+healthm <- lm(happiness ~ season + age + completion + health, couchto5k)
+hm <- tidy(healthm)
+#summary(healthm)
+```
+A multiple regression was run to determine whether happiness was additionally affected by the “health metric”, while considering season, age, and completion as predictors. The results indicated that happiness was not significantly affected by the predictor health (p=`r hm$p.value[8]`). This indicated that the participants' happiness was not affected by their health.
+
+## Question 3c
+
+```{r q3c}
+#It’s been hypothesised that the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier. Building on the model in (3b), can you test this hypothesis?
+healthmod <- lm(happiness ~ health*completion + season + age, couchto5k)
+hmod <- tidy(healthmod)
+#summary(healthmod)
+
+```
+A multiple regression was conducted to determine whether the happiness of participants who got further along the programme was more affected by the health metric than that of those who stopped earlier, including season and age as additional predictors. The results indicated that health did not significantly predict happiess (p=`r hmod$p.value[2]`). Additionally, the interaction between health and completion was not significant regardless of whether the participants stopped before 5 weeks, after 5 weeks or completed the programme (all p>.05).
+
+## Question 3d
+What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper
+
+  In the first model, happiness was only predicted by the participants being interviewd in autumn. Happiness was reliably predicted by the participants being interviewd in autumn when age was accounted for in the second model, although age was not a significant predictor of the participant's happiness. In our third model, happiness was reliably predicted by the interview being held in autumn when the participants stopped participating in the programme after week 5, while stopping before week 5 was also a significant predictor of happiness. Moreover, when considering health as a predictor, the completion of the interview in spring significantly affected happiness, although health was not a significant predictor. When considering the interaction between health and programme completion, only being interviewed in spring was a significant predictor of happiness.
+
+# Question 4
+Create a subset of the data, including only those participants who completed the programme. Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project.
+```{r q4 plot, echo = FALSE, fig.width=5, fig.cap="Figure 2. Plot illustrating the average happiness ratings grouped by season and city"}
+
+
+
+couchcompleted <- couchto5k %>%
+  filter(week_stopped==9)
+#install.packages("viridis")
+  ggplot(couchcompleted,                                      
+       aes(x = city,
+           y = happiness,
+           fill = season)) +
+  geom_bar(stat = "identity",
+           position = "dodge")+
+     scale_color_viridis(option = "D")+
+  theme_minimal() 
+ 
+   
+```
+
+
+
+# Question 5
+
+## Question 5a
+Build a model that predicts the likelihood of dropping out (at all).
+```{r q5a, include = FALSE}
+#create dropout variable
+couchto5k$dropout <- ifelse(couchto5k$completion=="completed", 0,1)
+as.factor(couchto5k$dropout)
+#Build a model that predicts the likelihood of dropping out (at all).
+dropmod <- glm(dropout ~ selfmot, family = "binomial", couchto5k)
+#summary(dropmod)
+
+l2p <- function(logits){
+  odds=exp(logits)
+  prob=odds/(1+odds)
+  return(prob)
+}
+l2p(27)
+```
+The variable "dropout" was coded as a binary variable, and, therefore, a logistic (binomial) regression model was fitted.
+
+## Question 5b
+Briefly describe the effects in your model as you would in an academic paper.
+```{r q5b}
+
+```
+
+A logistic (binomial) regression model was fitted to determine whether the likelihood of dropping out at all was predicted by the participants' self motivation. The results indicated that the participants' likelihood of dropping out at all was significantly predicted by self motivation (p<.05). This indicated that as self-motivation increases, the probability of dropping out decreases. In this way, the likelihood of dropping out at all decreased by 0.937 for a participant with a self motivation score of 27 (which was the minimum score. 
+
+## Question 5c
+Draw a graph representing the probability of quitting as a function of how self motivated participants were.
+
+```{r q5c plot, echo = FALSE, fig.width=5, fig.cap="Figure 3. Graph illustrating the probability of quitting as a function of how self motivated participants were"}
+#Draw a graph representing the probability of quitting as a function of how self motivated participants were
+plot_model(dropmod, type = "pred",  terms="selfmot", show.data=TRUE)
+```

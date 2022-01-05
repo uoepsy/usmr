@@ -1,0 +1,1004 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: "B192318"
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(patchwork)
+library(car)
+library(pander)
+library(broom)
+library(sjPlot)
+library(ggplot2)
+library(scales)
+
+r = getOption("repos")
+r["CRAN"] = "http://cran.us.r-project.org"
+options(repos = r)
+install.packages("weatherData")
+
+install.packages("pixiedust")
+library(pixiedust)
+install.packages("kableExtra")
+library(kableExtra)
+
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+
+To begin, the data were checked for impossible and problematic values. This was done by investigating the summary of the dataset, and the following problems were found:
+
+```{r initial inspection of data, include = FALSE}
+summary(couchto5k)
+```
+
+1) The maximum value for `age` (participants' age) recorded was `r max(couchto5k$age)`, which, according to common sense (and current science), is not a sensible value. A decision was made to cut off the age spectrum at 99 years and mark all age entries above `NA`.
+
+2) Further, the minimum value for `selfmot` (participants' self-motivation) was `r min(couchto5k$selfmot)`. This seems to be an impossible value, as the smallest possible value for this variable could be 5, if each of the 5 questions was given the minimum score of 1. Therefore, the values were cut off at 5 and all values below were recoded `NA`. 
+
+3) There is one participant who claims to have stopped the programme in week `r max(couchto5k$week_stopped)`. As the course only runs for a maximum of 9 weeks, this value in `week_stopped` was changed to `NA`.
+
+
+
+```{r cleaning, include = FALSE}
+#replacing impossible values with "NA" 
+couchto5k <- couchto5k %>% 
+                mutate(
+                    age = replace(couchto5k$age, couchto5k$age > 100, NA),
+                    selfmot = replace(couchto5k$selfmot, couchto5k$selfmot < 5, NA),
+                    week_stopped = replace(couchto5k$week_stopped, couchto5k$week_stopped > 9, NA)
+                        )
+
+# adding explanations for NAs
+couchto5k$recoded_NA <- "-"
+couchto5k$recoded_NA[is.na(couchto5k$age)] <- "unreasonable age given"
+couchto5k$recoded_NA[is.na(couchto5k$selfmot)] <- "outside possible self-motivation scores (5-30)"
+couchto5k$recoded_NA[is.na(couchto5k$week_stopped)] <- "outside possible programme length (1-9)"
+
+# making a table that shows explanations for NAs
+mtab <- table(couchto5k$recoded_NA)
+
+# recoding mistyped values in season and changing values to factors
+miscoded <- sum(couchto5k$season == "autunm")
+couchto5k$season[couchto5k$season == "autunm"] <- "autumn"
+couchto5k$season <- as.factor(couchto5k$season)
+couchto5k$city <- as.factor(couchto5k$city)
+
+```
+
+
+4) In total, `r miscoded` season entries had initially been misentered as "autunm". These were recoded as "autumn".
+
+# Initial Analysis
+
+Now the data have been cleared of impossible values, they will be described in the following. Values for a broad description were retrieved from the dataset summary, for more detail please see the respective graphs below. 
+
+
+**City**: Participants were recruited in Edinburgh and Glasgow. Figure 1 shows the distribution of participants between the two cities. Out of the total number of participants (`r length(couchto5k$city)`), `r couchto5k %>% filter(couchto5k$city == "Edinburgh") %>% count() / length(couchto5k$city) * 100`% were recruited in Edinburgh and `r couchto5k %>% filter(couchto5k$city == "Glasgow") %>% count() / length(couchto5k$city) * 100`% were recruited in Glasgow. 
+
+```{r message = FALSE}
+
+require(ggplot2)
+require(scales)
+
+f1 <- couchto5k %>% ggplot(aes(x = city, fill = city)) +  
+        geom_bar(aes(y = (..count..)/sum(..count..))) +
+        scale_y_continuous(labels = percent) +
+        labs(title = "City", 
+             x = "City of Recruitment", 
+             y = "Percentage of Participants",
+             caption = "Figure 1: Distribution in percent of cities in which participants were recruited.") +
+        theme_bw()
+
+f1 +  scale_fill_discrete(name = "Recruitment City", labels = c("Edinburgh", "Glasgow")) +
+      theme(
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic"))
+```
+
+**Season**: Participants were interviewed in different seasons. In Edinburgh, `r couchto5k %>% filter(city == "Edinburgh" & season == "spring") %>% count()` people (i.e. `r round(couchto5k %>% filter(city == "Edinburgh" & season == "spring") %>% count() / couchto5k %>% filter(city == "Edinburgh") %>% count() * 100, 1)`% of Dunediners) were interviewed in spring, `r couchto5k %>% filter(city == "Edinburgh" & season == "summer") %>% count()` in summer (`r round(couchto5k %>% filter(city == "Edinburgh" & season == "summer") %>% count() / couchto5k %>% filter(city == "Edinburgh") %>% count() * 100, 1)`%), `r couchto5k %>% filter(city == "Edinburgh" & season == "autumn") %>% count()` in autumn (`r round(couchto5k %>% filter(city == "Edinburgh" & season == "autumn") %>% count() / couchto5k %>% filter(city == "Edinburgh") %>% count() * 100, 1)`%), and `r couchto5k %>% filter(city == "Edinburgh" & season == "winter") %>% count()` in winter (`r round(couchto5k %>% filter(city == "Edinburgh" & season == "winter") %>% count() / couchto5k %>% filter(city == "Edinburgh") %>% count() * 100, 1)`%). In Glasgow, `r couchto5k %>% filter(city == "Glasgow" & season == "spring") %>% count()` people were interviewed in spring (i.e. `r round(couchto5k %>% filter(city == "Glasgow" & season == "spring") %>% count() / couchto5k %>% filter(city == "Glasgow") %>% count() * 100, 1)`% of Glaswegians), `r couchto5k %>% filter(city == "Glasgow" & season == "summer") %>% count()` in summer (`r round(couchto5k %>% filter(city == "Glasgow" & season == "summer") %>% count() / couchto5k %>% filter(city == "Glasgow") %>% count() * 100, 1)`%), `r couchto5k %>% filter(city == "Glasgow" & season == "autumn") %>% count()` in autumn (`r round(couchto5k %>% filter(city == "Glasgow" & season == "autumn") %>% count() / couchto5k %>% filter(city == "Glasgow") %>% count() * 100, 1)`%), and `r couchto5k %>% filter(city == "Glasgow" & season == "winter") %>% count()` in winter (`r round(couchto5k %>% filter(city == "Glasgow" & season == "winter") %>% count() / couchto5k %>% filter(city == "Glasgow") %>% count() * 100, 1)`%).
+
+**Age**: The participants' mean age is `r mean(couchto5k$age, na.rm = TRUE) %>% round(2)` years, with the youngest participant at `r min(couchto5k$age, na.rm = TRUE)` and the oldest at `r max(couchto5k$age, na.rm = TRUE)` years of age. Figure 2 below shows that within the recorded age range there are no outliers and that the distribution of participants' ages shows variation but no systematic peaks or dips.
+
+```{r description age graph}
+
+f2 <- ggplot(data = couchto5k, aes(x = age), na.rm = TRUE) +
+        geom_bar(aes(y = (..count..)/sum(..count..)), na.rm = TRUE) +
+        scale_y_continuous(labels = percent) +
+        labs(title = "Participants' Ages", 
+             x = "Participants' Age (in years)", 
+             y = "Percentage of Participants", 
+             caption = "Figure 2: This figure shows the age distribution across participants. The youngest participant was 18 and the \noldest was 60 years old. The mean age of all participants was 37.05 years.")
+  
+f2 + theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.caption = element_text(hjust = 0, face = "italic")
+          )
+```
+
+
+
+**Accountability:** These values reflect the participants' sense of accountability (or responsibility) and were obtained by summing up the scores (1-7) of 5 questions, all answered by the participants themselves. The mean accountability score is `r mean(couchto5k$accountability) %>% round(2)`, with the lowest score at `r min(couchto5k$accountability)` and the highest at `r max(couchto5k$accountability)`. Notably, no participant scored the absolute maximum of 35 points for accountability. See Figure 3 for details.
+
+**Self-Motivation:** This was measured in the same way as accountability, namely by summing up the scores (1-7) of 5 questions regarding participants' self-motivation. The mean self-motivation score is `r mean(couchto5k$selfmot, na.rm = TRUE) %>% round(2)`, with the lowest score at `r min(couchto5k$selfmot, na.rm = TRUE)` and the highest at `r max(couchto5k$selfmot, na.rm = TRUE)`.  Like with accountability, none of the participants achieved the maximum self-motivation score of 35. See figure 4 for details.
+
+However, for both accountability and self-motivation, there are some extremely low scores in the dataset. Figures 3 and 4 show that the distributions of both accountability and self-motivation scores are fairly unimodal, with scores grouping around the mean and levelling off towards extreme values.
+
+```{r description accountability + selfmot graphs, fig.width = 10}
+f3 <- ggplot(data = couchto5k, aes(x = accountability)) +
+        geom_bar(aes(y = (..count..)/sum(..count..)), na.rm = TRUE) +
+        scale_x_continuous(limits = c(5, 35), breaks = seq(5, 35, by = 5)) +
+        scale_y_continuous(labels = scales::percent, limits = c(0,0.15))  +
+        labs(title = "Accountability", 
+             x = "Accountability Score \n(self-assessed, scale: 5-35)", 
+             y = "Percentage of Participants",
+             caption = "Figure 3: Participants' self-assessed accountability scores (sum of scores \nfrom 5 questions, each scored 1-7), mean score = 19.82.")
+
+f4 <-  ggplot(data = couchto5k, aes(x = selfmot)) +
+          geom_bar(aes(y = (..count..)/sum(..count..)), na.rm = TRUE) +
+          scale_x_continuous(limits = c(5, 35), breaks = seq(5, 35, by = 5)) +
+          scale_y_continuous(labels = scales::percent, limits = c(0,0.15))  +
+          labs(title = "Self-Motivation", 
+               x = "Self-Motivation Score \n(self-assessed, scale: 5-35)", 
+               y = "Percentage of Participants", 
+               caption = "Figure 4: Participants' self-assessed self-motivation scores (sum of scores \nfrom 5 questions, each scored 1-7), mean score = 15.23.")
+
+f3 +  theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic")) | 
+  f4 + theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic"))
+
+```
+
+
+**Health:** These scores were obtained from a multi-test health measure and have a total possible range of 0-100. The mean in the present data is `r mean(couchto5k$health) %>% round(2)`, with the lowest score at `r min(couchto5k$health)` and the highest at `r max(couchto5k$health)`. The health scores are grouped around the mean, levelling off towards the extreme values. See Figure 5 for details. 
+
+**Happiness:** These scores were obtained from a simple happiness scale of 0-100 and have a mean of `r mean(couchto5k$happiness) %>% round(2)` across the participants. The lowest score given by the participants was `r min(couchto5k$happiness)` and the highest score was `r max(couchto5k$happiness)`. The happiness scores are fairly evenly distributed across the whole spectrum of possible values. See Figure 6 for details.
+
+
+```{r description health + happiness, fig.width=10}
+f5 <- ggplot(data = couchto5k, aes(x = health)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), na.rm = TRUE) +
+  scale_y_continuous(labels = scales::percent, limits = c(0,0.07))  +
+  xlim(0, 100) +
+  labs(title = "Health", 
+       x = "Health Score \n(self-assessed, scale: 0-100)", y = "Percentage of Participants", caption = "Figure 5: Participants' self-assessed health scores (scale: 0-100). The \nscores are grouped around the mean and there are no extreme values. \nMean score = 56.99.")
+
+f6 <-  ggplot(data = couchto5k, aes(x = happiness)) +
+        geom_bar(aes(y = (..count..)/sum(..count..)), na.rm = TRUE) +
+        scale_y_continuous(labels = scales::percent, limits = c(0,0.07))  +
+        xlim(0, 100) +
+        labs(title = "Happiness", 
+             x = "Happiness Score \n(self-assessed, scale: 0-100)", 
+             y = "Percentage of Participants", 
+             caption = "Figure 6: Participants' self-assessed happiness scores (scale: 0-100). The \nscores are evenly distributed across the range of possible values. \nMean score = 47.5.")
+
+f5 +  theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic")) | 
+  f6 + theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic"))
+
+```
+
+
+**Week Stopped:** Lastly, the number of weeks participants took part in the programme was recorded. The total duration of the programme was `r max(couchto5k$week_stopped, na.rm = TRUE)` weeks, and every participant who reached week `r max(couchto5k$week_stopped, na.rm = TRUE)` is regarded as having completed the programme. Figure 7 shows the distribution of the number of weeks participants stayed on the programme for. It is clearly visible that a vast majority of participants (`r couchto5k %>% filter(week_stopped == "9") %>% count() / couchto5k %>% count() * 100`%) completed the 9-week programme. The smallest proportion of participants stopped the programme at 5-8 weeks and the largest number of drop-outs left the programme at 2 weeks (`r couchto5k %>% filter(week_stopped == "2") %>% count() / couchto5k %>% count() * 100`%).
+
+
+
+
+```{r description week_stopped}
+
+# creating a column that returns either "stopped_early", "stopped_late" or "completed"
+couchto5k <- couchto5k %>%
+  mutate(
+    status =
+      ifelse(couchto5k$week_stopped < 5, "stopped_early",
+      ifelse(couchto5k$week_stopped < 9, "stopped_late", "completed"))
+  )
+
+f7 <- ggplot(data = couchto5k, aes(x = week_stopped, fill = status)) +
+        geom_bar(aes(y = (..count..)/sum(..count..)), na.rm = TRUE) +
+        scale_y_continuous(labels = percent) +
+        labs(title = "Week Stopped", 
+             x = "Duration of Participation in the Programme (in weeks)",
+             y = "Percentage", 
+             caption = "Figure 7: Distribution of the duration of participation. The majority (46.4%) of participants \ncompleted the 9-week programme.")
+
+f7 +  scale_x_continuous("Duration of Participation in the Programme (in weeks)", breaks = c(1:9)) +
+      theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic")) +
+      scale_fill_discrete(name = "Programme Completion", labels = c("stopped early", "stopped late", "completed"))
+
+```
+
+
+
+
+
+
+
+
+
+Researchers aim to find out whether psychological factors, such as accountability and self-motivation can have an impact on how long people participate in the programme. Figures 8 and 9 show the relationships between the length of participation in the programme and psychological factors such as accountability and self-motivation. No strong correlation between accountability and the number of weeks participants stayed on, can be deducted from Figure 8. However, there may be a positive correlation between self-motivation and the number of weeks participants stayed on the programme. However, this will be examined in more detail later.
+
+```{r description relationships 1, message = FALSE}
+
+f8 <- ggplot(data = couchto5k, aes(x = week_stopped, y = accountability)) +
+        geom_jitter(na.rm = TRUE) +
+        geom_smooth(method = "lm", na.rm = TRUE, colour = "steelblue") +
+        ylim(5, 30) +
+        scale_x_continuous(limits = c(0, 9), breaks = seq(1, 9, by = 1)) +
+        scale_y_continuous(limits = c(5, 35), breaks = seq(5, 35, by = 5)) +
+        labs(title = "Accountability & Part.", 
+             x = "Weeks of Participation", 
+             y = "Accountability Score \n(self-assessed, scale 5-35)", 
+             caption = "Figure 8: The relationship between \naccountability scores and the length of \nparticipation in the programme. There \nappears to be a mild negative correlation \nbetween the two variables.") +
+        theme_bw()
+
+f9 <- ggplot(data = couchto5k, aes(x = week_stopped, y = selfmot)) +
+        geom_jitter(na.rm = TRUE) +
+        geom_smooth(method = "lm", na.rm = TRUE, colour = "steelblue") +
+        scale_x_continuous(limits = c(0, 9), breaks = seq(1, 9, by = 1)) +
+        scale_y_continuous(limits = c(5, 35), breaks = seq(5, 35, by = 5)) +
+        labs(title = "Self-Motivation & Part.", 
+             x = "Weeks of Participation", 
+             y = "Self-Motivation Score \n(self-assessed, scale 5-35)", 
+             caption = "Figure 9: The relationship between self-\nmotivation scores and the length of partici-\npation in the programme. There appears to \nbe a positive correlation between the \ntwo variables.") +
+        theme_bw()
+
+f8 + theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic")) | 
+  f9 + theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic"))
+
+
+```
+
+
+
+Further, a research interest is to establish whether staying on the programme for longer impacts the happiness or health or participants. Figures 10 and 11 show a first glance at the relationships between happiness/health scores and the length of participation in the programme, respectively. From these depictions alone, no particularly strong correlation for either of the two variable pairs stands out. This will have to undergo more detailed investigation at a later point.
+
+```{r f10, description relationships 2, message = FALSE}
+
+f10 <- ggplot(data = couchto5k, aes(x = happiness, y = week_stopped)) +
+          geom_jitter(na.rm = TRUE) +
+          geom_smooth(method = "lm", na.rm = TRUE,  colour = "steelblue") +
+          scale_x_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 20)) +
+          scale_y_continuous(limits = c(0, 9), breaks = seq(1, 9, by = 1)) +
+          labs(title = "Participation & Happiness ", 
+               x = "Happiness Score \n (self-assessed, scale: 0-100)", 
+               y = "Weeks of Participation", 
+               caption = "Figure 10: The relationship between happiness scores and the length of participation in the programme. \nThere appears to be a negative correlation between the two variables." ) +
+          theme_bw()
+
+f10 + theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic"))
+```
+
+
+
+```{r f11, description relationships 2, message = FALSE}
+
+f11 <- ggplot(data = couchto5k, aes(x = health, y = week_stopped)) +
+          geom_jitter(na.rm = TRUE) +
+          geom_smooth(method = "lm", na.rm = TRUE,  colour = "steelblue") +
+          scale_x_continuous(limits = c(min(couchto5k$health), max(couchto5k$health)), breaks = seq(0, 100, by = 5)) +
+          scale_y_continuous(limits = c(0, 9), breaks = seq(1, 9, by = 1)) +
+          labs(title = "Participation & Health", 
+               x = "Health Score \n(self-assessed, scale: 0-100)", 
+               y = "Weeks of Participation", 
+               caption = "Figure 11: The relationship between health scores and the length of participation in the programme. There \nappears to be a mild positive correlation between the two variables. Note that in this figure, \nthe range of the x-axis is limited to the minimum and maximum health scores given.") +
+          theme_bw()
+
+
+f11 + theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic"))
+
+```
+
+
+# Question 1 
+
+_Note: All rows including NAs were removed from the dataset at this point, to enable meaningful investigations into relationships between variables._
+
+## Question 1a
+
+
+```{r q1a, message = FALSE, include = FALSE}
+
+# taking out NAs in order to prevent skewing relationships
+couchto5k <- na.omit(couchto5k)
+
+# OPTIONAL: creating columns returning TRUE/FALSE for each of the conditions
+couchto5k <- couchto5k %>%
+                mutate(
+                    is.stopped_early = ifelse(week_stopped < 5, TRUE, FALSE),
+                    is.stopped_late = ifelse(week_stopped > 4 & week_stopped <9, TRUE, FALSE),
+                    is.completed = ifelse(week_stopped == 9, TRUE, FALSE)
+                        )
+
+# extracting the no. of values for each condition for inline code
+stopped_early <- length(which(couchto5k$is.stopped_early))
+stopped_late <- length(which(couchto5k$is.stopped_late))
+completed <- length(which(couchto5k$is.completed))
+
+
+# conducting chi-squared test to test against previous study results
+
+chisq.test <- chisq.test(table(couchto5k$status), p = c(0.45, 0.10, 0.45))
+chisq.test
+
+# OPTIONAL: creating a graph of expected and observed values
+
+
+```
+
+In an earlier nationwide survey, researchers found that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme. If the present data conforms with this prediction, we would expect approximately `r round(length(couchto5k$is.stopped_early)*0.45, 0)` people to have abandoned the programme before they reached week 5, about `r round(length(couchto5k$is.stopped_late)*0.1, 0)` people to have done so in or after week 5 (but before they reached week 9), and approximately `r round(length(couchto5k$is.completed)*0.45, 0)` people to have completed all 9 weeks of the programme. However, as can be seen in Figure 12, the present data shows that `r stopped_early` people (`r couchto5k %>% filter(status == "stopped_early") %>% count() / couchto5k %>% count() * 100`%) abandoned the programme before reaching week 5, `r stopped_late` people (`r couchto5k %>% filter(status == "stopped_late") %>% count() / couchto5k %>% count() * 100`%) did so in or after week 5 (but before reaching week 9), and `r completed` people (`r couchto5k %>% filter(status == "completed") %>% count() / couchto5k %>% count() * 100`%) completed all 9 weeks of the programme.
+
+```{r message = FALSE}
+groupstatus <- group_by(couchto5k, couchto5k$status, couchto5k$city) 
+by_status <- groupstatus %>% summarise(n=n())
+
+by_status <- by_status %>%
+  rename(city = `couchto5k$city`,
+         status = `couchto5k$status`)
+
+couchto5k$status <- factor(couchto5k$status, levels = c("stopped_early", "stopped_late", "completed"))
+
+
+f12 <- ggplot(couchto5k, aes(x = status, fill = status)) + 
+        geom_bar() +
+        labs(title = "Attrition Rates", 
+             x = "Programme Completion", 
+             y = "Number of Participants", 
+             caption = "Figure 12: Numbers of participants who either left the programme before they reached \nweek 5 (48), stayed on the programme for 5-8 weeks (15), or completed all 9 weeks (57).") +
+        theme_minimal()
+
+f12 + theme(
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic")) +
+        scale_fill_discrete(name = "Programme Completion", labels = c("stopped early", "stopped late", "completed"))
+
+```
+
+
+The results of a Chi-Squared Goodness of Fit test suggest that they are indeed significantly different (p-value: `r chisq.test$p.value`, $\alpha$ = .05). This means that the data in the present sample are not in line with the data from the earlier survey.
+
+
+## Question 1b
+
+```{r q1b, message = FALSE}
+
+
+# plotting the relationship between programme attrition and city
+
+
+
+f12a <- ggplot(couchto5k, aes(x = status,  group = city)) + 
+          geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
+          geom_text(aes( label = scales::percent(..prop..),
+                   y= ..prop.. ), stat= "count", vjust = 1.5, colour = "white") +
+          labs(y = "Percent", fill="status") +
+          facet_grid(~city) +
+          scale_y_continuous(labels = scales::percent) +
+          labs(title = "Attrition Rates by City", 
+               x = "Programme Completion", 
+               y = "Percent", 
+               caption = "Figure 12a: Percentages of participants who either left the programme before \nthey reached week 5, stayed on the programme for 5-8 weeks, or completed \nall 9 weeks, divided by city.") +
+          theme_minimal()
+
+f12a + theme(
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic")) +
+        scale_fill_discrete(name = "Programme Completion", labels = c("stopped early", "stopped late", "completed"))
+      
+```
+
+
+
+For more detail, Figure 12a shows the programme attrition rates and how they differ by city. In Edinburgh (Glasgow), `r round(couchto5k %>% filter(city == "Edinburgh" & status == "stopped_early") %>% count() / couchto5k %>% filter(city == "Edinburgh") %>% count() * 100, 1)`% (`r round(couchto5k %>% filter(city == "Glasgow" & status == "stopped_early") %>% count() / couchto5k %>% filter(city == "Glasgow") %>% count() * 100, 1)`%) of participants quit the programme before they reached week 5, `r round(couchto5k %>% filter(city == "Edinburgh" & status == "stopped_late") %>% count() / couchto5k %>% filter(city == "Edinburgh") %>% count() * 100, 1)`% (`r round(couchto5k %>% filter(city == "Glasgow" & status == "stopped_late") %>% count() / couchto5k %>% filter(city == "Glasgow") %>% count() * 100, 1)`%) did so in or after week 5, but before they reached week 9 and `r round(couchto5k %>% filter(city == "Edinburgh" & status == "completed") %>% count() / couchto5k %>% filter(city == "Edinburgh") %>% count() * 100, 1)`% (`r round(couchto5k %>% filter(city == "Glasgow" & status == "completed") %>% count() / couchto5k %>% filter(city == "Glasgow") %>% count() * 100, 1)`%) completed all 9 weeks of the programme.
+
+This shows that, relatively speaking, fewer people in Edinburgh left the programme early, but more people stayed on for 5 to 8 weeks or completed it, than in Glasgow. Also, in Edinburgh, the majority of participants completed the programme, whereas in Glasgow the majority stopped early. In both cities, the smallest proportion stopped late, i.e. quit the programme at some point between weeks 5 and 8.
+
+## Question 1c
+
+```{r q1c, message = FALSE}
+
+
+EH_filtered <- couchto5k %>% 
+  filter(city == "Edinburgh")
+EH_avrg_age <- mean(EH_filtered$age)
+
+
+
+GL_filtered <- couchto5k %>% 
+  filter(city == "Glasgow")
+GL_avrg_age <- mean(GL_filtered$age)
+
+```
+
+The average age of participants who commenced the programme in Edinburgh is `r round(EH_avrg_age, 1)` years, compared to Glasgow, where it is `r round(GL_avrg_age, 1)` years, which shows that they differ by `r round(EH_avrg_age - GL_avrg_age, 1)` years.
+
+# Question 2
+
+## Question 2a
+
+```{r q2a finding out happiness means of seasons, include = FALSE, message = FALSE}
+
+# filtering participants by season and getting mean happiness scores for each season
+
+summer <- couchto5k %>% 
+  filter(season == "summer")
+avrg_summer_happiness <- mean(summer$happiness)
+
+autumn <- couchto5k %>% 
+  filter(season == "autumn")
+avrg_autumn_happiness <- mean(autumn$happiness)
+
+winter <- couchto5k %>% 
+  filter(season == "winter")
+avrg_winter_happiness <- mean(winter$happiness)
+
+spring <- couchto5k %>% 
+  filter(season == "spring")
+avrg_spring_happiness <- mean(spring$happiness)
+
+avrg_summer_happiness
+avrg_autumn_happiness
+avrg_winter_happiness 
+avrg_spring_happiness
+
+# grouping whole dataset by season to see the means and SDs in a tibble
+
+season_grouped <- group_by(couchto5k, couchto5k$season) %>% summarise(count = n(),
+    mean = mean(happiness),
+    sd = sd(happiness)
+  )
+
+# table of means for first diagnostics
+season_grouped
+
+tibble(season_grouped)
+
+```
+
+
+
+```{r visuals for basic diagnostics - not to be included in the report, include = FALSE, message = FALSE}
+# OPTIONAL: plotting the distribution of happiness scores for each season to see outliers that influence the mean/SD (only for some basic diagnostics)
+
+par(mfrow = c(2,2))
+hist(summer$happiness) 
+hist(autumn$happiness)
+hist(winter$happiness)
+hist(spring$happiness)
+```
+
+
+
+```{r f13 distribution of happiness scores across seasons, message = FALSE, warning = FALSE}
+
+
+# making a figure that shows distribution
+couchto5k$season <- factor(couchto5k$season, levels = c("spring", "summer", "autumn", "winter"))
+
+f13 <- ggplot(data = couchto5k, aes(x = happiness, y = season, col = season)) +       
+        geom_jitter() +
+        labs(title = "Happiness Ratings", 
+             x = "Happiness Score \n(self-assessed, scale: 0-100)", 
+             y = "Recruitment Season", 
+             caption = "Figure 13: Distribution of happiness scores grouped by the season in which \nparticipants were recruited. Respective mean happiness values are marked \nwith a black cross.") +
+        theme_bw()
+
+f13 +   stat_summary(fun.y=mean, geom = "point", shape = 4, size = 5, colour = "black") +
+        theme(
+          axis.text.y = element_blank(),
+          plot.title = element_text(hjust = 0.5),
+          plot.caption = element_text(hjust = 0, face = "italic")) +
+          scale_color_discrete(name = "Season", labels = c("Spring", "Summer", "Autumn", "Winter"))
+
+```
+
+
+
+
+
+Figure 13 shows participants' happiness ratings grouped by the season in which they were recruited. The mean happiness values are marked with a black cross and show a clear indication that participants recruited in spring (red) and summer (green) gave higher happiness scores when asked to self-assess upon leaving or completion of the programme than participants recruited in autumn (blue) or winter (purple).
+
+
+```{r linear model season ~ happiness, include = FALSE, message = FALSE}
+
+
+# making a linear model where happiness is predicted by season
+happiness_mdl <- lm(happiness ~ 1 + season, couchto5k)
+
+
+```
+
+
+```{r linear model season ~ happiness diagnostics, include = FALSE}
+
+# checking assumptions for linear model
+par(mfrow = c(2,2))
+plot(happiness_mdl) # looks OK
+hist(resid(happiness_mdl)) # normally distributed
+plot(happiness_mdl, which = 4) # Cook's distance, looks OK
+
+
+```
+A linear model was created where season predicts happiness. Assumptions for the model were checked, the residuals are normally distributed and other factors such as the Residuals vs Fitted plot, Normal Q-Q plot, Scale-Location plot, Residuals vs Leverage plot, and Cook's distance give no reason for concern.
+
+```{r linear model season ~ happiness analysis, include = FALSE}
+summary(happiness_mdl) # shoulders look OK
+aov(happiness_mdl) 
+str(happiness_mdl) # could not pull out values for inline code
+
+```
+
+
+```{r table of lm, message = FALSE}
+
+t1 <- dust(happiness_mdl) %>%
+        sprinkle(cols = "term",
+           replace = c("Spring (Intercept)", "Summer", "Autumn", "Winter")) %>%
+        sprinkle(col = 2:4, round = 2) %>%
+        sprinkle(col = 5, fn = quote(pvalString(value))) %>%
+        sprinkle_colnames(term = "Season",
+                    estimate = "Estimate",
+                    std.error = "SE",
+                    statistic = "T-statistic",
+                    p.value = "P-value")
+
+kable(t1, title = "Season Predicts Happiness - Linear Model", caption = "Table 1: Summary of the linear model where season is a predictor of happiness.") %>%
+  kable_styling()
+
+
+```
+
+As presented in Table 1, the linear model with season as a predictor of happiness (p = 0.0007) shows that the season in which participants were recruited does indeed influence their reported happiness score significantly. Participants recruited in the summer tend to score 5.22 points less on the happiness scale of 0-100 than participants recruited in spring. Participants recruited in autumn and winter show an even bigger difference of -32.39 and -30.84, respectively. However, contrary to the other seasons, summer seems to show the only non-significant difference to spring (p-value = 0.4).
+
+## Question 2b
+
+```{r q2b linear model adding age into the mix, message = FALSE, include = FALSE}
+happ_age_mdl <- lm(couchto5k$happiness ~ couchto5k$season + couchto5k$age)
+
+# checking assumptions for linear model
+hist(resid(happ_age_mdl)) # normally distributed
+plot(happ_age_mdl) # looks OK
+plot(happ_age_mdl, which = 4) # Cook's distance, looks OK
+
+summary(happ_age_mdl) # shoulders look OK
+anova(happ_age_mdl)
+
+```
+A linear model was created, where happiness is predicted by both season and age. Assumptions for the model were checked. According to this analysis, age (in addition to season) is not a reliable predictor for happiness scores (p-value = 0.2). It can be concluded that, according to the present data, happiness is not significantly affected by age.
+
+
+## Question 2c
+
+In addition to the baseline models in 2a and 2b, another baseline model was built, where happiness is predicted by self-motivation. The rationale behind this decision is that later, when we investigate if happiness is predicted by both self-motivation and whether people completed the programme, interesting results may be encountered. We may be able to determine whether the happiness scores of people who rate their self-motivation high are impacted more by whether or not they completed the programme.
+
+```{r q2c baseline model happiness ~ selfmot, include = FALSE, message = FALSE}
+happ_smot_mdl <- lm(happiness ~ 1 + selfmot, couchto5k)
+
+# checking assumptions for linear model
+hist(resid(happ_smot_mdl)) # fairly normally distributed
+plot(happ_smot_mdl) # looks sort of OK
+plot(happ_smot_mdl, which = 4) # Cook's distance, looks OK
+
+summary(happ_smot_mdl) # shoulders look OK
+
+```
+The baseline model I have picked for use in Question 3 shows that there is a strong positive correlation between happiness and self-motivation. According to the linear model, this correlation is statistically significant (p-value = 0.006). Figure 14 shows this correlation, where the intercept ($b_0$) is at 11.35, and the estimate ($b_1$) for self-motivation is 2.38. 
+
+```{r figure 14, message = FALSE}
+
+f14 <- couchto5k %>% ggplot(aes(x = happiness, y = selfmot)) +
+          geom_jitter() +
+          geom_smooth(method = "lm", col = "darkred") +
+          labs(title = "Self-Motivation & Happiness", 
+               x = "Happiness Score \n(self-assessed, scale: 0-100)", 
+               y = "Self-Motivation Score \n(self-assessed, scale: 5-35)", 
+               caption = "Figure 14: There is a strong positive correlation between self-motivation and happiness scores.") +
+          theme_minimal()
+
+f14 + theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic"))
+```
+
+
+
+# Question 3
+
+## Question 3a
+
+```{r q3a correlation happiness and completion, with selfmot, include = FALSE}
+
+
+couchto5k <- couchto5k %>%
+                mutate(
+                    selfmot = as.numeric(as.character(selfmot)),
+                    is.completed = factor(is.completed)
+                        )
+
+
+happ_comp_smot_mdl <- lm(happiness ~ 1 + selfmot + is.completed, data = couchto5k)
+
+# checking assumptions for linear model
+hist(resid(happ_comp_smot_mdl)) # fairly normally distributed
+plot(happ_comp_smot_mdl) # looks sort of OK, although QQ and S-L plots are a bit concerning
+plot(happ_comp_smot_mdl, which = 4) # Cook's distance, looks OK
+summary(happ_comp_smot_mdl)
+
+anova(happ_comp_smot_mdl)
+
+```
+The answer to this question was deducted from a linear model whose syntax is as follows: Happiness is predicted by self-motivation and programme completion.
+
+```{r formula for mdl, to be included in the report}
+formula(happ_comp_smot_mdl)
+```
+
+
+According to the ANOVA conducted on the linear model, programme completion does not act as an additional significant predictor for happiness and does not improve the model fit (p-value = 0.06, F = 3.69). This indicates that happiness scores are not significantly affected by whether or not participants completed the programme, all while taking their self-motivation scores into account.
+
+However, as the p-value for programme completion as a predictor for happiness is only marginally larger than $\alpha$, Figure 15 below, which shows the difference in happiness scores caused by whether or not participants completed the programme, was still included in this report. According to this, taking self-motivation scores into account, participants who did not complete the programme seem to have achieved higher happiness scores than participants who did.
+
+```{r figure 15, message = FALSE}
+
+f15 <- plot_model(happ_comp_smot_mdl, type = "pred",  terms=c("selfmot","is.completed"), show.data = 1)
+
+f15 + theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic")) +
+      labs(title = "Predicted Values of Happiness", 
+           x = "Self-Motivation Score \n(self-assessed, scale: 5-35)", 
+           y = "Happiness Score \n(self-assessed, scale: 0-100)", 
+           caption = "Figure 15: Happiness scores predicted by self-motivation scores and grouped by whether participants completed \nthe programme. Participants who did not complete the programme seem to achieve higher happiness scores, \ntaking self-motivation into account. However, the completion is not a significant predictor (p-value = 0.06), and is only \ndepicted in this figure because it is only just above the conventional α-value of 0.05.") +
+      scale_color_discrete(name = "Programme Completion", labels = c("No", "Yes"))
+
+
+
+```
+
+## Question 3b
+
+```{r q3b, include = FALSE}
+HAPP_smot_comp_health_mdl <- lm(happiness ~ 1 + selfmot + is.completed + health, data = couchto5k)
+summary(HAPP_smot_comp_health_mdl) # F = 3.91, p = 0.01
+
+HAPP_smot_comp_health_mdl2 <- lm(happiness ~ 1 + selfmot + health + is.completed, data = couchto5k)
+summary(HAPP_smot_comp_health_mdl2) # F = 3.91, p = 0.01
+# to see whether a different order of predictors changes the model - it does not.
+
+# checking assumptions for linear model
+hist(resid(HAPP_smot_comp_health_mdl)) # fairly normally distributed
+plot(HAPP_smot_comp_health_mdl) # looks sort of OK, although S-L and R-L plots are slightly odd
+plot(HAPP_smot_comp_health_mdl, which = 4) # Cook's distance, looks OK
+summary(HAPP_smot_comp_health_mdl)
+
+anova(HAPP_smot_comp_health_mdl)
+
+```
+A new linear model was built, where health scores are added as an additional predictor to the model from Question 3a. The syntax of this new model is as follows: Happiness scores are predicted by self-motivation, whether participants completed the programme, and health scores. 
+```{r formula for mdl HAPP_smot_comp_health_mdl, to be included in the report}
+formula(HAPP_smot_comp_health_mdl)
+```
+The latter two predictors were switched round to see if it made a difference to the results - it did not. The model assumptions were checked.
+
+According to the ANOVA conducted on this model, health measures do not affect happiness scores significantly (p-value = 0.70, F-value = 0.15) in addition to self-motivation and programme completion, the latter of which has already been disregarded as a predictor.
+
+
+## Question 3c
+
+```{r q3c Happiness and Health - getting further along in the programme, include = FALSE, message = FALSE}
+
+# making a dummy variable that returns 0 for ppl who stopped before week 5 and 1 for ppl who stayed on the programme for 5 weeks or longer
+couchto5k <- couchto5k %>%
+                mutate(
+                  is.further_along = ifelse(week_stopped > 4, 1, 0)
+                        )
+
+couchto5k <- couchto5k %>%
+                mutate(
+                  is.further_along = factor(is.further_along)
+                        )
+
+```
+
+To investigate this question, a dummy variable was created, that returns `0` for participants who dropped out of the programme before week 5, and `1` for those who stayed on for 5 weeks or longer. 
+
+
+```{r f17, message = FALSE}
+
+f16 <- ggplot(data = couchto5k, aes(x = happiness, y = health, col = is.further_along)) +
+        geom_point() +
+        geom_smooth(method = "lm") +
+        facet_wrap(~is.further_along) +
+        labs(title = "Influence of Health on Happiness", 
+             x = "Happiness Score \n(self-assessed, scale: 0-100)", 
+             y = "Health Score \n(self-assessed, scale: 0-100)", 
+             caption = "Figure 16: Influence of health  on happiness scores, divided by whether participants stayed \non the programme for 5 or more weeks and those who dropped out before week 5. There is \na strong negative correlation between the two measures for those who dropped out and a \npositive correlation for those who got further along in the programme.")
+
+f16 + theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic")) +
+        scale_color_discrete(name = "Programme Duration", labels = c("1-4 weeks", "5-9 weeks"))
+  
+```
+
+
+
+
+At first glance, there is a considerable difference in how health scores correlate with happiness scores between participants who got further along in the programme and those dropped out before week 5, as can be seen in Figure 16. The happiness score of participants who stayed on the programme for 4 weeks or less show a strong negative correlation with their health scores. In contrast, participants who stayed on for 5 weeks or longer achieved higher happiness scores, the higher their health scores, showing a positive correlation.
+
+
+```{r statistical test of hypothesis, include = FALSE}
+# creating a linear model that checks if happiness scores are predicted by health and if it makes a difference if ppl stayed on the programme for longer
+
+# before that, changing variables to numeric/factors 
+couchto5k <- couchto5k %>%
+                mutate(selfmot = as.numeric(as.character(selfmot)),
+                      is.completed = factor(is.completed)
+                        )
+
+further_along_mdl <- lm(happiness ~ 1 + selfmot + is.completed + health + is.further_along, data = couchto5k)
+
+summary(further_along_mdl) # F = 4.91, p = 0.001
+anova(further_along_mdl)
+
+# switching the position of the predictors to see if there is a difference - there is not.
+further_along_mdl2 <- lm(happiness ~ 1 + selfmot + is.completed + is.further_along + health, data = couchto5k)
+
+summary(further_along_mdl2) # F = 4.91, p = 0.001
+
+# checking assumptions for the model:
+# 1: checking residuals' shoulders - OK
+summary(further_along_mdl)
+
+# 2: checking residuals - OK
+hist(resid(further_along_mdl)) # normally distributed
+plot(further_along_mdl) # looks ok
+library(car)
+dwt(further_along_mdl) # no autocorrelation at lag 1
+plot(further_along_mdl, which = 4) # Cook's distance - OK
+
+# checking if predictors are significant
+anova(further_along_mdl)
+
+```
+To investigate this further, and more statistically reliably, the linear model from Question 3c was expanded by a new predictor variable, namely whether participants got further along in the programme or not.
+
+According to the ANOVA for this model, this new predictor variable is indeed statistically significant (p-value = 0.008, F-value = 7.72). According to the present data, the hypothesis laid out in Question 3c can therefore be confirmed - the happiness of participants who got further along the programme seems to be affected significantly differently by health scores than that of those who stopped earlier.
+
+
+## Question 3d
+
+
+Considering all factors predicting happiness, and their statistical significance, only two predictors stand out as considerably influential on participants' happiness scores: self-motivation (p-value = < 0.001) and whether participants got further along on the programme (p-value = 0.008), which is why they are the only predictors that will be described in full here. The details of the model summary can be found in Table 2. 
+
+According to the analysis, participants' happiness scores increase by 2.88 points for every point they scored for self-motivation. Contrarily, if they stayed on the programme for 5 weeks or longer, their happiness score decreases by 23.94 points. Rather counter-intuitively, a maximised happiness score could therefore be achieved by scoring high on self-motivation and dropping out of the programme before week 5, as these seem to be the major causes of happiness in the present data.
+
+```{r}
+
+t2 <- dust(further_along_mdl) %>%
+        sprinkle(cols = "term",
+           replace = c("(Intercept)", "Self-Motivation", "Completion (TRUE)", "Health", "Further Along (TRUE)")) %>%
+        sprinkle(col = 2:4, round = 2) %>%
+        sprinkle(col = 5, fn = quote(pvalString(value))) %>%
+        sprinkle_colnames(term = "Predictor",
+                    estimate = "Estimate",
+                    std.error = "SE",
+                    statistic = "T-statistic",
+                    p.value = "P-value")
+
+kable(t2, title = "Predictors for Happiness - Linear Model", caption = "Table 2: Summary of the linear model where happiness is predicted by self-motivation, programme completion, health, and getting further along on the programme.") %>%
+  kable_styling()
+
+```
+
+
+# Question 4
+
+```{r q4, include = FALSE}
+
+# creating a subset of data for completers of the programme
+
+couchto5k_comp <- couchto5k %>% filter(is.completed == "TRUE")
+```
+
+Figure 17 shows a subset of data, including only those participants who completed the programme. The data are divided by the city in which participants were recruited and the season in which they were interviewed. Their happiness scores are visualised as pale diamond shapes, moving to the background of the mean happiness values, which have been made to stand out as the core information to be taken away from this figure.
+
+As Couchto5k is an NHS-sponsored programme, this plot was designed in accordance with NHS branding guidelines, so that it can be used in an investment pitch, or a presentation to the existing funders of the project. The colours used are NHS Blue (#005EB8, for mean values), NHS Light Green (#78BE20, for spring), NHS Emergency Services Red (#DA291C, for summer), NHS Orange (#ED8B00, for autumn) and NHS Aqua Blue (#00A9CE, for winter).
+
+The exact values for use in the presentation are as follows:
+
+* Mean happiness score for completers in Edinburgh:
+    + interviewed in spring: 55.1
+    + interviewed in summer: 60.8
+    + interviewed in autumn: 33.7
+    + interviewed in winter: 41.2
+    
+* Mean happiness score for completers in Glasgow:
+    + interviewed in spring: -
+    + interviewed in summer: 26.0
+    + interviewed in autumn: 21.5
+    + interviewed in winter: 4.4
+
+```{r f17 investor plot, warning = FALSE}
+
+couchto5k_comp$season <- factor(couchto5k_comp$season, levels = c("spring", "summer", "autumn", "winter"))
+
+f17 <- couchto5k_comp %>% ggplot(aes(x = season, y = happiness, colour = season)) +
+          geom_jitter(position=position_jitter(0.2), size = 2, alpha = 0.7, shape = 5) +
+          facet_wrap(~city) +
+          theme_bw() +
+          labs(title = "Happiness Scores of Completers", 
+               x = "Recruitment Season", 
+               y = "Happiness Score \n(self-assessed, scale: 0-100)", 
+               caption = "Figure 17: In this figure, the self-assessed happiness scores of the participants who completed \nthe programme are depicted (scale: 0-100). They are divided by the city in which participants \nwere recruited (Edinburgh and Glasgow) and the season in which they were interviewed \n(spring: green, summer: red, autumn: orange, winter: light blue). Mean happiness values are \nindicated by the big blue dots.")
+
+f17 + stat_summary(fun.y=mean, geom = "point", shape = 16, size = 5, colour = "#005EB8") +
+      theme(
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic")) +
+        scale_colour_manual(name = "Season", labels = c("Spring", "Summer", "Autumn", "Winter"), values = c("#78BE20", "#DA291C", "#ED8B00", "#00A9CE"))
+  
+
+```
+
+
+# Question 5
+
+## Question 5a
+
+
+
+
+```{r q5a model predicting likelihood of dropping out at all, include = FALSE}
+
+couchto5k <- couchto5k %>%
+                mutate(
+                    is.drop_out = ifelse(week_stopped < 9, 1, 0)
+                        )
+
+# glm with all variables as possible predictors
+glm_dropout_all <- glm(is.drop_out ~ season + city + age + accountability + selfmot, family = binomial, data = couchto5k)
+
+summary(glm_dropout_all)
+anova(glm_dropout_all, test = "Chisq")
+
+# glm with only selfmot and accountability (= psychological factors) as predictors - removed from analysis due to accountability not being significant predictor for is.drop_out 
+#glm_dropout <- glm(is.drop_out ~ selfmot + accountability, family = binomial, data = couchto5k)
+
+#summary(glm_dropout)
+#anova(glm_dropout, test = "Chisq")
+
+```
+Looking at the mere percentages in the present data, `r couchto5k %>% filter(couchto5k$is.drop_out == "1") %>% count() / length(couchto5k$is.drop_out) * 100`% or participants dropped out of the programme before completion in week 9 (the remaining `r couchto5k %>% filter(couchto5k$is.drop_out == "0") %>% count() / length(couchto5k$is.drop_out) * 100`% completed all 9 weeks of the programme).
+
+To build a model that predicts the likelihood of dropping out at all, a new binary variable was created in the original dataset, which contains information on whether participants completed all 9 weeks of the programme, or dropped out at some point before. Since the outcome variable is binomial, the analysis was done with the help of generalised linear models. 
+
+The formula for this model is as follows:
+
+```{r dropout glm formula to be included in report}
+
+formula(glm_dropout_all)
+
+```
+
+
+## Question 5b
+
+The syntax of this first generalised linear model is as follows: Whether participants dropped out is predicted by the season in which they were interviewed, the city in which they were recruited, their age, their self-assessed accountability score, and their self-assessed self-motivation score. These variables were chosen as potential predictors for dropping out because these values already existed at the time of programme commencement. Happiness and health measures were only taken upon drop-out (or completion) and it stands to reason that these variables could not possibly predict the outcome drop-out. According to the $\chi^2$-test on the ANOVA of this model, the only significant predictors for the outcome are season (p-value = 0.0000016, $\alpha$ = 0.05), and self-motivation (p-value = 0.00014, $\alpha$ = 0.05). The other predictors were deemed non-significant (city: p-value = 0.40; age: p-value =  0.10; accountability: p-value = 0.76).
+
+One of the researchers' main interests are the psychological factors that make people continue on the programme. As accountability proved to be an insignificant predictor for drop-out, and self-motivation has already been established and investigated as a significant predictor, a decision was made not to include an additional model in this report that had only the psychological factors accountability and self-motivation as predictors.
+
+```{r dropout glm with significant predictors only, include = FALSE}
+
+# glm with only season and selfmot as predictors (the only significant variables)
+glm_dropout_sig <- glm(is.drop_out ~ 1 + season + selfmot, family = binomial, data = couchto5k)
+summary(glm_dropout_sig)
+anova(glm_dropout_sig, test = "Chisq")
+
+```
+
+Since this first model included a number of insignificant values, another model was built, which only included  the statistically significant predictors. The model formula is as follows:
+
+```{r formula for glm with significant predictors only}
+formula(glm_dropout_sig)
+```
+
+The syntax of this second model is as follows: Whether participants dropped out is predicted by the self-assessed self-motivation score and the season in which participants were interviewed. The estimates of this model can be seen in Table 3 below. 
+
+```{r table 3, anova + chisq test of glm_dropout_sig}
+
+t3 <- dust(glm_dropout_sig) %>%
+        sprinkle(cols = "term",
+                 replace = c("Season Spring (Intercept)", "Season Summer", "Season Autumn", "Season Winter (to be disregarded)", "Self-Motivation")) %>%
+        sprinkle(col = 2:4, round = 2) %>%
+        sprinkle(col = 5, fn = quote(pvalString(value))) %>%
+        sprinkle_colnames(term = "Predictor",
+                          estimate = "Estimate",
+                          std.error = "SE",
+                          statistic = "Z-statistic",
+                          p.value = "P-value")
+
+kable(t3, caption = "Table 3: Summary of the generalised linear model where whether participants dropped out of the programme is predicted by self-motivation and the season in which they were interviewed.") %>%
+  kable_styling()
+
+```
+
+The model summary in Table 3 shows that, compared to participants who were interviewed in spring, participants who were interviewed in summer are less likely to drop out (estimate = -4.59, p-value = <0.001), and so are those interviewed in autumn (estimate = -2.84, p-value = <0.001). The season winter is to be disregarded in this analysis, as it does not impact drop-out rates significantly (p-value = 0.99). Participants with a higher self-motivation score are also less likely to drop out of the programme (p-value = <0.001).
+
+
+## Question 5c
+
+Figure 18 below shows the probability of dropping out of the programme as a function of participants' self-motivation score. According to the data, the higher participants score on self-motivation, the less likely they become to drop out of the programme prematurely.
+
+```{r q5c, message = FALSE, warning = FALSE}
+
+f18 <- couchto5k %>% ggplot(aes(x = selfmot,y = is.drop_out)) +
+          ylab("p(is.drop_out)") +
+          geom_jitter(size=3,width=0,height=.2,alpha=.1) +
+          geom_smooth(method = "glm", method.args=list(family=binomial), col = "darkred") +
+          scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
+          scale_x_continuous(limits = c(5, max(couchto5k$selfmot)), breaks = seq(5, max(couchto5k$selfmot), by = 5)) +
+          labs(title = "Probability of Dropping Out", 
+               x = "Self-Motivation Score \n(self-assessed, scale: 5-35)", 
+               y = "Probability of Dropping Out (in %)", 
+               caption = "Figure 18: This plot shows the probability of dropping out as a function of the self-motivation score \n(scale: 5-35). According to the present data, participants with higher self-motivation scores become \nless likely to drop out of the programme.") +
+          theme_bw()
+
+f18 + theme(
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0, face = "italic"))
+  
+
+
+```
+
+
+
+
+
+
+
+
+
+

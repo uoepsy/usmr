@@ -1,0 +1,293 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+params:
+  examnumber: "B2060098"
+editor_options: 
+  chunk_output_type: console
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+# this line will mean that when you compile/knit your document,the code will not show, but the output (e.g., plots) will!
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+couchto5k<-subset(couchto5k, pptID!="ID43" & pptID!="ID84")
+couchto5k<-subset(couchto5k, pptID!="ID24" & pptID!="ID44")
+couchto5k<-subset(couchto5k, pptID!="ID98")
+
+#R season
+summary(couchto5k)
+couchto5k$season <- as.factor(couchto5k$season)
+
+summary(couchto5k)
+
+miscoded <- sum(couchto5k$season == "autunm")
+
+couchto5k$season[couchto5k$season == "autunm"] <- "autumn"
+
+summary(couchto5k)
+```
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+# means for all numeric variables 
+couchto5k %>%
+    summarise(
+        mean_account = mean(accountability),
+        mean_age = mean(age),
+        mean_selfmot = mean(selfmot),
+        mean_health = mean(health),
+        mean_happiness = mean(happiness))
+
+couchto5k %>%
+  summarise(
+    sd_account = sd(accountability),
+    sd_age = sd(age),
+    sd_selfmot = sd(selfmot),
+    sd_health = sd(health),
+    sd_happiness = sd(happiness))
+
+ggplot(data = couchto5k, aes(x = accountability)) + 
+  geom_histogram(binwidth = 2)
+ggplot(data = couchto5k, aes(x = age)) + 
+  geom_histogram(binwidth = 2)
+ggplot(data = couchto5k, aes(x = selfmot)) + 
+  geom_histogram(binwidth = 2)
+ggplot(data = couchto5k, aes(x = health)) + 
+  geom_histogram(binwidth = 2)
+ggplot(data = couchto5k, aes(x = happiness)) + 
+  geom_histogram(binwidth = 5)
+ggplot(couchto5k, aes(x = factor(season))) +
+    geom_bar()
+ggplot(couchto5k, aes(x = factor(city))) +
+    geom_bar()
+ggplot(couchto5k, aes(x = factor(week_stopped))) +
+    geom_bar()
+
+
+```
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+week_stopped_data <- couchto5k %>%
+  select(week_stopped) %>%
+  mutate(week_stopped_group = case_when (
+    week_stopped < 5 ~ "B5",
+    week_stopped > 4 & week_stopped < 9 ~ "A5",
+    week_stopped > 8 ~ "C"))
+table(week_stopped_data$week_stopped_group)
+
+couchto5k$WS <- week_stopped_data$week_stopped_group
+
+chisq.test(table(week_stopped_data$week_stopped_group), p = c(.1, .45, .45))
+
+## Question 1b
+
+Edi_subset <- subset(couchto5k, city == "Edinburgh")
+
+subset(couchto5k, WS == "C")
+
+table(Edi_subset$WS)
+
+prop.table(table(Edi_subset$WS))*100
+                              
+Glasgow_subset <- subset(couchto5k, city == "Glasgow")
+
+subset(couchto5k, WS == "C")
+
+table(Glasgow_subset$WS)
+
+prop.table(table(Glasgow_subset$WS))*100
+
+chisq.test(couchto5k$WS, couchto5k$city)
+
+```
+
+## Question 1c
+
+```{r q1c}
+t.test(couchto5k$age ~ couchto5k$city)
+
+modified_age <-
+  couchto5k[-c(34, 80),]
+```
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+happinessmodel <-
+  lm(happiness ~ 1 + season, data = modified_age)
+coef(happinessmodel)
+summary(happinessmodel)
+
+ggplot(couchto5k, aes(x = season, y = happiness, fill=season)) +
+  geom_boxplot()
+
+happiness_season <- lm(happiness ~ season, data = couchto5k)
+
+anova(happiness_season)
+
+lm(season ~ happiness, data = couchto5k)
+
+summary(happiness_season)
+
+ggplot(couchto5k, aes(x = season, y = happiness)) +
+  geom_point(aes(colour = season))
+
+plot(happiness_season)
+# cooks distance 
+plot(happiness_season)
+
+#removing pp
+couchto5k
+couchto5k <- couchto5k[-c(55),]
+
+plot(happiness_season, which = 4)
+
+summary(happiness_season)
+
+```
+
+## Question 2b
+
+```{r q2b}
+happiness_season <- lm(happiness ~ season + age, data = modified_age)
+summary(happiness_season)
+
+```
+
+## Question 2c
+
+```{r q2c}
+#The model I will be using is the model in 2b, this has age added, and the adjested R-squared, and p-value are more accurate in this model. 
+```
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+happiness_season2 <- lm(happiness ~ season + WS, data = modified_age)
+summary(happiness_season2)
+
+```
+
+## Question 3b
+
+```{r q3b}
+happiness_season3 <- lm(happiness ~ season + WS + health, data = modified_age)
+summary(happiness_season3)
+```
+
+## Question 3c
+
+```{r q3c}
+happiness_season4 <- lm(happiness ~ WS + health, data = modified_age)
+summary(happiness_season4)
+```
+
+## Question 3d
+
+
+# Question 4
+
+```{r q4}
+
+Q4_subset <- subset(modified_age, WS == "C")
+
+ggplot(data = Q4_subset, aes(happiness,city,fill=season)) + 
+  geom_point() + 
+  facet_wrap(~season) +
+   scale_fill_brewer(palette ="BuPu")
+```
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+Dropout <- modified_age %>% 
+  select(week_stopped) %>%
+  mutate(WS = case_when (
+    week_stopped < 9 ~ "dropout",
+    week_stopped > 8 ~ "not_dropout"))
+
+modified_age$DROP_Rate <- Dropout$WS
+
+DROP_Rate <- modified_age$DROP_Rate %>% factor(c("dropout","not_dropout"))
+modified_age$DROP_Rate %>% factor(c("dropout","not_dropout"))
+modified_age$DROP_Rate <- as.factor(modified_age$DROP_Rate)
+
+Q5 <- glm(DROP_Rate ~ 1 + season + selfmot, data = modified_age, family = "binomial")
+
+levels(modified_age$DROP_Rate)
+
+plot(Q5, which = 4)
+
+
+```
+
+## Question 5b
+
+```{r q5b}
+
+```
+
+## Question 5c
+
+```{r q5c}
+Q5C <-glm(DROP_Rate~ selfmot, data =modified_age, family="binomial")
+
+selfmot100 <- tibble(selfmot = 1:100)
+predict(Q5C, newdata = selfmot100, type = "response")
+selfmot100 <-
+  selfmot100 %>%
+  mutate(
+    predprobs = predict(Q5C, newdata = selfmot100, type = "response")
+  )
+
+
+
+ggplot(data = selfmot100, aes(x = selfmot, y = predprobs)) +
+  geom_line(size=.09) + geom_point(size=1)
+
+```
+
+
+
+
+
+
+
+
+
+

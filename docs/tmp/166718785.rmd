@@ -1,0 +1,337 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: 'B201239'
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(pander)
+library(broom)
+library(ggplot2)
+library(jtools)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+# Question 0: Cleaning & Describing
+<!-- Have a look at the data. Check for impossible values and deal with these in an appropriate manner. Describe the data, either in words or using suitable graphs (or a combination). Remember to detail the decisions you have made. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+summary(couchto5k)#problems: age max, selfmot min, week_stopped max
+
+couchto5k$missing <- NA
+couchto5k$missing[couchto5k$age>100] <- "age>100"
+couchto5k$missing[couchto5k$selfmot<5] <- "self-motivation<5"
+couchto5k$missing[couchto5k$week_stopped>9] <- "stopped week>9"
+mtab <- table(couchto5k$missing)
+
+couchto5k_clean <- couchto5k %>% filter(is.na(missing))
+total <- count(couchto5k_clean)#total number after cleaning
+```
+
+The data was inspected and missing or unlikely values were removed, resulting in `r total` observations for analysis. Table 1 gives a summary of removed data. 
+
+```{r table, results="asis"}
+mtab %>% pander(caption="Table 1. Summary of removed observations. ")
+```
+
+```{r city, include = FALSE}
+head(couchto5k_clean$city)
+as.factor(couchto5k_clean$city)#two-level factor, nothing wrong
+```
+
+```{r season, include = FALSE}
+head(couchto5k_clean$season)
+as.factor(couchto5k_clean$season)
+miscoded <- sum(couchto5k_clean$season=="autunm")
+couchto5k_clean$season[couchto5k_clean$season=="autunm"] <- "autumn"
+couchto5k_clean$season <- as.factor(couchto5k_clean$season)
+```
+`r miscoded` season entries were initially misentered as "autunm". These were recoded as "autumn". 
+
+```{r descriptives, include = FALSE}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+summary(couchto5k_clean)
+
+n_spring <- sum(couchto5k_clean$season == "spring")
+n_summer <- sum(couchto5k_clean$season == "summer")
+n_autumn <- sum(couchto5k_clean$season == "autumn")
+n_winter <- sum(couchto5k_clean$season == "winter")
+
+rng_age <- range(couchto5k_clean$age)
+mean_age <- mean(couchto5k_clean$age)
+sd_age <- sd(couchto5k_clean$age)
+
+rng_acc <- range(couchto5k_clean$accountability)
+mean_acc <- mean(couchto5k_clean$accountability)
+sd_acc <- sd(couchto5k_clean$accountability)
+
+rng_selfmot <- range(couchto5k_clean$selfmot)
+mean_selfmot <- mean(couchto5k_clean$selfmot)
+sd_selfmot <- sd(couchto5k_clean$selfmot)
+
+rng_health <- range(couchto5k_clean$health)
+mean_health <- mean(couchto5k_clean$health)
+sd_health <- sd(couchto5k_clean$health)
+
+rng_happiness <- range(couchto5k_clean$happiness)
+mean_happiness <- mean(couchto5k_clean$happiness)
+sd_happiness <- sd(couchto5k_clean$happiness)
+
+mean_stopped <- mean(couchto5k_clean$week_stopped)
+n_completed <- sum(couchto5k_clean$week_stopped == "9")
+```
+Of the `r total` participants, their age ranged from `r rng_age[1]` to `r rng_age[2]` (*M~age~* = `r mean_age`, *SD~age~* = `r sd_age`). All participants came from either Edinburgh (*n~Edinburgh~* = `r sum(couchto5k_clean$city == "Edinburgh")`) or Glasgow (*n~Glasgow~* = `r sum(couchto5k_clean$city == "Glasgow")`). The season when they were interviewed was recorded (*n~spring~* = `r n_spring`, *n~summer~* = `r n_summer`, *n~autumn~* = `r n_autumn`, *n~winter~* = `r n_winter`). 
+
+At Week 0, their accountability was measured with 5 questions (each scored 1-7), and the accumulated scores ranged from `r rng_acc[1]` to `r rng_acc[2]` (*M~accountability~* = `r mean_acc`, *SD~accountability~* = `r sd_acc`). Their self-motivation was also measured with 5 questions (each scored 1-7), and the accumulated scores ranged from `r rng_selfmot[1]` to `r rng_selfmot[2]` (*M~self-motivation~* = `r mean_selfmot`, *SD~self-motivation~* = `r sd_selfmot`). 
+
+Upon Week 9 or dropping out of the programme half-way, their health was measured and the scores ranged from `r rng_health[1]` to `r rng_health[2]` (*M~health~* = `r mean_health`, *SD~health~* = `r sd_health`). Their happiness was measured with a simple happiness scale, and the scores ranged from `r rng_happiness[1]` to `r rng_happiness[2]` (*M~happiness~* = `r mean_happiness`, *SD~happiness~* = `r sd_happiness`). The week at which participants stopped the programme had an average of `r mean_stopped`, with `r n_completed` completed the entire programme. 
+
+
+# Question 1: General Checks
+
+## Question 1a
+<!-- In an earlier nationwide survey, researchers found that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme. Is the data in the sample you have been given in line with data from the earlier survey? Once you have created a suitable variable to map to the information in the question, you should be able to answer this using a simple statistical test. -->
+```{r q1a, include = FALSE}
+couchto5k_clean$drop_time <- NA
+couchto5k_clean$drop_time[couchto5k_clean$week_stopped < "5"] <- "stopped before week 5"
+couchto5k_clean$drop_time[couchto5k_clean$week_stopped > "4"] <- "stopped after week 5"
+couchto5k_clean$drop_time[couchto5k_clean$week_stopped == "9"] <- "completed"
+
+mtab2 <- table(couchto5k_clean$drop_time)
+
+chisq_dataset <- chisq.test(table(couchto5k_clean$drop_time), p=c(.45, .10, .45))
+```
+
+A Chi-squared test was performed to examine the relationship between the current data and the earlier survey data in the proportion of participants who dropped out of the programme before week 5 (*n~before~* = `r mtab2[3]`), after week 5 (*n~after~* = `r mtab2[2]`), and did not drop (*n~completed~* = `r mtab2[1]`). Table 2 gives a summary of the number of participants who completed the programme, stopped after and before week 5.
+
+```{r q1a table, results="asis"}
+mtab2 %>% pander(caption="Table 2. Number of participants who completed the programme, stopped after and before week 5. ")
+```
+
+Results showed that the proportion of participants with different dropping time was identical between the two datasets, *X^2^* (`r chisq_dataset[2]`, *N* = `r total-chisq_dataset[2]`) = `r chisq_dataset[1]`, *p* = `r chisq_dataset[3]`. 
+
+
+## Question 1b
+<!-- Using the same three categories (stopped before week 5, stopped after week 5, completed), examine whether the patterns of attrition rates differ by city. -->
+```{r q1b, include = FALSE}
+chisq_city <- chisq.test(table(couchto5k_clean$city, couchto5k_clean$drop_time))
+```
+Another Chi-squared test showed that there was no difference in the patterns of attribution rates between the cities, *X^2^* (`r chisq_city[2]`, *N* = `r total-chisq_city[2]`) = `r chisq_city[1]`, *p* = `r chisq_city[3]`.
+
+
+## Question 1c
+<!-- Do the average ages of participants who commenced the programme differ by city? -->
+```{r q1c, include = FALSE}
+mean_Edin <- mean(couchto5k_clean$age[couchto5k_clean$city == "Edinburgh"])
+sd_Edin <- sd(couchto5k_clean$age[couchto5k_clean$city == "Edinburgh"])
+mean_Glas <- mean(couchto5k_clean$age[couchto5k_clean$city == "Glasgow"])
+sd_Glas <- sd(couchto5k_clean$age[couchto5k_clean$city == "Glasgow"])
+
+t_ages_city <- t.test(couchto5k_clean$age~couchto5k_clean$city,)
+tidy(t_ages_city)
+```
+An independent *t*-test showed that the average ages of participants who commenced the programme from Edinburgh (*M~Edinburgh~* = `r mean_Edin`, *SD~Edinburgh~* = `r sd_Edin`) was significantly larger than those from Glasgow (*M~Glasgow~* = `r mean_Glas`, *SD~Glasgow~* = `r sd_Glas`), *t*(56) = `r tidy(t_ages_city)[4]`, *p* < .001. 
+
+
+# Question 2: Happiness
+
+## Question 2a
+<!-- Are participants’ happiness ratings affected by the season they were interviewed in? Describe the way in which season influences happiness outcomes. -->
+```{r q2a, include = FALSE}
+lm1 <- lm(happiness~ season, data = couchto5k_clean)
+summary(lm1)
+tidy(lm1)
+```
+Simple linear regression was conducted to examine if the season participants were interviewed in significantly predicted their happiness. The fitted model was: Happiness = `r summary(lm1)$coefficients[2, 1]` * (spring) + `r summary(lm1)$coefficients[3, 1]` * (summer) + `r summary(lm1)$coefficients[1, 1]` * (autumn) `r summary(lm1)$coefficients[4, 1]` * (winter). The overall regression was not statistically significant, *F*(`r summary(lm1)$fstatistic[2]`, `r summary(lm1)$fstatistic[3]`) = `r summary(lm1)$fstatistic[1]`, *p* = .157, *R^2^* = `r summary(lm1)$r.squared`. The individual predictors were examined further and indicated that autumn was a significant predictor in the model, *t* = `r summary(lm1)$coefficients[1, 3]`, *p* < .001.
+
+
+## Question 2b
+<!-- Accounting for any effects you discovered in (2a), is happiness affected by age? -->
+```{r q2b, include = FALSE}
+lm2 <- update(lm1, .~. + age)
+summary(lm2)
+```
+Multiple linear regression was conducted to examine if participants' age significantly predicted the effects of spring and autumn on their happiness. The fitted model was: Happiness = `r summary(lm2)$coefficients[2, 1]` * (spring) + `r summary(lm2)$coefficients[3, 1]` * (summer) + `r summary(lm2)$coefficients[1, 1]` * (autumn) `r summary(lm2)$coefficients[4, 1]` * (winter) `r summary(lm2)$coefficients[5, 1]` * (age). The overall regression was not statistically significant, *F*(`r summary(lm2)$fstatistic[2]`, `r summary(lm2)$fstatistic[3]`) = `r summary(lm2)$fstatistic[1]`, *p* = .211, *R^2^* = `r summary(lm2)$r.squared`. The individual predictors were examined further and indicated that autumn was a significant predictor in the model, *t* = `r summary(lm2)$coefficients[1, 3]`, *p* < .001.
+
+
+## Question 2c
+<!-- The models you have built above explore ‘baseline’ effects; that is, effects that are not of primary interest to the researchers but which might affect the outcome variable of happiness. For use in question 3, pick a specific baseline model and justify why you are using this. -->
+```{r q2c, include = FALSE}
+lm1_vs_lm2 <- anova(lm1, lm2)
+tidy(lm1_vs_lm2)
+```
+An ANOVA test was performed to examine whether adding the variable age to the first baseline model had significant effects. Results showed that there was no significant difference between the two baseline models, *t*(`r tidy(lm1_vs_lm2)[2, 3]`) = `r tidy(lm1_vs_lm2)[2, 5]`, *p* = `r tidy(lm1_vs_lm2)[2, 6]`. Therefore, the first linear model was picked for further analysis as it was more concise than the second linear model. 
+
+
+# Question 3: Happiness and Health
+
+## Question 3a
+<!-- Building on your baseline model, are participants’ happiness ratings affected by whether or not they completed the programme? Describe the way in which programme completion influences happiness outcomes. -->
+```{r q3a, include = FALSE}
+couchto5k_clean$completion <- NA
+couchto5k_clean$completion[couchto5k_clean$week_stopped == "9"] <- "completed"
+couchto5k_clean$completion[couchto5k_clean$week_stopped < "9"] <- "not completed"
+
+lm3 <- update(lm1, .~. + completion)
+summary(lm3)
+```
+Multiple linear regression was conducted to examine if whether or not participants completed the programme significantly predicted their happiness. The fitted model was: Happiness = `r summary(lm3)$coefficients[2, 1]` * (spring) + `r summary(lm3)$coefficients[3, 1]` * (summer) + `r summary(lm3)$coefficients[1, 1]` * (autumn) + `r summary(lm3)$coefficients[4, 1]` * (winter) `r summary(lm3)$coefficients[5, 1]` * (completion). The overall regression was not statistically significant, *F*(`r summary(lm3)$fstatistic[2]`, `r summary(lm3)$fstatistic[3]`) = `r summary(lm3)$fstatistic[1]`, *p* = .095, *R^2^* = `r summary(lm3)$r.squared`. The individual predictors were examined further and indicated that whether or not participants completed the programme was not a significant predictor in the model, *t* = `r summary(lm3)$coefficients[5, 3]`, *p* = `r summary(lm3)$coefficients[5, 4]`.
+
+
+## Question 3b
+<!-- Building on the analysis in (3a), is happiness additionally affected by the “health metric”? -->
+```{r q3b, include = FALSE}
+lm4 <- update(lm3, .~. + health)
+summary(lm4)
+```
+The variable health was added to the linear model built in (3a) and multiple linear regression was conducted to examine if participants' health significantly predicted their happiness. The fitted model was: Happiness = `r summary(lm4)$coefficients[2, 1]` * (spring) + `r summary(lm4)$coefficients[3, 1]` * (summer) + `r summary(lm4)$coefficients[1, 1]` * (autumn) + `r summary(lm4)$coefficients[4, 1]` * (winter) `r summary(lm4)$coefficients[5, 1]` * (completion) `r summary(lm4)$coefficients[6, 1]` * (health). The overall regression was not statistically significant, *F*(`r summary(lm4)$fstatistic[2]`, `r summary(lm4)$fstatistic[3]`) = `r summary(lm4)$fstatistic[1]`, *p* = .16, *R^2^* = `r summary(lm4)$r.squared`. The individual predictors were examined further and indicated that health was not a significant predictor in the model, *t* = `r summary(lm4)$coefficients[6, 3]`, *p* = `r summary(lm4)$coefficients[6, 4]`. 
+
+
+## Question 3c
+<!-- It’s been hypothesised that the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier. Building on the model in (3b), can you test this hypothesis? -->
+```{r q3c, include = FALSE}
+lm5 <- update(lm4, .~. + week_stopped + week_stopped*health)
+summary(lm5)
+#add an interaction figure
+```
+The variable stopped week was added to the linear model built in (3b) and multiple linear regression was conducted to examine if the interaction between the week that participants stopped and health significantly predicted their happiness. The fitted model was: Happiness = `r summary(lm5)$coefficients[2, 1]` * (spring) + `r summary(lm5)$coefficients[3, 1]` * (summer) + `r summary(lm5)$coefficients[1, 1]` * (autumn) + `r summary(lm5)$coefficients[4, 1]` * (winter) `r summary(lm5)$coefficients[5, 1]` * (completion) `r summary(lm5)$coefficients[6, 1]` * (health) `r summary(lm5)$coefficients[7, 1]` * (stopped week) + `r summary(lm5)$coefficients[8, 1]` * (health * stopped week). The overall regression was statistically significant, *F*(`r summary(lm5)$fstatistic[2]`, `r summary(lm5)$fstatistic[3]`) = `r summary(lm5)$fstatistic[1]`, *p* < .001, *R^2^* = `r summary(lm5)$r.squared`. The individual predictors were examined further and indicated that health was a significant predictor, *t* = `r summary(lm5)$coefficients[6, 3]`, *p* < .001; stopped week was a significant predictor in the model, *t* = `r summary(lm5)$coefficients[7, 3]`, *p* < .001; the interaction between the week that participants stopped and health was also a significant predictor in the model, *t* = `r summary(lm5)$coefficients[8, 3]`, *p* < .001. 
+
+An ANOVA test was performed to examine if adding the interaction between stopped week and health to the previous model would have a significant effect. Results showed that the happiness of participants who got further along the programme was significantly affected by the health metric than that of those who stopped earlier, *F*(`r anova(lm5)[5,1]`, `r anova(lm5)[6,1]`) = `r anova(lm5)[5,4]`, *p* < .001. 
+
+
+## Question 3d
+<!-- What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper. -->
+
+In the linear model built in (3c), autumn (*t* = `r summary(lm5)$coefficients[1, 3]`, *p* < .001), spring (*t* = `r summary(lm5)$coefficients[2, 3]`, *p* < .05), summer (*t* = `r summary(lm5)$coefficients[3, 3]`, *p* < .05), health (*t* = `r summary(lm5)$coefficients[6, 3]`, *p* < .001), stopped week (*t* = `r summary(lm5)$coefficients[7, 3]`, *p* < .001), and the interaction between health and stopped week (*t* = `r summary(lm5)$coefficients[8, 3]`, *p* < .001) significantly predicted participants' happiness. Winter (*t* = `r summary(lm5)$coefficients[4, 3]`, *p* = `r summary(lm5)$coefficients[4, 4]`) and completion (*t* = `r summary(lm5)$coefficients[5, 3]`, *p* = `r summary(lm5)$coefficients[5, 4]`) did not significantly predicted their happiness. Table 3 gives a summary of the linear model. 
+
+```{r q3d}
+lm5 %>% pander(caption="Table 3. A linear model that used season, completion, health, and stopped week to predict happiness. ")
+```
+
+ * p < .05.   ** p < .01.   *** p < .001
+
+# Question 4
+<!-- Create a subset of the data, including only those participants who completed the programme. Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project. -->
+```{r q4}
+couchto5k_clean_sub <- couchto5k_clean[couchto5k_clean$drop_time == "completed",]
+couchto5k_clean_sub %>%
+  ggplot(aes_(x = couchto5k_clean_sub$season, y = couchto5k_clean_sub$happiness, fill = couchto5k_clean_sub$city)) + 
+geom_bar(stat = "identity", position = position_dodge()) + labs(title="Figure 1. Average happiness ratings grouped by season and city. ", y="Happiness", x="Season", fill="City") + scale_y_continuous(expand = c(0, 0), limits = c(0, 110)) + scale_fill_grey(start = 0.40, end = 0.6) + theme(axis.line = element_line(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank()) +
+  theme(text=element_text(size=12,  family="sans")) 
+```
+
+
+# Question 5: Predictors of Drop-out
+
+## Question 5a
+<!-- Build a model that predicts the likelihood of dropping out (at all). -->
+```{r q5a, include = FALSE}
+couchto5k_clean$drop_out <- NA
+couchto5k_clean$drop_out[couchto5k_clean$completion == "completed"] <- 1
+couchto5k_clean$drop_out[couchto5k_clean$completion == "not completed"] <- 0
+
+glm6 <- glm(drop_out ~ health, data = couchto5k_clean, family = "binomial")
+chisq_dropout <- anova(glm6, test = "Chisq")
+
+guess <- predict(glm6)
+guess <- ifelse(guess > 0, 1, 0)
+hits <- sum(guess == couchto5k_clean$drop_out)
+accuracy <- hits / length(couchto5k_clean$drop_out) * 100
+
+exp(coef(glm6))
+```
+A generalised linear model was conducted to examine if the health metrics significantly predicted the likelihood of dropping out. The fitted model was: Likelihood of dropping out = `r tidy(glm6)[1, 2]` + `r tidy(glm6)[2, 2]` * (health). A Chi-squared test was conducted to test the validity of the model. Results showed that the model was valid, *p* < .01. The accuracy of the model was tested and results showed that participants' health correctly predicted `r accuracy`% of the observations. 
+
+```{r q5a glm7, include = FALSE}
+glm7 <- glm(drop_out ~ selfmot, data = couchto5k_clean, family = "binomial")
+chisq_dropout <- anova(glm7, test = "Chisq")
+
+guess <- predict(glm7)
+guess <- ifelse(guess > 0, 1, 0)
+hits <- sum(guess == couchto5k_clean$drop_out)
+accuracy <- hits / length(couchto5k_clean$drop_out) * 100
+
+exp(coef(glm7))
+```
+
+To examine the psychological factors that make people continue on the programme, two generalised linear models were conducted additionally. 
+The first generalised linear model was conducted to examine if participants' self-motivation significantly predicted the likelihood of dropping out. The fitted model was: Likelihood of dropping out = `r tidy(glm7)[1, 2]` + `r tidy(glm7)[2, 2]` * (self-motivation). A Chi-squared test was conducted to test the validity of the model. Results showed that the model was invalid, *p* = `r chisq_dropout[2, 5]`. The accuracy of the model was tested and results showed that participants' self-motivation correctly predicted `r accuracy`% of the observations. 
+The odds of dropping out for someone self-motivation 0 is `r exp(coef(glm7))[1]`: 1. For every increased point in health metrics, the odds of dropping out decreased by `r exp(coef(glm7))[2]`. Participants' self-motivation did not significantly predict the likelihood of dropping out, *t* = `r tidy(glm7)[2, 3]`, *p* = `r tidy(glm7)[2, 4]`.
+
+```{r q5a glm8, include = FALSE}
+glm8 <- glm(drop_out ~ accountability, data = couchto5k_clean, family = "binomial")
+chisq_dropout <- anova(glm8, test = "Chisq")
+
+guess <- predict(glm8)
+guess <- ifelse(guess > 0, 1, 0)
+hits <- sum(guess == couchto5k_clean$drop_out)
+accuracy <- hits / length(couchto5k_clean$drop_out) * 100
+
+exp(coef(glm8))
+```
+
+The second generalised linear model was conducted to examine if participants' accountability significantly predicted the likelihood of dropping out. The fitted model was: Likelihood of dropping out = `r tidy(glm8)[1, 2]` + `r tidy(glm8)[2, 2]` * (accountability). A Chi-squared test was conducted to test the validity of the model. Results showed that the model was invalid, *p* = `r chisq_dropout[2, 5]`. The accuracy of the model was tested and results showed that participants' accountability correctly predicted `r accuracy`% of the observations. 
+The odds of dropping out for someone accountability 0 is `r exp(coef(glm8))[1]`: 1. For every increased point in health metrics, the odds of dropping out decreased by `r exp(coef(glm8))[2]`. Participants' accountability did not significantly predict the likelihood of dropping out, *t* = `r tidy(glm8)[2, 3]`, *p* = `r tidy(glm8)[2, 4]`.
+
+
+## Question 5b
+<!-- Briefly describe the effects in your model as you would in an academic paper. -->
+In the general linear model that used health to predict the likelihood of dropping out, the odds of dropping out for someone health 0 is `r exp(coef(glm6))[1]`: 1. For every increased point in health metrics, the odds of dropping out decreased by `r exp(coef(glm6))[2]`. Participants' health significantly predicted the likelihood of dropping out in a way that higher health metrics predicted higher likelihood of dropping out, *t* = `r tidy(glm6)[2, 3]`, *p* = `r tidy(glm6)[2, 4]`.Table 4 gives a summary of the general linear model that used health to predict the likelihood of dropping out.
+
+```{r q5b table}
+glm6 %>% pander(caption="Table 4. A general linear model that used health to predict the likelihood of dropping out. ")
+```
+
+ * p < .05.   ** p < .01.   *** p < .001
+ 
+```{r q5b plot}
+couchto5k_clean %>%
+  ggplot(aes_(x = couchto5k_clean$health, y = couchto5k_clean$drop_out)) + labs(title= "Figure 2. Health was a significant predictor of the likelihood of dropping out. ", x="Health", y="Probability of quitting") + geom_jitter(size = 2, width = 0, height = .05, alpha = .1) + geom_smooth(method = "glm", method.args = list(family = binomial)) + scale_y_continuous(breaks = seq(0, 1, by = .2)) + scale_x_continuous(breaks = seq(0, 80, by = 10))+ theme_apa() + theme_bw() + theme(axis.line = element_line(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank()) +
+  theme(text=element_text(size=12,  family="sans"))+
+  scale_x_continuous(expand = c(0,0))
+```
+
+
+## Question 5c
+<!-- Draw a graph representing the probability of quitting as a function of how self motivated participants were. -->
+```{r q5c}
+couchto5k_clean %>%
+  ggplot(aes_(x = couchto5k_clean$selfmot, y = couchto5k_clean$drop_out)) + labs(title="Figure 3. Probability of quitting as a function of how self-motivated participants were. ", x="Self-motivation", y="Probability of quitting") + geom_jitter(size = 2, width = 0, height = .05, alpha = .1) + geom_smooth(method = "glm", method.args = list(family = binomial)) + scale_y_continuous(breaks = seq(0, 1, by = .2)) + scale_x_continuous(breaks = seq(5, 25, by = 1))+ theme_apa() + theme_bw() + theme(axis.line = element_line(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())+
+  theme(text=element_text(size=12,  family="sans"))+
+  scale_x_continuous(expand = c(0,0))
+```
+
+

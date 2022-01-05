@@ -1,0 +1,528 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B171608
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(reshape)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+## Question 0
+The pre-cleaning dataset is 124 rows of 9 variables; pptID (a randomly assigned ID number), age, accountability, self_mot, health, happiness, season, city, week stopped. Below, see its structure:
+```{r}
+#show example from uncleaned dataframe
+str(couchto5k)
+```
+The season and city variables were factorised - season requiring its spelling standardised due to occasional misspellings. There were also a number of impossible values: one participant who quit in week 12, two participants with self-motivation scores of -99 and two with ages of 133 and 136 - they were all deleted listwise. Below, see the structure after cleaning:
+```{r cleaning, include = TRUE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+#copy dataframe
+c25k <- couchto5k
+#eliminate bad data using listwise eliminations
+c25k <- c25k[-c(6, 22, 63, 100, 83), ]
+#change IDs to numerical values
+c25k$pptID <-substr(c25k$pptID, 3, 5)
+c25k$pptID <- as.numeric(c25k$pptID)
+#factor categorical variables
+c25k$city <- factor(c25k$city)
+#correct spelling errors
+c25k[c25k$season == 'autunm', 'season'] <- 'autumn'
+c25k$season <- factor(c25k$season)
+```
+```{r}
+#show example from cleaned dataframe
+str(c25k)
+```
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+
+```
+
+# Question 1 
+## Question 1a
+Splitting and categorising the weeks particpant stopped, and then taking the proportions, reveal that this year, 40.3% quit before week 5, 10.9% after week 5 and 48.7% finished, compared to last years' respective 45%, 10% and 45%. This is broadly inline, although there is a 5% increase in the proportion of finishers, taken from the number of those who quit before week 5. A null-hypothesis t-test reveals a very low t-score of -0.4 indicating high correlation, and a p-value of 0.7 a significant possibility this outcome was produced by chance. 
+```{r q1a}
+#create last year's results
+last_year_results <- c(as.vector(replicate(45, 'quit before week 5')), as.vector(replicate(10, 'quit after week 5')), as.vector(replicate(45, 'finished')))
+
+#divide variable into relevant categories
+week_stopped_category <- factor(cut(c25k$week_stopped, breaks = c(-Inf,4,8,Inf), labels = c("quit before week 5","quit after week 5","finished")))
+
+# create tables
+week_quit_table <- as.data.frame(table(week_stopped_category))
+previous_week_quit_table <- as.data.frame(table(last_year_results))
+
+# format and print tables
+colnames(week_quit_table) <- c('week_stopped_this_year', 'proportion')
+prop.table(table(week_stopped_category))
+colnames(previous_week_quit_table) <- c('week_stopped_last_year', 'proportion')
+prop.table(table(last_year_results))
+
+#conduct t-test and print
+t.test(previous_week_quit_table$proportion, week_quit_table$proportion, mu=0, alternative = 'two.sided')
+
+
+```
+
+## Question 1b
+Here, we see how finishing rate varies by city. More Edinburgh participants dropped out before week 5, with a larger proportion of Glasgow participants finishing. Both attrition patterns show the same phenomena of post-week 5 dropout rate being very low. A t-test between each city's dropout rates (using the same parameters as above), reveal a t-score of 1 and p-value of 0.3, indicating these distrubtions are less attributable to chance. 
+```{r q1b, warning=FALSE}
+#create a factor for when the Glasgow participants stopped
+glasgow_week_stopped_category <- factor(cut(as.numeric(unlist(c25k[c25k$city == 'Glasgow', 'week_stopped'])), breaks = c(-Inf,4,8,Inf), labels = c('quit before week 5', 'quit after week 5', 'finished')))
+#tabulate that factor
+glasgow <- prop.table(table(glasgow_week_stopped_category))
+glasgow_t_table <- as.data.frame(table(glasgow_week_stopped_category))
+
+#create a factor for when the Glasgow participants stopped
+edinburgh_week_stopped_category <- factor(cut(as.numeric(unlist(c25k[c25k$city == 'Edinburgh', 'week_stopped'])), breaks = c(-Inf,4,8,Inf), labels = c('quit before week 5', 'quit after week 5', 'finished')))
+#tabulate that factor
+edinburgh <- prop.table(table(edinburgh_week_stopped_category))
+edinburgh_t_table <- as.data.frame(table(edinburgh_week_stopped_category))
+
+# conduct t-test and print
+t.test(edinburgh_t_table$Freq, glasgow_t_table$Freq, mu=0, alternative = 'two.sided')
+
+#reshape data for plotting
+week_quit_by_city <- melt(rbind(glasgow, edinburgh))
+#rename columns
+colnames(week_quit_by_city) <- c('city', 'week_quit', 'proportion')
+
+#plot
+quit_by_city_plot <- ggplot(as.data.frame(week_quit_by_city), aes(x=week_quit, y=proportion, fill=city)) +
+geom_bar(stat="identity", position=position_dodge()) + ylim(0, 1)
+
+#draw plot
+grid.arrange(quit_by_city_plot, ncol=1)
+```
+
+## Question 1c
+```{r, include=FALSE}
+#get Glasgow age range as a numeric class
+glasgow_age <- as.numeric(unlist(c25k[c25k$city == 'Glasgow', 'age']))
+#get Edinburgh age range as a numeric class
+edinburgh_age <- as.numeric(unlist(c25k[c25k$city == 'Edinburgh', 'age']))
+#conduct t-test
+t.test(edinburgh_age, glasgow_age, mu=0, alternative = 'two.sided')
+```
+The marginal distributions of each city's age range are highly variable, but is simply as the sample sizes are small(119 participants). The central limit theorem states that as the population increases, the sample distribution will grow in resemblance to a normal distribution, therefore, by generating larger samples with the same mean and standard deviation larger samples can be simulated. Below, the marginal, or marginal, age distributions seem to vary wildly both by city and within themselves. However, the distributions of simulated larger(1000 participants) populations' resemblance to both a standard normal curve, and each other, grow (a normal distribution's range is theoretically infinite, but participant's age ranges were constrained to within 18 and 60. These limits are marked by dotted lines). Analysis reveals the populations are reasonably similar, with Glasgow's mean age being slightly less (`r mean(glasgow_age)`, to Edinburgh's `r mean(edinburgh_age)`).   
+```{r q1c}
+#set global sample size for normal distributions
+sample_size = 5000
+
+#simulate a larger population for age in Glasgow
+glasgow_norm_dt <- rnorm(length(glasgow_age)*sample_size, mean(glasgow_age), sd(glasgow_age))
+#join the real and simulated distributions
+dts <- cbind(glasgow_norm_dt, glasgow_age)
+#rename columns
+colnames(dts) <- c('simulated', 'marginal')
+#create dataframe
+dts <- as.data.frame(dts)
+dts <- gather(dts, 'distribution', 'age')
+
+#plot real and simulated Glasgow age distributions 
+glasgow_age_plot <- ggplot(dts, (aes(x=age, fill=distribution))) + 
+geom_density(alpha=0.4) +
+geom_vline(xintercept=mean(glasgow_norm_dt), color='darkblue', linetype='dashed') + 
+geom_vline(xintercept=quantile(glasgow_norm_dt)[2], color='darkblue', linetype='solid') + 
+geom_vline(xintercept=quantile(glasgow_norm_dt)[4], color='darkblue', linetype='solid') + 
+ggtitle("Glasgow age distribution") +
+geom_vline(xintercept=18, color='black', linetype='dotted') + 
+geom_vline(xintercept=60, color='black', linetype='dotted') + 
+ylim(0, 0.07) + xlim(-25, 100)
+
+#simulate a larger population for age in Edinburgh
+edinburgh_norm_dt <- rnorm(length(edinburgh_age)*sample_size, mean(edinburgh_age), sd(edinburgh_age))
+#join the real and simulated distributions
+dts <- cbind(edinburgh_norm_dt, edinburgh_age)
+#rename columns 
+colnames(dts) <- c('simulated', 'real')
+#create dataframe
+dts <- as.data.frame(dts)
+dts <- gather(dts, 'distribution', 'age')
+
+#plot real and simulated Edinburgh age distributions 
+edinburgh_age_plot <- ggplot(dts, (aes(x=age, fill=distribution))) + 
+geom_density(alpha=0.4) +
+geom_vline(xintercept=mean(edinburgh_norm_dt), color='darkblue', linetype='dashed') + 
+geom_vline(xintercept=quantile(edinburgh_norm_dt)[2], color='darkblue', linetype='solid') + 
+geom_vline(xintercept=quantile(edinburgh_norm_dt)[4], color='darkblue', linetype='solid') + 
+ggtitle("Edinburgh age distribution") +
+geom_vline(xintercept=18, color='black', linetype='dotted') + 
+geom_vline(xintercept=60, color='black', linetype='dotted') + 
+ylim(0, 0.07) + xlim(-25, 100)
+
+# draw plots
+grid.arrange(glasgow_age_plot, edinburgh_age_plot, ncol=1)
+```
+
+# Question 2
+
+## Question 2a
+```{r q2a}
+# isolate happiness variation seasonally as numeric classes
+winter_happiness <- as.numeric(unlist(c25k[c25k$season == 'winter', 'happiness']))
+summer_happiness <- as.numeric(unlist(c25k[c25k$season == 'summer', 'happiness']))
+spring_happiness <- as.numeric(unlist(c25k[c25k$season == 'spring', 'happiness']))
+autumn_happiness <- as.numeric(unlist(c25k[c25k$season == 'autumn', 'happiness']))
+year_happiness <- c25k$happiness
+```{r include=FALSE}
+#conduct t-tests on real distributions
+winter_t <- t.test(winter_happiness, mu=(mean(c25k$happiness)), alternative='two.sided')
+summer_t <- t.test(summer_happiness, mu=(mean(c25k$happiness)), alternative='two.sided')
+spring_t <- t.test(spring_happiness, mu=(mean(c25k$happiness)), alternative='two.sided')
+autumn_t <- t.test(autumn_happiness, mu=(mean(c25k$happiness)), alternative='two.sided')
+```
+```{r}
+# create simulated larger populations for happiness, for each season and the year
+autumn <- rnorm(sample_size, mean(autumn_happiness), sd(autumn_happiness))
+winter <- rnorm(sample_size, mean(winter_happiness), sd(winter_happiness))
+spring <- rnorm(sample_size, mean(spring_happiness), sd(spring_happiness))
+summer <- rnorm(sample_size, mean(summer_happiness), sd(summer_happiness))
+year <- rnorm(sample_size, mean(year_happiness), sd(year_happiness))
+
+#join simulated distributions
+seasonal_happiness <- cbind(winter, summer, spring, autumn)
+seasonal_happiness <- as.data.frame(seasonal_happiness)
+seasonal_happiness <- gather(seasonal_happiness, season)
+
+#conduct t-tests on simulated distributions
+winter_t <- t.test(winter_happiness, mu=(mean(year_happiness)), alternative='two.sided')
+summer_t <- t.test(summer_happiness, mu=(mean(year_happiness)), alternative='two.sided')
+spring_t <- t.test(spring_happiness, mu=(mean(year_happiness)), alternative='two.sided')
+autumn_t <- t.test(autumn_happiness, mu=(mean(year_happiness)), alternative='two.sided')
+
+#tabulate t-test outputs
+seasonal_happiness_t_vals <- cbind(winter_t$statistic, spring_t$statistic, summer_t$statistic, autumn_t$statistic)
+seasonal_happiness_p_vals <- cbind(winter_t$p.value, spring_t$p.value, summer_t$p.value, autumn_t$p.value)
+t_tests <- rbind(seasonal_happiness_t_vals, seasonal_happiness_p_vals)
+#rename columns and rows
+colnames(t_tests) <- c('winter', 'spring', 'summer', 'autumn')
+rownames(t_tests) <- c('t-values', 'p-values')
+colnames(seasonal_happiness) <- c('season', 'happiness')
+```
+The marginal distributions of season by happiness are too small to be meaningful, so the method described above is used to simulate a larger population of `r sample_size` participants. Winter seems to have a significant negative effect on happiness, averaging at `r mean(winter)` happiness units, whereas the others have an average mean of `r mean(mean(spring), mean(autumn), mean(summer)) ` constrained to within `r mean(spring) - mean(autumn)` units. Winter also has the tightest interquartile range - `r IQR(winter)`, to spring, summer and autumns' `r IQR(spring)`, `r IQR(summer)` and `r IQR(autumn)` respectively. 
+```{r}
+#plot seasonal happiness distributions-density
+seasonal_happiness_density_plot <- ggplot(seasonal_happiness, aes(x=happiness, fill=season)) + geom_density(alpha=0.4) + 
+geom_vline(xintercept=0, color='black', linetype='dotted') + 
+geom_vline(xintercept=100, color='black', linetype='dotted')
+
+#plot seasonal happiness distributions-boxplot
+seasonal_happiness_boxplot <- ggplot(seasonal_happiness, aes(x=happiness, fill=season)) + geom_boxplot(outlier.colour="black", outlier.shape=16,
+             outlier.size=2, notch=FALSE, alpha=0.4) +
+geom_vline(xintercept=0, color='black', linetype='dotted') + 
+geom_vline(xintercept=100, color='black', linetype='dotted')
+
+#draw plots
+grid.arrange(seasonal_happiness_density_plot, seasonal_happiness_boxplot, ncol=1)
+```
+
+
+The following one-sample, t-tests, conducted against a hypothesis that each season's mean happiness would equal that of happiness generally, reveals winter's contrasting t-value(`r t_tests[1, 1]`), with the only p-value below 0.05(`r t_tests[2, 1]`), indicating the low-likelihood this distribution is a product of chance.
+```{r}
+#draw t-test results
+t_tests
+```
+## Question 2b
+A factor can be controlled for by balancing the representation in the initial sample. For example, taking an equal number of samples from each season would control for season. However, the sample sizes for each season vary wildly from autumn's `r table(c25k$season)[1]` to `r table(c25k$season)[2]` in spring. To alleviate this, we can simulate larger distributions by sampling distributions of equal size, and using those distributions to generate normal distributions. This method reveals older people are slightly more likely to have lower happiness scores. 
+```{r q2b}
+
+#define function to control for season
+age_happiness_season_sample <- function(df, str_df){
+#get age and happiness variables for dataframe
+df_age <- c25k[c25k$season == str_df, 'age']
+df_happiness <- c25k[c25k$season == str_df, 'happiness']
+#join age and happiness variables
+df_happiness_by_age <- cbind(df_age, df_happiness)
+# sample from happiness category
+df_happiness_by_age_sample <- df_happiness_by_age[sample(nrow(cbind(df_age, df_happiness)), 5, replace=TRUE), ]
+# create normal distributions
+happiness_dt <- rnorm(sample_size, mean(df_happiness_by_age_sample$happiness), sd(df_happiness_by_age_sample$happiness))
+age_dt <- rnorm(sample_size, mean(df_happiness_by_age_sample$age), sd(df_happiness_by_age_sample$age))
+happiness_by_age_dt <- cbind(happiness_dt, age_dt)
+# factor ages into age ranges
+dt_age_group <- factor(cut(as.data.frame(happiness_by_age_dt)$age_dt, breaks = c(-Inf, 17, 29, 39, 49, 59, Inf), labels = c('under 18', '18-29', '30-39', '40-49', '50-59', '60+')))
+happiness_by_age_dt <- cbind(happiness_dt, as.data.frame(dt_age_group))
+
+return(happiness_by_age_dt)
+}
+
+#get controlled age and happiness for each season
+winter_age_happiness <- age_happiness_season_sample(winter, 'winter')
+spring_age_happiness <- age_happiness_season_sample(spring, 'spring')
+summer_age_happiness <- age_happiness_season_sample(summer, 'summer')
+autumn_age_happiness <- age_happiness_season_sample(autumn, 'autumn')
+
+#join controlled samples for each season
+ctrl_for_season <- rbind(winter_age_happiness, spring_age_happiness, summer_age_happiness, autumn_age_happiness)
+
+#rename columns
+colnames(ctrl_for_season) <- c('happiness', 'age_group')
+
+#plot controlled season distributions - density
+age_season_ctrl_den <- ggplot(as.data.frame(ctrl_for_season), aes(x=happiness, fill=age_group)) + geom_density(alpha=0.4) + 
+geom_vline(xintercept=0, color='black', linetype='dotted') + 
+geom_vline(xintercept=100, color='black', linetype='dotted')
+
+#plot controlled season distributions - boxplot
+age_season_ctrl_box <- ggplot(as.data.frame(ctrl_for_season), aes(x=happiness, fill=age_group)) + geom_boxplot(outlier.colour="black", outlier.shape=16, outlier.size=2, notch=FALSE, alpha=0.4) +
+geom_vline(xintercept=0, color='black', linetype='dotted') + 
+geom_vline(xintercept=100, color='black', linetype='dotted')
+
+#draw plots
+grid.arrange(age_season_ctrl_den, age_season_ctrl_box, ncol=1)
+
+```
+
+## Question 2c
+None of the primary variables (those of interest to the researchers), so happiness, health and if participants completed the programme not are useful as baseline variables. Age is used as the baseline category here, as the above results indicate it affects happiness, and intuition suggests it affects health too.  
+```{r q2c}
+```
+```{r}
+```
+
+# Question 3
+
+## Question 3a
+A linear regression model mapping completion to happiness, using age as a baseline model, returns the following coefficients:
+```{r q3a, warning=FALSE}
+
+#create working dataframe
+baseframe <- c25k
+baseframe <- mutate(baseframe, completed=ifelse(week_stopped == 9, 1, 0))
+
+#create model
+happiness_model <- lm(completed ~ 1 + happiness + age, data=baseframe)
+
+#print coefficients
+coef(happiness_model)
+```
+This indicates the mean completion rate associated with zero happiness units is 0.42, and that the average income increase associated with an increase of one completion-rate unit is 0.0012. Considering that completion is a binary factor, this model suggests little correlation between completion rate and happiness. 
+```{r}
+```
+## Question 3b
+Adapting the above model to model health, returns the following coefficients: 
+```{r q3b}
+#create model
+happiness_health_model <- lm(completed ~ 1 + happiness + health + age, data=baseframe)
+
+#print coefficients 
+coef(happiness_health_model)
+```
+Again, the coefficients indicate a very slight positive correlation between health and happiness, but it is so small no meaningful correlation can be attributed. 
+```{r}
+```
+## Question 3c
+The week participants stopped is a discreet variable, which means it is is easier to interpret the coefficients. Every week a participant continues, corresponds to a increase of 0.0002 happiness units and 0.0852 health units. This is still onlt a very slight increase, suggesting no significant correlation.  
+```{r q3c}
+#create model
+happiness_health_model_week_stopped <- lm(week_stopped ~ 1 + happiness + health + age, data=baseframe)
+
+#print coefficients 
+coef(happiness_health_model_week_stopped)
+```
+
+## Question 3d
+These results are inconclusive. All three examples showed a positive correlation between health, happiness and dropout, but the correlations are too small to indicate anything significant. One possibility is that the data is too sparse for any meaningful patterns to emerge. Simulating larger populations does not work with this kind of modelling, where the interest is correlations, as generating distributions destroys the by-sample links. Futhermore, it is possible the baseline model had too much influence on the primary features - experimentation with different baseline models may prove fruitful research.  
+
+# Question 4
+
+```{r q4, warning=FALSE}
+subset <- c25k[c25k$week_stopped == 9, ]
+Glasgow <- subset[subset$city == 'Glasgow', ]
+Edinburgh <- subset[subset$city == 'Edinburgh', ]
+
+#calculate Glasgow means
+Glasgow_means <- rbind(mean(as.numeric(unlist(Glasgow[Glasgow$season == 'winter', 'happiness']))),
+mean(as.numeric(unlist(Glasgow[Glasgow$season == 'spring', 'happiness']))),
+mean(as.numeric(unlist(Glasgow[Glasgow$season == 'summer', 'happiness']))),
+mean(as.numeric(unlist(Glasgow[Glasgow$season == 'autumn', 'happiness']))))
+
+#calculate Edinburgh means
+Edinburgh_means <- rbind(mean(as.numeric(unlist(Edinburgh[Edinburgh$season == 'winter', 'happiness']))),
+mean(as.numeric(unlist(Edinburgh[Edinburgh$season == 'spring', 'happiness']))),
+mean(as.numeric(unlist(Edinburgh[Edinburgh$season == 'summer', 'happiness']))),
+mean(as.numeric(unlist(Edinburgh[Edinburgh$season == 'autumn', 'happiness']))))
+
+means <- cbind(Glasgow_means, Edinburgh_means)
+colnames(means) <- c('Glasgow', 'Edinburgh')
+rownames(means) <- c('Winter', 'Spring', 'Summer', 'Autumn')
+
+#calculate Glasgow sds
+Glasgow_sds <- rbind(sd(as.numeric(unlist(Glasgow[Glasgow$season == 'winter', 'happiness']))),
+sd(as.numeric(unlist(Glasgow[Glasgow$season == 'spring', 'happiness']))),
+sd(as.numeric(unlist(Glasgow[Glasgow$season == 'summer', 'happiness']))),
+sd(as.numeric(unlist(Glasgow[Glasgow$season == 'autumn', 'happiness']))))
+
+#calculate Edinburgh sds
+Edinburgh_sds <- rbind(sd(as.numeric(unlist(Edinburgh[Edinburgh$season == 'winter', 'happiness']))),
+sd(as.numeric(unlist(Edinburgh[Edinburgh$season == 'spring', 'happiness']))),
+sd(as.numeric(unlist(Edinburgh[Edinburgh$season == 'summer', 'happiness']))),
+sd(as.numeric(unlist(Edinburgh[Edinburgh$season == 'autumn', 'happiness']))))
+
+sds <- cbind(Glasgow_sds, Edinburgh_sds)
+colnames(sds) <- c('Glasgow', 'Edinburgh')
+rownames(sds) <- c('Winter', 'Spring', 'Summer', 'Autumn')
+
+
+# reshape data
+molten_means <- melt(means)
+molten_means$sds <- melt(sds)$value
+colnames(molten_means) <- c('Season', 'City', 'Happiness', 'sd')
+#molten_means
+
+#plot data
+average_happiness_plot <- ggplot(molten_means, aes(x=Season, y=Happiness, group=City)) + 
+geom_line(aes(color=City), alpha=0.7) + 
+geom_point(aes(color=City), alpha=0.7) +
+ggtitle("Average participant happiness for Glasgow and\nEdinburgh by after comleting Couch to 5k by season") + theme(panel.border = element_rect(color = "gray", fill = NA, size = 5))
+
+grid.arrange(average_happiness_plot, ncol=1)
+
+```
+
+
+# Question 5
+
+## Question 5a
+Below, see the general (not controlling for any factors) likelihoods of completing the programme, for marginal and simulated populations calculated by simply tallying the number of finishers to non-finishers. The plot below is the represents the distribution the of probability of finishing as calculated by a multiple regression model - by using the model's standard error to approximate the standard deviation, we can use a model to make inferences about a larger population.  
+```{r q5a}
+#calculate marginal proportions of completed to uncompleted
+real_proportion_completed <- prop.table(table(factor(cut(c25k$week_stopped, breaks = c(-Inf, 8, Inf), labels = c('uncompleted', 'completed')))))
+
+#calculate simulated proportions of completed to uncompleted
+week_stopped_unctrld_dt <- rnorm(sample_size, mean(c25k$week_stopped), sd(c25k$week_stopped))
+simulated_proportion_completed <- prop.table(table(factor(cut(week_stopped_unctrld_dt, breaks = c(-Inf, 8, Inf), labels = c('uncompleted', 'completed')))))
+
+#tabulate proportions
+proportion_completed <- rbind(real_proportion_completed, simulated_proportion_completed)
+#rename rows and columns
+colnames(proportion_completed) <- c('likelihood to not complete', 'likelihood to complete')
+rownames(proportion_completed) <- c('marginal population', 'simulated population')
+proportion_completed
+
+#split into completed / uncompleted
+baseline_2 <- c25k
+baseline_2[baseline_2$week_stopped != 9, 'week_stopped'] <- 0
+baseline_2[baseline_2$week_stopped == 9, 'week_stopped'] <- 1
+
+
+#build multiple regression model
+mr_model <- lm(week_stopped ~ 1 + age + accountability + selfmot + health + happiness + season + city, data=baseline_2)
+mr_model_predictions <- as.data.frame(predict(mr_model))
+colnames(mr_model_predictions) <- c('completion_probability')
+
+#build normal distributions based on model
+completion_probability <- rnorm(sample_size, mean(mr_model_predictions$completion_probability), 0.371)
+completion_probability <- as.data.frame(completion_probability)
+
+ggplot(completion_probability, aes(x=completion_probability)) + geom_density(fill='blue', alpha=0.4) +
+ggtitle('Probability of Completing Programme Based on a Multiple Regression Model') +
+geom_vline(xintercept=0, color='black', linetype='dotted') +
+geom_vline(xintercept=1, color='black', linetype='dotted') +
+geom_vline(xintercept=mean(mr_model_predictions$completion_probability), color='darkblue', linetype='dashed') +
+geom_vline(xintercept=quantile(mr_model_predictions$completion_probability)[2], color='darkblue', linetype='solid') +
+geom_vline(xintercept=quantile(mr_model_predictions$completion_probability)[4], color='darkblue', linetype='solid')
+#plot 
+#ggplot(mr_model_predictions, aes(x=completion_probability)) + geom_density(alpha=0.7) +
+#ggtitle('Probability of Completing Programme Based on a Multiple Regression Model')
+
+```
+
+
+## Question 5b
+Based on the marginal population, there is a roughly 50% chance of completing. However, when a larger population is simulated, this drops to closer to 25% chance of completing. By using a multiple regression model multiple explanatory variables' effects can be used to inform predictions.  
+
+The multiple regression model distribution shows the probability of a new participant with a random set of explanatory factors will finish is variable. The most likely probability assigned to them is around 0.6, with there being a dip in likelihood around 0.4. It's predictions are also more inline with the probabilities calculated by taking the proportions of finishers to non-finishers in a simulated larger population. 
+```{r q5b}
+
+```
+
+## Question 5c
+```{r q5c}
+#completed_dt <- cut(c25k$week_stopped, breaks = c(-Inf, 8, Inf), labels = c(0, 1))
+
+#build model
+baseline_2 <- c25k
+baseline_2[baseline_2$week_stopped != 9, 'week_stopped'] <- 0
+baseline_2[baseline_2$week_stopped == 9, 'week_stopped'] <- 1
+model <- lm(week_stopped ~ selfmot, data = baseline_2)
+
+#use model to generate samples 
+query <- tibble(selfmot = c(7:24))
+completion_probability <- as.data.frame(predict(model, newdata = query))
+colnames(completion_probability) <- c('completion_probability')
+completion_probability$self_motivation <- c(1:nrow(completion_probability))
+baseline_2$week_stopped <- factor(baseline_2$week_stopped)
+```
+The upper plot indicates there is a link between self motivation and completion likelihood, with more self-motivated participants more likely to complete, but it does not appear particularly strong. Put quantitatively, the correlation between them is `r cor(as.numeric(baseline_2$week_stopped), baseline_2$selfmot)`, indicating a weak positive correlation. This is further evidenced by the plot resultant from a linear regression model of their relationship(lower). The coefficients of this model are `r coef(model)`, which can be interpreted thusly; The likelihood to complete the programme associated with zero self-motivation is -0.1909; one additional self-motivation score will results in an estimated increase in completion likelihood of 0.0447. Using the same method as above, this can be used to calculate a probability distribution representing the probability of completing the programme as a function of self-motivation. 
+```{r}
+self_motivation_completion_distribution <- rnorm(sample_size, mean(predict(model), 0.154))
+
+self_motivation_completion_distribution <- as.data.frame(self_motivation_completion_distribution)
+
+colnames(self_motivation_completion_distribution) <- c('completion_likelihood')
+
+function_plot <- ggplot(self_motivation_completion_distribution, aes(x=completion_likelihood)) +  
+geom_density(fill='blue', alpha=0.4) +
+ggtitle('Probability of Completing Programme as a Function of Self Motivation Based on a \nLinear Regression Model') +
+geom_vline(xintercept=0, color='black', linetype='dotted') +
+geom_vline(xintercept=1, color='black', linetype='dotted') +
+geom_vline(xintercept=mean(self_motivation_completion_distribution$completion_likelihood), color='darkblue', linetype='dashed') +
+geom_vline(xintercept=quantile(self_motivation_completion_distribution$completion_likelihood)[2], color='darkblue', linetype='solid') +
+geom_vline(xintercept=quantile(self_motivation_completion_distribution$completion_likelihood)[4], color='darkblue', linetype='solid')
+
+
+
+#plot model
+lm_plot <- ggplot(completion_probability, aes(y=self_motivation, x=completion_probability)) + geom_line(color='red') + geom_point(color='red')
+
+#format variable names for plot
+baseline_2 <- mutate(baseline_2, completed=ifelse(week_stopped == 1, 'completed', 'uncompleted'))
+
+#rename column
+baseline_2$self_motivation <- baseline_2$selfmot
+
+#plot marginal data
+jitter_plot <- ggplot(baseline_2, aes(x=completed, y=self_motivation)) + geom_jitter(width=0.1, color='red', alpha=0.4, size=3)
+
+grid.arrange(jitter_plot, lm_plot, ncol=1)
+function_plot
+                    
+```
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,219 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B204500
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+Answer to Question 0:The first step was data cleaning. This is because there were some impossible values in the given data. I used hist() and table() to check the impossible values in all the variables in the data. After obtaining the data by hist() and table(), I found out which values in each variable were impossible by referring to the range of each variable in the data dictionary. Then I deleted the impossible values. For instance, I omitted the values beyond 100 in the age variable, the value of -99 in the seflmot variable and the value of 12 in the week_stopped variable. This is because these values did not align with the value range in the data dictionary. Next, I summarised all the cleaned data by summary (). The min, max, median and mean of each variable were acquired, which allowed me to analyse each variable in a more direct way. 
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+hist(couchto5k$age)
+hist(couchto5k$accountability)
+hist(couchto5k$selfmot)
+hist(couchto5k$health)
+hist(couchto5k$happiness)
+hist(couchto5k$week_stopped)
+table(couchto5k$season)
+table(couchto5k$city)
+
+couchto5k$season[couchto5k$season=="autunm"]<-"autumn"
+couchto5k<-couchto5k[-c(40,82),]
+couchto5k<-couchto5k[-c(118,119),]
+couchto5k<-couchto5k[-c(11),]
+
+#{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+summary(couchto5k)
+
+```
+
+# Question 1 
+
+## Question 1a
+Answer to Question 1a:According to the requirements of the question, I categorised the data in the variable of “week_stopped”. The data was categorised into three groups (“before_stop” means the week stopped was between 1-4; “between_stop” means the week stopped was between 5-8; and “finish_stop” means the week stopped was 9). Then I used the chisq.test to check the results of 45% and 10% specified in the question. It was found that the p-value was <0.05, meaning that the data given in the sample was in line with the results in earlier the survey. 
+```{r q1a}
+couchto5k<-
+  couchto5k %>%
+  mutate(
+    stop_week=week_stopped,
+    stop_week=ifelse(week_stopped<5,"before_stop",stop_week),
+    stop_week=ifelse(week_stopped>=5 & week_stopped<9, "between_stop",stop_week),
+    stop_week=ifelse(week_stopped==9, "finish_stop",stop_week)
+  )
+as.factor(couchto5k$stop_week)
+table(couchto5k$stop_week)
+chisq.test(table(couchto5k$stop_week),p=c(0.45,0.45,0.10))
+```
+
+## Question 1b
+Answer to Question 1b:I recategorised the week_stopped in order to answer this question. The method of categorising was similar to the one in 1a. By categorising the week_stopped into three categories, I analysed if the attrition rates were influenced by the city. After using chisq.test to examine the results, it was shown that the attrition rates changed according to the city. 
+
+Answer to Question 1c:The results of t.test showed that the average age of the participants changed according to the city, since the p-value was <0.05. First, the variable of city was categorised by as.factor(). Then, t.test was used to examine the relationship between city and age. Finally, it was found that the p-value=2e-16.
+```{r q1b}
+
+before5<-couchto5k[which(couchto5k$week_stopped<5),]
+chisq.test(table(before5$city))
+
+comp9<-couchto5k[which(couchto5k$week_stopped==9),]
+chisq.test(table(comp9$city))
+
+after5<-couchto5k[which(couchto5k$week_stopped>=5 & couchto5k$week_stopped<9),]
+chisq.test(table(after5$city))
+
+
+
+
+## Question 1c
+#Do the average ages of participants who commenced the programme differ by city?
+
+#```{r q1c}
+couchto5k$city<-as.factor(couchto5k$city)
+t.test(as.numeric(couchto5k$city),couchto5k$age )
+```
+
+# Question 2
+
+## Question 2a
+Answer to Question 2a:Since there were four categories in the variable of season, it was necessary to categories the variable before using group by() to analyse. In addition, a linear model was used to analyse the data since it might be appropriate to do so. From lm() it might be seen that the happiness of the participants was not influenced by the season. This is because the p-value obtained by lm() was 0.0893. Thus, it can be argued that the score of happiness was not affected by the season.
+```{r q2a}
+gd<-couchto5k %>%
+  group_by(season) %>%
+  summarise(mean_se(happiness))
+gd
+q<-gd %>%
+  ggplot(aes(x=season,y=y,ymin=ymin,ymax=ymax))+
+  geom_point(size=2)+
+  geom_bar(stat = "identity")+
+  geom_errorbar(width=.2)+
+  ylab("happiness")+
+  xlab("season")
+q
+
+modelh<-lm(happiness~season,data = couchto5k)
+summary(modelh)
+
+```
+
+## Question 2b
+Answer to Question 2b:A linear regression model was used to examine the influence of age on happiness. After building the model, lm() was used to examine whether age had an influence on happiness (y=happiness, x1=age). The results showed that the p-value=0.00734. Thus, it might be the case that age could influence the happiness of individuals.  
+```{r q2b}
+modelg<-lm(happiness~age,data = couchto5k)
+summary(modelg)
+```
+
+## Question 2c
+Answer to Question 2c:In order to continue to utilise the baseline effects acquired in the previous two questions in question 3, all the variables in the data were taken into consideration and lm() was used to examine the data. It was found that four variables in coefficient (age, seflmot, health, seasoning) were outstanding and their p-value <0.05. In order to continue to make use of the baseline effects in question 3, the variable of health was selected to examine the influence of health on happiness. 
+```{r q2c}
+df<-couchto5k
+str(df)
+df$season<-as.factor(df$season)
+df$city<-as.factor(df$city)
+model<-lm(week_stopped~.,couchto5k[,2:9])
+summary(model)
+```
+
+# Question 3
+
+## Question 3a
+Answer to Question 3a：lm() was manipulated to examine whether happiness was influenced by the competition of the test, Firstly, ifelse was used to filter the data of 9 in week_stopped, which were named as finished9. Then a model named model 1 was established. After that, happiness and finished9 were entered into lm() and summary was used to analyse the model. It was found that the p-value=0.756. Since the p-value was >0.05, it can be argued that there was no connection between the happiness and the competition of the test. 
+```{r q3a}
+couchto5k<-
+  couchto5k %>%
+  mutate(
+    finished9=ifelse(week_stopped==9,"complete","not complete")
+  )
+model1<-lm(happiness~finished9,data=couchto5k)
+summary(model1)
+
+```
+
+## Question 3b
+Answer to Question 3b：Based on the analysis in 3a, it was necessary to reconsider the influence of health on happiness. Thus, a new model was built for further analysis. On the basis of lm() in 3a, health was entered as X2 and summary () was utilised to examine the model. The results showed that the p-value=0.239, which was >0.05. Hence, there was no relationship between health and happiness.
+```{r q3b}
+model2<-lm(happiness~finished9+health,data = couchto5k)
+summary(model2)
+```
+
+## Question 3c
+Answer to Question 3c：According to the expectation in the question, week_stopped was categorised in 3a, named finished9 and a new model was built name modelm. Finally, lm() was used to examine modelm. Variables including happiness, finished9 and health were entered into lm() and summary() was used to analyse modeln. The results showed that the p-value=0.00278, which was <0.05. Thus, it can be argued that the feeling of acting healthily had a positive effect on the effects of good health. 
+```{r q3c}
+modelm<-lm(happiness~finished9+health+finished9:health,data=couchto5k)
+summary(modelm)
+```
+
+## Question 3d
+Answer to Question 3d：In regression analysis, week_stopped and health were seen as independent variables while happiness as a dependent variable. The result showed that happiness was not affected by the variables of week_stopped and health. The rsquared value was found negative, showing that the model was not the most suitable one. In addition, the p-value also demonstrated the non-significance of the model
+
+# Question 4
+Answer to Question 4：Firstly, a subset named newdata was created and filter () was utilised to exclude those who finished the test. In other words, the data of 9 in week_stopped were excluded. Then ggplot was used to draw the graph that showed the average happiness by season and city (x was city and y was happiness). The average happiness was demonstrated through geom_boxplot.  
+```{r q4}
+newdata<-
+  couchto5k %>%
+  filter(couchto5k$week_stopped==9)
+newdata %>%
+  ggplot(aes(x =city, y = happiness, fill = as.factor(season))) +
+  geom_boxplot()
+```
+
+
+# Question 5
+
+## Question 5a
+Answer to Question 5a: By using the logistic regression model, it is possible to predict the possibility of dropping out. Firstly, ifelese was used to categorise the variable of week_stopped. To be specific, if the stopped week was 9, the data was marked as 1; if the stopped week was before week 9, the data was marked as 0. A new model named modela was established. Then droppingweek, accountability and selfmot were entered into glm() to examine and summary() was used to analyse the model. The results showed that accountability and selfmot did not show significant correlation, meaning that the possibility of dropping out was likely to increase.  
+```{r q5a}
+couchto5k<-
+  couchto5k %>%
+  mutate(
+    droppingweek=ifelse(week_stopped==9,1,0)
+  )
+modela<-glm(droppingweek~accountability+selfmot,data=couchto5k,family ="binomial" )
+summary(modela)
+```
+
+
+## Question 5b
+Answer to Question 5b: Logistic regression was used to illustrate modela. When other variables were the same, an increase of 1 in accountability would lead the expected dropping out to be multiplied by 0.997; an increase of 1 in selfmot would lead to the expected dropping out to be multiplied by 1.130. Since the expected variable could not be 0, the intercept did not have any specific meaning. 
+```{r q5b}
+exp(coef(modela))
+```
+
+## Question 5c
+The method of plot() was used to show the relationship between the possibility of dropping out and self-motivation of the participants.  
+```{r q5c}
+
+plot(df$selfmot, pbinom(as.numeric(df$week_stopped), size = 13, prob = 0.9), type="s")
+```
+
+
+
+
+
+
+
+
+
+

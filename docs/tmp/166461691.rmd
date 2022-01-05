@@ -1,0 +1,353 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+params:
+  examnumber: "B192666"
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+summary(couchto5k)
+names(couchto5k)
+par(mfrow=c(2,3))
+boxplot(couchto5k$age,main="Boxplot of age")
+boxplot(couchto5k$accountability,main="Boxplot of accountability")
+boxplot(couchto5k$selfmot,main="Boxplot of selfmot")
+boxplot(couchto5k$health,main="Boxplot of health")
+boxplot(couchto5k$happiness,main="Boxplot of happiness")
+boxplot(couchto5k$week_stopped,main="Boxplot of week_stopped")
+
+```
+
+```{r}
+sort(couchto5k$age)
+sort(couchto5k$selfmot)
+sort(couchto5k$week_stopped)
+
+couchto5k$age[couchto5k$age>100]<-NA
+couchto5k<-couchto5k %>% drop_na()
+couchto5k$selfmot[couchto5k$selfmot<0]<-NA
+couchto5k<-couchto5k %>% drop_na()
+couchto5k$week_stopped[couchto5k$week_stopped>9]<-NA
+couchto5k<-couchto5k %>% drop_na()
+```
+Start by looking at the data frame and variable names. Then use the box plot to view the outliers. After sorting the variables with outliers, remove the outliers.The age of two rows of observations is more than 100 years old, the self-motivation of two rows of observations is less than 5, and the observation week of 1 row is more than 9 weeks, so these 5 rows of abnormal observations are eliminated.
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+summary(couchto5k)
+names(couchto5k)
+par(mfrow=c(2,3))
+hist(couchto5k$age, freq = FALSE,main="Histogram of age",xlab="Age")
+hist(couchto5k$accountability, freq = FALSE,main="Histogram of accountability",xlab="Accountability")
+hist(couchto5k$selfmot, freq = FALSE,main="Histogram of self-motivation",xlab="Self-motivation")
+hist(couchto5k$health, freq = FALSE,main="Histogram of health",xlab="Health")
+hist(couchto5k$happiness, freq = FALSE,main="Histogram of happiness",xlab="Happiness")
+hist(couchto5k$week_stopped, freq = FALSE,main="Histogram of stopped week",xlab="Stopped week")
+
+```
+The information came from the "Couch to 5k" data collection, which included participantID, age, season, city, and week stopped for 130 individuals. Participants were also assessed on the psychometric aspects of accountability and self-motivation at Week 0 and on the self-reported happiness and health metric at the project's conclusion. 
+ Age ranges from 18 to 60, with mean and median are 40.2 and 42.5, respectively. accountability ranges from 5 to 33, with mean and median are both 19. It can be seen from the histogram that accountability is normally distributed. Self-motivation ranges from 8 to 25, with mean and median are both 15. It can be seen from the histogram that self-motivation is normally distributed. health ranges from 30 to 79, the median is slightly higher than the mean, indicating that health is a left-skewed distribution. Happiness is the most counted at 0 and 100. Most participant complete the programme. 
+
+
+
+  # Question 1 
+
+## Question 1a
+
+```{r q1a}
+p1 <- nrow(couchto5k[couchto5k$week_stopped <= 5,])/nrow(couchto5k)
+ct <- table((couchto5k$week_stopped <= 5)+0)
+pt <- c(0.55,0.45)
+chisq.test(ct,p=pt)
+```
+We assume $p$ is the proportion of participants who abandoned the programme before the halfway point in week 5.
+
+$H_0: p = 0.45$
+
+$H_1: p \neq 0.45$
+
+The x-squared is 0.2, with the p value is 0.7, which is greater than 0.05, so we cannot reject the null hypothesis and conclude the proportion of participants who abandoned the programme before the halfway point in week 5 is 0.45. The data in the sample is consistent with the earlier survey.
+```{r}
+p2 <-nrow(couchto5k[couchto5k$week_stopped %in% c(6,7,8),])/nrow(couchto5k)
+ct2 <- table((couchto5k$week_stopped %in% c(6,7,8))+0)
+pt2 <- c(0.9,0.1)
+chisq.test(ct2,p=pt2)
+```
+We assume $p$ is the proportion of participants who gave up before the end of the programme.
+
+$H_0: p = 0.1$
+
+$H_1: p \neq 0.1$
+
+The x-squared is 2, with the p value is 0.1, which is greater than 0.05, so we cannot reject the null hypothesis and conclude the proportion of participants who gave up before the end of the programme is 0.1.The data in the sample is consistent with the earlier survey.
+## Question 1b
+
+```{r q1b}
+couchto5k$categories <- ifelse(couchto5k$week_stopped < 5,0,ifelse(couchto5k$week_stopped %in% c(5,6,7,8),1,2))
+chisq.test(table(couchto5k$categories,couchto5k$city))
+chisq.test(table(couchto5k$categories,couchto5k$city),simulate.p.value = TRUE)
+
+Glasgow.n <- nrow(couchto5k[couchto5k$city == "Glasgow",])
+Edinburgh.n <- nrow(couchto5k[couchto5k$city == "Edinburgh",])
+(couchto5k[couchto5k$city == "Glasgow",] %>% 
+  group_by(categories) %>% summarise(rate =n()/Glasgow.n))
+(couchto5k[couchto5k$city == "Edinburgh",] %>% 
+  group_by(categories) %>% summarise(rate =n()/Edinburgh.n))
+
+```
+The week_stopped was examined using the chi-square test of independence to see if the patterns of attrition rates differed by city. The attrition rate pattern in Edinburgh was compared to the attrition rate pattern in Glasgow.
+
+$H_0: The patterns of attrition rates of citys are the same$
+
+$H_1: The patterns of attrition rates differ by city$
+
+The x-squared is 0.7, with the p value is 0.7, which is greater than 0.05, so we cannot reject the null hypothesis and conclude the patterns of attrition rates of citys are the same.
+## Question 1c
+
+```{r q1c}
+couchto5k %>% group_by(city) %>% summarise(average.age = mean(age))
+library(ggplot2)
+plot((density(couchto5k$age)))
+qqnorm(couchto5k$age)
+shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"])
+shapiro.test(couchto5k$age[couchto5k$city=="Glasgow"])
+table_1c <- couchto5k %>% 
+  select(city, age) %>%
+  group_by(city)
+ggplot(table_1c, aes(x=Glasgow.n)) + 
+  geom_density() +
+  labs(x = "Age", y = "Probability") +
+  scale_x_continuous(limits = c(5,70))
+```
+To see if the mean age of participants differed between cities, we used a two-sample t-test to compare the mean age in Edinburgh to the mean age in Glasgow. 
+The data was initially checked for normality using Shapiro-Wilk, which revealed that the age data for Edinburgh satisfied the normality assumption but the age data for Glasgow did not. As a result, density charts were used to investigate Glasgow's ages further. A approximately normal distribution was visible on the density plot. A t-test on the age data for Edinburgh was thought to be viable based on this figure. To investigate this study question, a two-sample t-test was used.
+```{r q1c t.test}
+t.test(couchto5k[couchto5k$city == 'Edinburgh',]$age,couchto5k[couchto5k$city == 'Glasgow',]$age,var.equal=T)
+sd_E<-couchto5k[couchto5k$city == 'Edinburgh',]$age%>%sd()
+sd_G<-couchto5k[couchto5k$city == 'Glasgow',]$age%>%sd()
+mean_E<-couchto5k[couchto5k$city == 'Edinburgh',]$age%>%mean()
+maen_G<-couchto5k[couchto5k$city == 'Glasgow',]$age%>%mean()
+```
+We assume $\mu_1$ is the average age of participants in Edinburgh, $\mu_2$ is the average age of participants in Glasgow 
+
+$H_0:\mu_1=\mu_2$
+
+$H_1:\mu_1 \neq \mu_2$
+
+The t-statistic is 2 with the p value is 0.02, which is less than 0.05, so we can reject the null hypothesis and conclude the average ages of participants who commenced the programme differ by the two cities.The average ages of participants from Edinburgh(M = `r mean_E`, SD = `r sd_E`) is significant higher than from Glasgow(M = `r maen_G`, SD = `r sd_G`), t(128) = 2, p = 0,02.
+
+
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+unique(couchto5k$season)
+couchto5k$season[couchto5k$season == "autunm"] <- "autumn"
+```
+"Autumn" was initially mistyped as "autunm". These were amended to read "autumn".To see if the season in which participants were questioned had an influence on their happiness rating, the season in which they were interviewed was modelled using simple linear regression. As a predictor, the season in which individuals were questioned was taken into account. At a significance level of 0.05, effects will be regarded  significant.
+```{r model}
+fit_2a <- lm(happiness~season,couchto5k)
+plot(fit_2a)
+library(sjPlot)
+tab_model(fit_2a)
+shapiro.test(residuals(fit_2a))
+library(car)
+ncvTest(fit_2a)
+dwt(fit_2a)
+summary(aov(fit_2a))
+summary(fit_2a)
+data <- aggregate(couchto5k$happiness, by = list(type = couchto5k$season), mean)
+barplot(data$x, xlab = "season",ylab = "mean happiness", names.arg = data$type)
+```
+$H_0$: The average happiness of four seasons are the same.
+
+$H_1$: The average happiness of four seasons are not all the same.
+The model failed to fulfil the condition of error term normality(W=`r shapiro.test(residuals(fit_2a))$statistic`, p= `r shapiro.test(residuals(fit_2a))$p.value`),which might indicate that the model still requires the addition of more predictors. But,the model fulfilled the assumptions of linearity, homoscedasticity( X²(`r ncvTest(fit_2a)$Df`)=`r ncvTest(fit_2a)$ChiSquare`, p=`r ncvTest(fit_2a)$p`), and error independence (DW = `r dwt(fit_2a)$dw`, p=`r dwt(fit_2a)$p`)). 
+Results showed a significant conditional association between Season and participants' happiness rating.The F-value is 5.19 with the p value is 0.0021<.05). Especially, there is a significant conditional association between autumn and participants' happiness rating (β=`r summary(fit_2a)$coefficients[1,1]`, SE= `r summary(fit_2a)$coefficients[1,2]`, p<.05)
+ so we can reject the null hypothesis and conclude the average happiness of four seasons are not all the same. Participants' happiness ratings affected by the season they were interviewed in.
+
+From the linear regression results, happiness in spring> happiness in summer> happiness in autumn> happiness in winter, and happiness in winter is significantly lower than that in spring.
+
+
+## Question 2b
+The season that participants were interviewed and the participants' age were modelled using a multiple linear regression to see if, while adjusting for season, the participants' age moderates the influence on participants' happiness rating. The age of the individuals was used as a predictor. At a significance level of 0.05, effects will be regarded significant.
+```{r q2b}
+fit_2b <- lm(happiness~season+age,couchto5k)
+plot(fit_2b)
+library(sjPlot)
+tab_model(fit_2b)
+summary(fit_2b)
+shapiro.test(residuals(fit_2b))
+ncvTest(fit_2b)
+dwt(fit_2b)
+```
+We assume $\beta$ is the coefficient of age.
+
+$H_0:\beta=0$
+
+$H_1:\beta \neq 0$
+
+The model failed to fulfil the condition of error term normality(W=`r shapiro.test(residuals(fit_2b))$statistic`, p= `r shapiro.test(residuals(fit_2b))$p.value`),which might indicate that the model still requires the addition of more predictors. But the model fulfilled the assumptions of linearity, homoscedasticity( X²(`r ncvTest(fit_2b)$Df`)=`r ncvTest(fit_2b)$ChiSquare`, p=`r ncvTest(fit_2b)$p`), and error independence (DW = `r dwt(fit_2b)$dw`, p=`r dwt(fit_2b)$p`)). 
+
+The t-value is 1.49 and the standard error is 0.219 with p value is 0.138>0.05, so we cannot reject the null hypothesis and conclude the happiness was not significantly affected by age.
+## Question 2c
+
+```{r q2c}
+anova(fit_2a,fit_2b)
+```
+We choose the season model, because happiness is affected by the season but not affected by age. The age of the participants did not explain the significant differences in happiness scores.
+# Question 3
+
+## Question 3a
+The season and whether_complete were modelled using multiple linear regression to see if, after adjusting for season, the participants' age moderates the influence on their satisfaction rating. A value of 1 indicates that the model has been completed, whereas a value of 0 indicates that the model has not been completed. As a predictor, the whether_complete was used. At a significance level of 0.05, effects will be regarded statistically significant.
+```{r q3a}
+couchto5k$whether_complete <- ifelse(couchto5k$week_stopped == 9,1,0)
+model3a <- lm(happiness~season+whether_complete, data = couchto5k)
+tab_model(model3a)
+summary(model3a)
+plot(model3a)
+```
+We assume $\beta_2$ is the coefficient of whether or not they completed the
+programme.
+
+$H_0:\beta_2=0$
+
+$H_1:\beta_2 \neq 0$
+The assumptions of model3a have been examined, and no major flaws have been discovered.
+
+The t-value is 3.28 and the standard error is 7.40 with p value is 0.001, so we can reject the null hypothesis and conclude the happiness was  significantly affected by whether or not they completed the
+programme. And the average happiness of participants who completed the
+programme is 24.28 higher than that of who did not complete the
+programme and the difference is significant.
+
+## Question 3b
+Season, wether_complete, and health were modelled using multiple linear regression to see if happiness is impacted by health measure while adjusting for season and programme completion. At a significance level of 0.05, effects will be regarded statistically significant.
+```{r q3b}
+model3b <- lm(happiness~season+whether_complete+health, data = couchto5k)
+plot(model3b)
+tab_model(model3b)
+summary(model3b) 
+shapiro.test(residuals(model3b))
+ncvTest(model3b)
+dwt(model3b)
+```
+We assume $\beta_3$ is the coefficient of health.
+
+$H_0:\beta_3=0$
+
+$H_1:\beta_3 \neq 0$
+The model failed to fullfil the condition of error term normality(W=`r shapiro.test(residuals(model3b))$statistic`, p= `r shapiro.test(residuals(model3b))$p.value`),which might indicate that the model still requires the addition of more predictors. But the model fulfilled the assumptions of linearity, homoscedasticity( X²(`r ncvTest(model3b)$Df`)=`r ncvTest(model3b)$ChiSquare`, p=`r ncvTest(model3b)$p`), and error independence (DW = `r dwt(model3b)$dw`, p=`r dwt(model3b)$p`)). 
+
+The results showed that there was no significant conditional association between health indicators and happiness.
+(β=`r summary(model3b)$coefficients[6,1]`, SE= `r summary(model3b)$coefficients[6,2]`, p<.05), suggesting that scaled scores on happiness increased by `r summary(model3b)$coefficients[6,1]`, so we cannot reject the null hypothesis and conclude the happiness was not additionally affected by the health.
+
+
+## Question 3c
+To see if the happiness of participants who got further along the programme might be more affected by the health metric than those who stopped earlier, the interaction item whether_complete:health was added to the model to fit a new multiple linear regression after controlling for season, whether completing the project and health metric, whether the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier. At a significance level of 0.05, the effects will be deemed  significant.
+```{r q3c}
+model3c <- lm(happiness~season+whether_complete+health+whether_complete:health, data = couchto5k)
+plot(model3c)
+tab_model(model3c)
+summary(model3c)
+shapiro.test(residuals(model3c))
+ncvTest(model3c)
+dwt(model3c)
+```
+We assume $\beta_4$ is the coefficient of the interaction.
+
+$H_0:\beta_4=0$
+
+$H_1:\beta_4 \neq 0$
+The model failed to fullfil the condition of error term normality(W=`r shapiro.test(residuals(model3c))$statistic`, p= `r shapiro.test(residuals(model3c))$p.value`),which might indicate that the model still requires the addition of more predictors. But,the model fulfilled the assumptions of linearity, homoscedasticity( X²(`r ncvTest(model3c)$Df`)=`r ncvTest(model3c)$ChiSquare`, p=`r ncvTest(model3c)$p`), and error independence (DW = `r dwt(model3c)$dw`, p=`r dwt(model3c)$p`)). 
+
+When the health measure increases by 1 point, the average happiness of  participants who completed the programme is 0.503 points higher than that of the participants who have not completed the programme.
+
+The t-value is 0.84 and the standard error is 0.60 with p value is 0.41, so we cannot reject the null hypothesis and conclude the happiness of participants who got further along the programme are not more affected by the health metric than that of those who stopped earlier. 
+## Question 3d
+Seasons have a significant impact on happiness. The happiness in spring is significantly higher than that in the other three seasons, and happiness in winter is the lowest. The effect of health and completion of progamme on happiness is not significant.
+
+# Question 4
+
+```{r q4}
+library(ggplot2)
+subset_data <- couchto5k[couchto5k$whether_complete == 1,]
+subset_data%>%
+  group_by(city, season)%>% 
+  summarise(average.happiness = mean(happiness))%>%
+  ggplot(aes(season,average.happiness,fill=city))+
+  geom_col(position="dodge")+
+  theme_bw()+
+  labs(y="Average happiness")
+```
+
+
+# Question 5
+
+## Question 5a
+The psychological elements that motivate participants to stick with the programme are of interest to the researchers. Therefore, psychological aspects such as accountability and self-motivation should be studied in order to create a model that predicts the chance of dropping out. Generalized linear regression was employed to fit this model since the dependent variable is a binomial discrete variable and the independent variable is a continuous variable. At a significance level of 0.05, effects will be regarded statistically significant.
+```{r q5a}
+couchto5k$drop <- as.numeric(couchto5k$whether_complete)
+model5a <- glm(drop~accountability+selfmot,family=binomial(link='logit'), data = couchto5k)
+plot(model5a)
+tab_model(model5a)
+summary(model5a)
+```
+
+## Question 5b
+
+```{r q5b}
+exp(coef(model5a))
+```
+An analysis was undertaken to see if accountability and self-motivation influence the chance of dropping out. There was no significant conditional relationship between accountability and the likelihood of dropping out, according to the findings. (β = `r summary(model5a)$coefficients[2,1]`, SE = `r summary(model5a)$coefficients[2,2]`, p >.05), suggesting that for every one score increase in accountability, the odd of dropping out increase by 1.057. No significant conditional association was shown between the self-motivation and the probability of dropping out  (β = `r summary(model5a)$coefficients[3,1]`, SE = `r summary(model5a)$coefficients[3,2]`, p >.05), suggesting that for every one score increase in self-motivation, the odd of dropping out increase by 1.085. 
+
+According to the findings, neither responsibility nor self-motivation had an impact on the likelihood of dropping out.
+
+## Question 5c
+
+```{r q5c}
+model5c <- glm(drop~selfmot, family=binomial(link='logit'),data = couchto5k)
+plot(model5c)
+tab_model(model5c)
+summary(model5c)
+x <- seq(5,35,0.01)
+prob <- predict(model5c,newdata = data.frame(selfmot = x),type="response")
+plot(x,prob,type = "l",xlab="selfmot", ylab="the probability of dropping out")
+```
+
+
+
+
+
+
+
+
+
+

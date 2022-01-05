@@ -1,0 +1,526 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  bookdown::html_document2: default
+  bookdown::pdf_document2: default
+  bookdown::word_document2: default
+params:
+  examnumber: B200489
+editor_options:
+  chunk_output_type: console
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE, message = F,warning = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(pander)
+library(patchwork)
+library(dplyr)
+library(psych)
+library(car)
+library(broom)
+library(sjPlot)
+library(knitr)
+library(lsr)
+library(scales)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+
+# cleaning impossible data
+couchto5k <-
+  couchto5k %>% 
+    mutate(
+      age = ifelse(age>140, NA, age),
+      selfmot = ifelse(selfmot>5*7 | selfmot<5*1 , NA, selfmot),
+      week_stopped = ifelse(week_stopped>9, NA, week_stopped),
+      missing = NA,
+    )
+
+couchto5k$missing[is.na(couchto5k$age)] <- "unreasonable age"
+couchto5k$missing[is.na(couchto5k$selfmot)] <- "negative self motivation"
+couchto5k$missing[is.na(couchto5k$week_stopped)] <- "week stopped out of range"
+tabmis <- table(couchto5k$missing)
+
+couchto5k <- couchto5k[!is.na(couchto5k$week_stopped),]
+
+```
+
+Table \@ref(tab:tabexcluded) gives a summary of unlikely values in the data. Unlikely value in week stopped was removed because week stopped is relevant to both the research questions. Not removing these data would cause nonequivalent size for each model and cause problems when comparing these models. Unlikely values in age and self motivation were set to NA and excluded to the relevant analysis below. Total number of `r nrow(couchto5k)` samples were included to analysis. 
+
+```{r tabexcluded}
+tabmis %>% kable(caption = "Summary of excluded values",col.names = c("Unlikely Values","Counts"))
+```
+
+```{r dealing with miscoded values and factor levels}
+miscoded <- sum(couchto5k$season == "autunm")
+couchto5k <- couchto5k %>% mutate(
+      season = factor(ifelse(season == 'autunm', 'autumn', season), levels = c('spring','summer','autumn', 'winter')),
+      city = factor(city)
+)
+```
+
+```{r for description}
+cor1 <- couchto5k %>% select(week_stopped, accountability, selfmot) %>% cor(use="complete.obs")
+cor2 <- couchto5k %>% select(week_stopped, happiness, health) %>% cor(use="complete.obs")
+cor3 <- couchto5k %>% select(health, age) %>% cor(use="complete.obs")
+
+# for plotting
+s <- couchto5k %>% 
+  count(season) %>% 
+  mutate(perc = n / nrow(couchto5k)*100)
+
+c <- couchto5k %>% 
+  count(city) %>% 
+  mutate(perc = n / nrow(couchto5k)*100)
+
+# percentage of completed the programme
+w <- couchto5k %>% count(week_stopped==9)/nrow(couchto5k)
+h0 <- couchto5k %>% count(happiness==0)/nrow(couchto5k)
+h100 <- couchto5k %>% count(happiness==100)/nrow(couchto5k)
+# test normality of happiness
+hs <- shapiro.test(couchto5k$happiness)
+
+```
+
+Figure \@ref(fig:desplot1) show that scores on Accountability, Self-motivation and Health are under unimodal distribution (mean and standard deviation were shown in Table \@ref(tab:destab)). Scores on Happiness does not look like following the pattern of unimodal distribution, which was confirmed by a Shapiro-Wilk normality test ($W$ = `r hs$statistic`, $p$ < .05). This was possibly due to the high frequency of extreme values (`r round(h0[2,2]*100,2)`\% for 0 and `r round(h100[2,2]*100,2)`\% for 100) in the data. The distribution of Stopped Week is negatively skewed with `r round(w[2,2]*100,2)`\% of participants completed the programme (stopped week = 9). In addition, there were less participants in Glasgow (`r round(c[2,3],2)`\%) than in Edinburgh (`r round(c[1,3],2)`\%), and less participants interviewed in autumn (`r round(s[3,3],2)`\%) and winter (`r round(s[4,3],2)`\%) compared to spring (`r round(s[1,3],2)`\%) and summer (`r round(s[2,3],2)`\%). (see Figure \@ref(fig:plotsc) for detailed distribution of stopped week, season and city.)
+
+Bivariate correlations show a moderate positive relationship between stopped week and accountability ($cor$ = `r cor1[1,2]`), stopped week and self-motivation ($cor$ = `r cor1[1,3]`), as well as stopped week and health score ($cor$ = `r cor2[1,3]`). Also, there is a slight negative relationship between stopped week and happiness score ($cor$ = `r cor2[1,2]`). Additionally, a strong negative relationship is evident between age and health ($cor$ = `r cor3[1,2]`).
+
+```{r desplot1, fig.cap="Bivariate scatter plots (below diagonal), histograms (diagonal), and Pearson correlation coefficient (above diagonal), of self-motivation and accountability on completion, completion on hapiness and health as well as other related factors"}
+pairs.panels(couchto5k %>% select(age,accountability,selfmot,health,happiness,season,city,week_stopped))
+```
+
+```{r destab}
+describe(couchto5k %>% select(2:6,9))[,c(2:4,8:9)] %>% round(2) %>% kable(., caption = "Overview of programme data")
+```
+
+```{r plotsc, fig.asp=.6, fig.cap="Distribution of happiness, interviewed season and city of partcipants."}
+
+ph <- ggplot(data = couchto5k, aes(x=happiness)) + 
+  geom_histogram(binwidth=1)+
+  labs(x = "Happiness")+
+  theme_bw()
+
+ps <- ggplot(data = s, aes(x = season, y= perc))+
+  geom_bar(stat = "identity")+
+  ylim(0,50)+
+  labs(y = "Percentage")+
+  theme_bw()
+
+pc <- ggplot(data = c, aes(x = city, y= perc))+
+  geom_bar(stat = "identity")+
+  ylim(0,75)+
+  labs(y = "Percentage")+
+  theme_bw()
+
+ph|ps|pc
+```
+
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+### create a variable for stopped week
+couchto5k <- couchto5k %>%
+  mutate(
+    abandon = ifelse(week_stopped == 9, "completed" , "stopped after week 5"),
+    abandon = ifelse(week_stopped < 6, "stopped before week 5", abandon),
+    abandon = factor(abandon, levels = c("stopped before week 5", "stopped after week 5", "completed"))
+    )
+
+### test for comparing stopped week in current study to previous study
+chi_abandon <- chisq.test(table(couchto5k$abandon), p = c(.45,.10,.45))
+```
+A chi-square goodness-of-fit test was conducted in order to determine if the proportion of the stopped week in the couch to 5K programme for a sample of `r nrow(couchto5k)` participants in line with a previous study, in which 45% of participants stopped the programme before the halfway point in week 5, and a further 10% stopped before the end of the programme. There was no significant difference of the distribution of stopped week between this data and the previous study ($p$ = `r chi_abandon$p.value`) (see Figure \@ref(fig:q1afig)).
+
+```{r q1afig, fig.asp=.6, fig.cap="Distribution of Stopped weeks for the current study", message = F}
+## plot
+week_stopped_3 <- couchto5k %>% 
+  count(abandon) %>% 
+  mutate(
+    perc = n / nrow(couchto5k)*100,
+    compare = c(45,10,45)
+    )
+
+week_stopped_3 %>%
+  filter(!is.na(abandon)) %>%
+  ggplot (aes(x=abandon, y=perc)) + 
+    geom_bar(stat = "identity")+
+    geom_errorbar(width = 0.3, aes(ymax=compare,ymin=compare,y=compare),colour = "#AA0000")+
+    labs(x = "Stopped Week" , y = "Percentage")+
+    theme_bw()
+```
+
+
+## Question 1b
+
+```{r q1b}
+t <- table(couchto5k$abandon,couchto5k$city)
+chi_city_abandon <- chisq.test(t) 
+##sample size is too small for chi square test, so I used Fisher's exact test instead.
+fish_city_abandon <- fisher.test(t)
+p_fish <- fish_city_abandon$p.value
+```
+
+A Fisher's Exact Test instead of the chi-square test of independence was inducted because of the small sample size. The Fisher's Exact Test was conducted to determine if the pattern of attrition rate of participants in couch to 5K programme for a sample of `r nrow(couchto5k)` differed by city. The result showed that there was a slight significant different of the attrition rate between Edinburgh and Glasgow ($p$ = `r p_fish`)(see Figure \@ref(fig:q1bfig) ).
+```{r q1bfig, fig.asp=.6, fig.cap="Matrix distribution of stopped week in Edinburgh and Glasgow.", message = F}
+
+#plot_matrix <- as.table(rowSums(t) %o% colSums(t) / sum(t))
+
+#plot(plot_matrix)
+
+plot(t,color = "azure4", main = "")
+```
+
+## Question 1c
+
+```{r q1ctest}
+t_age_city <- with(couchto5k, t.test(age ~ city))
+```
+A two-sample t-test was conducted in order to determine if the average ages of participants who commenced the Couch to 5k programme for a sample of `r nrow(couchto5k) ` participants significantly differ ($\alpha =.05$) by cities. The average age of participants who commenced the programme in Glasgow was slightly lower (Mean = `r t_age_city$estimate[1]`) than the average age of participants in Edinburgh (Mean = `r t_age_city$estimate[2]`) (see Figure \@ref(fig:q1cfig)). However, this difference was not significant ($t$(`r nrow(couchto5k)-1`) = `r t_age_city$statistic`, $p$ > .05).
+
+```{r q1cfig, fig.asp=.6, fig.cap="Average age of Edinburgh and Glasgow", mesage = F}
+bar_plot_age_city <- couchto5k %>% group_by(city) %>%
+  summarise(mean_se(age))
+
+bar_plot_age_city %>% ggplot(aes(x=city,y=y,
+                  ymin=ymin,ymax=ymax)) +
+  geom_bar(stat="identity") +
+  geom_errorbar(width=.2) +
+  ylab("age")+
+  theme_bw()
+```
+
+# Question 2
+## Question 2a
+
+```{r include=FALSE}
+## plot the data before testing
+ggplot(data = couchto5k, aes(x=season, y=happiness))+
+  geom_point(alpha = 0.3)+
+  facet_wrap(~season)
+```
+
+```{r q2afiga, fig.asp=.6, fig.cap="Scores on Happiness in four seasons", mesage = F}
+## plot the data
+bar_model_seasaon_happiness <- couchto5k %>% group_by(season) %>%
+  summarise(mean_se(happiness))
+
+bar_model_seasaon_happiness %>% ggplot(aes(x=season,y=y,
+                  ymin=ymin,ymax=ymax)) +
+  geom_bar(stat="identity") +
+  geom_errorbar(width=.2) +
+  ylab("happiness")
+```
+
+```{r q2amodel}
+## lm model
+##plot(lm_season_happiness, which = 1:4)
+lm_season_happiness <- lm(data = couchto5k, happiness ~ season)
+sh <- tidy(anova(lm_season_happiness))
+p <- summary(lm_season_happiness)$coefficients[,4]
+sum <- summary(lm_season_happiness)$coefficients
+```
+
+```{r q2a_model_updated}
+couchto5k <- couchto5k %>% mutate(
+  is_winter = ifelse(season == "winter", "yes", "no")
+)
+
+lm_season_happiness_2 <- update(lm_season_happiness, .~is_winter)
+sh_2 <- tidy(anova(lm_season_happiness_2))
+sum2 <- summary(lm_season_happiness_2)$coefficients
+```
+
+Figure \@ref(fig:q2afiga) shows that the happiness scores are significantly different between winter (Mean = `r bar_model_seasaon_happiness[4,2]`) and the other seasons. Scores on happiness in spring (Mean = `r bar_model_seasaon_happiness[1,2]`) and summer (Mean = `r bar_model_seasaon_happiness[2,2]`) are closed to each other. Mean scores on happiness in autumn (`r bar_model_seasaon_happiness[3,2]`) is lower than in spring and summer, but this difference does not seem to be significant.
+
+This effect was confirm by a linear regression model, where scores on Happiness are affected by season in (F(`r sh$df[1]`,`r sh$df[2]`)=`r sh$statistic[1]`, $p$ <.05). Approximately `r summary(lm_season_happiness)$r.square` of the total variability in happiness rating is explained by their linear association with season. 
+
+Specifically, the estimated average scores on happiness in spring was `r sum[1]`. The estimated decreases in average happiness associated with season were `r sum[2]` in summer ($SE$ = `r sum[1,2]`, $p$ = `r p[2]`), `r sum[3]` in autumn ($SE$ = `r sum[1,2]`, $p$ = `r p[3]`) and `r sum[4]` in winter ($SE$ = `r sum[1,2]`, $p$ < .001). Thus, scores on happiness are only significantly correlated with whether the season is winter or not. 
+
+An updated linear model ($F$(`r sh_2$df[1]`,`r sh_2$df[2]`) = `r sh_2$statistic[1]`, $SE$ = `r sum2[2,2]`, $p$ <.001) was built, where the scores on happiness are affected by whether the season is winter or not. Approximately `r summary(lm_season_happiness_2)$r.square` of the total variability in happiness rating is explained by their linear association with season. The estimated average scores on happiness was `r sum2[1]` in spring, summer and autumn, with an estimated decrease of `r sum2[2]` in winter (see Figure \@ref(fig:q2afigb)).
+
+```{r q2afigb, fig.asp=.6, fig.cap="Scores on Happiness in winter and other seasons", mesage = F}
+bar_model_seasaon_happiness2 <- couchto5k %>% group_by(is_winter) %>%
+  summarise(mean_se(happiness))
+
+bar_model_seasaon_happiness2 %>% ggplot(aes(x=is_winter,y=y,
+                  ymin=ymin,ymax=ymax)) +
+  geom_bar(stat="identity") +
+  geom_errorbar(width=.2) +
+  ylab("Happiness")+
+  xlab("Interviewed in winter")
+```
+
+## Question 2b
+
+```{r q2b}
+archive <- couchto5k
+#remove NA data in age
+couchto5k <- couchto5k[!is.na(couchto5k$age),]
+## multiple regression model for age and season
+lm_season_age_happiness <- lm(data = couchto5k, happiness ~ is_winter + age)
+ah <- tidy(anova(update(lm_season_happiness_2),lm_season_age_happiness))
+```
+To test whether age additionally affect scores on happiness in additional to season, a multiple linear regression model was built with season as the first predictor and age as the second predictor. The new model was compared to the previous model in question 2a by an incremental F test. The result showed that age did not improve the model further over one which included interviewed season ($F$(1,`r ah$res.df[2]` = `r ah$res.df[2]`), $p$ = `r ah[2,6]`). Scores on happiness of participants is not additionally affected by their age.
+
+
+## Question 2c
+
+```{r q2c}
+#interaction
+lm_season_age_happiness_interact <- lm(data = couchto5k, happiness ~ is_winter * age)
+inter <- tidy(anova(update(lm_season_happiness_2),lm_season_age_happiness_interact))
+#I tested for the effect of interaction between age and season as well. The model did not be improved by the interaction either, so I choose the correlation of season and happiness as the baseline model.
+
+#since age is not relevant to the model anymore, I recover the deleted data in age.
+couchto5k <- archive
+
+baseline <- update(lm_season_happiness_2)
+```
+The linear regression model with the influence of interviewed season (winter vs other season) was chosen to be baseline of this research for the following reasons. First, this effect has been indicated as significant (see answer for question 2a). Second, the result of question 2b showed that age did not show additional significant effect on happiness. Additionally, a multiple linear regression model with age, season as well as the interaction of age and season as predictors was built to test whether the effect of season on happiness was significantly influenced by age. The new model was compared to the previous model in question 2a by an incremental F test. The result that the interaction of age and season did not show significant effect on happiness either (F(`r inter$df[2]`, `r inter$res.df[2]`), $p$ = `r inter[2,6]`).
+
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+couchto5k <- couchto5k %>% mutate(
+  is_complete = factor(ifelse(week_stopped == 9, TRUE, FALSE))
+  )
+
+lm_abandon_happiness <- lm(data = couchto5k, happiness ~ is_winter + is_complete)
+ab <- tidy(anova(baseline,lm_abandon_happiness))
+```
+To test whether programme completion additionally influenced participants' scores on happiness, a multiple linear regression model was built based on the baseline model with "whether participant complete the programme" as an additional categorical predictor. The new model was compared to baseline model by an incremental F test. The result showed that programme completion did not improve the model further over one which included season, age and the interaction between season and age ($F$(`r ab$df[2]`,`r ab$res.df[2]` ) = `r ab$statistic[2]`, $p$ = `r ab$p.value[2]`).
+
+## Question 3b
+
+```{r q3b}
+lm_health_happiness <- lm(data = couchto5k, happiness ~ is_winter + is_complete + health)
+he <- tidy(anova(baseline,lm_health_happiness))
+```
+To test whether scores on health of participants additionally influenced their scores on happiness, a multiple linear regression model was built based on the baseline model with scores on health as an additional predictor. The new model was compared to baseline model by an incremental F test. The result showed that health scores of participants did not improve the model further over one which included interviewed season on happiness ($F$(`r he$df[2]`,`r he$res.df[2]`) = `r he$statistic[2]`, $p$ = `r he$p.value[2]`). 
+
+## Question 3c
+
+```{r q3c}
+l1 <- lm(data = couchto5k, happiness ~ is_winter + is_complete * health)
+l2 <- lm(data = couchto5k, happiness ~ is_winter + week_stopped * health)
+l3 <- lm(data = couchto5k, happiness ~ is_winter + abandon * health)
+a1 <- anova(baseline,l1)
+a2 <- anova(baseline,l2)
+a3 <- anova(baseline,l3)
+# Incremental F test showed that l2 has more significant effect on improving the model (lower p value and higher f value, so I decided to use l2.)
+
+lm_health_abandon_interation <- l2
+
+remove <- round(cooks.distance(lm_health_abandon_interation)[81],2)
+couchto5k <- couchto5k[-81,]
+lm_health_abandon_interation <- update(lm_health_abandon_interation)
+baseline <- update(baseline)
+
+sha <- shapiro.test(residuals(lm_health_abandon_interation))
+ncv <- ncvTest(lm_health_abandon_interation)
+dwt <- dwt(lm_health_abandon_interation)
+
+inter2 <- tidy(anova(baseline,lm_health_abandon_interation))
+```
+To test whether the time participants stayed in the programme significantly influence the effect of health on happiness, a multiple linear regression model was built based on the baseline model with the interaction of health and the weeks participants stop the programme as a new predictor. The new model was compared to baseline model by an incremental F test.
+
+One observation was excluded from the final analysis as it was judged to be too influential on the model (Cook's Distance = `r remove`). The final model was fitted to the remaining `r nrow(couchto5k)` observations.The final model showed that interaction of stopped week and health improve the model further over the baseline model ($F$(`r inter2$df[2]`,`r inter2$res.df[2]`) = `r inter2$statistic[2]`, $p$ < .001). Stopped week amplified the effect of good health on reported happiness.
+
+The regression model met assumptions of linearity (see plot of model residuals vs fitted values, Figure \@ref(fig:linearity)), homoscedasticity ($\chi^2(1)$=`r ncv$ChiSquare`, $p$=`r ncv$p`), independence of errors ($DW$=`r dwt$dw`, $p$=`r dwt$p`). However, Shapiro-Wilk test indicated that the residuals might be drawn from a normally distributed population with a slightly significant p value ($p$=`r sha$p`, $W$ = `r sha$statistic`).
+
+```{r linearity, echo=FALSE, message = FALSE, fig.cap="Residuals vs Fitted plot demonstrating overall near constant mean and variance of error term across levels of the response"}
+tibble(
+  residuals = resid(lm_health_abandon_interation),
+  fitted = fitted(lm_health_abandon_interation)
+) %>%
+  ggplot(aes(x=fitted, y=residuals)) +
+  geom_point() + 
+  geom_smooth(method = "loess", se=FALSE) +
+  labs(title = "Residuals vs Fitted", y = "Model residuals", x = "Model fitted values")
+```
+
+## Question 3d
+
+```{r}
+#scale the predictors for model description
+couchto5k <- couchto5k %>% mutate(
+  week_stopped_s = scale(week_stopped),
+  health_s = scale(health)
+)
+```
+
+```{r q3d}
+lm_health_abandon_interation <- lm(data = couchto5k, happiness ~ is_winter + week_stopped_s * health_s)
+sum_inter2 <- summary(lm_health_abandon_interation)$coefficients %>% as.data.frame
+fsum_inter2 <- summary(lm_health_abandon_interation)$fstatistic
+rsum_inter2 <- round(summary(lm_health_abandon_interation)$adj.r.squared*100,1)
+```
+
+Results showed that there was no significant conditional association between scores on happiness and the time participants stayed in the Programme Couch to 5k ($\beta$ = `r sum_inter2[3,1]`, $SE$ = `r sum_inter2[3,2]`, $p$ = `r sum_inter2[3,4]`). Also, there was no significant conditional association between scores on happiness and scores on health reported by participants of this programme ($\beta$ = `r sum_inter2[4,1]`, $SE$ = `r sum_inter2[4,2]`, $p$ = `r sum_inter2[4,4]`). 
+However, the association between happiness and health was found to be dependent on the time participants stayed in the programme ($\beta$ = `r sum_inter2[5,1]`, $SE$ = `r sum_inter2[5,2]`, $p$ <.05). This suggested that, holding the effect of season constant, the negative effect of health metric on happiness was amplified for those who quit earlier in the programme. This interaction is visually presented in Figure \@ref(fig:q3dfig), where the stopping time was divided into two sets by average.
+
+The F-test for model utility was significant ($F$(`r fsum_inter2[2]`,`r fsum_inter2[3]`)=`r fsum_inter2[1]`, $p$<.001), with the model explaining approximately `r rsum_inter2`% of the variability in happiness scores. Full regression results including 95\% Confidence Intervals are shown in Table \@ref(tab:q3dtab).   
+
+The results presented here indicate that the asscociation between feelings of acting healthy (time stayed in the programme) and the effect of health metric on happiness, with the feelings of acting healthy might amplified the effect of health metric on happiness. Specifically, the longer participants stayed in the programme, the smaller decrease of happiness they felt with the increase of health score. 
+
+```{r q3dfig, fig.cap="Effect of completion on happiness varies by health", mesage = F}
+couchto5k <- couchto5k %>% mutate(
+  winter = ifelse(is_winter == "yes", "winter", "other"),
+  plot_week = ifelse(week_stopped_s > 0, "later than average","ealier than average")
+)
+
+couchto5k %>% ggplot(
+  aes(x=health_s,y=happiness,colour=plot_week)) +
+  scale_x_continuous(limits=c(-1.5,1.5),name="health (sd)",oob=rescale_none)+
+  scale_y_continuous(limits=c(0,100), name="happiness", oob=rescale_none)+
+  geom_point(size=2) + 
+  facet_wrap(~winter) +
+  geom_smooth(method="lm")+
+  labs(colour = "stopping time")+
+  theme_bw()
+```
+
+
+```{r q3dtab, echo=FALSE}
+
+tab_model(lm_health_abandon_interation,
+          dv.labels = c("Happiness"),
+          pred.labels = c("is_winteryes"="Interviewed in winter", 
+                          "week_stopped_s" = "Week of stop",
+                          "health_s" = "Health",
+                          "week_stopped_s:health_s"="Week of stop : Health"),
+          title = "(\\#tab:q3dtab)Regression table for Happiness model. Outcome variable is raw total score on Happiness, all numeric predictors are standardized",
+          show.se = TRUE,
+          show.stat = TRUE,
+          show.ci = FALSE
+)
+```
+
+# Question 4
+
+```{r q4, fig.asp=.6, fig.cap="Average happiness of participants grouped by seasons and cities", message = F}
+couchto5k_complete <- couchto5k%>% filter(abandon == "completed")
+
+bar_city_season_happiness <- couchto5k_complete %>% group_by(season, city) %>%
+  summarise(mean_se(happiness))
+
+bar_city_season_happiness %>% ggplot(aes(fill = city, x=season,y=y,
+                  ymin=ymin,ymax=ymax)) +
+  geom_bar(position="dodge",stat = "identity") +
+  geom_errorbar(width=.2, position=position_dodge(.9),alpha=0.9, size=0.3) +
+  ylab("average happiness")+
+  theme_bw()
+```
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5aplot, include=FALSE}
+##initial ploting
+p5 <- ggplot(data = couchto5k, aes(x=selfmot, y=is_complete))+
+  geom_point()
+
+p6 <- ggplot(data = couchto5k, aes(x=accountability, y=is_complete))+
+  geom_point()
+
+p5 | p6
+```
+
+```{r q5a}
+couchto5k <- couchto5k %>% mutate(is_dropping = ifelse(week_stopped == 9, FALSE, TRUE))
+
+glm_complete <- glm(data = couchto5k, is_dropping ~ selfmot * accountability, family = "binomial")
+glm1 <- tidy(anova(glm_complete, test="Chisq"))
+
+glm_complete2 <- update(glm_complete,.~selfmot)
+glm2<- tidy(anova(glm_complete2, test="Chisq"))
+```
+
+Whether or not participants dropped the programme (binary 0 vs 1) was modeled using logistic regression with scores on self-motivation and accountability. Two missing observations was excluded from the final analysis (see question 0). The final model was fitted to the remaining 124 observations. The result showed that the increase of self-motivation significantly decreased the probability of dropping out ($p$ <.05), while accountability did not significantly influence the probability of dropping out ($p$ = `r glm1[3,6]`). Also, the interaction of self-motivation and accountability did not significantly influence the probability of dropping either ($p$ = `r glm1[4,6]`). Thus, an updated model was built with the likelihood of dropping the programme being predicted by only self-motivaiton. 
+
+## Question 5b
+```{r}
+##scale predictors for description 
+couchto5k <- couchto5k %>% mutate(
+  selfmot_s = scale(selfmot)
+)
+glm_complete2 <- update(glm_complete,.~selfmot_s)
+```
+
+```{r q5b}
+s <- summary(glm_complete2)$coefficients %>% as.data.frame
+```
+
+Results showed a significant association between self-motivation and the probability of dropping out, suggesting that the probability of dropping out of those who at the mean level of self motivation is `r exp(s[1,1])` and decreased by `r exp(s[2,1])` for every 1 standard deviation increased in self-motivation scores. The F-test for model utility was significant ($F$(1,`r glm2[2,4]`)=`r glm2[2,3]`, $SE$ = `r exp(s[2,2])`, $p$<.05). Full regression results including 95\% Confidence Intervals are shown in Table \@ref(tab:q5btab).
+
+The results presented here indicate an association between the likelihood of dropping the programme and self-motivation scores. Participants who had higher scores on self-motivation were less likely to drop the programme. No significant effect were found for neither the effect of accountability scores nor the interaction between accountability and self-motivation on the likelihood of dropping. 
+
+```{r q5btab, echo=FALSE}
+
+tab_model (glm_complete2,
+          dv.labels = c("Likelihood of dropping out"),
+          pred.labels = c("selfmot_s"="Self-motivation"),
+          title = "(\\#tab:q5btab)Regression table for completion model. Outcome variable is odds ratios of the probability of dropping out. Predictor is standard deviation on self-motivation.",
+          show.se = TRUE,
+          show.stat = TRUE,
+          show.ci = FALSE
+          )
+```
+
+## Question 5c
+The plot on the left shows the probability of dropping the programme predicted by the __raw scores__ on self-motivation in a range of 5-35. The plot on the right shows the pattern of binary predictors in a wider range of self-motivation scores (although self-motivation scores that are out of range of 5-35 does not make sense in this research).
+
+```{r q5c}
+# it is easier to create a larger predicted dataset set for unscaled data.
+glm_complete2 <- update(glm_complete,.~selfmot)
+
+new <- tibble(selfmot = -100:100)
+
+new <-
+  new %>%
+  mutate(
+    dropprobs = predict(glm_complete2, newdata = new, type="response")
+  )
+
+a <- ggplot(data = new, aes(x = selfmot, y = dropprobs))+
+  geom_line()+
+  xlim(-75,100)+
+  ylim(0,1)+
+  xlab("Self-motivation")+
+  labs(y="predicted probability of dropping the programme")
+
+b <- ggplot(data = new, aes(x = selfmot, y = dropprobs))+
+  geom_line()+
+  xlim(5,35)+
+  ylim(0,1)+
+  xlab("Self-motivation")+
+  labs(y="predicted probability of dropping the programme")
+
+b|a
+```

@@ -1,0 +1,627 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+params:
+  examnumber: B196545
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(warning = FALSE,echo = FALSE,comment = NA)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(ggplot2)
+theme_update(# axis labels
+             axis.title = element_text(size = 7.5),
+             # tick labels
+             axis.text = element_text(size = 7.5),
+             # title 
+             title = element_text(size = 7.5))
+library(patchwork)
+library(psych)
+library(sjPlot)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+Couchto5k dataset has `r nrow(couchto5k) ` rows and 9 columns described below:
+```{r }
+head(couchto5k,5)
+```
+
+A preliminary analysis shows the presence of impossible values in the columns age, self-motivation(selfmot) and week_stopped. 
+
+In the age column, it seems unlikely that there were participants over the age of 100. Hence, any values under 5 or over 100 were changed to NA. A comparison of the age column before and after removing outliers is given below:
+
+```{r, fig1, fig.width = 5, fig.asp = .35, fig.align = 'center'}
+
+a1 <- ggplot(data = couchto5k, aes(x = age, fill=age)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Age", 
+       y = "Probability density")
+
+couchto5k$age[couchto5k$age<5 | couchto5k$age>=100] <- NA
+
+
+a2<-ggplot(data = couchto5k, aes(x = age, fill=age)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Age (5-100) after removing outliers", 
+       y = "Probability density")
+
+a1 | a2
+```
+
+In the selfmot column, values less than 0 were changed to NA. 
+
+```{r, fig3, fig.width = 5, fig.asp = .45, fig.align = 'center'}
+g1<-ggplot(data = couchto5k, aes(x = selfmot)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Self motivation with outliers", 
+       y = "Probability density")
+
+couchto5k$selfmot[couchto5k$selfmot<0] <- NA
+
+g2<-ggplot(data = couchto5k, aes(x = selfmot)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Self motivation (0-100) after removing outliers", 
+       y = "Probability density")
+
+g1 |    g2
+couchto5k$city <- factor(couchto5k$city)
+```
+
+In the season column, autumn was misspelt in 7 places making the levels 
+
+```{r}
+
+unique(couchto5k$season)
+
+couchto5k$season[couchto5k$season =="autunm"] <- "autumn"
+couchto5k$season <- factor(couchto5k$season)
+
+```
+
+These spellings were corrected. The updated season column has been summarised below
+
+```{r}
+
+summary(couchto5k$season)
+```
+
+Rows with week_stopped higher than 9 were dropped. Since the program lasted 9 weeks, these rows were likely unusable.
+
+```{r, fig4, fig.width = 5, fig.asp = 0.52, fig.align = 'center'}
+couchto5k<- couchto5k[couchto5k$week_stopped<=9, ]
+ggplot(data = couchto5k, aes(x = week_stopped)) +
+  geom_bar() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "week_stopped", 
+       y = "Frequency")
+```
+
+The updated dataset summary is shown below:
+
+```{r}
+summary(couchto5k)
+```
+
+We can also see that the columns accountability, health and happiness are normally distributed (as shown in the graphs). For accountability and self motivation, the range of values was 7-35. It is clear from the graphs that the values lie within this range. 
+For health metric, the normal distribution is not as apparent as other parameters.
+
+```{r fig5, fig.width = 5, fig.asp = 0.62, fig.align = 'center'}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+
+p1 <-ggplot(data = couchto5k, aes(x = accountability)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Accountability", 
+       y = "Probability density")
+
+
+p2<-ggplot(data = couchto5k, aes(x = health)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Health", 
+       y = "Probability density")
+
+
+p3<-ggplot(data = couchto5k, aes(x = happiness)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Happiness", 
+       y = "Probability density")
+
+
+p1 | p2 
+p3
+```
+
+# Question 1 
+
+## Question 1a
+First, we create a new column called finish_status. This column has been summarised below.
+
+```{r q1a}
+
+
+couchto5k <- mutate(couchto5k, 
+                    finish_status = ifelse(couchto5k$week_stopped<5, "stopped_before_week_5",
+                    ifelse(couchto5k$week_stopped>=5 & couchto5k$week_stopped<9, "stopped_after_week_5",
+                    ifelse(couchto5k$week_stopped==9, "completed", NA))))
+couchto5k$finish_status <- factor(couchto5k$finish_status)
+summary(couchto5k$finish_status)
+
+```
+We can now perform the chi-square test using the probabilities given (0.45, 0.10, 0.45)
+
+
+```{r}
+chisq.test(table(couchto5k$finish_status), p = c(0.45, 0.10, 0.45))
+
+```
+We obtained a chi-squared statistic of 6. This gives evidence that the observed values of the participants abandoning the program at a specific point in the program duration shows deviation from the hypothesized values. The observed percentages are shown in the table below:
+
+```{r}
+prop.table(table(couchto5k$finish_status))*100
+```
+
+Furthermore, we can look at the value of the residuals to see how the observed values deviate from the expected ones.
+```{r}
+chisq.test(table(couchto5k$finish_status), p = c(0.45, 0.10, 0.45))$residuals
+```
+
+According to the residual values, the value of people who stopped before halfway point in the program shows maximum deviation from the expected value of 45%. Hence, we cannot accept the given hypothesis.
+
+## Question 1b
+
+We observe the distribution of the finishing status by city using the plot below.
+
+
+```{r q1b}
+```
+```{r, ,fig371, fig.width = 5, fig.asp = .62, fig.align = 'center'}
+
+plot(table(couchto5k$finish_status, couchto5k$city))
+
+
+```
+It appears that the rate of attrition of the participants in edinburgh was higher than those in Glasgow. It is good to note that the participation was higher form Edinburgh than Glasgow. We will now perform a Pearson's Chi-squared test to check whether the rate of attrition of participants differs by city.
+
+
+```{r}
+result <- chisq.test(table(couchto5k$finish_status, couchto5k$city))
+result
+```
+Since the p-value is equal to 1 (>0.05) and X-squared is 0.05 (~0) we are unable to reject the null hypothesis that the rate of attrition might be independent of the city. We can look at the expected and observed values of the chi-square test below. 
+
+Observed values
+```{r}
+result$observed
+```
+Expected values
+```{r}
+result$expected
+```
+None of the expected frequencies are less than 5 so the Chi-squared test is valid.
+As we can see, the observed and expected values are quite close. We cannot reject the null hypothesis.
+
+## Question 1c
+
+We can see the distribution of the age according to cities in the plot below. 
+```{r q1c}
+```
+```{r  fig6, fig.width = 5, fig.asp = 0.62, fig.align = 'center'}  
+ggplot(data = couchto5k, aes(x = age, y = city)) +
+  geom_boxplot()
+  
+```
+```{r}
+shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"])
+```
+Because p<.05, we fail to accept the null hypothesis of the Shapiro-Wilk test that the sample came from a population that is normally distributed.  It can be said that there isn't enough data to confidently whether the residuals have been sampled from a normal distribution.
+
+```{r}
+shapiro.test(couchto5k$age[couchto5k$city=="Glasgow"])
+```
+Because p>.05, we fail to reject the null hypothesis of the Shapiro-Wilk test that the sample came from a population that is normally distributed
+Now we perform the variance test to see if the variance in both the groups is same. 
+
+```{r}
+with(couchto5k, var.test(age ~ city))
+```
+The ratio of variances is close to 1. The p-value is 0.5 (>0.05). Hence, we can say that there is not a significant variance in the distribution in the two groups.
+We can now perform a Welch Two Sample t-test to analyse whether mean ages of participants in the two groups are significantly different.
+```{r}
+
+with(couchto5k, t.test(age ~ city, alternative = "two.sided"))
+
+```
+The mean age for Edinburgh participants was 38.2 while for Glasgow, it was 38.3. It is lower in Edinburgh by 0.1. This difference was statistically insignificant (t(102) = -0.04, p = 1 > .05). Hence, we cannot reject the null hypothesis that the true difference in means in the two groups is zero.
+
+# Question 2
+
+We can observe the distribution of the happiness metric for each season. The value for happiness seem higher during spring and summer months. We see a very low median for autumn but many of the values for this season seem to be 0, which could be an error. The boxplot for winter months is comparatively shorter which suggests a similar happiness values for this season unlike other seasons where happiness scores seem to vary more.
+
+```{r q2a} 
+```
+```{r,fig71, fig.width = 5, fig.asp = .60, fig.align = 'center'}
+ggplot(couchto5k, aes(x = season, y = happiness)) + 
+geom_boxplot()
+
+ggplot(couchto5k, aes(x = season, y = happiness)) + 
+  geom_jitter(height=0, width=.05)
+```
+To check whether the season that the participants were interviewed in had any effect on their reported happiness levels, we will perform an ANOVA test as season is a categorical variable.
+
+```{r}
+
+aov.model <- aov(couchto5k$happiness ~ couchto5k$season)
+summary(aov.model)
+```
+
+As the p-value(0.0069) is less than the significance level 0.05, we can conclude that there are significant differences between the groups highlighted with “*" in the model summary. We need to ensure that the ANOVA assumptioms are met to consider the previous test. One way to do it is to test the homogeniety of the variances among the seasons.
+
+```{r,fig7, fig.width = 5, fig.asp = .60, fig.align = 'center'}
+plot(aov.model, 1)
+```
+We can see that the points 26, 101 and 29 are outliers. They could affect the normality and homogeniety of variance. 
+We will check the normal probability plot of residuals to verify the assumption that the residuals are normally distributed. It should approximately follow a straight line.
+
+```{r,fig8, fig.width = 5, fig.asp = .60, fig.align = 'center'}
+plot(aov.model, 2)
+```
+The points approximately follow the reference line. Hence, we can assume normality.
+We can also verify our results using a Kruskal-Wallis rank sum test which is a non-parametric alternative to the ANOVA test.
+```{r}
+kruskal.test(couchto5k$happiness ~ couchto5k$season, data = couchto5k)
+```
+The p-value is less than 0.05, which confirms our results from the ANOVA test that there are significant differences in happiness scores for each season.
+
+## Question 2b
+
+We start by observing the relationship between happiness and age of participants and season individually. Then we will observe the distribution of happiness score and age for each season.
+```{r q2b}
+```
+```{r,fig61, fig.width = 5, fig.asp = .62, fig.align = 'center'}
+
+age_happiness <- 
+  ggplot(data = couchto5k, aes(x = age, y = happiness)) +
+  geom_point(alpha = 0.5) +
+  labs(x = "Age of Participants", y = "Happiness")
+
+season_happiness <- 
+  ggplot(data = couchto5k, aes(x = season, y = happiness)) +
+  geom_point(alpha = 0.5) +
+  labs(x = "Season", y = "Happiness")
+
+age_happiness | season_happiness
+
+```
+
+There is no observable pattern in the plot for Age and Happiness. However, we see higher number of happiness reports in the summer and spring season over the other two. This could be indicative of a relationship which we can see with a linear model
+
+We will built a linear regression model to analyse the relationship of happiness and age.
+
+```{r,include=FALSE}
+season_age_model <- lm(happiness ~ 1 + season + age, data = couchto5k)
+```
+```{r}
+summary(season_age_model)$coefficients
+
+```
+We can see that the model assumes season autumn as the base case as it is assigned in alphabetical order.
+
+Season Autumn = This means that the average happiness score associated with the season autumn keeping other explanatory variables constant is 18.93
+
+Season Spring = The estimated increase in happiness score associated with spring season keeping age constant is 24.69.
+
+Season summer = The estimated increase in happiness score associated with summer season keeping age constant is 30.73.
+
+Season winter = The estimated increase in happiness score associated with winter season keeping age constant is 13.76.
+
+Age = The estimated increase in happiness score associated with one year change in age is 0.155. 
+
+As is visible from the model, the p-values for seasons spring and summer indicate some effect on the happiness outcome. Based on these outcomes, it seems unlikely that age is a significant factor affecting happiness.
+Normality conditions were checked to verify the validity of our model and they were satisfied.
+
+```{r,fig9, fig.width = 5, fig.asp = 0.62, fig.align = 'center'}
+
+
+plot(season_age_model, 1)
+
+plot(season_age_model, 2)
+```
+
+
+## Question 2c
+
+First, we will look at the relationship between different candidates of explanatory variables and happiness score. 
+Correlation score between health and happiness is `r cor(x = couchto5k$health, y = couchto5k$happiness)`
+Correlation score between self motivation and happiness is `r cor(x = couchto5k$selfmot, y = couchto5k$happiness)`
+Correlation score between accountability and happiness is `r cor(x = couchto5k$accountability, y = couchto5k$happiness)`
+
+We previously concluded that the age of the participant is not a significant influencer for the happiness score reported but found evidence of significance for season. We checked the covariance of the happiness score with health, selfmot and accountability. Of these, we found strongest evidence of correlation between happiness and selfmot. Hence, we will use season and self motivation as the primary explanatory variable in the baseline model.
+
+```{r,include=FALSE}
+baseline_model <- lm(happiness ~ 1 + season+selfmot , data = couchto5k)
+```
+```{r}
+summary(baseline_model)$coefficients
+```
+# Question 3
+## Question 3a
+
+We observe the distribution of happiness scores between the two classes in the given plot. We do not observe significant difference in the distribution of happiness score for the two classes. 
+```{r q3a}
+```
+```{r,fig110, fig.width = 5, fig.asp = 0.62, fig.align = 'center'}
+couchto5k <- mutate(couchto5k, 
+                    completed_or_not = ifelse(couchto5k$finish_status=="completed", TRUE, FALSE))
+ggplot(couchto5k, aes(x=couchto5k$completed_or_not, y= couchto5k$happiness)) +
+  geom_point()
+```
+We build our linear model with baseline factors along with completeness indicator.
+
+```{r,include=FALSE}
+
+
+completeness_model <- lm(happiness ~ 1 + season + selfmot + completed_or_not , data = couchto5k)
+```
+```{r}
+completeness_model$coefficients
+```
+Our model identifies not completing the program and season autumn as the fundamental case. We get an intercept of -31.73 for this case. The estimated happiness score associated with not completing the program is -31.73. The p-value of 0.025 shows that this is likely to be significant factor in determining happiness score. When the participant completed the program, we got an average happiness score greater than the base-case by 3.98. This likely shows that participants who finished the program reported higher happiness scores.
+
+
+
+## Question 3b
+
+We can see the relationship between happiness and health metric in the plot given below. The graph shows major concentration of data points in range 40-80 of the health metric. We also see data points with happiness score as 100 or 0 which are likely to influence our model output. 
+
+```{r q3b}
+```
+```{r,fig10, fig.width = 5, fig.asp = 0.42, fig.align = 'center'}
+ggplot(aes(health,happiness),data=couchto5k) +
+  geom_point()
+
+
+```
+
+We will now build our new linear regression model atop our previous model.
+
+```{r,include=FALSE}
+baseline_health_model <- lm(happiness ~ selfmot + season + completed_or_not + health , data = couchto5k)
+```
+```{r}
+summary(baseline_health_model)$coefficients
+```
+Our model shows that mean happiness score increases over the mean happiness score of base scenario (program not completed and autumn season), by 0.244 with one unit increase in the health metric. The p-value > 0.05 indicates that evidence of significant contribution was not found from the health metric. 
+
+
+## Question 3c
+
+We begin by looking at  the distribution of happines and health for each class of completion. We see more participants who completed the program seemed to report better health and happiness than their counterparts.
+
+```{r q3c}
+```
+```{r,fig11, fig.width = 5, fig.asp = .52, fig.align = 'center'}
+
+ggplot(data = couchto5k, aes(x = health, y = happiness)) + 
+  geom_point() + 
+  facet_wrap(~finish_status)
+
+```
+
+We can now build our build our linear regression model to study the interaction between the health metric and the finish status. 
+
+```{r,include=FALSE}
+
+
+happiness_health_season_model <- lm(happiness ~  season + selfmot + health * finish_status, data = couchto5k)
+```
+```{r}
+summary(happiness_health_season_model)$coefficients
+
+```
+
+b0 Intercept (people who completed the program + seasonautumn) : Our model assumes completing the program and seasonautumn as the base-case. This means that the estimated happiness score for people who completed the program with seasonautumn is -77.0467 with other factors at zero value. 
+
+b1 : the simple effect of season or the difference in happiness between seasonspring and seasonautumn for participants who completed the program
+
+b2 : the difference in happiness score between seasonsummer and seasonautumn for participants who completed the program
+
+b3 : the difference in happiness between seasonwinter and seasonautumn for participants who completed the program
+
+b4 : the effect of selfmot for participants who completed the program
+
+b5 : the effect of health for participants who completed the program
+
+b6 : the effect of stopping the program after week 5 holding other variables constant
+
+b7 : the effect of leaving the program before week 5 holding other variables constant
+
+b8 :  this indicates the interaction between health metric and the class of participants who stopped after week 5
+
+b9 :  this indicates the interaction between health metric and the class of participants who stopped before week 5
+
+We can summarise our analysis results using the graph below. It can be seen that completed the program shows a positive slope for increasing health and happiness. While a negative slope is obtained for participants who left before 5 weeks of the program. The relationship for participants who left the program after 5 weeks showed little downward variation. 
+
+```{r,fig12, fig.width = 5, fig.asp = .62, fig.align = 'center'}
+plot_model(happiness_health_season_model, type="int")
+```
+
+
+## Question 3d
+
+In the models built previously, factors such as season, health, completion of the program, self motivation, were considered as influential for determining the happiness score. 
+
+Of these, completion of the program seemed to be a strong explanatory factor in determining happiness. People who completed the program reported much higher scores of happiness than those who left the program after 5 weeks. Participants who left the program before 5 weeks exhibited a negative slope reported happiness scores. 
+
+Season was another important indicator of happiness scores. Participants reported higher happiness scores in summer and spring seasons than winter and autumn. This could also be caused by the greater frequency of reports from summer and spring seasons.
+
+Self motivation was third most statistically significant factor in determining happiness. It was indicated by a correlation score of 0.62. Participants with higher self motivation scores reported higher scores of happiness. Self motivation also contributes to completion of the program. Hence, this overlap can be studied in more advanced models.
+
+Finally, we did not find substantial evidence for the influence of the health metric even though small positive correlation of 0.1 was observed.
+
+
+# Question 4
+
+
+```{r q4, warning=FALSE}
+couchto5kfinished<- couchto5k[couchto5k$week_stopped==9, ]
+```
+We begin by creating a subset of the dataset with only those participants who completed the program.It contains `r nrow(couchto5kfinished)` rows
+We first see a bar graph of the average values of happiness for all four seasons for each city.
+
+```{r,fig1211, fig.width = 5, fig.asp = 0.62, fig.align = 'center', warning=FALSE}
+couchto5kfinished=couchto5kfinished %>% group_by(season,city) %>% summarise(happiness=
+                        mean(happiness,na.rm=T)) 
+
+ggplot(couchto5kfinished,aes(x=season,y=happiness,fill=city))+geom_bar(stat = "identity", position = "dodge")
+
+```
+We will now model this relationship using a linear model (coefficients shown below) and plot the output from the model.
+```{r,include=FALSE}
+model_avg_happiness <- lm(happiness ~ 1 + season + city, data = couchto5k)
+```
+```{r,fig121, fig.width = 5, fig.asp = .62, fig.align = 'center'}
+
+summary(model_avg_happiness)$coefficients
+
+
+plot_model(model_avg_happiness, type = "pred",  terms=c("season","city"), show.data=TRUE)
+     
+```
+During the presentation, it would be useful to highlight how the predicted values of happiness were higher than previous trends. Even during winter and autumn seasons, participants from both cities showed a general trend of having happiness scores over 25. In spring and summer months, the participatns reported high scores for happiness, with majority of the reported scores lying in the >25 happiness score range. This shows the impact of program completion in helping people feel happier.
+
+# Question 5
+
+## Question 5a
+
+For convenience, we discuss completion of program and dropping out of the program to mean diametrically opposite sides of the same parameter. 
+We will see correlation values between different variables and the completion of the program. This will help us in choosing the explanatory variables for our model.
+The correlation of happiness reported by the participant and whether they completed the program is `r cor(x = couchto5k$happiness, y = couchto5k$completed_or_not)`
+
+Next, we see that the correlation of self motivation of the participant and whether they completed the program is `r cor(x = couchto5k$selfmot, y = couchto5k$completed_or_not,  use = "complete.obs")`
+
+Correlation between accountability and dropping out is `r cor(x = couchto5k$accountability, y = couchto5k$completed_or_not)`. It is surprising to see a low correlation score close to zero.
+
+Correlation score between age and completion of the program `r cor(x = couchto5k$age, y = couchto5k$completed_or_not,use = "complete.obs")`
+
+We will also found that the correlation score for health and completion of the program is `r cor(x = couchto5k$health, y = couchto5k$completed_or_not,use = "complete.obs")`
+
+We analysed the relationship between completing the program and the season using an ANOVA test. We found the p-value for season to be 1.1e-12 which shows that there is the possibility of a relationship between season and completion of the program. However, the p-value obtained for city was 0.8 (>>0.05) which give evidence for the null hypothesis. Hence, we did not use the city as a explanatory variable.
+
+```{r, include=FALSE}
+aov.model <- aov(couchto5k$completed_or_not ~ couchto5k$season)
+summary(aov.model)
+
+aov.model <- aov(couchto5k$completed_or_not ~ couchto5k$city)
+summary(aov.model)
+
+glm_model_season_sm_age <- glm(completed_or_not ~ selfmot+season+age, data = couchto5k, family="binomial")
+summary(glm_model_season_sm_age)
+```
+We build a linear model with self motivation, season and age. The coefficients from the model are given below
+```{r}
+
+summary(glm_model_season_sm_age)$coefficients
+
+```
+The model can be interpreted as follows:
+
+b0 / Intercept or Autumn season: R chose seasonautumn as the reference group as it choses the dummy variable aplhabetically. It simply describes the significance of the season autumn class when other seasons are valued at 0. The p-value makes the intercept meaningful in describing the likelihood of program completion.
+
+b1:Selfmot is a statistically significant class. It shows that the likelihood of completion inceases by 0.29 with a unit increase in selfmot when all other factors are constant.
+
+b2: Seasonspring is a statiscally significant class and shows a strong correlation between the spring season and likelihood of completion.
+
+b3: The seasonsummer indicates the effect of seasonsummer class. It has a p-value of 0.9 which indicates low statistical significance.
+
+b4: The seasonwinter class is not satistically significant for our analysis as indicated by the p-value(0.92). It shows the effect of the seasonwinter class in estimating the completion of the program.
+
+b5 : The age variable is not satistically significant for our analysis as indicated by the p-value(0.25). It however, shows that an increase in one year age can increase the likelihood of completion by 0.02 over all other factors being constant.
+
+From the model, it can be said that season and self motivation are key factors in assessing the likelihood of dropping out.
+
+The residuals follow a normal distribution and which confirms the validity of our model.
+
+## Question 5b
+
+To predict the likelihood of dropping out, we chose three explanatory variables. These were self motivation, season and age. 
+
+Effect of estimator self motivation: Self motivation seemed to be a significant estimator in predicting whether the participant completed the program or not. This was indicated by the p-value 0.00099 which is much smaller than 0.05. A positive correlation value also showed that it higher self motivation values was associated with higher completion stats.
+
+Effect of estimator season: From our ANOVA test, we learned that the season parameter was statistically influential to happiness score predictions. In our model, the season autumn was chosen as the reference group This is in line with the dummy coding standard for linear regression models. We see that the estimated value of happiness for the season autumn was 0.0266. The p-value (<0.05) indicated significant contribution to the model. However, we saw that happiness scores were more significantly affected by the season spring. The summer season was a very influential class with a p-value of 0.00105. The coefficient indicated a positive relationship between this class and reported happiness scores, which has been confirmed by other tests in this report.
+
+Effect of estimator age: Age did not seemto be a significant estimator in predicting whether the participant completed the program or not. This was indicated by the p-value 0.25 which is much higher than 0.05. Though the correlation metric indicated a positive, albeit, small association.
+
+```{r q5b}
+
+
+
+```
+
+## Question 5c
+
+
+We will create a generalised linear model to study quitting as a function of self motivation of the participants. For convenience, we will consider the probability of completing the program, which is the opposite of quitting but will help in modelling the relationship. 
+The coefficients of this model are listed below.
+
+```{r q5c}
+model1 <- glm(completed_or_not ~ selfmot, data = couchto5k, family="binomial")
+summary(model1)$coefficients
+```
+```{r,include=FALSE}
+
+
+selfmot100 <- tibble(selfmot = 1:100)
+
+predict(model1, newdata = selfmot100, type = "response")
+selfmot100 <- 
+ selfmot100 %>%
+  mutate(
+    predprobs = predict(model1, newdata = selfmot100, type = "response"),
+    negprobs = predprobs*(-1),
+    predclass = ifelse(predprobs > 0.5, 1, 0)
+  )
+```
+Now, we can represent this relationship graphically.
+```{r,fig611, fig.width = 5, fig.asp = .65, fig.align = 'center'}
+
+ggplot(selfmot100, aes(x = selfmot, y = predprobs)) +
+  geom_line()+
+  labs(y="predicted probability of completing the program", x= "self motivation")
+```
+
+
+It is visible from the graph that the probability of completing the program goes up as self motivation increases. The probability of completion follows a linear trend with a positive slope until values close to 45 for self motivation. Beyond the value, the probability of completing the program becomes somewhat independent of the increase in self motivation.
+
+
+
+
+
+
+
+
+

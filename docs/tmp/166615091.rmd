@@ -1,0 +1,335 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+params:
+  examnumber: "B203073"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+options(digits=3)
+library(tidyverse)
+library(na.tools)
+library(car)
+library(knitr)
+library(pander)
+library(sjPlot)
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+**Cleaning Data**
+---
+To clean the data following steps were taken:
+
+
+1. Firstly, a summary of data was called to check for impossible and missing values. 
+
+
+2. It was followed by removing impossible values
+
+
+     - any age above 100 was assigned as NA, considering it a mistake
+
+
+      - the column `week_stopped` had one value 12, it was impossible because the programme was only 9 weeks long, so it was assigned as NA.
+
+
+      - the column `selfmot` which contained scores for self motivation scale had negative values, which was not possible as it was measured on 5 point likert scale, so they were assigned as NA.
+
+
+      - one spelling error in `season` colunm was corrected.
+
+
+3. This was followed by converting `season` and `city` into factors.
+
+
+4. Lastly, a summary was generated to check if any further values need to be corrected. No further corrections were required.
+```{r cleaning, message=FALSE, warning=FALSE, include=FALSE}
+summary(couchto5k)
+couchto5k$clean <- NA
+couchto5k$clean[couchto5k$age>=100] <- "impossible age"
+couchto5k$clean[couchto5k$selfmot<0] <- "impossible score on self-motivation"
+couchto5k$clean[couchto5k$week_stopped>9] <- "more than programme length"
+couchto5k$season[couchto5k$season == "autunm"] <- "autumn"
+missing_data <- table(couchto5k$clean)
+couchto5k$age[couchto5k$clean=="impossible age"] <- NA
+couchto5k$selfmot[couchto5k$clean=="impossible score on self-motivation"] <- NA
+couchto5k$week_stopped[couchto5k$week_stopped>9] <- NA
+couchto5k$season <- as.factor(couchto5k$season)
+couchto5k$city <- as.factor(couchto5k$city)
+summary(couchto5k)
+```
+
+
+**Describing data**
+```{r descriptives, echo=FALSE, message=FALSE, warning=FALSE}
+partcipation <- ggplot(couchto5k, mapping = aes(x= city, fill=season))+ geom_bar(position = "stack") +  theme_light() + scale_fill_brewer(palette = "Greys")+ labs(x= "City", y= "Number of Participants", title = "FIGURE 1: Participation in Couch to 5K Initiative")
+couchto5k <- mutate(couchto5k, completion = ifelse(week_stopped<5, "Stopped before week 5", "Stopped after week 5"))
+couchto5k$completion[couchto5k$week_stopped==9] <- "Completed"
+compl <- ggplot(couchto5k, aes(x= city, fill=completion))+ geom_bar(position = "dodge") +  theme_light() + scale_fill_brewer(palette = "Greys")+ labs(x= "City", y= "Number of Participants", title = "FIGURE 2: Completion rate in Couch to 5K Initiative")
+```
+
+*Participation in the programme*\
+
+```{r echo=FALSE, fig.align='center', fig.cap="Figure 1: the above plot shows the number of participant who participated from each city during different seasons", message=FALSE, warning=FALSE, , out.width="80%", out.height="80%"}
+print(partcipation)
+```
+
+
+*Completion of the programme*\
+
+```{r out.width="80%", out.height="80%", fig.align='center', fig.cap="Figure 2: the above plot shows the number of participants who completed the programme from each city."}
+print(compl)
+```
+
+# Question 1 
+
+## Question 1a
+To compare whether the proportions of people who completed or dropped out in the National survey and the present data, first, the proportions of completion was checked in current data. These proportions are shown by the following table:
+
+
+```{r q1a, warning=FALSE, include=FALSE}
+table(couchto5k$completion)
+x<- c("Completed", "Stopped after week 5", "Stopped before week 5")
+natsurvey <- c(45, 10, 45)
+oursample <- c(64, 21, 43)
+compdat <- tibble(x,natsurvey,oursample)
+```
+
+
+Then a new dataset or tibble was created `compdat`, which had proportions of both, the national survey and the "couch to 5k" dataset. This dataset was the used to run a Chi-square test of independence, to check whether there is any dependence between the results of both surveys.
+
+```{r A1a, warning=FALSE, include=FALSE}
+chi1 <- chisq.test(compdat$natsurvey, compdat$oursample)
+```
+
+
+The chi-square is, $\chi^2$(df=`r chi1$parameter`)= `r chi1$statistics`, p>0.05  , which much less than the critical value at $\alpha$ =0.05. Therefore, both the datasets are dependent on each other.
+
+
+> The results indicated that both the datasets are in fact **in line with each other.**
+
+
+## Question 1b
+To understand whether attrition rates differ by the city, Chi-square test of independence was done.
+```{r q1b, warning=FALSE, include=FALSE}
+ed <-table(couchto5k$completion[couchto5k$city== "Edinburgh"])
+gg <-table(couchto5k$completion[couchto5k$city== "Glasgow"])
+edgg <- tibble(ed,gg)
+chi2 <- chisq.test(edgg$ed, edgg$gg)
+```
+
+
+The chi-square is, $\chi^2$(df=`r chi2$parameter`)= `r chi2$statistics`, p>0.05  , which much less than the critical value at $\alpha$ =0.05. Therefore, both the cities do not differ by attrition rates. 
+
+
+>Results indicated that there was **no difference attrition rates by the city**.
+
+
+## Question 1c
+To understand whether the age of beginning the programme differed by the city, independent sample t-test was done.
+To check the assumption of t-test, Shapiro-wilk test of normality and equality of variances was used.
+```{r q1c, include=FALSE}
+shap.ed <-shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"])
+shap.gg <-shapiro.test(couchto5k$age[couchto5k$city=="Glasgow"])
+varcity <-with(couchto5k, var.test(age~city))
+t.city <- with(couchto5k, t.test(age~city))
+MWU <- with(couchto5k, wilcox.test(age~city))
+```
+
+
+The p-value Shapiro-wilk test of Edinburgh's sample (`r shap.ed$p.value` < 0.05) and Glasgow's sample (`r shap.gg$p.value` <0.05) showed a violation of normality. Equality of variance test showed a p value of `r varcity$p.value`, indicating unequal variances. \
+While t-test is resistant a little violation of normality, due to the violation of equality of variances as well, along with independent t-test, Mann-Whitney U test was also conducted. The t-test showed no significant difference in age of the participants by the city, t=`r t.city$parameter`, p value= `r t.city$p.value`, indicating that both the cities had similar mean ages. 
+
+
+> The Mann-Whitney U test also reported the same results, p value= `r MWU$p.value`, that there is **no difference in age by the city.**
+
+
+# Question 2
+
+## Question 2a
+To understand whether the happiness rating of the participants were affected season they were interviewed in, a linear model was created. In this model, happiness (dependent variable) was predicted by season(independent variable).
+
+
+```{r q2a, echo=FALSE, message=FALSE, warning=FALSE}
+mod1 <- lm(happiness ~ season, couchto5k)
+pander(mod1, caption= c("Table 1: Regression for dependent variable Happiness Ratings, predicted by Season"))
+
+```
+
+
+The seasons model **does not significantly predict Happiness ratings**. The model was also unable to explain much variance in the Happiness rating, ($R^2$= `r summary(mod1)$r.squared`), F(125)= 1.83, p> 0.05.
+
+
+###Assumptions of Seasons model predicting Happiness rating
+```{r echo=FALSE, fig.align='center', fig.cap="Figure 3: The above figure shows a qq plot,of Seasons model, indicating normality", message=FALSE, warning=FALSE, out.height="80%", out.width="80%"}
+plot(mod1, which = 2)+ title("Figure 3: QQ-plot of Season Model", line = 2)
+```
+
+```{r fig.align='center', fig.cap="Figure 4:The above figure shows cook’s distance plot, showing there are no influential outliers", message=FALSE, warning=FALSE, out.height="80%", out.width="80%"}
+plot(mod1, which= 4)+title("Figure 4: Cook's distance plot of Season Model", line = 2)
+```
+
+
+The above graphs indicate that there are no significant outlier and there is no major violation of normality.
+
+## Question 2b
+
+To understand whether the happiness rating of the participants were affected season they were interviewed in and their age, a linear model with two predictors was created. In this model, happiness (dependent variable) was predicted by season(independent variable) and subsequently by age.
+```{r q2b, echo=FALSE}
+mod2 <- lm(happiness ~ season+age, couchto5k)
+pander(mod2, caption= c("Table 2: Regression for dependent variable Happiness Ratings, predicted by Season and Age of the participants"))
+pander(anova(mod2), caption= c("Table 3: Incremental F-test statistics comparing each additional predictor"))
+```
+
+
+The new model **does not significantly predict the values of Happiness ratings**. The model only predicts 6% of the variable's variance ($R^2$= `r summary(mod2)$r.squared`).The incremental F-test also does not show any significant increment in the explained variance in the model, with the addition of age. 
+
+
+###Assumptions of Seasons and Age model predicting Happiness rating
+```{r echo=FALSE, fig.align='center', fig.cap="Figure 5: the above figure shows the residuals across fitted values", out.height="80%", out.width="80%"}
+plot(mod2, which = 1)+title("Figure 5: Means of residual across fitted values", line = 2)
+```
+
+```{r echo=FALSE, fig.align='center', fig.cap="Figure 6: The above figure shows QQ Plot of residuals", out.height="80%", out.width="80%"}
+plot(mod2, which = 2)+title("Figure 6: QQ-Plot of Seasons and Age Model", line = 2)
+```
+
+```{r out.width="80%", out.height="80%", fig.align='center', fig.cap= "Figure 7:The above figure shows  variance in residuals across the fitted values"}
+plot(mod2, which = 3)+title("Figure 7: Variance in residuals across fitted values", line = 2)
+```
+
+```{r echo=FALSE, fig.align='center', fig.cap="Figure 8: The above figure shows cook's distance plot,showing no influential outliers", out.height="80%", out.width="80%"}
+plot(mod2, which = 4)+title("Figure 5: Cook's distance plot", line = 2)
+```
+ 
+ 
+ The above graphs indicate no major violation to the assumptions. Mean of residuals is approximately zero across the fitted values, residuals are approximately normally distributed, the variance is reasonably constant and there are not extreme and influential outliers.
+ 
+ 
+## Question 2c
+To create a baseline model for predicting happiness rating, from the variables explored above, following criteria was kept in mind:-
+1. The base model should not be overfitting.\
+2. The model should be simple.\
+```{r q2c, echo=FALSE}
+basemod <- lm(happiness~1+age, couchto5k)
+pander(basemod, caption = c("Table 4: Regression for dependent variable Happiness Ratings, predicted by Age of the participants"))
+```
+Age of the participants was chosen to be the predictor variable for Happiness ratings. The age of participants did not significantly predicted the values for Happiness ratings.
+
+
+# Question 3
+
+## Question 3a
+To understand whether completion of programme could predict happiness over and above the baseline model, a new model was created with an additional categorical variable with three levels: Completed programme, stopped after 5 weeks and stopped before 5 weeks.
+```{r q3a, echo=FALSE}
+prog_happ <- update(basemod, ~. +completion)
+pander(prog_happ, caption = c("Table 5: Regression for dependent variable Happiness Ratings, predicted by completion of the programme over the base model"))
+pander(anova(prog_happ), caption= c("Table 6: Incremental F-test statistics comparing each additional predictor"))
+
+```
+
+
+The model did not significantly predicted the happiness outcomes of the participants (as shown in the table above). The model predicted 2% of the variance with $r^2$= `r summary(prog_happ)$r.squared`.
+The incremental f-test shows no significant increase in explained variance.
+
+
+## Question 3b
+To understand whether a health metric could predict happiness over and above the completion model, a new model was created with an additional variable, having health metric.\
+```{r q3b, echo=FALSE}
+healthmod <- update(prog_happ, ~. +health)
+pander(healthmod, caption = c("Table 7: Regression for dependent variable Happiness Ratings, predicted by completion of the programme and health measure over the base model"))
+
+pander(anova(healthmod), caption= c("Table 8: Incremental F-test statistics comparing each additional predictor"))
+
+```
+
+
+The model significantly predicted the happiness outcomes of the participants (as shown in the table above). The variables age and health significantly predicted the happiness model at p<0.05 level. The model predicted 6% of the variance with $r^2$= `r summary(healthmod)$r.squared`.
+
+
+The incremental f-test shows significant increase in explained variance with addition of health as a predictor.
+
+## Question 3c
+To understand whether an interaction between health metric and completion of programme could predict happiness over and above the health and completion model, another model was created.\
+```{r q3c, echo=FALSE}
+intMod <- lm(happiness~ age+health+completion+ health:completion, couchto5k)
+pander(intMod, caption = c("Table 9: Regression for dependent variable Happiness Ratings, predicted by completion of the programme and health measure and interation of the two predictors over the base model"))
+pander(anova(intMod), caption= c("Table 10: Incremental F-test statistics comparing each additional predictor"))
+
+```
+
+
+The model significantly predicted the happiness outcomes of the participants (as shown in the table above).. The model predicted the variance with $r^2$= `r summary(intMod)$r.squared`.
+The incremental f-test shows significant increase in explained variance with addition of the interaction variable as a predictor
+
+## Question 3d
+The happiness rating of the participants were significantly predicted by our final interaction model. Along with age and health predicted happiness outcomes among the participants, the interaction between completion of the programme and their health significant predictors too. Prediction of happiness on the basis of health is conditional on whether the participants completed the programme or not. This interaction effect is shown in the graph below.\
+
+```{r echo=FALSE, fig.align='center', fig.cap="Figure 9: The above figure shows a plot of interaction model for Happiness outcomes for the participants", out.height="80%", out.width="80%"}
+sjPlot::plot_model(intMod, type= "int", mdrt.values = "all", title = "Figure 9: Predicted values of Happiness from interaction effects between health metric and completion of the programme")
+```
+
+
+# Question 4
+
+```{r q4, echo=FALSE, fig.cap="Figure 10: The above grapgh shows the Happiness Ratings of the participants who completed the programme", message=FALSE, warning=FALSE, out.height="80%", out.width="80%"}
+fullprog <- filter(couchto5k, completion== "Completed")
+fullprog <-group_by(fullprog, city, season)
+means <-summarise(fullprog, average = mean(happiness))
+fundergraph <- ggplot(means, aes(x= city, y= average, fill= season))+ geom_col(position = "dodge")+ theme_light()+ scale_fill_brewer(palette = "Greys")+labs(x= "City", y= "Average Happiness ratings of the participants", title = "FIGURE 10: Happiness rating among sucessful participants")
+print(fundergraph)
+```
+
+
+# Question 5
+
+## Question 5a
+To build a model predicting likelihood dropout, self-motivation ratings of the participants were taken as the predictor.  \
+```{r q5a, echo=FALSE}
+couchto5k <- mutate(couchto5k, drop_ornot = ifelse(couchto5k$completion== "Completed", "completed", "dropout"))
+couchto5k$drop_ornot <- as.factor(couchto5k$drop_ornot)
+dropout <- glm(drop_ornot ~ selfmot, family = "binomial", couchto5k)
+pander(dropout, caption= "Table 11: Regression for predicting Dropout, by self motivation ratings of the participants")
+aov2 <-anova(dropout)
+```
+
+
+The self-motivation ratings significantly predict dropouts, with $\beta$= `r dropout$coefficients[2]`. It also explains proportion of variance in dropouts, $R^2$= `r summary(dropout)$r.squared`.
+
+
+## Question 5b
+The Self-motivation models predicts the likelihood of dropping dropout significantly. According to the model, the high the self motivation rating, lower the probability of dropping out. The figure below shows the predicted probabilities of dropping out corresponding to self-motivation ratings.\
+```{r echo=FALSE, fig.align='center', fig.cap="Figure 11: Predicted probabilities of dropping out by self motivation", message=FALSE, warning=FALSE, out.height="80%", out.width="80%"}
+plot_model(dropout, type="pred", axis.title = c( "Self motivation ratings of the paticipants","Predicted probabbilities of dropping out"), title = "Figure 11: Predicted probabilities of Dropping out")
+```
+
+## Question 5c
+
+```{r q5c, echo=FALSE}
+drop2 <- glm(drop_ornot~ 1+ selfmot, family = binomial, couchto5k)
+effect <- function(a){2.7869+-0.1870}
+effect <- function(a){2.7869+-0.1870*a}
+log2prob <- function(x){ exp(x)/1+exp(x)}
+couchto5k <- mutate(couchto5k, prob = log2prob(effect(selfmot)))
+```
+
+```{r echo=FALSE, fig.align='center', fig.cap="Figure 12: The above figure shows probability of dropping out of participants by their self-motivation ratings", warning=FALSE, out.height="80%", out.width="80%"}
+ggplot(couchto5k, aes(x= prob, y= selfmot))+geom_line()+ theme_light()+ scale_fill_brewer(palette = "Greys")+labs(x= "Probability of dropping out", y= "Self motivation ratings of participants", title = "FIGURE 12: Actual probabilities of dropping out by Self-motivation ratings")
+```
+
+
+
+
+
+
+
+
+

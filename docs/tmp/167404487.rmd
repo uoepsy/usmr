@@ -1,0 +1,1663 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+output:
+  html_document:
+    theme: journal
+    toc: true
+    toc_depth: 2
+    toc_float: 
+      smooth_scroll: false
+  pdf_document: default
+  word_document: default
+params:
+  examnumber: "B118868"
+---
+
+```{r setup, include=FALSE}
+
+# Only show output (plots):
+knitr::opts_chunk$set(echo = FALSE)
+
+#Removing warnings from the document: 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+# Rounding numeric output to 2 digits: 
+options(digits=2) 
+
+# load any other packages that you require here:
+library(car)
+library(dplyr)
+library(emmeans)
+library(ggplot2)
+library(gmodels)
+library(Hmisc)
+library(kableExtra)
+library(knitr)
+library(moments)
+library(psych)
+library(stargazer)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(texreg)
+library(tidyverse)
+library(qqplotr)
+
+#install packages (please undo hashtag where necessary)
+#install.packages("car")
+#install.packages("dplyr")
+#install.packages("emmeans")
+#install.packages("ggplot2")
+#install.packages("gmodels")
+#install.packages("Hmisc")
+#install.packages("kableExtra")
+#install.packages("knitr)
+#install.packages("moments")
+#install.packages("psych")
+#install.packages("stargazer")
+#install.packages("sjPlot")
+#install.packages("sjmisc")
+#install.packages("sjlabelled")
+#install.packages("texreg")
+#install.packages("tidyverse")
+#install.packages("qqplotr")
+
+
+# Reading in the personalized data: 
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+
+```
+
+<p>&nbsp;</p>
+
+
+# QUESTION 0
+
+```{r cleaning, include = FALSE}
+
+#MISSING VALUES
+apply(is.na(couchto5k), 2, which)
+
+#IMPOSSIBLE VALUES 
+#checking impossible values 
+hist(as.numeric(couchto5k$age)) 
+hist(as.numeric(couchto5k$accountability))
+hist(as.numeric(couchto5k$selfmot))
+hist(as.numeric(couchto5k$health))
+hist(as.numeric(couchto5k$happiness))
+table(couchto5k$season)
+table(couchto5k$city)
+hist(as.numeric(couchto5k$week_stopped))
+
+#changing impossible values to NA
+couchto5k <- 
+  couchto5k %>%
+  mutate(
+    age = ifelse(as.numeric(age)>100|as.numeric(age)<18, NA, as.numeric(age)),  
+    accountability = ifelse(as.numeric(accountability)>35|as.numeric(accountability)<5, NA, as.numeric(accountability)),
+    selfmot = ifelse(as.numeric(selfmot)>35|as.numeric(selfmot)<5, NA, as.numeric(selfmot)),
+    health = ifelse(as.numeric(health)>100|as.numeric(health)<0, NA, as.numeric(health)),
+    happiness = ifelse(as.numeric(happiness)>100|as.numeric(happiness)<0, NA, as.numeric(happiness)),
+    week_stopped = ifelse(as.numeric(week_stopped)>9|as.numeric(week_stopped)<0, NA, as.numeric(week_stopped)),
+  )
+
+#fixing spelling mistake 
+
+autunm <- sum(couchto5k$season=="autunm")#report number of observations
+
+couchto5k <-
+  couchto5k %>%
+  mutate(season = case_when(
+    season %in% c("autumn","autunm")~ "autumn"
+    ,TRUE ~ season)
+  ) 
+
+#CATEGORICAL DATA
+#assign variables as factors
+couchto5k$season <- as.factor(couchto5k$season)
+couchto5k$city <- as.factor(couchto5k$city)
+couchto5k$pptID <- as.factor(couchto5k$pptID)
+
+#reorder season variable 
+couchto5k$season <- factor(couchto5k$season, levels=c('spring','summer','autumn','winter'))
+
+```
+
+```{r q0 APA setup}
+#Setup function to report p-values according to APA guidelines 
+
+pval <- function(pvalue)
+{if(pvalue >= 0.001){
+  p <- paste0("=",round(pvalue,3))
+} else {
+  p <- "<.001"
+}
+  return(p)
+}
+
+#simplified imperfect version
+#other functions were not compatible with all of my objects 
+
+```
+
+
+```{r q0 descriptives, echo=FALSE}
+
+#TABLE 1 
+
+descriptives_q0_con <- describe(couchto5k %>% select(age,accountability,selfmot,health,happiness,week_stopped), skew=FALSE, IQR=TRUE)%>%as.data.frame()%>%
+  select(n,mean,sd,min,max,range,se,IQR)
+
+rownames(descriptives_q0_con) <- c("Age","Accountability","Self-Motivation","Health","Happiness","Week Stopped")
+
+
+#TABLE 2 (CATEGORICAL VARIABLE)
+#manually set-up
+Variablea <- c("City","","","Season","","","","")
+
+Category <- c("Edinburgh","Glasgow","Total","Spring","Summer","Autumn","Winter","Total")
+
+N <- c(sum(couchto5k$city=="Edinburgh", na.rm=TRUE),
+       sum(couchto5k$city=="Glasgow", na.rm=TRUE),
+       length(couchto5k$city), 
+       sum(couchto5k$season=="spring", na.rm=TRUE),
+       sum(couchto5k$season=="summer", na.rm=TRUE),
+       sum(couchto5k$season=="autumn", na.rm=TRUE),
+       sum(couchto5k$season=="winter", na.rm=TRUE),
+       length(couchto5k$season))
+       
+       
+Percentage <- c(sum(couchto5k$city=="Edinburgh", na.rm=TRUE)/length(couchto5k$city)*100,
+                sum(couchto5k$city=="Glasgow", na.rm=TRUE)/length(couchto5k$city)*100,
+                length(couchto5k$city)/length(couchto5k$city)*100,
+                sum(couchto5k$season=="spring", na.rm=TRUE)/length(couchto5k$season)*100,
+                sum(couchto5k$season=="summer",na.rm=TRUE)/length(couchto5k$season)*100,
+                sum(couchto5k$season=="autumn",na.rm=TRUE)/length(couchto5k$season)*100,
+                sum(couchto5k$season=="winter", na.rm=TRUE)/length(couchto5k$season)*100,
+                length(couchto5k$season)/length(couchto5k$season)*100)
+    
+descriptivescat <- data.frame(Variablea, Category, N, Percentage) #create data frame 
+
+
+
+#FIGURE 1
+visualise_data <- couchto5k %>%
+  select(age, accountability, selfmot, health, happiness, week_stopped) 
+
+
+#Pearson correlation p values
+visualise_data_matrix <- as.matrix(visualise_data)
+bivariatecorrelations <- rcorr(visualise_data_matrix)
+
+
+#For easier reporting within text 
+age_health_cor <- cor.test(couchto5k$age,couchto5k$health,method="pearson")
+age_happiness_cor <- cor.test(couchto5k$age,couchto5k$happiness,method="pearson")
+selfmotivation_happiness_cor <- cor.test(couchto5k$selfmot,couchto5k$happiness,method="pearson")
+selfmotivation_weekstopped_cor <- cor.test(couchto5k$selfmot,couchto5k$week_stopped,method="pearson")
+```
+
+### STUDY BACKGROUND 
+Couch to 5k is a NHS-sponsored fitness programme that takes beginners from their couch to running a 5k race in 9 weeks. Participants were recruited in Edinburgh and Glasgow and all participants started the programme across the course of a year. At Week 0, participants’ age was recorded and they completed a questionnaire measuring the psychometric factors health and wellbeing. Upon completion of the programme (Week 9) or dropping out (<Week 9) a questionnaire assessed participants’ self-reported happiness and a health measure derived from a number of physiological tests. This report aimed to answer two overarching primary research questions: 
+
+- Which psychological factors make people continue on the programme?
+- What effects does the programme take on health and wellbeing? 
+
+
+### DATA
+This report used fictional data that was obtained from https://uoepsy.github.io/data/usmr_2122_data.R and was personalized for the parameter B118868. The dataset contains information on `r length(couchto5k$pptID)` participants and includes the following variables: 
+
+- `pptID`: random ID code for participants 
+-	`Season`: season of the year participants were interviewed in (levels: spring, summer, autumn, winter)
+-	`City`: city participants were recruited in (levels: Edinburgh, Glasgow)
+-	`Age`: participants' age in years
+-	`Accountability`: psychometric measure of accountability (or responsibility). The score is recorded by summing responses to each of 5 items, with items answered on a 1 to 7 Likert scale. The minimum scale score is 0 and the maximum scale is 35.
+-	`Self-Motivation`: psychometric measure of self-motivation. The score is recorded by summing responses to each of 5 items, with items answered on a 1 to 7 Likert scale. The minimum scale score is 0 and the maximum scale is 35.
+-	`Health`: multi-test measure, where the minimum scale score is 0 and the maximum scale score is 100
+-	`Happiness`: simple happiness scale, where the minimum scale score is 0 and the maximum scale score is 100 
+-	`Week Stopped`: week of programme participants stopped in (week 9 = completed the programme) 
+
+
+### DATA CLEANING 
+All initial participant data was complete (no missing values), with participants' scores on the  accountability, health and happiness measure all within plausible ranges (see Table 1). Impossible values were found for participants' self-motivation (*N*=`r sum(is.na(couchto5k$selfmot))`) and the week participants' stopped the programme in (*N*=`r sum(is.na(couchto5k$week_stopped))`). There was no information on the maximum recruitment age for the programme, however all values exceeding 100 years of age were deemed impossible (*N*=`r sum(is.na(couchto5k$age))`). All implausible observations were changed to be *NA* (Not Applicable) as the observations of the same participants were valid for all other variables. 
+`r autunm` observations of the season variable were initially wrongly entered as "autunm", these were corrected to "autumn". The season variable was reordered (levels: "spring", "summer", "autumn", "winter"). The variables on the season and city of recruitment and participants identification variable were transformed to be categorical (see Table 2). Effects will be considered statistically significant at $\alpha$ = 0.05 in this report. Bivariate correlations show a moderate, negative relationship between participants' age and health (*r*=`r age_health_cor$estimate`, *p*`r pval(age_health_cor$p.value)`), a moderate, positive relationship between participants' age and happiness (*r*=`r age_happiness_cor$estimate`, *p*`r pval(age_happiness_cor$p.value)`) and a moderate, positive relationship between participants' self-motivation and happiness (*r*=`r selfmotivation_happiness_cor$estimate`, *p*`r pval(selfmotivation_happiness_cor$p.value)`). Moreover, a moderate, positive relationship is evident between participants' self-motivation and the week in which they stopped the programme *r*=`r selfmotivation_weekstopped_cor$estimate`, *p*`r pval(selfmotivation_weekstopped_cor$p.value)`). The other bivariate pairs were not significantly correlated at $\alpha$ = 0.05 (see Figure 1). 
+
+<p>&nbsp;</p>
+
+**Table 1**
+
+*Descriptive Statistics For Participants' Age, Accountability, Self-Motivation, Health, Happiness and Duration of Participation.*
+
+```{r q0 Table 1}
+knitr::kable(descriptives_q0_con, "pipe", align=c("l","l","l","l","l","l","l","l"),col.names = c("N","Mean","SD","Min","Max","Range","SE","IQR"))
+
+```
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+
+**Table 2**
+
+*Descriptive Statistics Assessing Participants' City of Recruitment And Season of Initial Interview*
+
+```{r q0 Table 2, fig.align='center'}
+knitr::kable(descriptivescat, "simple", align=c("l","l","l","l"), col.names=c("Variable","Category","N","Percentage (in %)"))
+
+```
+
+<p>&nbsp;</p>
+
+**Figure 1**
+
+*Bivariate Scatter Plots, Histograms And Pearson Correlation Coefficient for Variables Assessing Participants' Age, Accountability, Self-motivation, Health and Happiness And Duration of Participation.*
+
+```{r q0 Figure 1}
+
+couchto5k %>%
+  select(age,accountability,selfmot,health,happiness,week_stopped)%>%
+  pairs.panels(hist.col="#E6E6E6")
+
+```
+
+*Note.* Bivariate scatter plots are shown below diagonal. Histograms are displayed at diagonal and Pearson correlation coefficient (*r*) are shown above diagonal. 
+
+<p>&nbsp;</p>
+
+# QUESTION 1
+
+## QUESTION 1A
+
+```{r q1a}
+
+#METHODOLOGY 
+#creating a new categorical variable for the chi-squared goodness of fit test
+couchto5k$week_stopped_categories <- cut(couchto5k$week_stopped, breaks= c(0, 4, 8, Inf), labels= c("before week 5", "after week 5", "completed"))
+couchto5k$week_stopped_categories <- as.factor(couchto5k$week_stopped_categories)
+
+#IN-TEXT REFERENCE 
+#observed values will also be used in set-up of graph
+before_week_5 <- sum(couchto5k$week_stopped<5, na.rm=TRUE)
+after_week_5 <- sum(couchto5k$week_stopped<9, na.rm=TRUE)-sum(couchto5k$week_stopped<5, na.rm=TRUE)
+completed <- sum(couchto5k$week_stopped>8, na.rm=TRUE)
+total_participants_q1a <- sum(before_week_5, after_week_5, completed)
+observedq1a <- c(before_week_5, after_week_5, completed) 
+
+#ASSUMPTIONS
+#calculate smallest expected frequency
+minexfq1a <- 0.1*total_participants_q1a  #14 is the smallest expected frequency
+
+#ANALYSIS
+resq1a <- chisq.test(table(couchto5k$week_stopped_categories), p = c(0.45, 0.1, 0.45))
+
+#FIGURE 2 
+#Simple bar plot of proportions
+expectedq1a <- c(0.45, 0.1, 0.45)
+observedq1a <- c(before_week_5, after_week_5, completed) 
+totalq1a <- sum(observedq1a)
+observedq1a.prop <- observedq1a/totalq1a
+
+#create matrix for boxplot
+mat1a.data <- c(expectedq1a,observedq1a.prop) 
+rnamesm1a <- c("Nationwide Survey","Present Study")
+cnamesm1a <- c("Dropout before Week 5","After Week 5","Programme Completion")
+named_matrix1a <- matrix(mat1a.data,nrow=2,ncol=3,byrow=TRUE,dimnames=list(rnamesm1a,cnamesm1a))
+  
+
+```
+
+
+**Research Question.** Are the dropout trends observed in the present study in line with the attrition trends of an earlier nationwide survey?
+
+**Methodology.** To assess whether the dropout trends of the present study are in line with an earlier nationwide study a chi-squared goodness of fit test was performed. For this purpose, a new categorical variable was created that reassigned participants' data on the week they stopped the programme into three categories: stopped before week 5 (*N*=`r  before_week_5`), stopped after week 5 (*N*=`r  after_week_5`) and completed (*N*=`r completed`). This new variable contains data on `r sum(observedq1a)` participants and represented the observed values of the chi-squared goodness of fit test. The expected values come from the earlier nationwide study that found that 45% of participants abandoned the programme before the halfway point in week 5, that a further 10% gave up before the end of the programme and that 45% of participants completed the programme. 
+
+- \(H_{0}\): the dropout rates observed in the present study conform to the proportions observed in the earlier nationwide study. 
+- \(H_{1}\): at least one of the observed dropout proportions is not as specified in the null hypothesis.
+
+**Assumptions.** All assumptions for the chi-squared goodness of fit test were met. Both outcome and predictor variable were categorical. Based on the study design, it was evident that all observations are independent and that cells in the contingency table are mutually exclusive. The standard rule that every expected cell should have a frequency of at least 5 was met. 
+
+**Results.** A chi-squared test of goodness of fit was performed to determine whether the dropout rates observed in the present study adhere to the earlier nationwide study. The observed dropout rates did not differ significantly from the proportions observed in the nationwide study,
+χ^2^ (`r resq1a$parameter`, *N*=`r sum(resq1a$observed)`) = `r resq1a$statistic`, *p*`r pval(resq1a$p.value)` (see Figure 2). 
+
+<p>&nbsp;</p>
+
+**Figure 2**
+
+*Comparison of Patterns of Attrition Observed Between Studies*
+```{r q1a Figure 2}
+
+barplot(named_matrix1a,
+        beside=TRUE,
+        legend=TRUE,
+        ylim=c(0, 0.7),
+        names.arg = c("Dropout before week 5", "Dropout after week 5", "Programme Completion"),
+        legend.text = c("Nationwide Study", "This Study"),
+        xlab="Patterns of attrition",
+        ylab="Proportion of participants (by study)")
+
+```
+
+*Note*. The displayed differences in the patterns of attrition are not statistically significant. 
+
+<p>&nbsp;</p> 
+
+## QUESTION 1B
+
+```{r q1b}
+
+#ANALYSIS 
+resq2 <- chisq.test(table(couchto5k$week_stopped_categories, couchto5k$city)) #perform chi square test of independence 
+
+#establish total number of observations 
+numobsq1b <- c(length(couchto5k$week_stopped_categories)-sum(is.na(couchto5k$week_stopped_categories)),                               length(couchto5k$city)-sum(is.na(couchto5k$city)))
+numobsq1b <- min(numobsq1b) #return smallest number (N)
+
+
+#ASSUMPTIONS
+#all expected values are at least 5
+req2exp <- resq2$expected 
+
+#GRAPH
+tableq1b <- table(couchto5k$city, couchto5k$week_stopped_categories) #create a basic contingency table 
+proportion_tableq1b <- prop.table(tableq1b, margin=1) #create a contingency table by row
+
+```
+
+**Research Question.** Do the rates of attrition differ between Edinburgh and Glasgow when using the same categories as in Question 1a (stopped before week 5, stopped after week 5, completed)? 
+
+**Methodology.** To assess whether the rates of attrition differ between Edinburgh and Glasgow (see Figure 3), a chi-squared test of independence was performed. The test was performed on data for `r numobsq1b` participants.
+
+- \(H_{0}\): the two variables are independent.
+- \(H_{1}\): the two variables are not independent. 
+
+**Assumptions.** All assumptions for the chi-squared goodness of independence test were met. Both outcome and predictor variable were categorical. Based on the study design, it was evident that all observations are independent. The expected values were at least 5 for each cell. 
+
+**Results.** A chi-squared test of independence was performed to examine the relationship between the observed attrition rates and the city participants were recruited in. The attrition rates did not differ between cities, 
+χ^2^ (`r resq2$parameter`, *N*=`r sum(resq2$observed)`) = `r resq2$statistic`, *p*`r pval(resq2$p.value)`.
+
+<p>&nbsp;</p>
+
+**Figure 3**
+
+*Comparison of Patterns of Attrition by Recruitment City*
+```{r q1b Figure 3}
+
+barplot(proportion_tableq1b,
+        beside=TRUE,
+        legend=TRUE,
+        ylim=c(0, 0.7),
+        names.arg = c("Dropout before week 5", "Dropout after week 5", "Programme Completion"),
+        legend.text = c("Edinburgh", "Glasgow"),
+        xlab="Patterns of attrition",
+        ylab="Proportion of participants (by city)",
+        args.legend = list(x = "topright",
+                           inset = c(0, 0)))
+
+```
+
+*Note.* The displayed differences in attrition rates between cities are not statistically significant. 
+
+<p>&nbsp;</p>
+
+## QUESTION 1C
+
+```{r q1c}
+
+#LAYOUT PLOTS 
+apatheme=theme_bw()+
+  theme(panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.border=element_blank(),
+        axis.line=element_line(),
+        text=element_text(family='Times'))
+#note: not all plots were compatible with APA style, this was not done consistently throughout the report (I just liked how it looks) 
+
+#DESCRIPTIVES
+Edi_mean <- mean(couchto5k$age[couchto5k$city=="Edinburgh"], na.rm=TRUE)
+Edi_SD <- sd(couchto5k$age[couchto5k$city=="Edinburgh"], na.rm=TRUE)
+Gla_mean <- mean(couchto5k$age[couchto5k$city=="Glasgow"], na.rm=TRUE)
+Gla_SD <- sd(couchto5k$age[couchto5k$city=="Glasgow"], na.rm=TRUE)
+
+#establish total number of observations 
+numobsq1c <- c(length(couchto5k$age)-sum(is.na(couchto5k$age)),                               length(couchto5k$city)-sum(is.na(couchto5k$city)))
+numobsq1c <- min(numobsq1c) #return smallest number (N)
+
+
+#ASSUMPTIONS
+#Normality (Shapiro-Wilk test for each group)
+shapiro_Edinburgh <- shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"]) #not normally distributed 
+shapiro_Glasgow <- shapiro.test(couchto5k$age[couchto5k$city=="Glasgow"])  
+
+#Normality (QQ-plots by group)
+ggplot1c_a <- ggplot(data = couchto5k, mapping = aes(sample = age, color = city, fill = city)) +
+  stat_qq_band(alpha=0.7, conf=0.95, qtype=1, bandType = "ts") +
+  stat_qq_line(identity=TRUE) +
+  stat_qq_point(col="black") +
+  scale_fill_manual(values=c("#4D4D4D","#E6E6E6"))+
+  scale_colour_grey(start=0.05, end=0.3) +
+  facet_wrap(~ city, scales = "free") +
+  labs(x = "Theoretical Quantiles", y = "Sample Quantiles") + 
+  apatheme 
+
+#Normality (histograms)
+ggplot1c_c <- ggplot(couchto5k, aes(age)) + 
+  geom_histogram(aes(y = (..count..), fill=city), binwidth = 5,col=I("black")) +
+  facet_wrap(~city, ncol = 3) +
+  scale_fill_manual(values=c("#4D4D4D","#E6E6E6"))+
+  scale_x_continuous("Age (in years)")+
+  apatheme
+
+#Normality (density plot)
+ggplot1c_d <- ggplot(couchto5k, aes(age, fill=city)) + 
+  geom_density() +
+  facet_wrap(~city, ncol = 3) +
+  scale_fill_manual(values=c("#4D4D4D","#E6E6E6"))+
+  scale_x_continuous("Age (in years)")+
+  apatheme
+
+#OUTLIERS
+#Produce box plots and visually check for outliers. The boxplot did not not indicate any outliers.
+ggplot1c_b <- ggplot(couchto5k, aes(x = city, y = age, fill = city)) +
+  stat_boxplot(geom ="errorbar", width = 0.5) +
+  geom_boxplot() + 
+  scale_fill_manual(values=c("#4D4D4D","#E6E6E6"))+
+  stat_summary(fun.y=mean, geom="point", shape=10, size=3.5, color="black") + 
+  scale_y_continuous("Age (in years)")+
+  apatheme + 
+  theme(legend.position="none")
+
+#statistical: bigger than 3sd away from mean chosen as cut-off score.  
+outliers <- function(obs, x = 3){
+  abs(obs - mean(obs, na.rm=TRUE)) > (x * sd(obs, na.rm=TRUE))
+}
+
+outlier1cedi <- outliers(couchto5k$age[couchto5k$city=="Edinburgh"]) #no outliers 
+outlier1cgla <- outliers(couchto5k$age[couchto5k$city=="Glasgow"]) #no outliers
+
+#Equal variance (F-test to compare two variances) 
+f1c <- with(couchto5k, var.test(age~city)) #group variances are equal 
+
+#ANALYSIS
+#Perform an independent Samples T-test
+ttest1c <- t.test(couchto5k$age~couchto5k$city, var.equal=TRUE, na.rm=TRUE) # p>0.05
+```
+
+**Research Question.** Do the average ages of participants who commenced the programme differ by recruitment city? 
+
+**Methodology.** To assess whether the average ages of participants' differ by recruitment city, an independent t-test was performed on data from `r numobsq1c` participants. 
+
+- \(H_{0}\): the mean age in Edinburgh and Glasgow is the same.
+- \(H_{1}\): the mean age differs in both cities. 
+
+**Assumptions and Individual Case Diagnostics.** Based on the study design, it was assumed that the sample data arose from independent random samples from two populations, here participants were recruited in the cities Edinburgh and Glasgow. The model met assumptions of equal variance (F(`r f1c$parameter`)=`r f1c$statistic`, *p*`r pval(f1c$p.value)`). A Shapiro-Wilk test indicated evidence against the null hypothesis that the residuals were drawn from a normally distributed population in Edinburgh (*W*=`r shapiro_Edinburgh$statistic`, *p*`r pval(shapiro_Edinburgh$p.value)`) but not in Glasgow (*W*=`r shapiro_Glasgow$statistic`, *p*`r pval(shapiro_Glasgow$p.value)`). A QQ plot and histogram suggest that the violation of normality is only moderate. Given the independent samples t-test is robust unless violations of normality are extreme, the observed violation of normality was not used as an indication to perform an alternative (non-parametric) test instead. Boxplots did not show any outliers and the final analysis did not exclude any data entries (see Figure 4). 
+
+<p>&nbsp;</p>
+
+**Figure 4**
+
+*Assumption Checks And Case Diagnostics For The Independent Samples T-Test*
+
+```{r q1c Figure 4, figures-side, fig.show="hold", out.width="50%"}
+ggplot1c_c
+ggplot1c_d
+ggplot1c_a
+ggplot1c_b
+```
+
+*Note.* The histogram (top left) and density curve (top right) show distributions that roughly resemble normal curves and the QQ plot shows that data points lie along the straight diagonal line with minor deviations (bottom left). The boxplots do not show any outliers (bottom right). 
+
+**Results.** An independent samples t-test was conducted in order to determine if the mean age of participants differed for study participants recruited in Edinburgh (Mean=`r Edi_mean`, SD=`r Edi_SD`) and Glasgow (Mean=`r Gla_mean`, SD=`r Gla_SD`). There was no statistically significant difference in mean age of participants recruited in the two cities; t(`r ttest1c$parameter`)=`r ttest1c$statistic`, *p*`r pval(ttest1c$p.value)`. 
+
+<p>&nbsp;</p>
+
+# QUESTION 2
+
+## QUESTION 2A
+
+```{r q2a}
+#ANALYSIS
+#fitting the model 
+modelq2a <- lm(scale(happiness) ~ season, data=couchto5k)
+
+#ASSUMPTIONS(STATISTICAL)
+#graphical assumptions can be found in the successive code chunk 
+
+#Homogeneity of variance (Breusch-Pagan)
+NCV2a <- ncvTest(modelq2a) #p>0.05 we do not have evidence that the assumptions has been violated 
+
+#Normality of residuals (Shapiro-Wilk)
+Shap2a <- shapiro.test(residuals(modelq2a)) #p<0.05 we have evidence that the assumption has been violated 
+
+#Independence of errors 
+DWT2a <- dwt(modelq2a) #p>0.05 no evidence the assumption was violated 
+
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#create a tibble that contains several measures for individual case diagnostics 
+modelq2a_diagnostics <- tibble(
+  modelq2a$model,
+  fitted = fitted(modelq2a),
+  resid = residuals(modelq2a),
+  studres = rstudent(modelq2a),
+  hats = hatvalues(modelq2a),
+  cooksd = cooks.distance(modelq2a)
+)
+
+#investigate studentised residuals for extreme values where >2 or <-2 indicate potential outlyingness
+studres2a <- modelq2a_diagnostics %>%
+  filter(abs(studres)>2)
+#one data entry found 
+
+#use hat values to assess whether there are any observations with high leverage with hat = (k+1)/n and hat values which are greater than 2 x hat indicating high leverage 
+hats2a <- modelq2a_diagnostics %>%
+  filter(hats > (2*(4+1)/(nobs(modelq2a))))
+#nearly all autumn and winter season people are flagged here 
+
+#Cook's distance cut-off score is chosen as 1 in this report. 
+cooksd2a <- modelq2a_diagnostics %>%
+  filter(cooksd>1) #no cook's distance values >1
+
+#no further action with influence.measures() was taken 
+
+#RESULTS
+#summary statistics
+summodelq2a <- summary(modelq2a)
+
+#pairwise comparisons
+pairs2a <- emmeans(modelq2a, "season")
+pairs2aresults <- summary(pairs(pairs2a), infer=c(TRUE,TRUE))
+#the difference between participants happiness in summer and autumn is statistically significant
+
+#define function to easily paste numbers into text
+myprint <- function(x, d=2) {
+  sprintf(paste0("%.", d, "f"), round(x, d))
+}
+
+#for in-line code 
+fstatq2a <- summary(modelq2a)$fstatistic 
+pvalq2a <- pf(fstatq2a[1], fstatq2a[2], fstatq2a[3], lower.tail=FALSE)
+
+#BOXPLOT to show participants' happiness scores across seasons 
+plotq2a <- ggplot(couchto5k, aes(x=factor(season), y=happiness))+
+     geom_boxplot(fill = c("#4D4D4D","#E6E6E6","#E6E6E6","#4D4D4D"), colour = "black")+
+     theme_classic()+
+     labs(x="Season",y="Happiness Ratings")+
+     theme( legend.position = "none" )
+
+```
+
+**Research Questions.** Are participants' happiness ratings affected by the season they were interviewed in? 
+
+**Methodology.** To investigate whether participants' happiness ratings are affected by the season they were interviewed in, a linear regression model was fit. Participants' happiness scores (Z-scored) was included as the outcome variable and the measure that indicated the season of participants' interview was included as the predictor variable. Dummy coding was applied and spring was chosen as the reference level. Post-hoc pairwise comparisons were applied to assess whether participants' happiness scores differ significantly between any pairs of seasons. The final model Model 2a was fitted to `r nobs(modelq2a)` observations, and took the form: 
+
+<center> Model 2a: Happiness =  $\beta_{0}$ + $\beta_{1}$(Summer) + $\beta_{2}$(Autumn) + $\beta_{3}$(Winter) + ϵ </center>
+
+<p>&nbsp;</p>
+
+To address the research question of whether the season participants' were interviewed in influence their happiness scores, we will consider the hypothesis that there are no statistically significant different happiness scores for participants' interviewed in different seasons, where: 
+
+- \(H_{0}\): Participants' happiness scores do not differ significantly in any of the pairwise comparisons between seasons. 
+- \(H_{1}\): Participants' happiness scores differ significantly in at least one pairwise comparison between seasons. 
+
+**Assumptions And Case Diagnostics.** Model 2a met assumptions of linearity (see model residuals vs. fitted values plot in Figure 5). The model met assumptions of homoscedasticity (see the scale-location plot) and the non-constant variance test indicated no evidence against the null hypothesis that the error variance is constant across level of the response, χ^2^(`r NCV2a$Df`)=`r NCV2a$ChiSquare`, *p*`r pval(NCV2a$p)`. The Durbin-Watson test of autocorrelation failed to reject the null hypothesis that there was no serial dependence in the error (*DW*=`r DWT2a$dw`, *p*`r pval(DWT2a$p)`) and we assume that observations were randomly sampled during study recruitment, therefore the model met the assumption of independence. The model did not meet the assumption of normality of error terms. The Shapiro-Wilk test rejected the null hypothesis that the residuals were drawn from a normally distributed population (*W*=`r Shap2a$statistic`, *p*`r pval(Shap2a$p.value)`), a conclusion backed by the QQ plot of the residuals in Figure 5. Given the violation of the normality assumption is likely a result of systemic structure in the residuals and this model does not represent a final model for the report, no further actions were taken.
+
+The model was also assessed for influential observations. Studentised residuals valued greater in magnitude than two indicate regression outliers and hat values larger than 2 times the average hat value indicate high leverage cases. The data indicated several regression outliers and high leverage cases. In this report a cut-off score of 1 is chosen for the Cook's Distance measure. Further, if any observations exceed this cut-off, observations will be further investigated and potentially excluded from models if they are deemed too influential overall. A Cook's Distance plot (see Figure 5) did not indicate that there are any high influence observations in the data. All flagged observations were probable, hence no further action was taken. 
+
+<p>&nbsp;</p>
+
+**Figure 5**
+
+*Plots Displaying Case Diagnostics and Model Assumptions for Model 2a*
+
+```{r q2a Figure 5, figures-side, fig.show="hold", out.width="50%"}
+
+#ASSUMPTIONS (Graphical)
+#Linearity (residuals vs. fitted plot)
+plot(modelq2a, which=1, main="Model 2a") #no problems
+
+#Homogeneity of variance (scale-location plot)
+#graphical using scale-location plot
+plot(modelq2a, which=3, main="Model 2a")#size of residuals is approximately the same across values of y-hat
+
+#Normality of residuals (QQ plot)
+plot(modelq2a, which=2, main="Model 2a") #heavy tails and looks violated
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#Graphical - plot high influence cases using Cook's distance
+plot(modelq2a, which=4, main="Model 2a") #no big values at all none Cook's distance > 1
+
+```
+
+*Note.* The Residuals vs. Fitted plot (top left) demonstrates that the 'average' residual is roughly zero across $\hat{y}$. The Scale-Location plot (top right) suggests that the size of the residuals is approximately the same across values of $\hat{y}$. The QQ-plot of the residuals (bottom left) shows very heavy tails and that observations do not closely follow to the straight line. The Cook's distance plot (bottom right) does not show any high influence cases. 
+
+**Results.** Full regression results including 95% Confidence Intervals are shown in Table 3. The F-test for model utility of Model 2a was statistically significant (F(`r fstatq2a[2]`,`r fstatq2a[3]`)=`r myprint(fstatq2a[1])`, *p*`r pval(pvalq2a)`) and the model explained approximately `r round(summodelq2a$adj.r.squared*100,0)`% of the variability in participants' happiness scores. Participants' happiness scores in different seasons are visually represented in Figure 6. Post hoc Tukey-adjusted pairwise comparisons showed statistically enhanced happiness' ratings for participants who were recruited in summer compared to those in autumn (*t*(`r pairs2aresults$df[4]`)=`r pairs2aresults$estimate[4]`,  *p*`r pval(pairs2aresults$p.value[4])`), with happiness scores rising by `r round(pairs2aresults$estimate[4],2)` standard deviations for those recruited in summer compared to autumn. There was no statistically significant differences in participants' happiness scores for any other pair combinations of seasons (see Table 4).
+
+The results presented here demonstrate that participants' happiness ratings are sometimes affected by the season they were interviewed in. However, it is notable that participants completed the happiness questionnaire after completing the Couch to 5k programme. It is possible that participants interviewed in summer are more likely to proceed further in the program than those in autumn and that this benefited participants' happiness ratings. Furthermore, the explored model only explained little variability in participants' happiness ratings, suggesting there may be more meaningful predictors of participants' happiness.
+
+<p>&nbsp;</p>
+
+**Figure 6**
+
+*Boxplot of Happiness Ratings of Participants' Recruited in Different Seasons*
+
+```{r q2a Figure 6}
+
+plotq2a
+
+```
+
+*Note.* The differences in happiness rating are only statistically significant for participants' recruited in summer compared to autumn. 
+
+<p>&nbsp;</p>
+
+**Table 3**
+
+*Regression Table for Model 2a.*
+
+```{r q2a Table 3}
+tab_model(modelq2a, dv.labels=c("Happiness"),pred.labels=c("Intercept","Season (summer)","Season (autumn)","Season (winter)"))
+```
+
+<p>&nbsp;</p>
+
+*Note.* The outcome variable is participants' happiness score (Z-scored). Dummy coding was used with the season spring as the reference level. 
+
+<p>&nbsp;</p>
+
+**Table 4**
+
+*Pairwise Comparisons of Participants' Happiness For All Seasons*
+
+```{r q2a Table 4}
+
+knitr::kable(pairs2aresults, "pipe",align=c("l","l","l","l","l","l","l","l"))
+```
+
+*Note*. 95% Confidence level used. P values are adjusted by Tukey method for comparing a family of 4 estimates.
+
+<p>&nbsp;</p>
+
+## QUESTION 2B
+
+```{r q2b}
+
+#METHODOLOGY 
+#fitting the model 
+modelq2b <- lm(scale(happiness) ~ scale(age)+season, data=couchto5k, na.action=na.omit)
+
+#ASSUMPTIONS (STATISTICAL)
+#Homogeneity of variance (Breusch-Pagan test)
+NCV2b <- ncvTest(modelq2b) #p>0.5 we do not have evidence that the assumption has been violated 
+
+#Normality of residuals (Shapiro-Wilk)
+Shap2b <- shapiro.test(residuals(modelq2b)) #p<0.5 reject the null hypothesis that the residuals are drawn from a normally distributed population!
+
+#Independence of error (Durbin Watson Test)
+DWT2b <- dwt(modelq2b) #p>0.05 no evidence the assumption was violated 
+
+#Multicollinearity 
+Vif2b <- vif(modelq2b) #VIF values <10 indicate that multicollinearity is not adversely affecting model estimates 
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#create a tibble that contains several measures for individual case diagnostics 
+modelq2b_diagnostics <- tibble(
+  modelq2b$model,
+  fitted = fitted(modelq2b),
+  resid = residuals(modelq2b),
+  studres = rstudent(modelq2b),
+  hats = hatvalues(modelq2b),
+  cooksd = cooks.distance(modelq2b)
+)
+
+#investigate studentised residuals for extreme values where >2 or <-2 indicate potential outlyingness
+studres2b <- modelq2b_diagnostics %>%
+  filter(abs(studres)>2) #one value was flagged
+
+#use hat values to assess whether there are any observations with high leverage with hat = (k+1)/n and hat values which are greater than 2 x hat indicating high leverage 
+hats2b <- modelq2b_diagnostics %>%
+  filter(hats > (2*(5+1)/(nobs(modelq2b)))) #flags winter and autumn cases again 
+ 
+#Cook's distance cut-off score is chosen as 1 in this report. 
+cooksd2b <- modelq2b_diagnostics %>%
+  filter(cooksd>1) #no cook's distance values >1
+
+#RESULTS 
+#summary statistics
+summodelq2b <- summary(modelq2b)
+
+#pairwise comparisons
+pairs2b <- emmeans(modelq2b, "season")
+pairs2bresults <- pairs2aresults <- summary(pairs(pairs2b), infer=c(TRUE,TRUE))
+#the difference between participants' happiness in summer and autumn is no longer statistically significant 
+
+#for in-line code 
+matrix_modelq2b_coefficient <- summary(modelq2b)$coefficients #convert coefficients into a data matrix
+confint_modelq2b_coefficients <- confint(modelq2b) #extract confidence intervals
+
+fstatq2b <- summary(modelq2b)$fstatistic #F-statistic
+pvalq2b <- pf(fstatq2b[1], fstatq2b[2], fstatq2b[3], lower.tail=FALSE) #p-value 
+
+```
+
+**Research Question.** Accounting for the effects of season discovered in 2a, is happiness affected by age?
+
+**Methodology.** To address whether participants' happiness ratings are affected by their age, when accounting for the effects of the season they were recruited in, participants' happiness scores (Z-scored) were modelled using multiple linear regression. Age (Z-scored) and the season of initial interview were included as predictors. Dummy coding was applied and spring was chosen as the reference level. Type 1 Sums of Squares was used, hence the predictors were entered into the model in a theoretically-motivated order, with age representing the first model component as it is presumed to have a bigger effect on happiness than the season participants were interviewed in. The final model Model 2b was fitted to `r nobs(modelq2b)` observations, and took the form: 
+
+<center> Model 2b: Happiness =  $\beta_{0}$ + $\beta_{1}$(Age) + $\beta_{2}$(Summer) +  $\beta_{3}$(Autumn) + $\beta_{4}$(Winter) + ϵ </center>
+
+<p>&nbsp;</p>
+
+To address the research question of whether participants' happiness ratings are affected by participants' age, when controlling for the effect of the season they were first interviewed in, we will consider the hypothesis test that the age coefficient is equal to zero, where:
+
+- \(H_{0}\): $\beta_{1}$=0. The age coefficient is equal to zero.
+- \(H_{1}\): $\beta_{1}$≠0. The age coefficient is not equal to zero. 
+
+**Assumptions And Case Diagnostics.** Model 2b met assumptions of linearity see plot of model residuals vs. fitted, Figure 7). The scale-location plot and the scale-location plot and a non-constant variance test indicate no evidence against the null hypothesis that the error variance is constant across across level of the response, χ^2^(`r NCV2b$Df`)=`r NCV2b$ChiSquare`, *p*`r pval(NCV2b$p)`. Hence, it was concluded that the model met the assumption of homoscedasticity.  The Durbin-Watson test of autocorrelation failed to reject the null hypothesis that there was no serial dependence in the error (*DW*=`r DWT2b$dw`, *p*`r pval(DWT2b$p)`), therefore the model met the assumption of independence. The cut-off score for VIF values was defined as 10 for this report. For Model 2b, VIF values <10 for the predictor variables indicated that multicollinearity did not adversely affect the model estimates. The model did not meet the assumption of normality of error terms. The Shapiro-Wilk test rejected the null hypothesis that the residuals were drawn from a normally distributed population (*W*=`r Shap2b$statistic`, *p*`r pval(Shap2b$p.value)`), as can be concluded from visual inspection of the QQ plot. Given this model does not represent a final model, we proceeded with the planned analysis without investigating the violation of normality any further. 
+
+The model was assessed for influential observations. While the data indicated regression outliers (as assessed by studentised residuals) and high leverage cases (as assessed with hat values), there were no high influence observations in the data (as assessed by Cook's Distance, see Figure 7). No further action was taken. 
+
+<p>&nbsp;</p>
+
+**Figure 7**
+
+*Plots Displaying Case Diagnostics and Model Assumptions for Model 2b*
+
+```{r q2b Figure 7, figures-side, fig.show="hold", out.width="50%"}
+
+#GRAPHICAL ASSUMPTIONS 
+#Linearity (residuals vs. fitted plot)
+plot(modelq2b, which=1, main="Model 2b") #suggests linear relationship
+
+#homogeneity of variance (scale-location plot)
+plot(modelq2b, which=3, main="Model 2b") #indicates no violations
+
+#Normality of residuals (QQ plot)
+plot(modelq2b, which=2, main="Model 2b") #looks ok 
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#Graphical - plot high influence cases using Cook's distance
+plot(modelq2b, which=4, main="Model 2b") 
+
+
+```
+
+*Note.* The Residuals vs. Fitted plot (top left) demonstrates that the 'average' residual is roughly zero across $\hat{y}$, albeit a slight funnel trend is observable. The Scale-Location plot (top right) suggests that the size of the residuals is approximately the same across values of $\hat{y}$. The QQ-plot of the residuals (bottom left) shows very heavy tails and that observations do not closely follow to the straight line, suggesting residuals are likely not approximately normal. The Cook's distance plot (bottom right) does not show any high influence cases. 
+
+**Results.** Full regression results including 95% Confidence Intervals are shown in Table 5. The F-test for model utility of Model 2b was statistically significant (F(`r fstatq2b[2]`,`r fstatq2b[3]`)=`r myprint(fstatq2b[1])`, *p*`r pval(pvalq2b)`) and the model explained approximately `r round(summodelq2b$adj.r.squared*100,0)`% of the variability in participants' happiness scores. Results showed a significant conditional association between participant's age and their happiness scores ($\beta$=`r matrix_modelq2b_coefficient[2]`, SE=`r matrix_modelq2b_coefficient[7]`, *p*`r pval(matrix_modelq2b_coefficient[17])`), suggesting that when accounting for effects of season, self-reported happiness ratings increase by `r matrix_modelq2b_coefficient[2]` standard deviations for every one standard deviation increase in age. It is notable that Tukey-adjusted post-hoc pairwise comparisons showed that the previously observed differences in happiness scores between participants interviewed in summer and autumn are no longer statistically significant when controlling for differences in participants' age (*t*(`r pairs2bresults$df[4]`)=`r pairs2bresults$estimate[4]`, *p*`r pval(pairs2bresults$p.value[4])`). Further, there were no statistically significant differences in participants' happiness scores between any other pairs of seasons (see Table 6). 
+
+The results presented here indicate that participants' happiness ratings are influenced by their age, with self-indicated happiness ratings rising with increasing age. Further, it is notable that the results show that the season participants were interviewed in does not have an influence on their happiness ratings when controlling for age. The consequences of this finding for our study, will be explored in more detail in Question 2C. 
+
+<p>&nbsp;</p>
+
+**Table 5**
+
+*Regression Table for Model 2b.*
+
+```{r q2b Table 5}
+tab_model(modelq2b, dv.labels=c("Happiness"),pred.labels=c("Intercept","Age","Season (summer)","Season (autumn)","Season (winter)"))
+```
+<p>&nbsp;</p>
+*Note.* The outcome and predictor variable are Z-scored.
+
+<p>&nbsp;</p>
+
+**Table 6**
+
+*Pairwise Comparisons of Participants' Happiness For Age When Accounting For The Influence of Season During First Interview*
+
+```{r q2b Table 6}
+
+knitr::kable(pairs2bresults, "pipe",align=c("l","l","l","l","l","l","l","l"))
+```
+
+*Note*. 95% Confidence level used. P values are adjusted by Tukey method for comparing a family of 4 estimates.
+
+<p>&nbsp;</p>
+
+## QUESTION 2C
+
+
+```{r q2c}
+
+#METHODOLOGY 
+#fitting the model 
+modelq2c <- lm(scale(happiness) ~ scale(age), data=couchto5k)
+summodelq2c <- summary(modelq2c)
+
+#ASSUMPTIONS (statistical)
+#homogeneity of variance (Breusch-Pagan Test)
+NCV2c <- ncvTest(modelq2c) #p>0.05 we do not have evidence that the assumptions has been violated 
+
+#Normality of residuals (Shapiro-Wilk)
+Shap2c <- shapiro.test(residuals(modelq2c)) #p<0.05 we have evidence that the assumption has been violated 
+
+#Independence of errors (Durbin-Watson)
+DWT2c <- dwt(modelq2c) #p>0.05 no evidence the assumption was violated 
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#create a tibble that contains several measures for individual case diagnostics 
+modelq2c_diagnostics <- tibble(
+  modelq2c$model,
+  fitted = fitted(modelq2c),
+  resid = residuals(modelq2c),
+  studres = rstudent(modelq2c),
+  hats = hatvalues(modelq2c),
+  cooksd = cooks.distance(modelq2c)
+)
+
+#investigate studentised residuals for extreme values where >2 or <-2 indicate potential outlyingness
+studres2c <- modelq2c_diagnostics %>%
+  filter(abs(studres)>2)
+#no observations flagged
+
+#use hat values to assess whether there are any observations with high leverage with hat = (k+1)/n and hat values which are greater than 2 x hat indicating high leverage 
+hats2c <- modelq2c_diagnostics %>%
+  filter(hats > (2*(1+1)/(modelq2c$df.residual+1)))
+#several observations have been flagged here, but they are all probable 
+
+#Cook's distance cut-off score is chosen as 1 in this report. 
+cooksd2c <- modelq2c_diagnostics %>%
+  filter(cooksd>1) #no cook's distance values >1
+
+#for in-line code 
+matrix_modelq2c_coefficient <- summary(modelq2c)$coefficients #convert coefficients into a data matrix
+confint_modelq2c_coefficients <- confint(modelq2c) #extract confidence intervals
+
+fstatq2c <- summary(modelq2c)$fstatistic #F-statistic
+pvalq2c <- pf(fstatq2c[1], fstatq2c[2], fstatq2c[3], lower.tail=FALSE) #p-value 
+
+##MODEL COMPARISON
+#compare Model 2a and Model 2b with an incremental F-test
+incf2c <- anova(modelq2b, modelq2c)
+```
+
+
+### Research Question
+The models explored in Question 2A and 2B explore 'baseline' effects, i.e. effects that are not of primary interest to the researchers but which might affect the outcome variable of happiness. For future analysis, which baseline model should be chosen?
+
+### Potential Baseline Model 
+To decide which baseline model should be used in future analyses, three models were compared. Model 2a and Model 2b result from prior tasks and Model 2c is a newly defined simple linear regression model that modelled participants' happiness (Z-scored) and included participants' age (Z-scored) as the only predictor variable. 
+
+<p>&nbsp;</p>
+<center> Model 2a: Happiness =  $\beta_{0}$ + $\beta_{1}$(Summer) + $\beta_{2}$(Autumn) +  $\beta_{3}$(Winter) + ϵ  <center>
+<p>&nbsp;</p> 
+<center> Model 2b: Happiness =  $\beta_{0}$ + $\beta_{1}$(Age) + $\beta_{2}$(Summer) +  $\beta_{3}$(Autumn) + $\beta_{4}$(Winter) + ϵ <center>
+<p>&nbsp;</p> 
+<center> Model 2c: Happiness =  $\beta_{0}$ + $\beta_{1}$(Age) + ϵ <center>
+<p>&nbsp;</p> 
+
+### MODEL 2c
+**Methodology.** Model 2c assessed a new baseline model that only included participants' age (Z-scored) as a predictor and modelled participants' happiness scores (Z-scored) using simple linear regression. The final model Model 2c was fitted to `r nobs(modelq2c)` observations, and took the form:
+
+<center> Model 2c: Happiness =  $\beta_{0}$ + $\beta_{1}$(Age) + ϵ </center>
+
+<p>&nbsp;</p>
+
+To address the research question of whether participants' happiness ratings are affected by participants' age, we will consider the hypothesis test that the age coefficient is equal to zero, where:
+
+- \(H_{0}\): $\beta_{1}$=0. The age coefficient is equal to zero.
+- \(H_{1}\): $\beta_{1}$≠0. The age coefficient is not equal to zero. 
+
+**Assumptions and Case Diagnostics**. The model met assumptions of linearity, as can be seen by the plot of model residuals vs. fitted values (see Figure 8). The scale-location plot in Figure 8 and the non-constant variance test indicated no evidence against the null hypothesis that the error variance is constant across level of the response, χ^2^(`r NCV2c$Df`)=`r NCV2c$ChiSquare`, *p*`r pval(NCV2c$p)`, hence it can be assumed that the model met assumptions of homoscedasticity.  The Durbin-Watson test of autocorrelation failed to reject the null hypothesis that there was no serial dependence in the error (*DW*=`r DWT2c$dw`, *p*`r pval(DWT2c$p)`) and we assume that observations are randomly sampled during study recruitment, therefore the model met the assumption of independence. The model did not meet the assumption of normality of error terms. The Shapiro-Wilk test rejected the null hypothesis that the residuals were drawn from a normally distributed population (*W*=`r Shap2c$statistic`, *p*`r pval(Shap2c$p.value)`) and visual inspection of a QQ-plot did not indicate that the residuals follow close to a normal distribution. Given this model only acts as a baseline model, we did not investigate the violation of normality any further. 
+
+The model was also assessed for influential observations. While the data indicated several regression outliers (as assessed by studentised residuals) and high leverage cases (as assessed with hat values), there were no high influence cases (see Cook's Distance in Figure 8). Hence, no further actions were taken. 
+
+<p>&nbsp;</p>
+
+**Figure 8**
+
+*Plots Displaying Case Diagnostics and Model Assumptions for Model 2c*
+
+```{r q2c Figure 8, figures-side, fig.show="hold", out.width="50%"}
+
+#ASSUMPTIONS (GRAPHICAL)
+
+#Linearity (residual vs. fitted plots)
+plot(modelq2c, which=1, main="Model 2c")  #suggests linear relationship
+
+#Homogeneity of variance (scale location plot)
+plot(modelq2c, which=3, main="Model 2c") #ok
+
+#Normality of residuals (QQPlot)
+plot(modelq2c, which=2, main="Model 2c") #violation of normality 
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#Graphical - plot high influence cases using Cook's distance
+plot(modelq2c, which=4, main="Model 2c") 
+
+```
+
+<p>&nbsp;</p>
+
+*Note.* The Residuals vs. Fitted plot (top left) demonstrates near constant mean. Residuals vs. Fitted plotted also shows near constant variance of error across levels of the response and in combination with the Scale-Location plot (top right) that shows that the size of the residuals is approximately the same across values of $\hat{y}$, homogeneity of variance can be assumed. The QQ-plot of the residuals (bottom left) shows very heavy tails and that observations do not closely follow to the straight line. The Cook's distance plot (bottom right) does not show any high influence cases.
+
+**Results**. Full regression results including 95% Confidence Intervals are shown in Table 5. The F-test for model utility of Model 2c was statistically significant (F(`r fstatq2c[2]`,`r fstatq2c[3]`)=`r myprint(fstatq2c[1])`, *p*`r pval(pvalq2c)`) and the model explained approximately `r round(summodelq2c$adj.r.squared*100,0)`% of the variability in participants' happiness scores. Results showed a significant conditional association between participant's age and their happiness scores ($\beta$=`r matrix_modelq2c_coefficient[2]`, SE=`r matrix_modelq2c_coefficient[7]`, *p*`r pval(matrix_modelq2c_coefficient[8])`), suggesting that for every standard deviation change in age, self-reported happiness ratings increase by `r matrix_modelq2c_coefficient[2]` standard deviations. 
+
+<p>&nbsp;</p>
+
+**Table 5**
+
+*Regression Table For Model 2c.*
+
+```{r q2c Table 5}
+tab_model(modelq2c, dv.labels=c("Happiness"),pred.labels=c("Intercept","Age"))
+
+```
+<p>&nbsp;</p>
+*Note.* The outcome variable happiness and the predictor variable age are Z-scored.  
+<p>&nbsp;</p>
+
+### MODEL COMPARISONS
+To determine the best fitting baseline model for the successive report, all baseline models were compared (see Table 7). Given the presence of NA values, Model 2a and Model 2b are not nested and an incremental F-test on the models to determine the better fitting model cannot be performed. Both models explain little variability in happiness outcomes, with Model 2b (`r round(summodelq2b$adj.r.squared*100,0)`%) slightly outperforming Model 2a (`r round(summodelq2a$adj.r.squared*100,0)`%). This difference is likely due to the additional predictor rather than an actual real-world effect. When accounting for the effect of age, the season participants were interviewed in no longer had a statistically significant effect on participants' happiness scores. Hence, a decision was made to discard Model 2a as a potential baseline model. Model 2b explains approximately `r round(summodelq2b$adj.r.squared*100,0)`% of the variance in participants' happiness outcomes compared with `r round(summodelq2c$adj.r.squared*100,0)`% for Model 2c. Given Model 2b and 2c are nested, an incremental F-test was performed to determine the better fitting model. Formally the test assessed: 
+
+- \(H_{0}\): the coefficient for the added season variable is zero.
+- \(H_{1}\): the coefficient for the added season variable is not zero. 
+
+Including the season of the interview as a predictor variable was not found to explain a significant amount of variance in participants' happiness scores over and above including participants' age (F(`r incf2c[1,1]`,`r incf2c[2,1]`)=`r incf2c[2,5]`, *p*`r pval(incf2c[2,6])`). Therefore, Model 2c was determined as the best fitting baseline model for successive analyses. 
+
+<p>&nbsp;</p>
+
+**Table 7**
+
+*Comparative Regression Table for Models 2a, 2b and 2c.*
+
+```{r q2c Table 7}
+tab_model(modelq2a, modelq2b, modelq2c, pred.labels = c("Intercept","Season(summer)","Season(autumn)","Season(winter)","Age"),dv.labels = c("Happiness - Model 2a","Happiness - Model 2b","Happiness - Model 2c"))
+```
+
+<p>&nbsp;</p>
+
+*Note*. The table displays regression tables for Model 2a (left), Model 2b (middle) and Model 2c (right). The outcome variable happiness and the predictor variable age are Z-scored. For Model 2a and Model 2b dummy coding was used with the season spring as the reference level. <p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+# QUESTION 3
+
+## QUESTION 3A
+
+```{r q3a}
+#DATA PREPARATION 
+#creating a new categorical variable for programme completion 
+couchto5k$programme_completion <- cut(couchto5k$week_stopped, breaks= c(0, 8, Inf), labels= c("Not_Completed", "Completed"))
+couchto5k$programme_completion <- as.factor(couchto5k$programme_completion)
+
+
+#METHODOLOGY
+modelq3a <- lm(scale(happiness) ~ programme_completion+scale(age), data=couchto5k, na.action=na.omit)
+
+
+#ASSUMPTIONS (STATISTICAL)
+#Homogeneity of variance (Breusch-Pagan test)
+NCV3a <- ncvTest(modelq3a) #p>0.5 we do not have evidence that the assumption has been violated 
+
+#Normality of residuals (Shapiro-Wilk)
+Shap3a <- shapiro.test(residuals(modelq3a)) #p<0.5 reject the null hypothesis that the residuals are drawn from a normally distributed population!
+
+#Independence of errors (Durbin Watson Test)
+DWT3a <- dwt(modelq3a) #p>0.05 no evidence the assumption was violated 
+
+#Multicollinearity 
+Vif3a <- vif(modelq3a) #VIF values <10 indicate that multicollinearity is not adversely affecting model estimates 
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#create a tibble that contains several measures for individual case diagnostics 
+modelq3a_diagnostics <- tibble(
+  modelq3a$model,
+  fitted = fitted(modelq3a),
+  resid = residuals(modelq3a),
+  studres = rstudent(modelq3a),
+  hats = hatvalues(modelq3a),
+  cooksd = cooks.distance(modelq3a)
+)
+
+#investigate studentised residuals for extreme values where >2 or <-2 indicate potential outlyingness
+studres3a <- modelq3a_diagnostics %>%
+  filter(abs(studres)>2) #no observations were flagged
+
+#use hat values to assess whether there are any observations with high leverage with hat = (k+1)/n and hat values which are greater than 2 x hat indicating high leverage 
+hats3a <- modelq3a_diagnostics %>%
+  filter(hats > (2*(3+1)/(modelq3a$df.residual+3))) #doesn't flag any observations 
+ 
+#Cook's distance cut-off score is chosen as 1 in this report. 
+cooksd3a <- modelq3a_diagnostics %>%
+  filter(cooksd>1) #no cook's distance values >1
+
+#RESULTS 
+#summary statistics
+summodelq3a <- summary(modelq3a)
+
+#for in-line code 
+fstatq3a <- summary(modelq3a)$fstatistic 
+pvalq3a <- pf(fstatq3a[1], fstatq3a[2], fstatq3a[3], lower.tail=FALSE)
+
+matrix_modelq3a_coefficient <- summary(modelq3a)$coefficients #convert coefficients into a data matrix
+confint_modelq3a_coefficients <- confint(modelq3a) #extract confidence intervals
+
+
+```
+
+
+**Research Questions.** Building on baseline model Model 2c, are participants' happiness ratings affected by whether or not they completed the programme? 
+
+**Methodology.** To investigate whether, when controlling for participants' age, participants' happiness ratings (Z-scored) are affected by whether or not they completed the programme, participants' happiness scores were modelled using multiple linear regression. Participants' age (Z-scored) was included as a predictor variable. Whether participants or not completed the programme, was coded in a binary variable with the levels "Not completed" and "Completed" and assigned as a predictor variable. Dummy coding was applied and programme completion was chosen as the reference level. Type 1 Sums of Squares was used, hence the predictors were entered into the model in a theoretically-motivated order, where the effect of programme completion on self-reported happiness was the primary effect of interest and therefore the first coefficient. The final model Model 3a was fitted to `r nobs(modelq3a)` observations, and took the form: 
+
+<center> Model 3a: Happiness =  $\beta_{0}$ + $\beta_{1}$(Completed) + $\beta_{2}$(Age) + ϵ </center>
+
+<p>&nbsp;</p>
+
+To address the research question of whether participants' happiness ratings are affected by whether or not they have completed the programme, we will consider the hypothesis test that the programme completion coefficient "Completed", which assesses the influence of programme completion on participants' happiness scores is equal to zero, where: 
+
+- \(H_{0}\): $\beta_{1}$=0. The programme completion coefficient is equal to zero.
+- \(H_{1}\): $\beta_{1}$≠0. The programme completion coefficient is not equal to zero. 
+
+
+**Assumptions and Case Diagnostics.** Given the scale-location plot in Figure 9 and the non-constant variance test indicated no evidence against the null hypothesis that the error variance is constant across level of the response, (χ^2^(`r NCV3a$Df`)=`r NCV3a$ChiSquare`, *p*`r pval(NCV3a$p)`) the model met assumptions of homoscedasticity.  The Durbin-Watson test of autocorrelation failed to reject the null hypothesis that there was no serial dependence in the error *DW*=`r DWT3a$dw`, *p*`r pval(DWT3a$p)` therefore the model met the assumption of independence. VIF values <10 indicated that multicollinearity did not adversely affect the model estimates. The residual vs. fitted plot displayed signs of non-linearity (see Figure 9). Further, the model did not meet assumptions of normality (see QQ plot in Figure 9), as the Shapiro-Wilk test rejected the null hypothesis that the residuals were drawn from a normally distributed population (*W*=`r Shap3a$statistic`, *p*`r pval(Shap3a$p.value)`. Given Model 3a only represents an interim model the analysis proceeded as planned. 
+
+The model was also assessed for influential observations. The data indicated no regression outliers as assessed by studentised residuals, no high leverage cases as assessed with hat values and no high influence cases as indicated by Cook's Distance (see Figure 9), hence no further actions were taken. 
+
+<p>&nbsp;</p>
+
+**Figure 9**
+
+*Plots Displaying Case Diagnostics and Model Assumptions for Model 3a*
+
+```{r q3a Figure 9, figures-side, fig.show="hold", out.width="50%"}
+
+#ASSUMPTIONS (GRAPHICAL)
+
+#Linearity (residual vs. fitted plot)
+plot(modelq3a, which=1, main="Model 3a") #suggests linear relationship
+
+#Homogeneity of variance (scale location plot)
+plot(modelq3a, which=3, main="Model 3a")
+
+#Normality of residuals (QQ plot)
+plot(modelq3a, which=2, main="Model 3a") 
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#Graphical - plot high influence cases using Cook's distance
+plot(modelq3a, which=4, main="Model 3a") 
+
+```
+
+*Note*. The Residuals vs. Fitted plot (top left) shows signs of non-linearity with an upside down "U" shape. The Scale-Location plot (top right) shows that the size of the residuals is approximately the same across values of $\hat{y}$. The QQ-plot of the residuals (bottom left) shows very heavy tails and that observations do not closely follow to the straight line. The Cook's distance plot (bottom right) does not show any high influence cases. 
+
+**Results.** Full regression results including 95% Confidence Intervals are shown in Table 8. The F-test for model utility of Model 3a was statistically significant (F(`r fstatq3a[2]`,`r fstatq3a[3]`)==`r myprint(fstatq3a[1])`,  *p*`r pval(pvalq3a)`) and the model explained approximately `r round(summodelq3a$adj.r.squared*100,0)`% of the variability in participants' happiness scores. Results did not show a significant conditional association between whether participants had completed the Couch to 5k programme and their happiness scores ($\beta$=`r matrix_modelq3a_coefficient[2]`, SE=`r matrix_modelq3a_coefficient[5]`, *p*`r pval(matrix_modelq3a_coefficient[11])`), when accounting for the effects of age. Results continued to show a significant conditional association between participant's age and their happiness scores ($\beta$=`r matrix_modelq3a_coefficient[3]`, SE=`r matrix_modelq3a_coefficient[6]`, *p*`r pval(matrix_modelq3a_coefficient[12])`), suggesting that for every one standard deviation change in age, self-reported happiness ratings increase by `r matrix_modelq3a_coefficient[3]` standard deviations, when accounting for effects of programme completion. 
+
+The results presented here indicate that happiness ratings are not affected by whether participants have completed the programme or not. However, it is notable that programme completion was assessed as a binary variable, it is possible that different results might be obtained if programme completion had been treated as a continuous predictor. It is plausible that it is not the completion of the programme itself that increases participants' self-reported happiness, but the duration of participation in the programme. 
+
+<p>&nbsp;</p>
+
+**Table 8**
+
+*Regression Table For Model 3a.*
+
+```{r q3a Table 8}
+tab_model(modelq3a, dv.labels = c("Happiness"),pred.labels = c("Intercept","Programme Completion (Completed)","Age"))
+```
+
+<p>&nbsp;</p>
+
+*Note.* The outcome variable and predictor variable age were Z-scored. Dummy coding was used with the group of participants who had not completed the Couch to 5k programme as the reference level. 
+
+<p>&nbsp;</p>
+
+## QUESTION 3B
+
+```{r q3b}
+
+#METHODOLOGY
+modelq3b <- lm(scale(happiness) ~ scale(age)+scale(health), data=couchto5k, na.action=na.omit)
+
+#ASSUMPTIONS (STATISTICAL)
+#Homogeneity of variance (Breusch-Pagan test)
+NCV3b <- ncvTest(modelq3b) #p>0.5 we do not have evidence that the assumption has been violated 
+
+#Normality of residuals (Shapiro-Wilk)
+Shap3b <- shapiro.test(residuals(modelq3b)) #p<0.5 reject the null hypothesis that the residuals are drawn from a normally distributed population!
+
+#Independence of errors (Durbin Watson Test)
+DWT3b <- dwt(modelq3b) #p>0.05 no evidence the assumption was violated 
+
+#Multicollinearity 
+Vif3b <- vif(modelq3b) #VIF values <10 indicate that multicollinearity is not adversely affecting model estimates 
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#create a tibble that contains several measures for individual case diagnostics 
+modelq3b_diagnostics <- tibble(
+  modelq3b$model,
+  fitted = fitted(modelq3b),
+  resid = residuals(modelq3b),
+  studres = rstudent(modelq3b),
+  hats = hatvalues(modelq3b),
+  cooksd = cooks.distance(modelq3b)
+)
+
+#investigate studentised residuals for extreme values where >2 or <-2 indicate potential outlyingness
+studres3b <- modelq3b_diagnostics %>%
+  filter(abs(studres)>2) #no assumption was flagged
+
+#use hat values to assess whether there are any observations with high leverage with hat = (k+1)/n and hat values which are greater than 2 x hat indicating high leverage 
+hats3b <- modelq3b_diagnostics %>%
+  filter(hats > (2*(2+1)/(modelq3b$df.residual+4))) #several values flagged
+
+#Cook's distance cut-off score is chosen as 1 in this report. 
+cooksd3b <- modelq3b_diagnostics %>%
+  filter(cooksd>1) #no cook's distance values >1
+
+
+#RESULTS 
+#summary statistics
+summodelq3b <- summary(modelq3b)
+
+#for in-line code 
+fstatq3b <- summary(modelq3b)$fstatistic 
+pvalq3b <- pf(fstatq3b[1], fstatq3b[2], fstatq3b[3], lower.tail=FALSE)
+
+matrix_modelq3b_coefficient <- summary(modelq3b)$coefficients #convert coefficients into a data matrix
+confint_modelq3b_coefficients <- confint(modelq3b) #extract confidence intervals
+```
+
+**Research Question.** Building on the analysis in Question 3A, is happiness additionally affected by the "health metric"? 
+
+**Methodology.** To investigate whether, when controlling for participants' age and programme completion status, participants' happiness ratings are additionally affected by their health metric, participants' happiness scores (Z-scored) were modelled using multiple linear regression. Participants' health (Z-scored) and age (Z-scored) were included as predictor variables. Given whether or not participants completed the program was not found to be a statistically significant predictor in Model 3a, this measure was not included as a predictor in Model 3b. Type 1 Sums of Squares was used, hence the predictors were entered into the model in a theoretically-motivated order, where the previously observed effect of participants' age was chosen as the primary coefficient, followed by participants' health measure. The final model Model 3b was fitted to `r nobs(modelq3b)` observations, and took the form: 
+
+<center> Model 3b: Happiness =  $\beta_{0}$ + $\beta_{1}$(Age) + $\beta_{2}$(Health)+ ϵ </center>
+
+<p>&nbsp;</p>
+
+To address the research question of whether participants' happiness ratings are additionally affected by their health metric, we will consider the hypothesis test that the health metric coefficient is equal to zero, where: 
+
+- \(H_{0}\): $\beta_{2}$=0. The health metric coefficient is equal to zero.
+- \(H_{1}\): $\beta_{2}$≠0. The health metric coefficient is not equal to zero.
+
+
+**Assumptions And Case Diagnostics.** The scale-location plot in Figure 10 and the non-constant variance test indicated no evidence against the null hypothesis that the error variance is constant across level of the response (χ^2^(`r NCV3b$Df`)=`r NCV3b$ChiSquare`, *p*`r pval(NCV3b$p)`) it can be assumed that the model met assumptions of homoscedasticity.  The Durbin-Watson test of autocorrelation failed to reject the null hypothesis that there was no serial dependence in the error (*DW*=`r DWT3b$dw`, *p*`r pval(DWT3b$p)`) and we assume that observations are randomly sampled during study recruitment, therefore the model met the assumption of independence. VIF values <10 indicated that multicollinearity did not adversely affect the model estimates. The residual vs. fitted plot displays signs of non-linearity with an upside down "U" shape (see Figure 10). Further, the Shapiro-Wilk test(*W*=`r Shap3b$statistic`, *p*`r pval(Shap3b$p.value)`) and visual inspection of the QQ-plot of the residuals suggest the model did not meet the assumption of normality of error terms. Given Model 3b only represents an interim model the analysis proceeded as planned. 
+
+The model did not have any regression outliers as assessed by studentised residuals, some high leverage cases as assessed with hat values but no high influence cases as indicated by Cook's Distance (see Figure 10). Hence, no changes were made to the model fit. 
+
+<p>&nbsp;</p>
+
+**Figure 10**
+
+*Plots Displaying Case Diagnostics and Model Assumptions for Model 3b*
+
+```{r q3b Figure 10, figures-side, fig.show="hold", out.width="50%"}
+
+#ASSUMPTIONS (GRAPHICAL)
+
+#Linearity (residual vs. fitted plot)
+plot(modelq3b, which=1, main="Model 3b") #suggests linear relationship
+
+#Homogeneity of variance (scale location plot)
+plot(modelq3b, which=3, main="Model 3b")
+
+#Normality of residuals (QQ plot)
+plot(modelq3b, which=2, main="Model 3b") 
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#Graphical - plot high influence cases using Cook's distance
+plot(modelq3b, which=4, main="Model 3b") 
+
+```
+
+*Note*. The Residuals vs. Fitted plot (top left) shows signs of non-linearity with an upside down "U" shape, suggesting the assumption of linearity may be violated. The Scale-Location plot (top right) shows that the size of the residuals is approximately the same across values of $\hat{y}$, hence homogeneity of variance can be assumed. The QQ-plot of the residuals (bottom left) shows heavy tails and that observations do not closely follow to the straight line, suggesting residuals are likely not approximately normal. The Cook's distance plot (bottom right) does not show any high influence cases. 
+
+**Results.** The F-test for model utility of Model 3b was not statistically significant (F(`r fstatq3b[2]`,`r fstatq3b[3]`)=`r myprint(fstatq3b[1])`, *p*`r pval(pvalq3b)`)(see Table 9). Hence, linear regression Model 3b did not provide a better fit to the data than a null model that contains no independent variables. Therefore, the results presented here do not allow us to make any conclusions about whether happiness is affected by the "health metric". We will built on this research question in Question 3C. 
+
+<p>&nbsp;</p>
+
+**Table 9**
+
+*Regression Table For Model 3b.*
+
+```{r q3b Table 9}
+tab_model(modelq3b, show.fstat=TRUE, dv.labels=c("Happiness"),pred.labels = c("Intercept","Age","Health"))
+#unfortunately displaying the F-test is currently still incompatible with this model type, I am keeping this here for future updates 
+```
+
+<p>&nbsp;</p>
+
+*Note.* The outcome variable happiness and the predictors age and health are Z-scored. 
+
+<p>&nbsp;</p>
+
+
+## QUESTION 3C
+
+```{r q3c}
+modelq3c <- lm(scale(happiness) ~ scale(age)+scale(health)*week_stopped, data=couchto5k, na.action=na.omit)
+
+#for interaction plot
+modelq3_int <- lm(happiness ~ age+health*week_stopped, data=couchto5k, na.action=na.omit)
+
+#ASSUMPTIONS (STATISTICAL)
+#Homogeneity of variance (Breusch-Pagan test)
+NCV3c <- ncvTest(modelq3c) #p>0.05 we do not have evidence that the assumption has been violated 
+
+#Normality of residuals (Shapiro-Wilk)
+Shap3c <- shapiro.test(residuals(modelq3c)) #p<0.05 reject the null hypothesis that the residuals are drawn from a normally distributed population!
+
+#Independence of errors (Durbin Watson Test)
+DWT3c <- dwt(modelq3c) #p>0.05 no evidence the assumption was violated 
+
+#Multicollinearity 
+Vif3c <- vif(modelq3c) #VIF values <10 indicate that multicollinearity is not adversely affecting model estimates 
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#create a tibble that contains several measures for individual case diagnostics 
+modelq3c_diagnostics <- tibble(
+  modelq3c$model,
+  fitted = fitted(modelq3c),
+  resid = residuals(modelq3c),
+  studres = rstudent(modelq3c),
+  hats = hatvalues(modelq3c),
+  cooksd = cooks.distance(modelq3c)
+)
+
+#investigate studentised residuals for extreme values where >2 or <-2 indicate potential outlyingness
+studres3c <- modelq3c_diagnostics %>%
+  filter(abs(studres)>2) #two observations are flagged 
+
+#use hat values to assess whether there are any observations with high leverage with hat = (k+1)/n and hat values which are greater than 2 x hat indicating high leverage 
+hats3c <- modelq3c_diagnostics %>%
+  filter(hats > (2*(3+1)/(modelq3c$df.residual+3))) #16 observations are flagged 
+ 
+#Cook's distance cut-off score is chosen as 1 in this report. 
+cooksd3c <- modelq3c_diagnostics %>%
+  filter(cooksd>1) #no cook's distance values >1
+
+#RESULTS 
+#summary statistics
+summodelq3c <- summary(modelq3c)
+
+#for in-line code 
+fstatq3c <- summary(modelq3a)$fstatistic 
+pvalq3c <- pf(fstatq3c[1], fstatq3c[2], fstatq3c[3], lower.tail=FALSE)
+
+matrix_modelq3c_coefficient <- summary(modelq3c)$coefficients #convert coefficients into a data matrix
+confint_modelq3c_coefficients <- confint(modelq3c) #extract confidence intervals
+
+
+```
+
+**Research Question.** It's been hypothesized that the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier. Building on the model in Question 3B, can you test this hypothesis?
+
+**Methodology.** To investigate, when controlling for participants' age, participants' duration of participation in the Couch to 5k programme moderates the effect of the health metric on participants' happiness, participants' happiness scores (Z-scored) were modelled using multiple linear regression. Participants' age (Z-scored) was included as a predictor, along with participants' scores on the health metric (Z-scored) and its interaction with the participation duration measure, that assessed which week of the programme participants stopped in. The final model Model 3c was fitted to `r nobs(modelq3c)` observations, and took the form: 
+
+<center> Model 3c: Happiness =  $\beta_{0}$ + $\beta_{1}$(Age) + $\beta_{2}$(Health)+ $\beta_{3}$(Week Stopped) + + $\beta_{4}$(Health*Week Stopped)+ ϵ </center>
+
+<p>&nbsp;</p>
+
+To address the research question of whether participants' duration of participation in the Couch to 5k programme moderates the effect of the health metric on participants' happiness, we will consider the hypothesis test that the interaction coefficient is equal to zero, where: 
+
+- \(H_{0}\): $\beta_{4}$=0. The interaction between the duration of participation and health is equal to zero. 
+- \(H_{1}\): $\beta_{4}$≠0. The interaction between the duration of participation and health is not equal to zero. 
+
+**Assumption Checks And Case Diagnostics.** The Durbin-Watson test of autocorrelation failed to reject the null hypothesis that there was no serial dependence in the error (*DW*=`r DWT3c$dw`, *p*`r pval(DWT3c$p)`) therefore the model met the assumption of independence. VIF values <10 indicated that multicollinearity did not adversely affect model estimates. Although the non-constant variance test indicated no evidence against the null hypothesis that the error variance is constant across level of the response (χ^2^(`r NCV3c$Df`)=`r NCV3c$ChiSquare`, *p*`r pval(NCV3c$p)`), the scale-location plot suggests non-linearity and shows signs of heteroscedasticity.  The Shapiro-Wilk test rejected the null hypothesis that the residuals were drawn from a normally distributed population (*W*=`r Shap3c$statistic`, *p*`r pval(Shap3c$p.value)`) and visual inspection of a QQ-plot of the residuals shows heavy tails and does not indicate that the residuals follow close to a normal distribution. Therefore, the model did not meet the assumption of normality of error terms. To assess whether extreme outliers in the data may have caused the assumptions to be violated the model was assessed for influential observations. There were some regression outliers as assessed by studentised residuals, and high leverage cases as assessed with hat values but no high influence cases as indicated by Cook's Distance (see Figure 11), therefore this is an unlikely explanation. We considered applying a nonlinear transformation to the response variable, as this may cause the model residuals to become more normally distributed and may fix potential model issues of non linearity and heteroscedasticity. However, as this has not been covered in the USMR course, no further action was taken, but caution should be taken when interpreting the results of this analysis. 
+
+<p>&nbsp;</p>
+
+**Figure 11**
+
+*Plots Displaying Case Diagnostics and Model Assumptions for Model 3c*
+
+```{r q3c Figure 11, figures-side, fig.show="hold", out.width="50%"}
+
+#ASSUMPTIONS (GRAPHICAL)
+
+#Linearity (residual vs. fitted plot)
+plot(modelq3c, which=1, main="Model 3c") #suggests linear relationship
+
+#Homogeneity of variance (scale location plot)
+plot(modelq3c, which=3, main="Model 3c")
+
+#Normality of residuals (QQ plot)
+plot(modelq3c, which=2, main="Model 3c") 
+
+#INDIVIDUAL CASE DIAGNOSTICS 
+#Graphical - plot high influence cases using Cook's distance
+plot(modelq3c, which=4, main="Model 3c") 
+
+```
+
+*Note*. The Residuals vs. Fitted plot (top left) shows that the 'average' residual is roughly zero across $\hat{y}$. The Scale-Location plot (top right) shows the size of the residuals is not approximately the same across values of $\hat{y}$ with a pronounced upside down "U" shape. The QQ-plot of the residuals (bottom left) shows heavy tails and that observations do not closely follow to the straight line, suggesting residuals are likely not approximately normal. The Cook's distance plot (bottom right) does not show any high influence cases. 
+
+**Results.** Full regression results including 95% Confidence Intervals are shown in Table 10. The interaction between participants' health and duration of participation in the programme is visually presented in Figure 12. The F-test for model utility of Model 3c was statistically significant (F(`r fstatq3c[2]`,`r fstatq3c[3]`)=`r myprint(fstatq3c[1])`, *p*`r pval(pvalq3c)`) and the model explained approximately `r round(summodelq3c$adj.r.squared*100,0)`% of the variability in participants' happiness scores. Results showed a significant conditional association between participants' health metric (Z-scored) and participants' happiness scores (Z-scored)($\beta$=`r matrix_modelq3c_coefficient[3]`, SE=`r matrix_modelq3c_coefficient[8]`, *p*`r pval(matrix_modelq3c_coefficient[18])`), suggesting that for those at mean level of age, happiness scores decrease by `r matrix_modelq3c_coefficient[3]`  standard deviations for every one standard deviation change in health. Crucially, the association between participants' health and their happiness scores, was found to be dependent upon the duration of participation in the Couch to 5k programme, with a greater positive association between the two for those with longer participation in the programme ($\beta$=`r matrix_modelq3c_coefficient[5]`, SE=`r matrix_modelq3c_coefficient[10]`, *p*`r pval(matrix_modelq3c_coefficient[20])`). This interaction is visually presented in Figure 12. Notably, there was not a significant conditional association between participants' age (Z-scored) and their happiness outcomes, when controlling for their health and their duration of participation in the Couch to 5k program ($\beta$=`r matrix_modelq3c_coefficient[2]`, SE=`r matrix_modelq3c_coefficient[7]`, *p*`r pval(matrix_modelq3c_coefficient[17])`).  
+
+The results of our analysis indicate that the association between participants' health and happiness may depend on the duration of their participation in the Couch to 5k programme, with better health leading to increased happiness, for those who participated in the programme longer. Therefore, the results align with the hypothesis that the effects of good health on happiness are amplified by the feeling of acting healthily (here participating in the Couch to 5k programme for longer duration). However, notably we can make no claims on the directions of these associations from the data - it may be that good health leads to higher happiness in individuals who feel they have acted healthily as they have participated in the programme for longer, but also consistent is the view that - for these individuals - higher levels of happiness leads to improved health, for example through effects on health behaviour. 
+
+<p>&nbsp;</p>
+
+**Table 10**
+
+*Regression Table For Model 3c.*
+
+```{r q3c Table 10}
+tab_model(modelq3c, dv.labels=c("Happiness"),pred.labels=c("Intercept","Age","Health","Week Stopped","Health * Week Stopped"))
+
+```
+
+<p>&nbsp;</p>
+
+*Note.* The outcome variable happiness and the predictors age and health are Z-scored. 
+
+<p>&nbsp;</p>
+
+**Figure 12**
+
+*Predicted Happiness Scores Across Health Metric Scores, For Participants Who Stopped The Programme In Week 1 And Participants Who Completed The Programme In Week 9.*
+
+```{r q3c figure 12}
+plot_model(modelq3_int, type="int", axis.title = c("Health","Happiness"),title="", axis.lim=c(0,100), family="Times New Roman")+scale_color_manual(name="Programme Exit", labels=c("Week 1","Week 9"),values=c("grey","black"))+scale_fill_manual(name="Programme Exit", labels=c("Week 1","Week 9"),values=c("grey","black"))+theme_classic()
+
+```
+
+*Note.* The original variables (rather than the Z-scored variables) are shown for illustration purposes. 
+
+<p>&nbsp;</p>
+
+## QUESTION 3D
+
+**Task.** What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper.
+
+**Brief Description.** This study investigated the effects of participating in the Couch to 5k programme on health and wellbeing. One of the primary research questions asked how participating in the Couch to 5k programme impacted participants' happiness. Participants' happiness was not influenced by their age or the season they were interviewed in. Against our expectations, overall participants' health, as measured by a multi-test health measure was negatively associated with participants' self-indicated happiness, with higher health after stopping the programme being associated with lower happiness. We do not have a scientific explanation for this phenomenon. It can be speculated that study design issues or measurement properties of the health and happiness measure may provide a partial explanation for the phenomenon. We also tested the hypothesis that the effects of good health on happiness are amplified by the feeling of acting healthily. In line with this hypothesis, we found that the happiness of participants who got further along the programme was more affected by the health metric than that of those who stopped the programme earlier. For individuals who participated in the programme for longer, better health was associated with higher happiness. Further studies should assess the relationship between participants' health and happiness using repeated designs that assess the effects of health and happiness before and after participating in the Couch to 5k programme. 
+
+<p>&nbsp;</p>
+
+# QUESTION 4
+
+```{r q4}
+#SUBSET OF THE DATA
+CompletedCouchTo5k <- subset(couchto5k, couchto5k$programme_completion=="Completed")
+
+#reorder season variable 
+CompletedCouchTo5k$season <- factor(CompletedCouchTo5k$season, levels=c("spring","summer","autumn","winter"))
+
+
+#PLOT
+#first we summarize the data (means, standard deviations, n per group) 
+plotq4data <- describeBy(CompletedCouchTo5k$happiness, list(CompletedCouchTo5k$season, CompletedCouchTo5k$city), mat=TRUE, digits=2)
+
+#give more meaningful names to variables
+names(plotq4data)[names(plotq4data) == 'group1'] = 'Season'
+names(plotq4data)[names(plotq4data) == 'group2'] = 'City'
+
+
+#factorize variables and reassign order (to make it appear in logical order in plot)
+plotq4data$Season <- as.factor(plotq4data$Season)
+plotq4data$City <- as.factor(plotq4data$City)
+
+plotq4data$Season <- factor(plotq4data$Season, levels=c("spring","summer","autumn","winter"))
+
+#calculate a standard error for each group's mean 
+plotq4data$se <- plotq4data$sd/sqrt(plotq4data$n)
+
+#define values for error bars
+limits_SE = aes(ymax = mean + (1.96*se), ymin=mean - (1.96*se)) #95% Cnfidence Interval Error Bars
+
+#spacing for the bars in our bar graph (in dodge) 
+dodge = position_dodge(width=0.9)
+ 
+#figure graphics (APA compatible) 
+apatheme=theme_bw()+
+  theme(panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.border=element_blank(),
+        axis.line=element_line(),
+        text=element_text(family='Times'))
+
+
+#Presentation Plot 
+plot4=ggplot(plotq4data) + 
+  geom_bar(
+    aes(x = Season, y = mean, fill = City, group = City), 
+    stat='identity', position = 'dodge'
+  ) +
+  geom_text(
+    aes(x = Season, y = mean, label = mean, group = City),
+    position = position_dodge(width = 0.9),
+    vjust = -0.5, size = 3, family="Times New Roman"
+  ) + 
+   apatheme+
+  ylab('Mean Happiness')+
+  scale_fill_grey()
+
+#Additional plot with (with 95% Confidence Interval Error Bars)
+
+
+plot4_SE=ggplot(plotq4data, aes(x = Season, y = mean, fill = City))+
+  geom_bar(stat='identity', position=dodge)+
+  geom_errorbar(limits_SE, position=dodge, width=0.25)+
+  apatheme+
+  ylab('Mean Happiness')+
+  scale_fill_grey()
+
+
+#Additional Plot with n 
+plot_N_label <- c("N=","N=","N=","N=","N=","N=","N=","N=") #create label to show N=
+
+plot4_N <- ggplot(plotq4data) + 
+  geom_bar(
+    aes(x = Season, y = mean, fill = City, group = City), 
+    stat='identity', position = 'dodge'
+  ) +
+  geom_text(
+    aes(x = Season, y = mean + 2, label = paste(plot_N_label,n), group = City),
+    position = position_dodge(width = 0.9),
+    vjust = 0.5, size = 3, family="Times New Roman"
+  ) + 
+   apatheme+
+  ylab('Mean Happiness')+
+  scale_fill_grey()
+
+
+```
+
+**Task.** Create a subset of the data, including only those participants who completed the programme. Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project. 
+
+**Decision-Making Process.** There was no further detail on why the researchers want to display this plot to the funders of the project. Hence, a decision was made to create a very basic plot that focused on the main information (see Figure 13). Depending on the the intention of showing this plot to the funders, it could also be useful to display more complex plots (see Figure 14). The researchers should also indicate that the differences in the average happiness scores between seasons were not found to be statistically significant when controlling for participants' age (see Question 2B). 
+
+<p>&nbsp;</p>
+
+**Figure 13**
+
+*Average Happiness Ratings Grouped By Season And City For Couch To 5k Finishers*
+
+```{r q4 Figure 13}
+plot4
+
+```
+
+*Note.* Only `r plotq4data$n[8]` participant who was interviewed in winter in Glasgow completed the Couch to 5k programme. Because their self-indicated happiness was `r plotq4data$mean[8]`, the figure does not show a resulting bar plot. 
+
+<p>&nbsp;</p>
+
+**Figure 14**
+
+*Additional Plots On Average Happiness Ratings Grouped By Season And City For Couch to 5k Finishers*
+
+```{r q4 Figure 14, figures-side, fig.show="hold", out.width="50%"}
+plot4_N
+plot4_SE
+```
+
+*Note.* Only `r plotq4data$n[8]` participant completed the Couch to 5k programme in winter in Glasgow. Because their self-indicated happiness was `r plotq4data$mean[8]`, the figure does not show a resulting bar plot. The left plot shows the number of observations within each group above the bar. The right plot includes 95% Confidence Interval Error Bars. 
+
+<p>&nbsp;</p>
+
+
+# QUESTION 5
+
+## QUESTION 5A
+
+```{r q5a}
+
+#INITIAL MODEL 5A
+#analysis
+modelq5a <- glm(programme_completion~selfmot+accountability+age+season, family=binomial, data=couchto5k)
+summodelq5a <- summary(modelq5a)
+
+#model deviance
+devmodelq5a <- anova(modelq5a, test="Chisq") #p>0.05 for accountability and age 
+
+#Establish accuracy 
+guessq5a <- predict(modelq5a)
+guessq5a <- ifelse(guessq5a>0,1,0)
+hitsq5a <- sum(guessq5a)
+accuracyq5a <-hitsq5a/nobs(modelq5a) #remove NA
+
+#For reporting in text
+matrix_modelq5a_coefficient <- summary(modelq5a)$coefficients
+
+
+
+#FINAL MODEL 5b
+#analysis
+modelq5b <- glm(programme_completion~selfmot+season, family=binomial, data=couchto5k)
+summodelq5b <- summary(modelq5b)
+
+#model deviance
+devmodelq5b <- anova(modelq5b, test="Chisq") #p<0.05 for both selfmot and season
+
+#Establish accuracy 
+guessq5b <- predict(modelq5b)
+guessq5b <- ifelse(guessq5b>0,1,0)
+hitsq5b <- sum(guessq5b)
+accuracyq5b <- hitsq5b/nobs(modelq5b)
+
+#For reporting in text
+matrix_modelq5b_coefficient <- summary(modelq5b)$coefficients
+
+
+#Model 5c 
+modelq5c <- glm(programme_completion~selfmot, family=binomial, data=couchto5k)
+summodelq5c <- summary(modelq5c)
+
+#model deviance
+devmodelq5c <- anova(modelq5c, test="Chisq") #p<0.05 for selfmot
+
+#Establish accuracy 
+guessq5c <- predict(modelq5c)
+guessq5c <- ifelse(guessq5c>0,1,0)
+hitsq5c <- sum(guessq5c)
+accuracyq5c <- hitsq5c/nobs(modelq5c)
+
+#odd ratio for results 
+oddsratio5c <- exp(coef(modelq5c))
+
+#For reporting in text
+matrix_modelq5c_coefficient <- summary(modelq5c)$coefficients
+
+#likelihood participants drop-out depending on their self-motivation values (not needed, just to check on Question 5c)
+l2p <- function(logits) {
+  odds = exp(logits)
+  prob = odds/(1+odds)
+  return(prob)
+}
+
+dropoutprob <- function(selfmotivation_val) {
+  results = l2p(summodelq5c$coefficients[1]+summodelq5c$coefficients[2]*selfmotivation_val)
+  return(results)
+}
+  
+#to calculate participants probability of dropping out based on their self-motivation score call dropoutprob(x), where x represents the self-motivation score. Only works in the interval of 0 to 35 (the allowed values were self-motivation)
+
+
+```
+
+**Research Question.** Build a model that predicts the likelihood of dropping out (at all).
+
+**Methodology.**  To build a model that predicts the likelihood of dropping out, several logistic regressions were fit. They all had the binary outcome variable programme completion, that assesses whether participants had dropped out or completed the Couch to 5k programme and varying predictor variables. The assumptions of the models were not formally checked. 
+
+*Fitting an initial model.* Whether or not participants dropped out or completed the Couch to 5k programme (binary 0 vs 1) was modelled using logistic regression. All possible assessed predictors of dropping out in this study, including participants' self-motivation, accountability, age (in years) and the season they were interviewed in (with spring as the reference level) were included in an initial model Model 5a. The city participants were recruited in was not deemed a potential predictor, as we established identical attrition patterns in Question 1B for Edinburgh and Glasgow. The initial model 5a was fitted to `r nobs(modelq5a)` observations, and took the form: 
+
+<p>&nbsp;</p>
+
+<center> Model 5a: ln($\frac{p}{1-p}$)= $\beta_{0}$ +$\beta_{1}$(Self-Motivation) +$\beta_{2}$(Accountability) + $\beta_{3}$(Age) +$\beta_{4}$(Summer) +$\beta_{5}$(Autumn) +$\beta_{6}$(Winter) +ϵ </center>
+
+<p>&nbsp;</p>
+
+*Results for the initial model.* Full regression results including 95% confidence intervals for the log-odds coefficients are shown in Table 11. Model 5a has an accuracy of `r round(accuracyq5a*100,0)`% to predict actual data. Participant's accountability 
+($\beta$=`r matrix_modelq5a_coefficient[3]`, SE=`r matrix_modelq5a_coefficient[10]`, *p*`r pval(matrix_modelq5a_coefficient[24])`) and age ($\beta$=`r matrix_modelq5a_coefficient[4]`, SE=`r matrix_modelq5a_coefficient[11]`, *p*`r pval(matrix_modelq5a_coefficient[25])`) were not related to whether or not participants dropped out of the Couch to 5k programme, and had non-significant model deviance hence these predictors were dropped in the successive models. 
+
+*Comparing interim models.* Resulting from the initial model, two final model options remained: Model 5b and Model 5c. Model 5b included participants' self-motivation and the season participants were interviewed in as predictor variables, with spring as the reference level for the season variable and was fitted to `r nobs(modelq5b)` observations. Model 5c only included participants' self-motivation as predictor variables and was also fitted to `r nobs(modelq5c)` observations. 
+
+<p>&nbsp;</p>
+
+<center> Model 5b: ln($\frac{p}{1-p}$)= $\beta_{0}$ + $\beta_{1}$(Self-Motivation) +$\beta_{2}$(Summer) + $\beta_{3}$(Autumn) + $\beta_{4}$(Winter) + ϵ </center>
+
+<p>&nbsp;</p>
+
+<center> Model 5c: ln($\frac{p}{1-p}$)= $\beta_{0}$ + $\beta_{1}$(Self-Motivation) + ϵ </center>
+
+<p>&nbsp;</p>
+
+Model coefficients and model deviance were statistically significant for both models (see full regression results including 95% Confidence Intervals for log-odds coefficients in Table 11), and a final model was chosen by comparing the predictive accuracy of both models. Model 5b correctly predicted `r round(accuracyq5b*100,0)`% of the observations of the actual data, compared to `r round(accuracyq5c*100,0)`% for Model 5c. Given it showed better predictive accuracy, Model 5b was chosen as the final model. 
+
+
+**Results For The Final Model 5b.** Full regression results including 95% confidence intervals for the log-odds coefficients of Model 5b are shown in Table 11. The results show that probability of participants' dropping out decreases as self motivation increases ($\beta$=`r matrix_modelq5b_coefficient[2]`, SE=`r matrix_modelq5b_coefficient[7]`, *p*`r pval(matrix_modelq5b_coefficient[17])`), when holding all other predictors constant. For every one unit increase in participants' self-motivation, the odds of dropping out of the Couch to 5k study decrease by `r exp(coef(modelq5b))[2]`. Participants' odds of dropping out if they were interviewed in summer and autumn compared to spring decrease by `r exp(coef(modelq5b))[3]` and `r exp(coef(modelq5b))[4]` respectively, when holding the self-motivation measure constant (see Table 12). Notably, Model 5b only has an accuracy of `r round(accuracyq5b*100,0)`% to predict actual data, hence it's predictive accuracy is only slightly above chance level. These results suggest that while participants' self-accountability and the season of interview are significantly related to whether or not they are completing the Couch to 5k programme, there are likely more important factors that determine whether participants are likely to drop out of the Couch to 5k program or not. 
+
+<p>&nbsp;</p>
+
+**Table 11**
+
+*Full untransformed regression results including 95% Confidence Intervals for log-odds coefficients for all models*
+
+```{r q5a Table 11}
+tab_model(modelq5a, modelq5b, modelq5c, pred.labels=c("Intercept","Self-Motivation","Accountability","Age","Season(summer)","Season(autumn)","Season(winter)"),dv.labels=c("Programme Completion - Model 5a","Programme Completion - Model 5b","Programme Completion - Model 5c"),transform=NULL, auto.label=FALSE)
+
+```
+
+<p>&nbsp;</p>
+
+**Table 12**
+
+*Full regression results including 95% Confidence Intervals for odds ratio coefficients for Model 5b*
+
+```{r q5a Table 12}
+tab_model(modelq5b, pred.labels=c("Intercept","Self-Motivation","Season(summer)","Season(autumn)","Season(winter)"),dv.labels=c("Programme Completion"))
+
+```
+
+<p>&nbsp;</p>
+
+## QUESTION 5B
+
+**Task.** Briefly describe the effects in your model as you would in an academic paper.
+
+**Brief Description.** This study investigated the psychological factors that make people continue on the Couch to 5k study. We assessed how participants' accountability and self-motivation prior to starting the programme influenced their likelihood of dropping out of the Couch to 5k programme. We found that participants with higher self-motivation were more likely to complete the Couch to 5k programme than those with low self-motivation. Participants' accountability was not related to their likelihood of finishing the Couch to 5k programme. Our results also suggested that there are other non-psychological factors, such as the season of initial interview, that influence participants' likelihood of completing the Couch to 5k programme. Further research should further explore which factors influence participants commitment to the Couch to 5k programme. 
+
+<p>&nbsp;</p>
+
+## QUESTION 5C
+
+```{r q5c}
+
+#ASSIGN programme completion as 0 and 1 values 
+couchto5k$programme_completion <- ifelse(couchto5k$programme_completion=="Not_Completed",1,0)
+
+#PLOT
+plotq5c <- couchto5k %>% ggplot(aes(x=selfmot,y=programme_completion)) +
+  ylab("p(Quitting)") + 
+  xlab("Self-Motivation") +
+  geom_jitter(size=3,width=0,height=.2,alpha=.2) +
+  geom_smooth(method="glm",method.args=list(family=binomial))+
+  scale_y_continuous(breaks=seq(0,1,by=.2))+
+  theme_classic()
+
+```
+
+**Task.** Draw a graph representing the probability of quitting as a function of how self motivated participants were.
+
+
+**Figure 15**
+
+*Probability Of Quitting As A Function Of Participants' Self-Motivation*
+
+```{r q5c Figure 15}
+plotq5c
+```
+
+*Note.*  The psychometric self-motivation measure had a minimum scale of 0 and a maximum scale of 35. However, this graph only shows the probability of quitting as a function of how self motivated participants were in the observed range of values for participants' self-motivation scores in our study (Min=`r min(couchto5k$selfmot, na.rm=TRUE)`, Max=`r max(couchto5k$selfmot, na.rm=TRUE)`). 
+
+

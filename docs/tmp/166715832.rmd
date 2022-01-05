@@ -1,0 +1,292 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+params:
+  examnumber: "B201693"
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+
+```{r cleaning, include = FALSE}
+#deletes participants with age 108 and 105
+couchto5k_delage <- couchto5k[!(couchto5k$age==105 | couchto5k$age==108),]
+#deletes participants with -99 selfmot 
+couchto5k_delselfmot <- couchto5k_delage[!(couchto5k_delage$selfmot==-99),]
+#corrects spelling of autumn 
+couchto5k_seasonchange <- couchto5k_delselfmot %>% mutate(
+  season = ifelse(season=="autunm",'autumn', season))
+#deletes participants with week 12 stopping week 
+couchto5k_clean <- couchto5k_seasonchange[!(couchto5k_seasonchange$week_stopped==12),]
+#summary
+summary(couchto5k_clean)
+
+
+```
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+
+probalities_of_stopping <-c(45/100, 10/100, 45/100)
+#gets number of those who completed
+completed <- couchto5k_clean$week_stopped==9
+completed_number <- sum(completed)
+#gets number of those who stopped after 5 weeks
+over_week_5 <- couchto5k_clean$week_stopped >5 & couchto5k_clean$week_stopped <9
+over_week_5_number <- sum(over_week_5)
+#gets number of those who stopped before 5 weeks
+under_week_5 <- couchto5k_clean$week_stopped <= 5
+under_week_5_number <- sum(under_week_5)
+#puts all previous numbers into a vector
+distribution_of_stopping <- c(under_week_5_number, over_week_5_number, completed_number)
+
+#chi square goodness of fit 
+chisq.test(x=distribution_of_stopping, p=probalities_of_stopping)
+
+
+```
+
+## Question 1b
+
+```{r q1b}
+#all Edinburgh entries into a dataframe 
+edinburgh_df <- couchto5k_clean[which(couchto5k_clean['city']=='Edinburgh'),]
+#all glasgow entries into a dataframe
+glasgow_df <-couchto5k_clean[which(couchto5k_clean['city']=='Glasgow'),]
+
+#getting counts of when people stop in edinburgh dataframe and putting in a vector
+completed_edi <- edinburgh_df$week_stopped==9
+completed_number_edi <- sum(completed_edi)
+over_week_5_edi <- edinburgh_df$week_stopped >5 & edinburgh_df$week_stopped <9
+over_week_5_number_edi <- sum(over_week_5_edi)
+under_week_5_edi <- edinburgh_df$week_stopped <= 5
+under_week_5_number_edi <- sum(under_week_5_edi)
+distribution_of_stopping_edi <- c(under_week_5_number_edi, over_week_5_number_edi, completed_number_edi)
+
+
+#getting counts of when people stop in glasgow dataframe and putting in a vector
+completed_gla <- glasgow_df$week_stopped==9
+completed_number_gla <- sum(completed_gla)
+over_week_5_gla <- glasgow_df$week_stopped >5 & glasgow_df$week_stopped <9
+over_week_5_number_gla <- sum(over_week_5_gla)
+under_week_5_gla <- glasgow_df$week_stopped <= 5
+under_week_5_number_gla <- sum(under_week_5_gla)
+distribution_of_stopping_gla <- c(under_week_5_number_gla, over_week_5_number_gla, completed_number_gla)
+
+
+#chi square test between glasgow and edinburgh 
+chisq.test(distribution_of_stopping_edi, distribution_of_stopping_gla)
+```
+
+## Question 1c
+
+```{r q1c}
+age_t_test = t.test(glasgow_df$age, edinburgh_df$age)
+print(age_t_test)
+```
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+
+#linear model of happiness and season
+linear_model_happiness_season <- lm(couchto5k_clean$happiness ~ couchto5k_clean$season)
+#summary of linear model
+summary(linear_model_happiness_season)
+#plot of linear model 
+ggplot (data=couchto5k_clean, aes(x=season, y=happiness)) + geom_point(stat="identity") + xlab("Season") + ylab("Happiness")
+#plot of cooks distance on linear model
+plot(linear_model_happiness_season, which=4, main = "Cook's Distance of Happiness and Season")
+#removal of one participant
+couchto5k_clean <- couchto5k_clean[-128, ]
+#anova 
+anova(linear_model_happiness_season)
+
+
+
+```
+
+## Question 2b
+
+```{r q2b}
+#linear model of happiness and age 
+linear_model_happiness_age <- lm(couchto5k_clean$happiness ~ couchto5k_clean$age)
+#summary of linear model
+summary(linear_model_happiness_age)
+#plot of linear model
+ggplot (data=couchto5k_clean, aes(x=age, y=happiness)) +geom_point(stat="identity") +
+  xlab("Age") + ylab("Happiness")
+
+#linear model with happiness and age and season
+linear_model_happiness_combined <- lm(couchto5k_clean$happiness ~ couchto5k_clean$age + couchto5k_clean$season)
+#plot of cook distance of linear model of happines, age, and season
+plot(linear_model_happiness_combined, which=4, main = "Cook's Distance of Happiness and Age with Baseline")
+#summary of linear model
+summary(linear_model_happiness_combined)
+#anova 
+anova(linear_model_happiness_combined)
+```
+
+## Question 2c
+
+```{r q2c}
+#baseline model to use is just season 
+```
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+#new column with boolean logic of who completed and who didnt
+couchto5k_clean <- couchto5k_clean %>%
+  mutate(completed = week_stopped==9)
+#linear model with baseline of happiness and completed
+linear_model_baseline_completetion <- lm(couchto5k_clean$happiness ~ couchto5k_clean$season + couchto5k_clean$completed)
+#summary
+summary(linear_model_baseline_completetion)
+#linear model of happiness and completion with no baseline
+linear_model_happiness_completed <- lm(couchto5k_clean$happiness ~ couchto5k_clean$completed)
+#summary
+summary(linear_model_happiness_completed)
+#anova 
+anova(linear_model_baseline_completetion)
+
+#completion has nothing to do with happiness
+```
+
+## Question 3b
+
+```{r q3b}
+#linear model with baseline and health
+linear_model_baseline_health <- lm(couchto5k_clean$happiness ~ couchto5k_clean$season + couchto5k_clean$health)
+#summary
+summary(linear_model_baseline_health)
+#linear model with no baseline and health
+linear_model_happiness_health <- lm(couchto5k_clean$happiness ~ couchto5k_clean$health)
+#summary
+summary(linear_model_happiness_health)
+#anova
+anova(linear_model_baseline_health)
+#plot of cooks distance of linear model with baseline and health
+plot(linear_model_baseline_health, which=4, main = "Cook's Distance of Happiness and Health with Baseline")
+
+#health doesn't have an effect
+```
+
+## Question 3c
+
+```{r q3c}
+#linear model with baseline and interaction between health and week stopped
+linear_test_hypothesis <- lm(couchto5k_clean$happiness ~ couchto5k_clean$season + couchto5k_clean$health:couchto5k_clean$week_stopped)
+#summary
+summary(linear_test_hypothesis)
+#anova
+anova(linear_test_hypothesis)
+#cooks distance 
+plot(linear_test_hypothesis, which=4, main = "Cook's Distance of Happiness, Season, Health, and Week Stopped")
+#yes - higher health and more in the program you are more happy 
+```
+
+## Question 3d
+#the only things having an effect - spring and the longer in the programme AND the healthier you are
+
+
+
+# Question 4
+
+```{r q4}
+#mutating edinburgh dataframe to include completed column
+edinburgh_df <- edinburgh_df %>%
+  mutate(completed = week_stopped==9)
+#mutating glasgow dataframe to include completed column
+glasgow_df <- glasgow_df %>%
+  mutate(completed = week_stopped==9)
+#glasgow plot
+ggplot(data=glasgow_df[glasgow_df$completed==TRUE,], aes(x=season, y=happiness)) + geom_bar(stat='summary', fun='mean')
+#edinburgh plot
+ggplot(data=edinburgh_df[edinburgh_df$completed==TRUE,], aes(x=season, y=happiness)) + geom_bar(stat='summary', fun="mean")
+
+
+```
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+#generalised linear model of dropping out
+linear_model_dropping_out <- glm(couchto5k_clean$completed ~ couchto5k_clean$health + couchto5k_clean$age + couchto5k_clean$accountability + couchto5k_clean$selfmot + couchto5k_clean$happiness + couchto5k_clean$season + couchto5k_clean$city,family=binomial)
+#cooks distance plot
+plot(linear_model_dropping_out, which=4)
+#summary
+summary(linear_model_dropping_out)
+#generalised linear model of completed and health
+lm_health <- glm(couchto5k_clean$completed ~ couchto5k_clean$health,family=binomial)
+summary(lm_health)
+#generalised linear model of completed and age
+lm_age <- glm(couchto5k_clean$completed ~ couchto5k_clean$age, family=binomial)
+summary(lm_age)
+#generalised linear model of completed and self motivation
+lm_selfmot <- glm(couchto5k_clean$completed ~ couchto5k_clean$selfmot, family=binomial)
+summary(lm_selfmot)
+#generalised linear model of completed and season
+lm_season <- glm(couchto5k_clean$completed ~ couchto5k_clean$season, family=binomial)
+summary(lm_season)
+#anova 
+anova(linear_model_dropping_out,test="Chisq")
+```
+
+## Question 5b
+
+```{r q5b}
+#spring, health, age, selfmot all have an effect - some more than others 
+```
+
+## Question 5c
+
+```{r q5c}
+#turning completed from boolean to 1 or 0 
+couchto5k_clean <- couchto5k_clean %>% mutate(completed = ifelse(completed, 1,0))
+#plot of self motivation and completed 
+couchto5k_clean %>% ggplot(aes(selfmot, completed)) + 
+  geom_smooth(method="glm", method.args=list(family=binomial)) + 
+  geom_jitter(width=0, height=0.2, size=3, alpha=0.3) +ylab("Completed (1=completed)") +xlab("Selfmotivation (out of 35)")
+
+
+```
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,803 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+params:
+  examnumber: B185496
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE, warning=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(sjPlot)
+library(ggplot2)
+library(scales)
+library(patchwork)
+library(car)
+library(pander)
+library(broom)
+library(tidyr) 
+library(dplyr)
+
+options(digits = 2)
+
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+Have a look at the data. Check for impossible values and deal with these in an appropriate manner. Describe the data, either in words or using suitable graphs (or a combination). Remember to detail the decisions you have made.
+
+
+
+
+
+```{r cleaning, include = FALSE, warning = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+
+couchto5k <- couchto5k %>% mutate(selfmot = replace(couchto5k$selfmot, couchto5k$selfmot < 0, NA))
+
+couchto5k <- couchto5k %>% mutate(week_stopped = replace(couchto5k$week_stopped, couchto5k$week_stopped > 9, NA))
+
+couchto5k <- couchto5k %>% mutate(age = replace(couchto5k$age, couchto5k$age > 100, NA))
+
+print(couchto5k$season)
+
+
+tab <- table(couchto5k$season)
+pander(tab, "Table 1. A table to show the seasons before cleaning and to establish any mistypes in the data.")
+
+couchto5k$season <- str_replace(couchto5k$season, "autunm", "autumn") 
+ 
+# table(couchto5k$season)
+
+print(couchto5k)
+summary(couchto5k)
+
+```
+ 
+
+
+
+Cleaning the data
+
+In order to clean the couch to 5k data, it was first mutated, replacing incorrect data with NA. Extreme values (outside of the scale participants were provided with), such as -99 in the self motivation category were replaced with NA and then removed entirely, as then the data would ahve the same amount in different categories. For self motivation this was done by replacing any value less than zero with NA, therefore preventing the extreme/ incorrect data from affecting the means and other statistical tests. 
+For the week stopped category, if the week stated was greater than week 9, it was replaced with NA, as it might have been a mistype of another number. 
+Additionally, ages greater than 100 were replaced with NA, as it is obviously a mistake, but it's not known the real age to replace with. 
+Furthermore, mistypes were found by printing a table of seasons and seeing that there were 5 categories, as Autumn was written 'Autunm' in some participant's data. Because this is very obviously meant to be Autumn, then they were replaced with the correct spelling.
+
+
+
+Below, the data is displayed:
+
+
+```{r descriptives, warning=FALSE, message=FALSE}
+ 
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+
+#selfmot_happiness_cor <- cor.test(x = couchto5k$happiness, y = couchto5k$selfmot)
+fig.1 <- ggplot(couchto5k, aes(x = happiness, y = selfmot)) + 
+  geom_point() + 
+  theme_bw() +
+  labs(title = "Happiness and Self Motivation", x = "Happiness", y = "Self Motivation", caption = "Figure 1: A plot to show the relation between Happiness and Self Motivation.")
+
+ 
+fig.1 + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+
+
+
+#accountability_cor <- cor.test(x = couchto5k$happiness, y = couchto5k$accountability)
+fig.2 <- ggplot(couchto5k, aes(x = happiness, y = accountability)) + 
+  geom_point() + 
+  theme_bw() + 
+  geom_smooth(method = lm) + labs(title = "Happiness and Accountability", x = "Happiness", y = "Accountability", caption = "Figure 2: A plot to show the relation between Happiness and Accountability.")
+
+
+fig.2 + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+
+
+#account_weekstopped_cor <- cor.test(x = couchto5k$week_stopped, y = couchto5k$accountability)
+#account_weekstopped_cor
+
+
+#correlation run, removed for knit.
+#cor.test(x = couchto5k$happiness, y = couchto5k$selfmot)
+```
+
+```{r figure 3, warning=FALSE, message=FALSE}
+
+fig.3 <- ggplot(data=couchto5k, aes(x = week_stopped, y = selfmot)) + 
+  geom_point() + 
+  theme_bw() + 
+  labs(title = "Self Motivation and Week Stopped", x = "Week Stopped", y = "Self Motivation", caption = "Figure 3: A plot to show the correlation between Self Motivation and Week \n stopped.")
+
+fig.3 + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+
+```
+
+```{r figure 4, warning=FALSE, message=FALSE}
+couchto5k <- na.omit(couchto5k)
+  
+par(mfrow=c(2,2))
+fig.4a <- hist(couchto5k$week_stopped, xlab = "Week stopped", freq = FALSE) 
+fig.4b <- hist(couchto5k$happiness, xlab = "Happiness", freq = FALSE) 
+fig.4c <- hist(couchto5k$selfmot, xlab = "Self Motivation", freq = FALSE)
+fig.4d <- hist(couchto5k$health, xlab = "Health", freq = FALSE) 
+
+#fig.4 + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+ 
+
+
+```
+
+
+
+
+
+
+
+
+
+Figure 1. shows a scatter plot of happiness and self motivation, as it is interesting to establish whether the more happy a person is, then the more self motivated they are. Thus this could impact how far through the couch to 5k course they get. From the plot, there looks like a very weak positive correlation between happiness and self motivation. The pearson's correlation test carried out gave a p value of 0.9, therefore there is no significant correlation between accountability and happiness. A correlation analysis was also carried about to see if there was a relation between accountability and week stopped and the p value was 0.8, therefore was also not significant. A Pearson's correlation test was also run for Happiness and self motivation and had a p value less then 0.05, therefore there is a significant relationship between happiness and self motivation scores. 
+Figure 2. shows a plot of happiness and accountability with no significant relationship seen between variable, as seen by the horizontal line. Therefore no correlation test was needed to be run, as there would not be significant values. 
+Figure 3. shows a plot of self motivation and the week participants stopped the couch to 5k course. It shows there was a high drop out in weeks 1-4 and fewer people left after this and 13 participants made it to week 9 out of `r length(couchto5k$week_stopped)`.
+Figure 4. shows the density plots of the data to represent visually the distribution of participant data. Figure 4a. shows that most participants finished the course and made it to week 9. The highest number of drop outs occurred in week 1. Figure 4b. shows the distribution of happiness ratings, showing most people have extreme ratings of 0-10 and 90-100, however the majority of the data is centered around 10-80 on the happiness scale. Figure 4c. shows more of a normal distribution of self motivation ratings of the participants. Most of the data is centered around a rating of 15. Figure 4d. shows another normal distribution bell curve of health ratings of participants, centering around ratings of 55-60. 
+
+
+# Question 1 
+
+## Question 1a
+In an earlier nationwide survey, researchers found that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme. Is the data in the sample you have been given in line with data from the earlier survey? Once you have created a suitable variable to map to the information in the question, you should be able to answer this using a simple statistical test.
+
+
+```{r q1a, warning=FALSE, message=FALSE, include=FALSE}
+
+# creating a column that returns either "stopped_early", "stopped_late" or "completed" 
+couchto5k <- couchto5k %>% mutate(stop_category = ifelse(couchto5k$week_stopped < 5, "stopped_early", ifelse(couchto5k$week_stopped < 9, "stopped_late", "completed")) ) 
+
+# conducting chi-squared test to test against previous study results 
+chisq_couchdata <- chisq.test(table(couchto5k$stop_category), p = c(0.45, 0.10, 0.45))
+```
+
+
+```{r  warning=FALSE, message=FALSE}
+tab1 <- print(chisq_couchdata)
+pander(tab1, "Table 1. A table to show the P value and degrees of freedom (df) for a chi squared test comparing participants who stayed, left early and left late to a previous data set.") 
+```
+
+
+
+
+
+The couch to 5K data was compared to previous participant attrition rates and a Chi squared test was carried out to establish the relationship between our couch to 5K data and the previously discovered percentages. Table 1. shows the P value from the test as significant, as p<0.05 (`r tab1$Pvalue`). Therefore the data and the previous data are statistically different and the probability of getting the same proportions of participants who dropped out early, late and completed are very low. 
+A Chi squared test was carried out as opposed to a T-test, as it allowed a comparison of observed data to expected data and there were different categories of stopped early, stopped late and completed to compare. 
+
+
+## Question 1b
+Using the same three categories (stopped before week 5, stopped after week 5, completed), examine whether the patterns of attrition rates differ by city.
+
+
+
+```{r q1b, warning=FALSE, message=FALSE}
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+#making a plot to show stopping category by city 
+fig.5 <- ggplot(couchto5k, aes(x = city, y = stop_category, color = stop_category)) + 
+  geom_jitter() + 
+  theme_bw() +
+  labs(title = "Stopping Catogory and City", x = "City", y = "Stop Category", caption = "Figure 5: A plot to show people from Edinburgh or Glasgow who Stopped Early, \n Late or completing Couch to 5K.")
+
+fig.5 + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+```
+
+```{r mean values, warning=FALSE, message=FALSE, include=FALSE}
+#now showing percentage of people in Glasgow and Edinburgh who stopped early, late or completed the course. 
+city.tab <- tibble(couchto5k$city)
+city.tab
+98+35
+#133
+98/133 *100
+#73.7%
+35/133 *100
+#26.3%
+
+
+62+55+16
+#133
+#completed= 
+62/133 *100
+#46.6%
+#stopped_early=
+55/133 *100
+#41.4%
+#stopped_late=
+16/133 *100
+#12%
+
+#making a table of stop category and city
+groupcity <- group_by(couchto5k, couchto5k$city, couchto5k$stop_category)
+```
+
+
+
+```{r table 2, warning=TRUE, message=FALSE}
+by_city <- groupcity %>% summarise(n=n())
+#tab2 <- pander(by_city, "Table 2. A table to show the numbers of participants grouped by City and Stop category")
+
+
+```
+
+
+```{r figure 6, warning=FALSE, message=FALSE}
+#glasgow percentage (last 3)
+GL_per <- by_city$n/35 * 100
+#ediburgh percentage (1st 3)
+ED_per <- by_city$n/98 * 100
+
+## so... completed = 37.1%, stopped early = 48.6%, stopped late = 14.3% for Glasgow
+# and completed = 50%, stopped early = 38.8%, stopped late= 11.2% for Edinburgh
+
+#order the time they stopped vs completed:
+#couchto5k$stop_category <- factor(couchto5k$stop_category, levels = c("Stopped_early", "stopped_late", "completed"))
+
+
+#code to group by stop category and city. Plot this in a bar chart. 
+groupcourselength <- group_by(couchto5k, couchto5k$stop_category, couchto5k$city) 
+
+by_length <- groupcourselength %>% summarise(n=n()) 
+
+by_length <- by_length %>% rename(city = `couchto5k$city`, course_length = `couchto5k$stop_category`)
+
+#print(by_length) 
+
+fig.6 <- ggplot(by_length, aes(x = course_length, y = n, fill = city)) + geom_bar(position = "dodge", stat = "identity") + theme_bw() + labs(title = "Course Length and City", x = "Length of Course", y = "Number of People", caption = "Figure 6: A bar plot to show the number of people, how  far they completed \n the couch to 5K course, devided by the city they were from, \n Edinburgh or Glasgow.")
+
+fig.6 + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic")) + scale_fill_manual(values=c("#000000", "#999999"))
+
+
+```
+
+
+
+
+
+
+
+
+Figure 5. shows a scatter plot of participants from Edinburgh and Glasgow who completed, stopped early or stopped the couch to 5K course late. It also shows more participants are from Edinburgh (98) than from Glasgow (35) and the general trend that more participant from Glasgow stopped early can be seen. 
+Figure 6. shows the number of participants and when they stopped the course, separated by the city they were from. 50% of people from Edinburgh completed the course. Of the participants from Glasgow, most stopped early (48.6%), where as 38.8% of people from Edinburgh stopped early. 14.3% of people from Glasgow stopped later, compared to 11.2% from Edinburgh. 
+
+
+
+
+
+## Question 1c
+Do the average ages of participants who commenced the programme differ by city?
+
+
+```{r q1c, message=FALSE, warning=FALSE, include=FALSE}
+
+couchto5k <- na.omit(couchto5k)
+#sapply(couchto5k$age, unclass)
+
+EH_filter <- couchto5k %>% filter(city == "Edinburgh")
+EH_avrg_age <- mean(EH_filter$age)
+#38.1 = Edinburgh average age
+
+GL_filter <- couchto5k %>% filter(city == "Glasgow")
+GL_avrg_age <- mean(GL_filter$age)
+summary(GL_filter$age)
+#38.1 = Glasgow average age
+summary(EH_filter$age)
+
+```
+
+
+
+Both the Glasgow (`r GL_avrg_age`) and Edinburgh (`r EH_avrg_age`) have rounded mean ages of 38.1. However, their median ages do differ, with Edinburgh having a median age of 39 and Glasgow's median age being 38. The minimum and maximum ages of 18 and 80 years are the same for both cities, thus age of participating groups does not explain the difference in week stopped. 
+
+
+
+
+
+# Question 2
+
+## Question 2a
+ Are participants’ happiness ratings affected by the season they were interviewed in? Describe the way in which season influences happiness outcomes.
+
+```{r q2a, warning=FALSE, message=FALSE}
+
+
+##means
+spring <- couchto5k %>% filter(season == "spring")
+mean_spring <- mean(spring$happiness)
+print(mean_spring)
+
+summer <- couchto5k %>% filter(season == "summer")
+mean_summer <- mean(summer$happiness)
+print(mean_summer)
+
+autumn <- couchto5k %>% filter(season == "autumn")
+mean_autumn <- mean(autumn$happiness)
+print(mean_autumn)
+
+winter <- couchto5k %>% filter(season == "winter")
+mean_winter <- mean(winter$happiness)
+print(mean_winter)
+
+#to order the months 
+couchto5k$season <- factor(couchto5k$season, levels = c("spring", "summer", "autumn", "winter"))
+
+#grouped data set in pretty table, with SD and counts of each month
+group_season_happiness <- group_by(couchto5k, couchto5k$season) %>% summarise(count = n(),
+    mean = mean(happiness, na.rm = TRUE),
+    sd = sd(happiness)
+  )
+
+tab4 <- pander(group_season_happiness, "Table 2 a table to show happiness predicted by season they were interviewed in.")
+
+tab4
+
+tid4 <- tibble(group_season_happiness)
+
+#Now show a histogram plot to show why the SD for Autumn and Winter was so high. 
+
+par(mfrow=c(2,2))
+fig.7a <- hist(spring$happiness)
+fig.7b <- hist(summer$happiness)
+fig.7c <- hist(autumn$happiness)
+fig.7d <- hist(winter$happiness)
+```
+
+
+
+
+
+Table 4 shows the mean happiness ratings by season, and shows that happiness was rated higher in summer (`r tid4$mean[2]`) and spring (`r tid4$mean[1]`). Interestingly the lowest rating was for Autumn ( `r tid4$mean[3]`) as opposed to Winter (`r tid4$mean[4]`). The standard deviations are around 32 for all except Autumn which has a small standard deviation of 26.6, which may be accounted for by the smaller sample size. 
+Figure 7 shows histogram plots of happiness separated by season, therefore showing the distribution of happiness ratings. Spring has the most variation in happiness scores, whereas, Summer, Autumn and Winter show a lot less variation and are grouped into blocks of 5 or 4 and as opposed to spring which has 10 bars on the plot. An Anova test was then run to see the difference between the groups and the p value was 0.076, which is not significant. Additionally, the sum of squares was quite high, indicating a larger degree of variability. This is corroborated by the residual assumption tests, which show variability of the data,as is to be expected when there is categorical data. There is not an extreme level of influence, as the Cook's test spikes are all under 0.5, therefore there are no extraneous data which is effecting the results. Overall, it does not appear that combined season significantly affects happiness ratings. 
+
+
+
+
+
+
+
+
+```{r warning=FALSE, message=FALSE, include=FALSE}
+##now run anova
+happiness_lm <- lm(couchto5k$happiness ~ couchto5k$season)
+summary(happiness_lm)
+aov(happiness_lm)
+hap.sea.table <- tidy(aov(happiness_lm))
+hap.sea.table
+
+par(mfrow=c(2,2))
+# checking assumptions for linear model 
+#hist(resid(happiness_lm)) 
+#plot all of the assumptions:
+plot(happiness_lm, which = 1:4)
+
+
+
+```
+
+
+
+## Question 2b
+Accounting for any effects you discovered in (2a), is happiness affected by age?
+
+
+```{r q2b, warning=FALSE, message=FALSE, include=FALSE}
+
+#general linear model happiness ~ season + age
+age_hap_season_lm <- lm(happiness ~ 1 + season + age, data = couchto5k)
+summary(age_hap_season_lm)
+
+par(mfrow=c(2,2))
+# checking assumptions for linear model: 
+plot(age_hap_season_lm, which = 1:4)
+
+#just happiness~age for comparison:
+age_happiness_lm <- lm(happiness ~ age, data = couchto5k)
+summary(age_happiness_lm)
+
+par(mfrow=c(2,2))
+# checking assumptions for linear model: 
+#hist(resid(age_happiness_lm)) 
+plot(age_happiness_lm, which = 1:4)
+# Cook's distance, looks OK
+
+
+#to order the months 
+couchto5k$season <- factor(couchto5k$season, levels = c("spring", "summer", "autumn", "winter"))
+```
+
+
+
+```{r figures, warning=FALSE, message=FALSE}
+
+## linear model to look at happiness predicted by age of all seasons together... can see that there's a slight increase, however if data is broken down by season, it can be seen more clearly. 
+fig.8 <- couchto5k %>% ggplot(aes(x = happiness, y = age)) +
+      geom_point() +
+      geom_smooth(method = "lm") +
+      theme_bw() + labs(title = "Plotting Happiness and Age", x = "Happiness", y = "Age", caption = "Figure 8: A scatter plot to show the correlation of Age and Happiness.")
+
+fig.8 + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+
+#now plot to show the data
+
+fig.9 <- couchto5k %>% ggplot(aes(x = happiness, y = age, colour=season)) +
+      geom_point() +
+      geom_smooth(method = "lm") +
+      facet_wrap(~season) +
+      theme_bw() + labs(title = "Correlation of Happiness and Age", x = "Happiness", y = "Age", caption = "Figure 9: A scatter plot to show Correlation of Age and Happiness, \n divided by Season.")
+
+fig.9 + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+
+```
+
+
+Taking into account the previous question's observed affects (or lack of) of Season on happiness, age was investigated as a predictor of happiness also. Therefore the model used was Happiness ~ 1 + Season + Age. 
+The residuals were checked and for Cook's test all spikes were under 0.5, the Residual Vs. Fitted and the Scale Location graphs looked largely straight and horizontal and the Normal Q-Q fit mostly on the diagonal line, with only slight separation of data at the ends. This therefore all suggests that no extreme figures corrupted the data. 
+
+Figure 8. shows the model off Happiness predicted by Age and there is a slight positive slope. However, compared to Figure 9. which shows Happiness predicted by Age and divided by Season, Winter has a positive relation, and Spring and Summer have very slight positive relations. However, Autumn has a negative slope, therefore the relationship between Happiness and Age is much more apparent when separated by month. The amount of data per month is also very apparent, as Summer and Spring have much more data points than Autumn and Winter. Also there do not appear to be any data points with high residuals from the slope, therefore the data will not be influenced by a few extreme values. 
+
+From the linear model summary, the overall p value is 0.070, therefore is not significant; further, the individual values for the linear model also do not show significance, with the season winter at 0.087 being the closest and the other seasons and age being >1. The F statistic is also small (2.23) and the adjusted R-squared value is also very small (0.0358) which happens when useless variables are added to a model. Overall, age and season does not predict happiness. 
+The linear model (displayed in figure 8.) of Happiness ~ age, was run for comparison and showed no significance. The P value was higher though at 0.17 and the F-statistic and Adjusted R-squared values were also lower than the other model.
+
+
+
+## Question 2c
+The models you have built above explore ‘baseline’ effects; that is, effects that are not of primary interest to the researchers but which might affect the outcome variable of happiness. For use in question 3, pick a specific baseline model and justify why you are using this.
+
+```{r q2c, figure 10}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+#so another effect which isn't primary is accountability or self motivation. Do a linear model of one.
+hap_selfm_lm <- lm(happiness ~ selfmot, data = couchto5k)
+summary(hap_selfm_lm)
+
+par(mfrow=c(2,2))
+# checking assumptions for linear model: 
+#hist(resid(hap_selfm_lm)) 
+#plot all of the assumptions:
+plot(hap_selfm_lm, which = 1:4)
+
+
+fig.10 <- couchto5k %>% ggplot(aes(x = happiness, y = selfmot)) +
+      geom_point() +
+      geom_smooth(method = "lm") +
+      theme_bw() + labs(title = "Correlation of Happiness and Self Motivation", x = "Happiness", y = "Self Motivation", caption = "Figure 10: A scatter plot to show Correlation of Self Motivation and Happiness.")
+
+fig.10 + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+```
+
+
+
+
+
+The baseline model chosen was Happiness predicted by Self Motivation, as the higher a persons self motivation the more happy their rating would be. Self motivation was chosen over accountability because I believed it would be a greater predictor of Happiness, as if you're more self motivated then you may be more prone to doing things that improve your well being and enjoyment in life. Also, in Figure 1. and 2. happiness and accountability were plotted and had no correlation on a scatter plot and self motivation and happiness seemed to have a more positive incline. 
+The Self motivation rating was collected at the start of the couch to 5K course and the happiness ratings were scored at the end of the course; if the participant was more self motivated and completed the course then perhaps they might rate their happiness as higher. 
+As shown in Figure 10. there is a positive correlation between self motivation and happiness. The linear model shows that Happiness does predict self motivation, as the P value is less that 0.05, therefore is significant. Additionally the F statistic is 15.80, thus is quite high and and more significant. The Adjusted R-Squared value is 0.10 and therefore is higher than the previous models, therefore has a more significant effect than the previous model. 
+
+The residuals were also checked and Cook's test found all spikes were under 0.5, the Residual Vs. Fitted and the Scale Location graphs looked largely straight and horizontal and the Normal Q-Q fit mostly on the diagonal line, with only slight separation of data at the ends. This therefore all suggests that no extreme figures corrupted the data. 
+
+
+# Question 3
+
+## Question 3a
+Building on your baseline model, are participants’ happiness ratings affected by whether or not they completed the programme? Describe the way in which programme completion influences happiness outcomes.
+
+```{r q3a}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+#make is complete
+couchto5k <- couchto5k %>% mutate(is.complete = ifelse(week_stopped == 9, 1, 0)) 
+
+couchto5k <- couchto5k %>% mutate(selfmot = as.numeric(as.character(selfmot)), is.complete = factor(is.complete) ) 
+hap.sel.comp_lm <- lm(happiness ~ 1 + selfmot + is.complete, data = couchto5k)
+summary(hap.sel.comp_lm)
+
+Anova(hap.sel.comp_lm)
+
+
+
+par(mfrow=c(2,2))
+# checking assumptions for linear model: 
+#hist(resid(hap.sel.comp_lm)) 
+#plot all of the assumptions:
+plot(hap.sel.comp_lm, which = 1:4)
+```
+
+
+```{r model plots, message=FALSE, warning=FALSE}
+hap.sel.com_mdl <- plot_model(hap.sel.comp_lm, type = "pred", terms=c("selfmot","is.complete"), show.data = 1) + 
+  labs(title = "Correlation of Happiness and Self Motivation defined \n by completing the course", x = "Self Motivation", y = "Happiness", caption = "Figure 11: A scatter plot to show happiness predicted by Self Motivation \n and whether or not the participant completed the chouch to 5K course or not.")
+
+hap.sel.com_mdl + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+```
+
+
+```{r message=FALSE, warning=FALSE}
+#anova to ask if each new predictor changes the model... hap~selfmot + is.complete
+anova(hap.sel.comp_lm)
+
+
+```
+
+
+Building on from my baseline model in the previous question, a new model was built to see if Happiness ~ 1 + self motivation + whether they completed the programme. 
+The linear model results showed that Happiness was predicted by self motivation, (0.00012), but not whether or not the participant completed the course or not (is.complete). The F value for self motivation is also high (15.72) suggesting significance, as does the high sum of squares value.  The significance found in the model summary was also verified with an Anova test of the model. As in the summary, self motivation had a high F value (15.84) and low p value (0.00011), with high sum of squares value. 
+Figure 11. shows a plot of Happiness and self motivation for participants who completed the course (blue) and for those who did not (in red). As seen from the graph, there is a positive correlation between happiness and self motivation, but very little difference in those ratings between people who finished the course and those who did not. In fact those who did not finish the course rated slightly higher happiness than those who did finish the course. The residuals were checked. All the Cook's test spikes were under 0.5 (and only 1 was over 0.05; 68), thus, there were no outlying residuals. The Residual Vs. Fitted and the Scale Location graphs looked largely straight and horizontal and the Normal Q-Q fit mostly on the diagonal line, with only slight separation of data at the ends. This therefore all suggests that no extreme figures corrupted the data.
+
+
+## Question 3b
+Building on the analysis in (3a), is happiness additionally affected by the “health metric”?
+
+```{r q3b}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+hap_health_self_comp_lm <- lm(happiness ~ 1 + selfmot + is.complete + health, data = couchto5k)
+summary(hap_health_self_comp_lm)
+
+anova(hap_health_self_comp_lm)
+
+
+par(mfrow=c(2,2))
+# checking assumptions for linear model: 
+#hist(resid(hap_health_self_comp_lm)) 
+#plot all of the assumptions:
+plot(hap_health_self_comp_lm, which = 1:4)
+
+
+```
+
+
+
+Building from the last model, another was run: Happiness ~ 1 + self motivation + completed + health.  As previous models show, self motivation had a significant relation on happiness scores, however, no other predictor tested did.
+The summary shows that the overall model p value is significant (p=0.0019) and the F statistic is quite high (5.26) with an adjusted R-squared value of 0.088. 
+However, looking specifically at the predictors, there was no significant effect of health of happiness, as the probability value is 0.86 which is much higher than 0.05. The is.complete category also had a high P value and therefore no significance. For the self motivation predictor, which was still significant as seen from the last model, the standard error also was small and and the t value was comparatively large, further supporting significance of this predictor. 
+Once more, an Anova was run to further test the relation, and the F value for self motivation was high (15.60), which is good, however, the F values for Health and is.Complete are less than 1, and also have low sum of squares values. 
+
+The residuals were also checked and Cook's test found all spikes were under 0.5, with just one over 0.05 (97). The Residual Vs. Fitted and the Scale Location graphs looked largely straight and horizontal and the Normal Q-Q fit mostly on the diagonal line, with only slight separation of data at the ends. This therefore all suggests that no extreme figures corrupted the data. 
+
+## Question 3c
+It’s been hypothesised that the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier. Building on the model in (3b), can you test this hypothesis?
+
+```{r q3c, warning=FALSE, message=FALSE}
+
+#another error... trying to get the data to see it as a factor:
+couchto5k <- couchto5k %>% mutate(is.complete = as.factor(as.numeric(is.complete)))
+
+complete_hap_health_lm <- lm(happiness ~ 1 + selfmot + is.complete + health, data = couchto5k)
+
+par(mfrow=c(2,2))
+# checking assumptions for linear model: 
+#hist(resid(complete_hap_health_lm)) 
+#plot the assumptions:
+plot(complete_hap_health_lm, which = 1:4)
+
+summary(complete_hap_health_lm)
+anova(complete_hap_health_lm)
+
+couchto5k <- couchto5k %>% mutate(stop.early = ifelse(week_stopped < 9, 1, 0)) 
+
+
+
+stop_hap_health_lm <- lm(happiness ~ 1 + selfmot + stop.early + health, data = couchto5k)
+summary(stop_hap_health_lm)
+anova(stop_hap_health_lm)
+
+#par(mfrow=c(2,2))
+# checking assumptions for linear model: 
+#hist(resid(stop_hap_health_lm)) 
+#plot all of the assumptions:
+#plot(stop_hap_health_lm, which = 1:4)
+
+
+```
+
+
+
+```{r warning=FALSE, message=FALSE}
+
+hap.health.lm <- plot_model(complete_hap_health_lm, type= "pred", terms = c("health", "is.complete"), show.data = 1) + 
+  labs(title = "Linear Model of Happiness predicted by Health \n and completing the course", x = "Health", y = "Happiness", caption = "Figure 12: A plot to show Happiness predicted by Health \n and whether or not the participant completed the couch to 5K course or not.")
+
+hap.health.lm + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+
+
+#couchto5k <- couchto5k %>% mutate(happiness = as.numeric(happiness))
+
+#hap.mean.stop <- couchto5k %>% filter(is.complete == "0") %>% mean(happiness)
+
+##T-test on means to see if they are significantly different
+#t.test(mean(is.complete))
+```
+
+
+
+
+Continuing the model seen previously, the new model shows: 
+Happiness ~ 1 + self motivation + stopping early + health.
+From the results of the linear model summary, there was no significant effect of health and week dropped out on happiness. Participants who completed the course and participants who finished early both had p values higher than 0.05. Overall, the P value for the model is 0.0019, which is significant, but this is due to the effects of self motivation on the model. AN Anova was also carried out and the self motivation variable was the only one with significance (high F value and large sum of squares with a low P value). 
+
+Once more, as seen in figure 12., there is also no significant interaction between health and happiness, whether or not the participant completed the course. The residual plots show that there are no outlying data points and all look normal. The residuals were also checked and Cook's test found no spikes over 0.5, the Residual Vs. Fitted and the Scale Location graphs looked largely straight and horizontal and the Normal Q-Q fit mostly on the diagonal line, with only slight separation of data at the ends. This therefore all suggests that no extraneous residuals corrupted the data. 
+
+
+
+## Question 3d
+What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper.
+
+
+From the models, we can conclude that happiness is predicted by Self motivation, but not, Health, Age, Season or How far through the course they got (is.complete). Figure 2. shows there is no relationship between happiness and accountability either. 
+Figure 8., was a representation of the linear model Happiness ~ age, which was run for comparison and showed no significance. The P value was high (0.17) and the F-statistic and Adjusted R-squared values were also low.
+The linear model represented in figure 9. of Happiness ~ age + season had an overall p value of 0.70, which is therefore not significant, so although age might look like it may affect happiness, with other predictors such as season, it does not. Further more, the individual values for the linear model also do not show significance, with the season winter at 0.087 being the closest and the other seasons and age being >1. The F statistic is also small (2.23) and the adjusted R-squared value is also very small (0.0358) which happens when useless variables are added to a model. Overall, age and season does not predict happiness.
+
+When investigating Happiness being predicted by just Self motivation an obvious positive incline is seen (in figure 10. and figure 1.), the p value is less than 0.05 for all models where it is used and the overall F statistic is 15.80, thus is quite high and significant. The Adjusted R-Squared value is 0.10 and therefore is higher than the previous models, thus we can conclude that the self motivation does predict happiness ratings. When additional predictors were added to the model (shown in figure 11.) it was found that only self motivation and not whether they completed the program, predicted happiness ratings. 
+
+Adding on from this, when a new model: 
+Happiness ~ 1 + self motivation + stopping early + health
+was made to test if happiness was predicted by week stopped and health, there was also found to be no significance for these variables (as seen in figure 12.). Participants who completed the course and participants who finished early both had p values higher than 0.05. Overall, the P value for the model is 0.0019, which is significant, but this is due to the effects of self motivation on the model. AN Anova was also carried out and the self motivation variable was the only one with significance (high F value and large sum of squares with a low P value). 
+
+
+
+
+
+# Question 4
+Create a subset of the data, including only those participants who completed the programme. Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project.
+
+```{r q4}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+complete_couchto5k <- couchto5k %>% filter(stop_category == "completed")
+##mean happiness of Spring - GL and ED, Summer - GL and ED, autumn - GL and ED and Winter - GL and ED
+
+#by_length <- groupcourselength %>% summarise(n=n()) 
+#by_length <- by_length %>% rename(city = `couchto5k$city`, course_length = `couchto5k$stop_category`)
+
+
+
+by_season <- complete_couchto5k %>% group_by(complete_couchto5k$season)
+
+plot.hap.city <- by_season %>% ggplot(aes(x = season, y = happiness, colour = season)) + geom_jitter(position=position_jitter(0.2)) + 
+  facet_wrap(~city) + 
+  theme_bw() + 
+  labs(title = "A plot of Happiness varying by Season and City", x = "Season", y = "Happiness", caption = "Figure 13: A plot to show Happiness predicted by Season and \n City (either Glasgow or Edinburgh) with the means shown in black.")
+
+plot.hap.city + 
+  stat_summary(fun=mean, geom="point", shape=20, size=4.5, color="black") + 
+  theme(plot.title = element_text(hjust = 0.4), plot.caption = element_text(hjust = 0.5, face = "italic"))
+
+
+
+```
+
+
+
+
+The data was first filtered to only have those participants who completed the programme. Then the mean happiness ratings were plotted based on city and season (as represented in Figure 12. by the black dots). The individual participant data was left in the scatter plot, allowing the distribution of data to be visualized. Particularly highlighting that Edinburgh had many more participants who completed the course than Glasgow and especially that Glasgow only had two participants who completed the course in Spring. Comparing the two to five data points that each month had in Glasgow to the spread of data seen in Edinburgh's ratings, any conclusions that could be drawn about whether city had an effect on Happiness ratings would have to be viewed skeptically. The spread of data in Edinburgh represents that participants in Glasgow may be extreme and that if more participants were added from Glasgow, the distribution of data would be very similar to Edinburgh. 
+
+
+
+
+# Question 5
+
+## Question 5a
+Build a model that predicts the likelihood of dropping out (at all).
+ 
+
+```{r q5a}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+# percentage of people that did not complete course... probability 
+#probability of dropped vs stayed
+couchto5k <- couchto5k %>% mutate(is.complete = ifelse(week_stopped == 9, 1, 0)) 
+couchto5k <- couchto5k %>% mutate(stop.early = ifelse(week_stopped < 9, 1, 0)) 
+
+
+drop.out_glm <- glm(stop.early ~ 1 + age + accountability + selfmot + season + city, family = binomial, data = couchto5k)
+
+
+summary(drop.out_glm)
+anova(drop.out_glm, test = "Chisq")
+
+
+
+# drop.out_glm.compare <- glm(stop.early ~ 1, family = binomial, data = couchto5k)
+
+
+
+```
+
+
+
+A model was created to predicting the likelihood of dropping out at all:
+stopping early ~ age + accountability + Self motivation + season + city.
+These predictors were chosen as they were all the variable that possibly could predict happiness ratings therefore predicts dropping out "at all". Also, including them all together, a significant predictor might be established, as opposed to leaving out a predictor and not testing it.
+
+The summary of the model showed that age (0.019), Self motivation (0.016), and summer and winter season all had a significant effect on stopping early, as the P values were smaller than 0.05. Further more the residual deviance was quite low -2.34 to 2.45, so there were few outlying data points which could corrupt the data. A chi squared Anova was run to see the significance and it was shown that only age (0.0032) and season (<2e-16) had an effect on stopping the programme early. Both age and season (82.10) had high deviance and season had low residual deviance (90.20), therefore this indicates season has the strongest influence on participant attrition. 
+The residual assumptions were tested and looked OK, the normal Q-Q test had some extraneous data points at the end producing a slight curved end, however, there were not many. The residual vs fitted and Scale- location also seemed slightly unusual and not horizontal line, however, for this many predictors in a model that is to be expected. The Cook's test were all under 0.5, though there was a greater number of spikes over 0.05, there were no extreme residuals that would affect the data. 
+
+
+
+
+## Question 5b
+Briefly describe the effects in your model as you would in an academic paper.
+
+```{r q5b}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+
+
+#Figure 14. residual assumptions
+par(mfrow=c(2,2))
+# checking assumptions for model: 
+#hist(resid(drop.out_glm)) 
+#plot all of the assumptions:
+plot(drop.out_glm, which = 1:4)
+
+#tab_model(drop.out_glm)
+
+```
+
+
+The previous model, stopping early ~ 1 + age + accountability + Self motivation + season + city, predicts the likelihood of dropping out at all, factoring in the other variables. From the summary ran, it is shown that the age (0.019), self motivation (0.016), and summer and winter season all had a significant effect on stopping early. 
+However, the chi squared Anova showed that only age (0.0032) and season (<2e-16), and not self motivation, had an effect on stopping the programme early. Both age and season (82.1) had high deviance and season had low residual deviance (90.2), therefore this indicates season has the strongest influence on participant attrition.
+
+The residual assumptions (as seen in figure 14.) were tested and looked OK, the normal Q-Q test had some extraneous data points at the end producing a slight curved end, however, there were not many. The residual vs fitted and Scale-location also seemed slightly unusual and not horizontal line, however, for this many predictors in a model that is to be expected. The Cook's test were all under 0.5, though there was a greater number of spikes over 0.05, there were no extreme residuals that would affect the data. 
+
+
+
+## Question 5c
+Draw a graph representing the probability of quitting as a function of how self motivated participants were.
+
+```{r q5c}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+
+couchto5k <- couchto5k %>% mutate(selfmot = as.numeric(selfmot))
+couchto5k <- couchto5k %>% mutate(is.complete = as.numeric(is.complete))
+```
+
+
+
+
+```{r figure 15, warning=FALSE, message=FALSE}
+
+fig.15 <- couchto5k %>% ggplot(aes(x = selfmot, y = stop.early)) + 
+  ylab("p(stop.early)") + 
+  geom_jitter(size=3,width=0,height=.2,alpha=.1) +   geom_smooth(method="glm",method.args=list(family=binomial)) +   scale_y_continuous(breaks=seq(0,1,by=0.2)) + 
+  theme_bw() +
+labs(title = "A plot of Self Motivation of participant who \n Stopped Early", x = "Self Motivation", y = "Stopped Early or Finished", caption = "Figure 15: A plot to show the probability of Stopping early or finishing the couch \n to 5K course and self motivation scores.")
+
+fig.15 + theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0.5, face = "italic"))
+
+
+```
+
+
+
+
+
+Figure 15. shows a probability plot of stopping early or finishing the course and self motivation of participants. From the figure we can see there is no obvious relation between the two, maybe a slight distribution of the data that those who finished the programme had slightly lower scores than those who finished early, as seen by the slope. However, the data is so spread out, it is difficult to draw any other conclusions from this, other than that the data does not show a convincing relationship. 
+
+

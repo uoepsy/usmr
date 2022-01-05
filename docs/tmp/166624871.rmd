@@ -1,0 +1,363 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+params:
+  examnumber: B203882
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(sjPlot)
+library(plyr)
+library(pander)
+library(dplyr)
+library(psych)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+summary(couchto5k)
+abs(couchto5k$age - mean(couchto5k$age)) > (3 * sd(couchto5k$age))
+couchto5k$missing <- NA
+couchto5k$missing[couchto5k$age>100] <- "obscure age"
+couchto5k$missing[couchto5k$week_stopped>10] <- "impossible week number"
+couchto5k$missing[couchto5k$selfmot<5] <- "impossible self-motivation value"
+couchto5k$missing[couchto5k$age>100] <- "obscure age"
+Table1<- table(couchto5k$missing)
+couchto5k<- couchto5k %>% filter(is.na(missing))
+
+
+   
+
+```
+
+The data were evaluated and missing or impossible values were removed, resulting in 119 observations for the analysis.  Table 1 gives a brief description of the data that were removed.
+```{r table, results="asis"}
+Table1 %>% pander(caption= "Table 1: Removed values.")
+```
+
+
+
+```{r season}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+spellingmistake<- table(couchto5k$season[couchto5k$season=='autunm'])
+couchto5k$season[couchto5k$season== "autunm"]<- "autumn"
+couchto5k$season<- as.factor(couchto5k$season)
+```
+Six season entries were initially miscoded as "autunm".  These were then re-coded as "autumn".
+
+```{r desciptives, include= FALSE}
+ggplot(couchto5k, aes(x= happiness)) + geom_histogram(binwidth = 5) + theme_bw()
+ggplot(couchto5k, aes(x= health)) + geom_histogram(binwidth = 5) + ggtitle("Figure 1: Scores of participants on health") + theme_bw()
+ggplot(couchto5k, aes(x= accountability)) + geom_histogram(binwidth = 5) + ggtitle("Figure2: Scores of participants on accountability") +theme_bw()
+ggplot(couchto5k, aes(x= age)) + geom_histogram(binwidth = 5) + theme_bw()
+table(couchto5k$season)
+#Number of participants
+n=119
+freqseason<- count(couchto5k$season)
+freqseason
+freqseason$freq*100/n
+  freqcity<- count(couchto5k$city)
+  freqcity
+  freqcity$freq*100/n
+   describe(couchto5k$age)
+  describe(couchto5k$happiness)  
+    describe(couchto5k$selfmot)
+    describe(couchto5k$accountability)
+    describe(couchto5k$week_stopped)
+      describe(couchto5k$health)
+      
+```
+Most people were interviewed in Spring (45.4%), whereas Summer (24.4%) and Winter (17.6%) followed, respectively with the least frequent season being Autumn (12.6%). The average age of participants was `r mean(couchto5k$age)`(SD = `r sd(couchto5k$age) %>% round(2)`) and most of them were recruited in Edinburgh (73.1%).
+```{r visuals for the report}
+ggplot(couchto5k, aes(x= health)) + geom_histogram(binwidth = 5) + ggtitle("Figure 1: Scores of participants on health") + theme_bw()
+ggplot(couchto5k, aes(x= accountability)) + geom_histogram(binwidth = 5) + ggtitle("Figure2: Scores of participants on accountability") +theme_bw()
+```
+
+The mean of the sample on the psychometric measure of accountability was `r mean(couchto5k$accountability) %>% round(2)`(SD = `r sd(couchto5k$accountability) %>% round(2)`), whilst the average score for self-motivation was `r mean(couchto5k$selfmot) %>% round(2)`(SD = `r sd(couchto5k$selfmot) %>% round(2)`). On average, participants stopped the program on week `r mean(couchto5k$week_stopped) %>% round(1)`(SD = `r sd(couchto5k$week_stopped) %>% round(2)`). Happiness (`r mean(couchto5k$happiness) %>% round(2)`, SD = `r sd(couchto5k$happiness) %>% round(2)`) and health (`r mean(couchto5k$health) %>% round(2)`, SD = `r sd(couchto5k$health) %>% round(2)`) measures were, also, included after the completion (W9) or drop out (<W9) of the program.
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a, include= FALSE}
+#Goodness of fit chi-test
+couchto5k$datamatch<- with(couchto5k, ifelse(week_stopped<5, "beforeweek5", ifelse(week_stopped==9, "completed", "afterweek5")))
+chitest1<-chisq.test(table(couchto5k$datamatch), p = c(.45, .1, .45))
+chitest1
+```
+A chi-square test of goodness-of-fit was performed to determine whether our data on when participants stopped the program were in line with data of an earlier survey. The values of week of ending the program are equally distributed in both samples, x^2(2, 119)= `r chitest1$statistic`, p= `r chitest1$p.value`. 
+```{r chitest1}
+pander(chitest1)
+```
+
+## Question 1b
+
+```{r q1b, include=FALSE}
+#Independence chi test
+plot(table(couchto5k$datamatch, couchto5k$city))
+chitest2<- chisq.test(table(couchto5k$datamatch, couchto5k$city))
+chitest2
+```
+A chi-square test of independence was performed to examine the relation between the week of stopping the program and city of which participants are from. The relation between these variables was not significant, x^2(2, 119)= `r chitest2$statistic %>% round(2)`, p= `r chitest2$p.value %>% round(2)`. 
+```{r chitest2}
+pander(chitest2)
+plot(table(couchto5k$datamatch, couchto5k$city), main="Figure 3: Week stopped by city.")
+```
+
+
+## Question 1c
+
+```{r q1c data inspection, include= FALSE }
+ttest1<- with(couchto5k, t.test(age ~ city, alternative = "two.sided"))
+ttest1
+
+```
+ 
+  A two-sided independent-samples t-test was conducted in order to determine if the average age of participants living in Edinburgh differed significantly ($\alpha = .05$) from living in Glasgow. There was a significant difference of the average age of people living in Edinburgh (Mean = `r mean(couchto5k$age[couchto5k$city=="Edinburgh"]) %>% round(2)`, SD = `r sd(couchto5k$age[couchto5k$city=="Edinburgh"]) %>% round(2)`), compared to people from Glasgow (Mean=`r mean(couchto5k$age[couchto5k$city=="Glasgow"]) %>% round(2)`), SD = `r sd(couchto5k$age[couchto5k$city=="Glasgow"]) %>% round(2)`), t(`r ttest1$parameter %>% round(2)`)= `r ttest1$statistic %>% round(2)`, p<.05.
+```{r show ttest}
+pander(ttest1)
+```
+  
+  
+```{r show assumptions}
+plot(density(couchto5k$age), main= "Figure 4: Density plot to test for normality")
+qqnorm(couchto5k$age, main= "Figure 5: Normal Q-Q plot to test for normality")
+shapirotest<-shapiro.test(couchto5k$age)
+
+```
+Although, the assumption of the sample being drawn from a normally distributed population is not met by conducting a Shapiro-Wilk normality test W=`r shapirotest$statistic %>% round(2)`, p= `r shapirotest$p.value %>% round(2)`, Figures 1 and 2 show that data are, approximately, normally distributed. Because of this, it is decided that the assumption of normality is met.   
+
+# Question 2
+
+## Question 2a
+
+```{r q2a, include=FALSE}
+model1<-lm(happiness~ season, data= couchto5k)
+summary(model1)
+sum1<- summary(model1)
+ pander(model1)
+
+```
+
+After the initial inspection of the model no influential values were removed and assumptions were found to be met. Residuals for each season are found to be randomly scattered around the zero line, whereas the normality assumption is met. Furthermore, the variance of the residuals of all seasons variable, according to the Scale-Location plot is constant, whereas the final plot shows the Leverage estimates being close to zero, which is desirable for our model.    
+```{r assumptions}
+par(mfrow= c(2,2)) 
+plot(model1, main = "Figure 6: Assumption Checks")
+
+```
+
+Simple linear regression was used to test if season significantly predicted happiness scores. The overall regression was not statistically significant (R2 = `r sum1$adj.r.squared`, F(3, 115) = 2.53, p = .06. Neither spring (β=`r pander(model1$coefficients[2])`, p<.4), nor winter (β=`r pander(model1$coefficients[4])`, p<.26) or summer (β=`r pander(model1$coefficients[3])`, p<.32) significantly predicted happiness scores, whereas autumn was the reference condition of the model. Figure 7 consists a visual representation of the results, in which no differences between the different seasons are portrayed.
+```{r model1}
+pander(model1)
+print(ggplot(couchto5k, aes(x=season, y = happiness))+ geom_point() + theme_bw() + ggtitle("Figure 7: Rate of happiness according to season"))
+```
+
+
+
+## Question 2b
+
+```{r q2b, include=FALSE}
+model2<-lm(happiness~ season + age, data= couchto5k)
+sum2<- summary(model2)
+sum2
+anova(model1, model2)
+par(mfrow= c(2,2)) 
+plot(model2)
+```
+The variable of age was added to the model from question 2a, as a predictor of happiness. Once again, the overall regression was not statistically significant (R2 = `r sum2$adj.r.squared`, F(4, 114) = 2.17, p = .08. 
+
+```{r model2}
+pander(model2)
+pander(anova(model1, model2))
+```
+
+A comparison of the first and second model showed that there was not a significant (p=.3) improvement in predicting happiness with the addition of the second predictor.
+
+## Question 2c
+
+```{r q2c, include= FALSE}
+model9<- lm(happiness~ health, data= couchto5k)
+summary(model9)
+model3<- lm(happiness~ accountability, data= couchto5k)
+summary(model3)
+model4<- lm(happiness~ selfmot, data= couchto5k)
+summary(model4)
+model5<- lm(happiness~ week_stopped, data= couchto5k)
+summary(model5)
+model10<- lm(happiness~city, data= couchto5k)
+sum4<-summary(model10)
+sum4
+model11<- lm(happiness~ age, data= couchto5k)
+summary(model11)
+model12<- lm(happiness~ selfmot+city, data= couchto5k)
+summary(model12)
+anova(model4, model12)
+sum3<- summary(model4)
+sum3
+par(mfrow= c(2,2)) 
+plot(model4)
+
+```
+There was an attempt to fit several linear regression models to find a baseline model that fits best our data. The best-fit model was chosen according to the explained variance and F-ratio of significant simple linear models.
+```{r model4}
+pander(model4)
+```
+
+The linear model of self-motivation being a predictor of happiness was statistically significant, R2 = `r sum3$adj.r.squared`, F(1, 116) = 11.5, p < .05 and was found to be the best-fitted baseline model. A multiple linear regression of self-motivation and city as predictors of happiness was, also, conducted. That is because the simple linear model of city as a predictor was significant and had a higher explained variance and F-ratio compared to other models, R2=`r sum4$adj.r.squared`, F(1, 116)= 4.23, p=.04. 
+```{r anova }
+pander(anova(model4, model12))
+```
+Comparison of the first and second model showed that there was not a significant (p=.07) improvement in predicting happiness with the addition of city as a predictor. An inspection of the model of self-motivation as a predictor of happiness was conducted and no influential values were removed. In addition, assumptions were deemed as met. 
+
+# Question 3
+
+## Question 3a
+
+```{r q3a, include=FALSE}
+couchto5k$completed<- with(couchto5k, ifelse(week_stopped==9, "1", "0"))
+model6<- lm(happiness~ selfmot  + completed, data= couchto5k)
+sum5<-summary(model6)
+sum5
+anova(model4, model6)
+lmd1<-broom::tidy(model6)
+```
+The overall regression was statistically significant (R2 = `r sum5$adj.r.squared`, F(2, 116) = 6.23, p = < .002). It was found that self-motivation significantly predicted happiness scores (β=`r lmd1$estimate[2]`, p<.001), whereas program completion was not found to be a significant predictor β=`r lmd1$estimate[3]`, p=.31. 
+```{r figure}
+ggplot(data = couchto5k, aes(x = selfmot, y = happiness)) + 
+  geom_point() + 
+  facet_wrap(~completed) + ggtitle("Figure 8:Rate of happiness according to self-motivation and program completion")
+lmd1
+
+```
+
+ The model comparison is not significant (p=0.31), which means that we should accept the null hypothesis that the baseline model is better than the model with the additional predictor of program completion.
+
+```{r}
+pander(anova(model4, model6))
+```
+
+
+## Question 3b
+
+```{r q3b, include= FALSE}
+model13<- lm(happiness~ selfmot +  health, data= couchto5k)
+sum7<- summary(model13)
+sum7
+lmd<-broom::tidy(model13)
+```
+The additional predictor of program completion was removed from the model, prior to the addition of the health metric, as the model comparison showed that whether or not participants dropped out or completed the program did not improve the original model (non-significant comparison, smaller F-statistic).  
+```{r model showing}
+
+lmd
+```
+The overall regression was statistically significant (R2 = `r sum7$adj.r.squared`, F(2, 116) = 6.42, p = < .002). It was found that self-motivation significantly predicted happiness scores (β=`r lmd$estimate[2]`, p<.05), whereas health was not found to be a significant predictor β=`r lmd$estimate[3]`, p=.24.The findings are portrayed in th table above.
+
+## Question 3c
+
+```{r q3c, include=FALSE}
+model14<- lm(happiness~ selfmot + health + week_stopped + health*week_stopped, data= couchto5k)
+sum6<-summary(model14)
+sum6
+lmd2<-broom::tidy(model14)
+anv<- broom::tidy(anova(model4, model14))
+```
+Multiple linear regression was used to test if the influence of the health metric on happiness of participants depends on how far along the program they've continued until drop out or completion. To test this hypothesis the interaction of health and the week subjects stopped attaining to the program was evaluated.
+```{r interaction model}
+lmd2
+anv
+```
+ 
+ 
+## Question 3d
+The overall regression was statistically significant (R2 = `r sum6$adj.r.squared`, F(4, 114) = 13.9, p = < .001). It was found that self-motivation significantly predicted happiness scores (β=`r lmd2$estimate[2]`, p=`r lmd2$p.value[2]`), whereas health was also a significant predictor (β=`r lmd2$estimate[3]`, p=`r lmd2$p.value[3]`).A standard interpretation of the effects of these findings is that for a one-point increase in self-motivation scale, we expect the score of happiness to be increase by `r lmd2$estimate[2]` and for one-point increase to the health metric, happiness should decrease by `r -(lmd2$estimate[2])`. Similarly, both the week, in which subjects stopped participating on the program (β=`r lmd2$estimate[4]`, p=`r lmd2$p.value[4]`) and its interaction with health measures (β=`r lmd2$estimate[5]`, p=`r lmd2$p.value[5]`) significantly predicted happiness. The significant interaction confirms that the effects of health on happiness scores depend on the week, in which participants stopped the program. 
+A model comparison of the baseline and the current model was conducted, which indicated that the model was significantly improved with the addition of the interaction of the health and week of program cease (p=`r anv$p.value`). Additionally, The F-ratio of the current model (F(4, 114)=13.9, P<.001) is larger than of the baseline one (F(1, 117)=11.4, p<.001).
+
+```{r figure6}
+plot_model(model14, type="int")+ ggtitle("Figure 9: Interaction of health and week of program end") + theme_bw()
+
+ ggplot(data = couchto5k, aes(x = happiness, y = health)) + geom_point() +  facet_wrap(~week_stopped, scales="free_x") + ggtitle("Figure 10: Relationship of happiness and health per week") + theme_bw()
+```
+As it can be seen from both figures (9 & 10), the score of happiness is negatively correlated with  health as the program continues, whereas a good score on the health metric is positively correlated with happiness the more weeks participants spend on the program. Additionally, it can be concluded from figure 9 that, happiness scores of participants at the start of the the program is more affected by the health metric than that of those at the end, since the relationship is visualized as stronger. 
+
+# Question 4
+
+```{r q4}
+newdata<- couchto5k %>% filter(completed== "1")
+model7<- lm(happiness~ season + city, data=newdata)
+plot_model(model7, type = "pred",  terms=c("season","city"), show.data=TRUE)+ ggtitle("Figure 11: Predicted values of happiness, according to season and city")+ theme_bw()
+
+```
+The plot above indicates the predicted average values of happiness for each of the four seasons (autumn, spring, summer, winter), according to City (Edinburgh or Glasgow).
+
+# Question 5
+
+## Question 5a
+A number of Generalized Linear Models were evaluated to find the best fitting model for predicting the likelihood of dropping out. A GLM was used because the depended variable has binomial outcomes. 
+```{r q5a, include=FALSE}
+couchto5k$dropout<- with(couchto5k, ifelse(week_stopped!=9, "1", "0"))
+couchto5k$dropout<- as.factor(couchto5k$dropout)
+model8<- glm(dropout ~ selfmot + season, data = couchto5k, family="binomial")
+summary(model8)
+predict(model8, type="response")
+anova(model8, test= "Chisq")
+guess<- predict(model8)
+ guess<- ifelse(guess>0, 0, 1)
+accuracy<- sum(guess== couchto5k$dropout)
+accuracy/length(couchto5k$dropout)
+
+```
+
+
+
+```{r}
+pander(model8)
+pander(anova(model8, test= "Chisq"))
+```
+
+## Question 5b
+Whether or not participants dropped out of the program or not is modeled using logistic regression, involving the amount of self-motivation of participants (ranging from 5 to 35) and the season they were recruited in (autumn, winter, spring, summer). The direct effects of self-motivation on the likelihood of dropping out were negative and significant (β=`r pander(model8$coefficients[2])`, p<.001).  A standard interpretation of the effect of this finding is that for a one-unit increase in self-motivation, we expect the odds of dropping out to be `r pander(model8$coefficients[2])` times lower. On the other hand, the effects of spring were significant and positive (β=`r pander(model8$coefficients[3])`, p<.001), whereas summer (β=`r pander(model8$coefficients[4])`), p=.43) and winter (β=`r pander(model8$coefficients[5])`, p=.24) did not induce a significant effect. Autumn was used as the baseline reference of the model. 
+An analysis of deviance with a specified statistical test, x^2, was computed to evaluate the change in deviance compared to the null model. It was found that there was a significant difference in deviance with the addition of both self-motivation (p=.02) and season (p<.001) as predictors of dropping out. Thus, it can be concluded, that the current model is more fitting to the data. Finally, this model correctly predicts 11.8% of observations.
+
+
+## Question 5c
+
+```{r q5c, drop-out values, include= FALSE}
+
+couchto5k$completed_regression<- as.numeric(paste(couchto5k$dropout))
+
+```
+ 
+
+
+```{r final figure, fig.cap="Figure 12: Probability of dropping out of the program according to self-motivation", message= F}
+couchto5k %>% ggplot(aes(x=selfmot, y=completed_regression)) + ylab("p(Dropout)") + geom_jitter(size=3, width=0, height=0.2, alpha=0.1) + geom_smooth(aes(selfmot, completed_regression), method="glm", method.args=list(binomial), fullrange= TRUE)+ scale_y_continuous(breaks=seq(0,1, by=0.2)) + theme_bw()
+```
+The negative correlation of the possibility of dropping out as a function of being self-motivated is portrayed in the graph above.
+
+
+
+
+
+

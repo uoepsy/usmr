@@ -1,0 +1,343 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+params:
+  examnumber: B189272
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(patchwork)
+library(ggplot2)
+library(knitr)
+library(psych)
+library(car)
+library(sjPlot)
+library(broom)
+library(dplyr)
+library(lme4)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+
+```{r cleaning, include = FALSE}
+summary(couchto5k)
+# According to the summary of "couchto5k" datasheet, impossible values exist in the age column, selfmot column, and week stopped column. Thus, we remove the impossible values.
+
+couchto5k <-
+  couchto5k %>%
+  mutate(
+   age = as.numeric(age),
+   age = ifelse(age>100, NA, age),
+   selfmot = as.numeric(selfmot),
+   selfmot = ifelse(selfmot<5 | selfmot>35, NA, selfmot),
+   week_stopped = as.numeric(week_stopped),
+   week_stopped = ifelse(week_stopped>9, NA, week_stopped)
+  )
+
+couchto5k <- couchto5k
+couchto5k[couchto5k == "autunm"] <- "autumn"
+
+couchto5k <-
+  couchto5k %>% 
+  filter(!is.na(age))
+  
+couchto5k <-
+  couchto5k %>% 
+  filter(!is.na(selfmot))
+
+couchto5k <-
+  couchto5k %>% 
+  filter(!is.na(week_stopped))
+
+couchto5k
+```
+
+```{r descriptives}
+# By removing the impossible values, here we get:
+par(mfrow = c(2, 3))
+
+hist(couchto5k$age, 
+     freq = FALSE,
+     main="Histogram of age",
+     xlab="Age (in year)"
+     )
+hist(couchto5k$accountability, 
+     freq = FALSE,
+     main="Histogram of accountability",
+     xlab="Accountability (range from 5 to 35)"
+     )
+hist(couchto5k$selfmot, 
+     freq = FALSE,
+     main="Histogram of self-motivation",
+     xlab="Self-motivation (range from 5 to 35)"
+     )
+hist(couchto5k$health, 
+     freq = FALSE,
+     main="Histogram of health",
+     xlab="Health (range from 0 to 100)"
+     )
+hist(couchto5k$happiness, 
+     freq = FALSE,
+     main="Histogram of happiness",
+     xlab="Happiness (range from 0 to 100)"
+     )
+hist(couchto5k$week_stopped, 
+     freq = FALSE,
+     main="Histogram of stopped week",
+     xlab="Stopped week (range from 1 to 9)"
+     )
+
+```
+Originally, this dataset contains information on 131 participants of their half-hour run for 9 weeks. Certain data are collected, including age, accountability, self-motivation, health, happiness, and their duration (quitting before Week 5, after Week 5, or completion). By observing the summary and histograms of these data, we clean up several impossible values, including two for age over 100, two for selfmot score below 5, and one for having Week 12, and rename the misspelling "autunm" into "autumn". Hence, we get a dataset of `r nrow(couchto5k)` participants.
+
+# Question 1
+
+## Question 1a
+
+```{r q1a}
+couchto5k <- 
+    couchto5k %>% 
+    mutate(
+        duration = cut(couchto5k$week_stopped, 
+                       breaks = c(0, 5, 8, 9), 
+                       labels = c("before_week5", "after_week5", "completed"))
+    )
+
+table_observed <- table(couchto5k$duration)
+EdinGlas_vs_nation <- chisq.test(table_observed, p=c(0.45,0.1,0.45))
+EdinGlas_vs_nation
+```
+With the given two-city dataset, we performed a chisq.test to evaluate to what extent does the attrition rate of the two-city data resemble that of the nationwide survey. With p = `r EdinGlas_vs_nation$p.value %>% round(2)`>.05, we can conclude that the observed attrition rate is at some degree in line with that of the nationwide survey.
+
+## Question 1b
+
+```{r q1b}
+duration_by_city <- couchto5k %>%
+  select(duration, city) %>% table()
+plot(duration_by_city)
+
+chi_duration_by_city <- chisq.test(duration_by_city)
+
+# due to the small sample cell sizes of Glasgow side, we perform a chisq.test(a, simulate.p.value = TRUE) to simulate the p-value
+
+chi2_duration_by_city <- chisq.test(duration_by_city, simulate.p.value = TRUE)
+chi2_duration_by_city
+
+# P=0.4>0.05, based on the plot of the table, and the pass of a p-value simulation test; Thus, the attrition rate of the two city is alike.
+
+attrition_rate_Edin <- 
+  couchto5k[couchto5k$city == "Edinburgh",] %>% 
+  group_by(duration) %>%
+  summarise(attrition_rate_Edin = n()/nrow(couchto5k[couchto5k$city == "Edinburgh", ]))
+table_Edin <- kable(attrition_rate_Edin, caption = "Edinburgh Attrition Rate")
+table_Edin
+
+attrition_rate_Glas <- 
+  couchto5k[couchto5k$city == "Glasgow",] %>% 
+  group_by(duration) %>%
+  summarise(attrition_rate_Glas = n()/nrow(couchto5k[couchto5k$city == "Glasgow", ]))
+table_Glas <- kable(attrition_rate_Glas, caption = "Glasgow Atrrition Rate")
+table_Glas
+```
+
+By plotting the duration (quitting before or after Week 5), we assume that there is a similarity between the attrition rate between the two cities. With chisq.test performed and its p=`r chi_duration_by_city$p.value %>% round(2)`>.05. However, there is a warning which reflects a small cell sample size in the Glasgow data; hence, we performed a simulation test and the p=`r chi2_duration_by_city$p.value %>% round(2)`>.05 remains similar. Therefore, we conclude that there is similarity in attrition rate between the two cities. 
+
+## Question 1c
+
+```{r q1c}
+# display the distribution
+table_age_by_city <- table(couchto5k$city, couchto5k$age)
+ggplot(data = couchto5k, aes(x = age, fill = city)) +
+  geom_bar()+
+  labs(x = "Age (in year)", y = "Population", subtitle = "Age Distribution by Cities") + 
+  theme_minimal()
+
+# check assumptions
+shatest_Edin <- shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"])
+shatest_Edin
+shatest_Glas <- shapiro.test(couchto5k$age[couchto5k$city=="Glasgow"])
+shatest_Glas
+
+ttest_age_similarity <-
+  t.test(couchto5k[couchto5k$city == 'Edinburgh',]$age,couchto5k[couchto5k$city == 'Glasgow',]$age, var.equal=TRUE)
+ttest_age_similarity
+```
+We performed two Shapiro tests to check our assumptions; with both Edinburgh (p=`r shatest_Edin$p.value %>% round(2)`<.05) and Glasgow (p=`r shatest_Glas$p.value %>% round(2)`<.05) possessing only insignificant effect, we failed to approve that the age of the two cities is normally distributed. However, by plotting age and city together, we assume that there might be a similarity, despite that the sample size of the Glasgow side provides only a little evidence. We performed the t-test, with t=`r ttest_age_similarity$statistic`, df=`r nrow(couchto5k)-2`, and p=`r ttest_age_similarity$p.value %>% round(2)`>.05. Thus, we cannot reject the assumption that there is similarity in average age between the two cities. Therefore, we can conclude that the average ages does not differ by city.
+
+# Question 2
+
+## Question 2a
+```{r q2a}
+ggplot(couchto5k, aes(x=season, y = happiness))+
+  geom_point() +
+  labs(x = "- Season -", y = "- Happiness Rating -", title = "Happiness Rating by Season")
+
+model_hs <- lm(happiness ~ season, data = couchto5k)
+summary(model_hs)
+kable(coefficients(summary(model_hs)), caption = "Coefficients of Model Happiness by Season")
+
+ggplot(couchto5k, aes(x = season, y = happiness)) +
+  geom_point() + 
+  geom_smooth(method="lm")
+
+par(mfrow = c(2,3))
+plot(model_hs)
+plot(model_hs, which = 4)
+```
+
+By building a linear model of happiness rating against seasons ($\beta$=`r summary(model_hs)$coefficients[1,1] %>% round(2)`, SE=`r summary(model_hs)$coefficients[1,2] %>% round(2)`, p=`r summary(model_hs)$coefficients[1,4] %>% round(2)`<.05), we can reject the hypothesis and conclude that season as a whole does affects happiness ratings. The four plots again confirm that the assumption is met. Specifically, one point of increase of spring will cause `r summary(model_hs)$coefficients[2,1] %>% round(2)` points of increase of happiness; one point of increase of summer will cause `r summary(model_hs)$coefficients[3,1] %>% round(2)` points of increase of happiness; while point of increase of winter only cause`r summary(model_hs)$coefficients[4,1] %>% round(2)`points of increase in happiness, which is less significant compared to spring and summer.
+
+
+## Question 2b
+
+```{r q2b}
+model_hsa <- lm(happiness ~ season + age, data=couchto5k)
+summary(model_hsa)
+kable(coefficients(summary(model_hsa)), caption = "Coefficients of Model Happiness by Season and Age")
+
+par(mfrow=c(2,2))
+plot(model_hsa)
+```
+According to the conclusion that happiness rating is affected by season, we build another linear model of happiness rating against both seasons and age ($\beta$=`r summary(model_hsa)$coefficients[5,1] %>% round(2)`, SE=`r summary(model_hsa)$coefficients[5,2] %>% round(2)`, p=`r summary(model_hsa)$coefficients[5,4] %>% round(2)`>.05). Hence, we cannot reject the hypothesis. We can conclude that happiness ratings are not significantly affected by age.
+
+## Question 2c
+
+Based on answers to 2a and 2b, we can conclude that the factor of season affects the happiness rating more significantly than the factor of age does. Thus, we choose the linear model for happiness against season as the baseline model for further research. 
+
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+couchto5k <- 
+  couchto5k %>% 
+  mutate(is_completed =
+           ifelse(week_stopped==9, 1, 0))
+
+model_hsi <- lm(happiness ~ season + is_completed, data = couchto5k)
+summary(model_hsi)
+kable(coefficients(summary(model_hsi)), 
+      caption = "Coefficients of Model Happiness by Season and Completion Condition")
+
+par(mfrow=c(2,2))
+plot(model_hsi)
+
+vif(model_hsi)
+```
+On the basis of the baseline model (happiness ~ season), we add "whether the participants completed the program" into account. In this current model, that participants whether completed the program or not ($\beta$=`r summary(model_hsi)$coefficients[5,1] %>% round(2)`, SE=`r summary(model_hsi)$coefficients[5,2] %>% round(2)`, p=`r summary(model_hsi)$coefficients[5,4] %>% round(2)`>.05) does not significantly affect the baseline model. 
+
+## Question 3b
+
+```{r q3b}
+model_hsih <- lm(happiness ~ season + is_completed + health, data = couchto5k)
+summary(model_hsih)
+kable(coefficients(summary(model_hsih)), 
+      caption = "Coefficients of Model Happiness by Season, Completion Condition and Health")
+
+par(mfrow=c(2,2))
+plot(model_hsih)
+```
+On the basis of the baseline model (happiness ~ season), we add "whether the participants completed the program" and "health metrics" into account. In this current model, health ($\beta$=`r summary(model_hsih)$coefficients[6,1] %>% round(2)`, SE=`r summary(model_hsih)$coefficients[6,2] %>% round(2)`, p=`r summary(model_hsih)$coefficients[6,4] %>% round(2)`>.05) does not significantly additionally affect the model based on 3a.
+
+## Question 3c
+
+```{r q3c}
+model_later <- lm(happiness ~ season + health + is_completed + health : is_completed, 
+              data = couchto5k)
+summary(model_later)
+kable(coefficients(summary(model_later)), 
+      caption = "Coefficients of Model Happiness by Health and Completion Interaction")
+
+par(mfrow=c(2,2))
+plot(model_later)
+```
+On the basis of the baseline model (happiness ~ season), we add "whether the participants completed the program" and "health metrics" into account, and exhibit the interaction between these two factors. In this current model, the interaction between completion and health ($\beta$=`r summary(model_later)$coefficients[7,1] %>% round(2)`, SE=`r summary(model_later)$coefficients[7,2] %>% round(2)`, p=`r summary(model_later)$coefficients[7,4] %>% round(2)`<.05) exhibits significant effect on the model based on 3b. Thus, the result supports the hypothesis that the happiness of participants who got further along the program might be more affected by the health metric than that of those who stopped earlier.
+
+## Question 3d
+<div style="display: inline-block; max-width: 45%; vertical-align: top;">
+```{r q3d}
+kable(coefficients(summary(model_later)), caption = "Coefficients for Model_later")
+```
+</div>
+
+<div style="display: inline-block; max-width: 45%; vertical-align: top;">
+```{r q3d(2)}
+plot_model(model_later, type = "int", title = "Happiness Rating by Health in Completion Condition")
+```
+</div>
+
+With a baseline model in which is significantly affected by season, the results of this current model show a significant conditional association between Happiness and Health ($\beta$=`r summary(model_later)$coefficients[7,1] %>% round(2)`, SE=`r summary(model_later)$coefficients[7,2] %>% round(2)`, p=`r summary(model_later)$coefficients[7,4] %>% round(2)`<.05), suggesting that the happiness of participants who quit the program later is amplified by acting healthily. More specifically, for those who completed the program, 1 point of increase in Health metrics will cause`r summary(model_later)$coefficients[7,1] %>% round(2)`point of increase in Happiness; if not completed the program, 1 point of increase in Health metrics will cause`r summary(model_later)$coefficients[5,1] %>% round(2)` of decrease in Happiness. This interaction is visually presented in the figure.
+
+
+
+# Question 4
+
+```{r q4}
+subset_data <- couchto5k[couchto5k$is_completed == 1,]
+meanHappiness_season_city <-
+  subset_data %>%
+  group_by(season, city) %>%
+  summarise(mean_se(happiness)) %>%
+  ggplot(aes(x = season, y = y, ymin = ymin, ymax = ymax, 
+             fill = city, colour = city)) +
+  geom_col(position = "dodge") +
+  geom_errorbar(posistion = "dodge", width = 0.2)+
+  labs(x = "Season", y = "Mean of Happiness", title = "Average Happiness by Season in City Condition")
+meanHappiness_season_city
+```
+Due to the lack of sample from the Glasgow side (only one sample in spring and winter), there is no error bar for these two bars.
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+couchto5k <- 
+  couchto5k %>% 
+  mutate(dropout =
+           ifelse(duration == "completed", 0, 1))
+
+model_dropout <- glm(dropout ~ accountability + selfmot, family = binomial(link="logit"), data = couchto5k)
+summary(model_dropout)
+kable(coefficients(summary(model_dropout)), 
+      caption = "Dropout Probability by Accountability and Self-motivation")
+```
+
+## Question 5b
+
+```{r q5b}
+kable(exp(coef(summary(model_dropout))), 
+               caption = "Dropout Probability by Accountability and Self-motivation")
+```
+Accountability and self-motivation affect the probability of quitting the program with different degrees of significance. With respect to Accountability ($\beta$=`r summary(model_dropout)$coefficients[2,1]%>%round(2)`, SE=`r summary(model_dropout)$coefficients[2,2]%>%round(2)`, p=`r summary(model_dropout)$coefficients[2,4]%>%round(2)`>.05), it does not have significant effects on the dropout probability, with one point of increase in accountability corresponding to `r exp(summary(model_dropout)$coefficients[2,1])%>%round(2)` point of increase in dropout probability.
+Whereas Self-motivation has significant effects ($\beta$=`r summary(model_dropout)$coefficients[3,1]%>%round(2)`, SE=`r summary(model_dropout)$coefficients[3,2]%>%round(2)`, p=`r summary(model_dropout)$coefficients[3,4]%>%round(2)`<.05) on dropout probability, with one point of increase in accountability corresponding to `r exp(summary(model_dropout)$coefficients[3,1])%>%round(2)` point of increase in dropout probability.
+
+## Question 5c
+
+```{r q5c}
+couchto5k %>% ggplot(aes(x = selfmot, y = dropout)) +
+  ylab("p(dropout)") +
+  geom_jitter(size = 3, width = 3, height = .05, alpha = .3) +
+  geom_smooth(method = "glm", method.args = list(family = binomial)) +
+  scale_y_continuous(breaks = seq(0, 1, by = .2)) +
+  ggtitle("Dropout Possibility by Self-motivation")
+```

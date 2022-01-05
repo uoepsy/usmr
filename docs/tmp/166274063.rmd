@@ -1,0 +1,263 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B193437
+---
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(psych)
+library(car)
+library(patchwork)
+library(knitr)
+library(sjPlot)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+table(duplicated(couchto5k$pptID))
+summary(couchto5k)
+couchto5k$age[couchto5k$age==147] <- NA
+couchto5k$age[couchto5k$age==141] <- NA
+couchto5k$selfmot[couchto5k$selfmot==-99]<- NA
+couchto5k$season[couchto5k$season=="autunm"]<-"autumn"
+couchto5k$week_stopped[couchto5k$week_stopped==13]<-NA
+couchto5k$season<-factor(couchto5k$season)
+levels(couchto5k$season)
+couchto5k$city<-factor(couchto5k$city)
+levels(couchto5k$city)
+```
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+prop.table(table(couchto5k$season))*100
+prop.table(table(couchto5k$city))*100
+prop.table(table(couchto5k$week_stopped))*100
+couchto5k %>%
+  select(accountability, selfmot, health, happiness) %>%
+  pairs.panels()
+couchto5k %>%
+  select(age, accountability, selfmot, health, happiness, week_stopped) %>%
+  describe()
+```
+
+Data was obtained from https://uoepsy.github.io/data/usmr_2122_data.R: a dataset containing information from 135 participants, including age, the season of the year the participants were recruited in, the city where participants were recruited in, a psychometric measure of accountability, a psychometric measure of self-motivation, a multi-test health measure, the score from a simple happiness scale, and the week of the programme participants stopped in.
+
+The mean age of the participants was 39.1 (*SD* = 12.3); two impossible values were removed (ID48 and ID 90). 66.7% of the participants were from Edinburgh, while the rest were from Glasgow. 52.24% of the participants completed the study. One data point was removed for indicating an incorrect study completion week (ID101). Spelling errors in season were identified and replaced with the correct spelling. Bivariate correlations show that there is a positive correlation between self-motivation and happiness, and between health and happiness.
+
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+couchto5k$status <- ifelse(couchto5k$week_stopped<5,"before",
+                           ifelse(couchto5k$week_stopped<9,"after",
+                                  "completed"))
+couchto5k$status<-factor(couchto5k$status)
+
+table(couchto5k$status)
+barplot(prop.table(table(couchto5k$status))*100)
+chisq.test(table(couchto5k$status), p = c(.1,.45,.45))
+```
+
+A chi-squared goodness of fit test was used to assess if the percentage of participants who abandoned the Couch to 5k programme in the data sample resembled that of the nationwide survey.  
+As p-value was greater than the significance level (*p* = .20), we can conclude that the null hypothesis was not rejected and that the data in the sample was similar to the data from the nationwide survey.
+
+
+## Question 1b
+
+```{r q1b}
+table(couchto5k$status,couchto5k$city)
+plot(table(couchto5k$status,couchto5k$city))
+chisq.test(table(couchto5k$status,couchto5k$city),simulate.p.value = TRUE)
+```
+
+A chi-squared test of independence was conducted to assess if the patterns of attrition rates differed by the cities the participants were recruited in. As the p-value was greater than the significance level (*p* = .90), it can be concluded that there was no significant difference in the attrition rate between Edinburgh and Glasgow.
+
+
+## Question 1c
+
+```{r q1c}
+ggplot(data = couchto5k, aes(x=age, y=city))+geom_boxplot()
+mean(couchto5k$age[couchto5k$city=="Edinburgh"], na.rm = TRUE)
+sd(couchto5k$age[couchto5k$city=="Edinburgh"], na.rm = TRUE)
+mean(couchto5k$age[couchto5k$city=="Glasgow"], na.rm = TRUE)
+sd(couchto5k$age[couchto5k$city=="Glasgow"], na.rm = TRUE)
+
+with(couchto5k, var.test(age ~ city))
+with(couchto5k, t.test(age ~ city, alternative = "two.sided"))
+```
+
+A two-tailed independent samples t-test was used to assess if the average ages of participants who started the programme differed between Edinburgh and Glasgow. There was no significant difference in the ages of the participants, *t*(90) = 1, *p* = .20, between Edinburgh (*M* = 40.1, *SD* = 12.6) and Glasgow (*M* = 37.0, *SD* = 11.5).
+
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+ggplot(data = couchto5k, aes(x = season, y = happiness))+
+  geom_boxplot()
+model1 <- lm(happiness ~ 1 + season, data = couchto5k)
+summary(model1)
+```
+
+To examine if participants' happiness ratings were influenced by the season in which they were recruited in, a linear regression model was used. The results showed that the seasons had a significant effect on the participants' happiness ratings, *F*(3,131) = 6.97, *p* < .001, $R_2$ = .14. It was found that spring (*b* = 32.87, *p* < .001) and summer (*b* = 32.48, *p* < .001) was a significant predictor for the model.
+
+
+## Question 2b
+
+```{r q2b}
+model2<-lm(happiness ~ 1 + season + age, data = couchto5k)
+summary(model2)
+```
+
+Age was added in as a variable into the model to assess if happiness was affected by age while accounting for the effects of season. While the model with season and age significantly explains 14.5% of the variance (adjusted $R_2$ = .12, *F*(4,128) = 5.42, *p* < .001), age was not a significant predictor (*b* = -0.05, *p* = .813). 
+
+
+## Question 2c
+
+```{r q2c}
+anova(model1)
+anova(model2)
+```
+
+By looking at the F-ratio of the model with age as a variable, age was not found to have explained a significant amount of variance in participants' happiness ratings, *F*(4,128) = 0.06, *p* = .813. Even though age was not found to be a significant predictor on the participants' happiness rating, it will still be included in the baseline model for Question 3 as it is usually a key demographic variable. 
+
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+couchto5k$status2 <- ifelse(couchto5k$week_stopped==9,"completed",
+                           "uncompleted")
+couchto5k$status2<-factor(couchto5k$status2)
+couchto5k$status2 <- relevel(couchto5k$status2,ref = "uncompleted")
+
+model3a<-lm(happiness~1+ season + age + status2,data = couchto5k)
+summary(model3a)
+```
+
+A multiple regression model was used to assess if participants' happiness ratings were additionally affected by them completing the programme. Participants who stopped the programme on Week 9 were coded as having completed the programme, while any participant who stopped earlier were coded as uncompleted. Completion status was then added to the model while controlling for season and age. The results showed that the model was significant with season, age and completion status explaining 14.7% of the variance (adjusted $R_2$ = .11, *F*(5,126) = 4.33, *p* < .05). However, the results showed that completion status did not significantly influence participants' happiness ratings, *b* = 4.31, *p* = .481.
+
+
+## Question 3b
+
+```{r q3b}
+model3b<-lm(happiness~1+ season + age + status2 + health, data = couchto5k)
+summary(model3b)
+```
+
+Health measure was added into the multiple regression model to assess if participants' happiness rating was additionally affected by their health. The results showed that while the model was significant in predicting participants' happiness rating (adjusted $R_2$ = 0.12, *F*(6,125) = 4.10, *p* < .001), participants' health measure was not a significant predictor of their happiness rating (*b* = 0.44, *p* = .106).
+
+
+## Question 3c
+
+```{r q3c}
+model3c<-lm(happiness~1+ season + age + status2 + health*week_stopped, data = couchto5k)
+summary(model3c)
+plot_model(model3c, type = "pred", terms = c("health", "week_stopped [1, 5, 9]"))
+```
+
+To assess if the happiness ratings of participants who got further along the programme might be more affected by the health measure compared to participants who stopped earlier, an interaction between the week stopped variable and health measure was added into the regression model. After accounting for season, age, and completion status, the interaction between the week that participants stopped participating in the programme and their health measure was found to have a significant effect on their happiness rating (*b* = 0.37, *p* < .001), explaining 24.0% of the variance. The results indicated that the relationship between health and happiness rating was dependent on the week that the participants stopped participating in the programme. When participants stopped earlier, for instance in Week 1, participants with higher health measures gave lower happiness ratings. For participants who stopped participating in Week 5, there appears to be no significant relationship between their health measure and happiness rating. For participants who completed the programme, those with higher heath measures gave higher happiness ratings. Overall, as participants got further along the programme, the effect of health on happiness became more positive such that the happiness ratings of participants who continued on with the programme was more influenced by their health measure compared to participants who stopped the programme earlier.
+
+
+## Question 3d
+
+```{r q3d part 1}
+plot(model3c)
+shapiro.test(residuals(model3c))
+ncvTest(model3c)
+```
+
+A multiple linear regression model was used to assess how participants' happiness ratings were affected by their participation in the Couch to 5k programme and their health measure while controlling for the season they were recruited in and their age. The participants' age, season they were recruited in, completion status were included as predictors, along with the interaction between the week that participants stopped participating in the programme and their health measure score. Effects will be considered statistically significant at $\alpha$ = .05.
+
+The final model took the form:
+
+Happiness = $b_0$ + $b_1$season + $b_2$age + $b_3$completion status + $b_4$health* week stopped + $\epsilon$
+
+The model met assumptions of linearity (see plot of model residuals vs fitted values), homoscedasticity (Breush-Pagan test for non-constant variance failed to reject the null hypothesis that error variance does not change across the fitted values, $X^2$(1) = 0.57, *p* = .50), and normality of error term (Shapiro-Wilk test indicated no evidence against the null hypothesis that the residuals were drawn from a normally distributed population: *W* = 1, *p* = .20).
+
+Results from the regression model are shown in Table 1. The F-test for the model was significant (*F*(8,123) = 6.18, *p* < .001), and the model explained 24% of the variability in happiness ratings.
+
+```{r q3d part 2}
+tab_model(model3c, title = "Table 1: Regression table for Happiness model.")
+```
+
+
+The results showed that the seasons that participants were recruited in was a significant predictor in the participants' happiness ratings, specifically spring (*b* = 33.96, *p* < .05) and summer (*b* = 31.05, *p* < .001) when compared to autumn while controlling for age, completion status, health measure, and the week participants stopped participating in the programme. Participants' health measure (*b* = -2.18, *p* < .05) and the week they stopped the programme (*b* = -22.62, *p* < .001) was also found to be significant predictors on the participants' happiness rating while controlling for season, age, completion status, health measure, and the week participants stopped the programme. More importantly, the interaction between health measure and the week participants' stopped the programme was found to be significant (*b* = 0.40, *p* < .001), suggesting that the happiness ratings of participants who continued on with the programme were more influenced by their health measure compared to participants who stopped the programme earlier.
+
+
+# Question 4
+
+```{r q4}
+couchto5k_completed <- couchto5k %>% filter(status2 == "completed")
+
+ggplot(data = couchto5k_completed, aes(x = season, y = happiness)) + 
+  geom_boxplot() + 
+  facet_wrap(~city) +
+  labs(y = "Average Happiness Rating", x = "Seasons Participants were Recruited In Split by their Cities")
+```
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+couchto5k$dropout <- ifelse(couchto5k$week_stopped==9,"completed",
+                           "dropped")
+couchto5k$dropout<-factor(couchto5k$dropout)
+
+model5a <- glm(dropout ~ selfmot + accountability + health, data = couchto5k, family="binomial")
+summary(model5a)
+
+exp(coef(model5a))
+```
+
+## Question 5b
+
+```{r q5b}
+
+```
+
+A logistic regression model was used to predict the likelihood of dropping out. A psychometric measure for self-motivation, accountability, and a multi-test health measure was inserted as predictors in the model. Results show that participants' self-motivation measure was a significant predictor (*b* = -0.16, *p* = .01), suggesting that the participants' self-motivation decreases the log-odds of dropping out by 0.16. The odds of a participant dropping out is 19:1, and for every increase in the participants' self-motivation score, the odds of dropping out decreases by 0.85.
+
+
+## Question 5c
+
+```{r q5c}
+model5c <- glm(dropout ~ selfmot, data = couchto5k, family="binomial")
+
+selfmot100 <- tibble(selfmot = 1:100)
+predict(model5c, newdata = selfmot100, type = "response")
+selfmot100 <- 
+  selfmot100 %>%
+  mutate(
+    predprobs = predict(model5c, newdata = selfmot100, type = "response")
+  )
+
+ggplot(data = selfmot100, aes(x = selfmot, y = predprobs)) +
+  geom_line()+
+  labs(y="predicted probability of dropping out")
+```
+

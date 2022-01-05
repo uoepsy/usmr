@@ -1,0 +1,963 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+params:
+  examnumber: 3685333
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(psych)
+library(knitr)
+library(flextable)
+library(patchwork)
+library(gridExtra)
+library(sjPlot)
+library(car)
+library(lsr)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`.
+
+Have a look at the data. Check for impossible values and deal with these in an appropriate manner. Describe the data, either in words or using suitable graphs (or a combination). Remember to detail the decisions you have made.
+-->
+
+```{r q0 cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+names(couchto5k)
+plot(couchto5k)
+
+unique(couchto5k[c("season")])
+
+couchto5k$season <- 
+  gsub("autunm","autumn",couchto5k$season)
+couchto5k
+
+unique(couchto5k[c("city")])
+
+#probably don't need to include all these, but this is how I looked for bad values (which was silly - I should've just used summary or a similar function. but it worked):
+min(couchto5k$age)
+max(couchto5k$age)
+min(couchto5k$accountability)
+max(couchto5k$accountability)
+min(couchto5k$selfmot)
+max(couchto5k$selfmot)
+min(couchto5k$health)
+max(couchto5k$health)
+min(couchto5k$happiness)
+max(couchto5k$happiness)
+min(couchto5k$week_stopped)
+max(couchto5k$week_stopped)
+
+#replace impossible values with NA
+couchto5k <- 
+  couchto5k %>%
+  mutate(
+    age = ifelse(as.numeric(age)>100, NA, as.numeric(age))
+  )
+
+couchto5k <- 
+  couchto5k %>%
+  mutate(
+    selfmot = ifelse(as.numeric(selfmot)>35 | as.numeric(selfmot)<5, NA, as.numeric(selfmot))
+  )
+
+couchto5k <- 
+  couchto5k %>%
+  mutate(
+    week_stopped = ifelse(as.numeric(week_stopped)>9, NA, as.numeric(week_stopped))
+  )
+
+colSums(is.na(couchto5k))
+
+#given that this report focuses on whether people completed it or not, it's probably not useful to keep the row where we don't know (week stopped was recorded as 12 - could have been 1, 2, or meant that they completed it)
+
+couchto5k %>% drop_na(week_stopped)
+
+```
+
+```{r q0 tables, include = FALSE}
+
+summary(couchto5k)
+
+#tried a lot of different ways to make summary tables. they mostly were not good
+
+descriptive_table <- 
+describe(couchto5k[, c('age', 'accountability', 'selfmot', 'health', 'happiness', 'week_stopped')], fast = TRUE)
+
+rownames(descriptive_table) <- c("Age","Accountability","Self-Motivation","Health","Happiness","Week Stopped")
+
+summary(couchto5k$age)
+
+agetest <- shapiro.test(couchto5k$age)
+
+#extra dataframe where all rows with NAs are removed. use this for smoove graphics but use the other one for analyses
+nonadata <- couchto5k[complete.cases(couchto5k), ]
+
+```
+
+Data were obtained from https://uoepsy.github.io/data/usmr_2122_data.R, a dataset containing information on `r nrow(couchto5k)` adults (`r (nrow(couchto5k))-1` after data cleaning) who started the Couch to 5k programme in two Scottish cities over the course of a year.  
+  
+Information collected at the outset included the participants' age, city, season in which they started the programme, and scores on a psychometric questionnaire measuring accountability and self-motivation. When participants either completed or dropped out of the 9-week programme, their self-reported 'happiness' score and a 'health' measure derived from a number of physiological tests were recorded along with the week in which they stopped or completed Couch to 5k.  
+
+The sample showed normal distribution on all measures, apart from age: larger numbers of participants were in the 20-30 and 40-50 age ranges compared to 30-40. Plot 1 below illustrates the distribution of the sample population's ages in years. A Shapiro-Wilk test indicates violation of the assumption of normality (W = `r agetest$statistic`, p = `r agetest$p.value %>% round(5)` ). The ages of participants ranged from 18 to 60, mean: 39.  
+  
+One participant was excluded from the analysis due to missing data, and some observations for four other participants (one per person) were incomplete due to being recorded incorrectly. Other than these exceptions, all values recorded were within possible ranges.  
+  
+Table 1 shows a summary of descriptive statistics for the data set.
+
+
+```{r q0 descriptives, fig.align = 'center', fig.dim = c(4, 3)}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+flextable(descriptive_table %>% select(-vars, -range, -se) %>% rownames_to_column(" ")) %>% set_caption("Table 1")
+
+ggplot(data = nonadata, aes(x = (age))) +
+  geom_density() +
+  theme_light() +
+  geom_boxplot(width = 1/200) +
+  labs(x = "Age in years", 
+       y = "Probability density",
+       title = "Plot 1")
+
+
+```
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a, include=FALSE}
+#wonder if 'nationwide' means UK or Scotland
+
+#ok so if 45%+10% dropped out in total, then they're saying 45% completed it. that seems like the simplest thing to lead with? I actually can do that maths in my wee heid, but I'm gonna write it down for cred
+
+#Proportion of participants who COMPLETED c25k in the earlier study:
+100-(45+10)
+
+
+mean(couchto5k$week_stopped == 9, na.rm = TRUE)
+#just over half completed it in our data
+
+mean(couchto5k$completed, na.rm = TRUE)
+
+mean(couchto5k$week_stopped < 5, na.rm = TRUE)
+
+mean(couchto5k$week_stopped %in% 5:8, na.rm = TRUE)
+
+#hmm am gonna need more columns
+couchto5k <-
+  couchto5k %>% 
+  mutate(
+    completed = week_stopped == 9
+  )
+
+couchto5k <-
+  couchto5k %>% 
+  mutate(
+    stopped_early = week_stopped < 5
+  )
+
+couchto5k <-
+  couchto5k %>% 
+  mutate(
+    stopped_late = week_stopped %in% 5:8
+  )
+
+#now this does the same as above
+mean(couchto5k$completed, na.rm = TRUE)
+
+t0 <- t.test(couchto5k$completed, mu = 0.45, alternative ="two.sided")
+
+t1 <- t.test(couchto5k$stopped_early, mu = 0.45, alternative ="two.sided")
+
+t2 <- t.test(couchto5k$stopped_late, mu = 0.1, alternative ="two.sided")
+
+```
+<!-- In an earlier nationwide survey, researchers found that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme. Is the data in the sample you have been given in line with data from the earlier survey? Once you have created a suitable variable to map to the information in the question, you should be able to answer this using a simple statistical test. -->
+
+A one-sample, two-sided t-test was conducted to determine whether the proportion of participants who completed the nine-week programme was in line with the findings of an earlier nationwide survey. In the current study, `r (t0$estimate*100) %>% round(1)`% of participants completed the programme. This is not significantly different from the proportion of participants (`r (t0$null.value*100) %>% round(1)`%) who completed Couch to 5k in the earlier survey ($p$ = `r t0$p.value`).
+
+In our data, `r (t1$estimate*100) %>% round(1)`% of participants gave up in the first half of the programme, before week 5, and a further `r (t2$estimate*100) %>% round(1)`% in the second half. Comparing these results to those of the earlier survey, there are no significant ($α$ =.05) differences between our attrition rates and the ones found previously in either the first or second halves of the programme.  
+
+<!-- NOTE make this into a table or something easier on the eye if you have time -->
+
+Proportion of participants who stopped in weeks 1-4: `r (t1$estimate) %>% round(2)` (current study), `r (t1$null.value) %>% round(2)` (previous study); $p$ = `r t1$p.value`.
+Proportion of participants who stopped in weeks 5-8: `r (t2$estimate) %>% round(2)` (current study), `r (t2$null.value) %>% round(2)` (previous study); $p$ = `r t2$p.value`.
+
+## Question 1b
+
+```{r q1b, include=FALSE}
+#let's have a look
+ggplot(couchto5k, aes(`city`, `week_stopped`)) +
+  geom_point(aes(color = `city`)) +
+  geom_pointrange(mapping = aes(),
+                  stat = "summary",
+                  fun.ymin = min,
+                  fun.ymax = max,
+                  fun.y = median)
+
+#don't think so! BUT, I'm making yet another new column for this variable, and this time it's FANCY
+
+couchto5k <- mutate(
+  couchto5k, result = 
+    ifelse(week_stopped %in% 1:4, "stopped_early",
+    ifelse(week_stopped %in% 5:8, "stopped_late", "completed")))
+
+#nice.
+#two categorical variables: chi squared time
+
+table(couchto5k$city, couchto5k$result)
+
+city0 <- chisq.test(table(couchto5k$city, couchto5k$result))
+
+#there's a warning because one of the numbers is v small so apparently we should do a fisher's exact test instead:
+
+city1 <- fisher.test(table(couchto5k$city, couchto5k$result))
+
+```
+
+
+<!-- Using the same three categories (stopped before week 5, stopped after week 5, completed), examine whether the patterns of attrition rates differ by city. -->
+A $X$^2^ Test of Independence showed that there was no significant association ($α$ =.05) between the city in which participants were recruited and the patterns of attrition rates over the course of the programme: 
+$X$^2^ (`r city0$parameter`) = `r city0$statistic`, $p$ = `r city0$p.value %>% round(2)`).
+This was confirmed by a Fisher's Exact Test of Independence, $p$ = `r city1$p.value`.
+
+
+## Question 1c
+
+<!-- Do the average ages of participants who commenced the programme differ by city? -->
+```{r q1c, include=FALSE}
+
+ggplot(data = couchto5k, aes(x = age, y = city)) +
+  geom_boxplot()
+
+agetest1 <- with(couchto5k, t.test(age ~ city, alternative = "greater"))
+
+```
+
+
+The average age of participants in Glasgow (mean = `r agetest1$estimate[2] %>% round(1)`) was lower than in Edinburgh (mean = `r agetest1$estimate[1] %>% round(1)`). A `r agetest1$method` showed that this difference in average age was statistically significant ($p$ = `r agetest1$p.value`.) Plot 2 illustrates the distribution of participants' ages across the two cities.
+
+```{r q1c plot, fig.align = 'center', fig.dim = c(4, 3)}
+ggplot(nonadata, aes(x = age, y = city, fill = city)) +
+    geom_boxplot(varwidth = TRUE, alpha=0.2) +
+    theme_light() +
+    theme(legend.position="none") + 
+    labs(title = "Plot 2")
+```
+
+
+
+# Question 2
+
+## Question 2a
+
+```{r q2a, include=FALSE}
+#looks like: people are less happy in autumn/winter (esp winter, obv.) BUT also there are lower numbers starting it then.
+
+#I want the seasons to be in order (ordinal!) so they need to be levels
+
+couchto5k$season <- factor(couchto5k$season, ordered = TRUE, levels = c("winter", "spring","summer","autumn"))
+
+levels(couchto5k$season)
+
+#now I can describe this with a handy table.
+
+seasontable <- 
+group_by(couchto5k, season) %>%
+  summarise(
+    mean = mean(happiness),
+    sd = sd(happiness),
+    n = n()
+  )
+
+#now it needs testing
+
+oneway.test(happiness ~ season,
+  data = couchto5k,
+  var.equal = FALSE
+)
+
+#not sure which is better out of the oneway.test vs. linear model/anova tbh, but we spent a lot of time on linear models in this course so I'll go with that? And the F and P values look the same for both tests anyway, which is prob good news
+
+#seasonmodel <- lm(happiness ~ 1 + season, data = couchto5k)
+
+#OH ok in fact, instead of (as well as?) levels, for linear I need the seasons to be numerical. Which kind of might help to make sure they are arranged correctly and don't cause me a massive headache for two days in the next step because they sometimes display weirdly and sometimes don't (Spoiler: that is what happened, I'm writing this after the two days)
+
+#can I solve this with... ANOTHER column?
+
+#the season with the lowest mean happiness is winter. SO I guess that's 1 and then we build on that? But... should 2 be spring (which comes after winter in the year) or autumn (which has the second lowest mean happiness)?
+#I am not sure, but basing it on the means we observed sort of feels like cheating. So I'm gonna try chronological. That will make the "line" a funny shape though
+
+couchto5k <- mutate(
+  couchto5k, numericalseason = 
+    ifelse(season == "winter", 1,
+    ifelse(season == "spring", 2, 
+    ifelse(season == "summer", 3, 4))))
+
+#now to update the 'No NA' version so it gets these sweet new column upgrades too:
+nonadata <- couchto5k[complete.cases(couchto5k), ]
+
+seasonctest <- cor.test(couchto5k$happiness, couchto5k$numericalseason, method = "pearson")
+
+seasonmodel <- lm(happiness ~ 1 + numericalseason, data = couchto5k)
+
+seasontest <- anova(seasonmodel)
+seasons <- summary(seasonmodel)
+
+#figures!
+
+table2 <- flextable(seasontable) %>% set_caption("Table 2")
+
+plot3 <- 
+  ggplot(couchto5k, aes(season, happiness)) +
+  geom_point(aes(color = season), alpha = 0.3) +
+  geom_pointrange(mapping = aes(),
+                  stat = "summary") + 
+  theme(legend.position = "none") + 
+  labs(title = "Plot 3")
+#we could also do this with a boxplot, or jitter thing. but I prefer the point range one myself.
+
+```
+
+<!-- Are participants’ happiness ratings affected by the season they were interviewed in? Describe the way in which season influences happiness outcomes. -->
+Participants' self-reported 'happiness' scores varied according to the season they were interviewed in. Participants interviewed in summer were more likely to report higher happiness (mean: `r seasontable$mean[3]%>% round(2)`) than those interviewed in winter (mean happiness: `r seasontable$mean[1]%>% round(2)`), with the average scores for spring and autumn falling in between these two extremes. It should also be noted that the numbers of people starting the programme in each season varied greatly, from `r seasontable$n[2]` in spring to `r seasontable$n[4]` in autumn. Table 2 shows a summary of the data on happiness scores by season. Plot 3 shows the individual observations, means, and standard error for happiness ratings grouped by season.  
+
+A `r seasonctest$method` test showed that happiness and season were significantly correlated, with a correlation coefficient of `r seasonctest$estimate` and $p$ = `r seasonctest$p.value`. A one-way analysis of variance also confirmed that the main effect of season on average happiness was significant; F(`r seasontest$Df[1]`, `r seasontest$Df[2]`) = `r seasontest$"F value"[1] %>% round(2)`, $p$ = `r seasontest$"Pr(>F)"[1] %>% round(5)`.  
+
+```{r q2a figs1, fig.dim = c(5, 4), fig.align = 'center', message=FALSE}
+
+table2
+
+plot3
+
+```
+
+However, the predictive relationship between season and happiness is non-linear. It is likely that the variables actually affecting the changes in average reported happiness over the course of a year are more nuanced, including factors like the number of hours of daylight, rainfall, and temperature, rather than the simple fact of which meteorological season it is.  
+Going by such measures, summer and winter would be extremely different, while spring and autumn are relatively similar, despite being the same distance apart. This relationship cannot be mapped well on to a linear regression model. Plot 4 clearly illustrates the non-linear relationship, showing our participants' mean happiness ratings over the course of a calendar year from winter to autumn.
+
+
+```{r q2a figs,  fig.align = 'center', fig.dim = c(6, 3), message=FALSE, warning=FALSE}
+
+#this one shows that the relationship is NOT linear.
+plot4 <- 
+  ggplot(couchto5k) +
+  aes(x = numericalseason, y = happiness, color = numericalseason) +
+  geom_smooth(method = loess) +
+  theme_light() +
+  labs(x = "Season", title = "Plot 4")
+
+seasonlegend <- data.frame(
+                Season = c("Winter", "Spring", "Summer", "Autumn"))
+
+plot4 + gridExtra::tableGrob(seasonlegend)
+
+#yes. I know it would have been better if I could've made an actual legend, or just changed the way the x axis was labelled so that it SAID which season on the plot is which, but I've just spent an hour googling and trying to do so and that proved to be beyond me :( 
+
+
+```
+
+
+## Question 2b
+
+```{r q2b, include=FALSE}
+
+#I would prefer to establish what to expect from this visually first
+
+#one of the 'age' observations had to be removed so I am using the dataframe where NA-containing rows have been removed, to stop NAs being a pain
+
+ggplot(nonadata) +
+  aes(x = age, y = happiness) +
+  geom_quantile() +
+  geom_point() +
+  theme_light()
+
+#okay, that data is all over the place! but it looks like older people are actually... less miserable?! it might just be that they are less liable to select 0 on the scale (young people are dramatic lol)
+
+ggplot(nonadata) +
+  aes(x = age, y = happiness) +
+  geom_smooth() +
+  theme_light()
+
+#if I use geom_smooth it looks more like, people get happier as they get older but only up to 50 then they get sad again :(
+
+#either way it looks like a nightmare for making into a nice straight LINEAR model. but hey ho let's try, I suppose:
+
+hapmodel <- lm(happiness ~ 1 + numericalseason + age, data = nonadata)
+
+#and, out of interest,
+
+hapmodel2 <- lm(happiness ~ 1 + age + numericalseason, data = nonadata)
+
+#check for correlation
+nonadata %>% 
+  select(happiness, age, numericalseason) %>%
+  cor()
+
+ageszntest <- cor.test(couchto5k$age, couchto5k$numericalseason, method = "pearson")
+
+coef(seasonmodel)
+
+coef(hapmodel)
+
+sigma(hapmodel)
+
+confint(hapmodel, level = 0.95)
+
+confint(hapmodel2, level = 0.95)
+
+haps <- summary(hapmodel)
+
+hapa <- anova(hapmodel)
+
+#the intercept isn't meaningful to write about, because people aged 0 can't run.
+
+```
+
+
+<!-- Accounting for any effects you discovered in (2a), is happiness affected by age? -->
+
+When holding the effects of the season on happiness constant, each increase of one year in age is associated with a small increase in happiness scores, between 0.1 and 0.9, on average. 
+Season and age together accounted for `r (haps$adj.r.squared)*100`% of the variance in happiness scores (adjusted $R$^2^ = `r haps$adj.r.squared`, F(`r haps$fstatistic["numdf"]`, `r haps$fstatistic["dendf"]`) = `r haps$fstatistic["value"]`).  
+
+The independent variables were checked for correlation. There was no significant correlation between the participants' age and the season in which they started the programme: $p$ = `r ageszntest$p.value`.
+
+Table 3 summarises a multiple regression analysis of the effects of season and age on happiness.
+
+```{r q2b table}
+
+kable(anova(hapmodel), caption = "Table 3")
+
+```
+
+
+
+## Question 2c
+
+```{r q2c, include=FALSE}
+
+agemodel <- lm(happiness ~ 1 + age, data = nonadata)
+
+coef(agemodel)
+
+ages <- summary(agemodel)
+
+#making one more column! this one is for age in categories of 10ish yrs each.
+
+couchto5k <- mutate(
+  couchto5k, agegroup = 
+    ifelse(age %in% 18:29, "1829",
+    ifelse(age %in% 30:39, "3039",
+    ifelse(age %in% 40:49, "4049",
+                          "5060"))))
+
+#and updating 'no NA' data again to match:
+nonadata <- couchto5k[complete.cases(couchto5k), ]
+
+#looking into age: is it better to categorise?
+ageplot <- 
+  ggplot(nonadata) +
+  aes(x = age) +
+  geom_bar() + 
+  labs(title = "Plot 5")
+
+agegplot <-  
+ggplot(nonadata) +
+  aes(x = agegroup) +
+  geom_bar() + 
+  labs(title = "Plot 6")
+
+agegmodel <- lm(happiness ~ 1 + agegroup, data = nonadata)
+
+coef(agegmodel)
+
+agegs <- summary(agegmodel)
+
+#the adjusted Rsquared is higher when I group the ages into 10ish year bands. but both have statistically significant effects.
+
+#calculate range
+max(couchto5k$age, na.rm=TRUE) - min(couchto5k$age, na.rm=TRUE)
+
+```
+
+<!-- The models you have built above explore ‘baseline’ effects; that is, effects that are not of primary interest to the researchers but which might affect the outcome variable of happiness. For use in question 3, pick a specific baseline model and justify why you are using this. -->
+
+I will analyse further effects building upon the baseline of the effect of age on happiness. This is because, although the season seems to have a larger impact than age has on average happiness, the relationship does not appear linear, as explained above in question 2a. Additionally, the number of participants in each of the four season conditions varies so widely that some sample sizes are far smaller than others, and could be skewed by one or two extreme observations.  
+
+I examined the age variable in the dataset more closely. Age is an objective measure interpreted as a discrete numerical variable (our age values are recorded in years, so all values are integers) and, in our dataset, has a range of `r max(couchto5k$age, na.rm=TRUE) - min(couchto5k$age, na.rm=TRUE)`. It's also possible to group participants' ages into bands of several years in order to treat the variable as a categorical one. Plot 6 (on the right below) illustrates the count of participants grouped into four age brackets of between 9 and 11 years (18-29, 30-39, 40-49 and 50-60), compared to the count by individual year in Plot 5.  
+
+```{r q2c plots, fig.align = 'center', fig.dim = c(6, 3)}
+
+ageplot + agegplot
+
+```
+
+
+Taking the age bracketing approach would give us a broader picture of any statistical effects of, or on, age, and smooths over some differences that are unlikely to be meaningful. For example, it appears that our dataset contains 7 participants aged 42 and none aged 41. This is unlikely to be explained by any fundamental difference between 41- and 42-year-olds; any empty bars are more likely just an artefact of the relatively small sample size. The bracketing approach would avoid observations such as this having any influence on the model. The $R$^2^ score for a model using age brackets as a predictor of happiness is also higher (adjusted $R$^2^ = `r agegs$adj.r.squared`) than for the same model with age measured by year (adjusted $R$^2^ = `r ages$adj.r.squared`).  
+
+However, I will proceed with a baseline model that preserves the original measurement of age in 1-year increments. This decision was reached because there is still a significant effect without bracketing; and because the use of categories in a linear model would require multiple degrees of freedom, compared to one degree of freedom for age as a numeric variable, which could affect its predictive power. This approach also preserves detail, making for potentially more informative models.  
+
+The data were examined for influential outliers, but no observations seemed especially improbable, so no values have been removed. The participants' self-reported 'happiness' scores spanned the entire possible range of scores from `r min(couchto5k$happiness)` to `r max(couchto5k$happiness)` (range: `r max(couchto5k$happiness) - min(couchto5k$happiness)`) with no impossible values, and there are multiple observations of both extremes. Plot 7 illustrates the baseline model.
+
+```{r q2c plots2, fig.align = 'center', fig.dim = c(7, 4.5), message=FALSE}
+
+ggplot(nonadata, aes(x = age, happiness)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = lm) +
+  theme_light() +
+  labs(title = "Plot 7")
+
+```
+
+
+# Question 3
+
+## Question 3a
+
+```{r q3a, include=FALSE}
+
+#examining relationships visually to see if anything obvious is going on with completion/happiness or age/completion. same as the edinburgh/glasgow thing before:
+
+ggplot(nonadata, aes(x=happiness, y = completed))+
+  geom_boxplot()
+
+ggplot(nonadata, aes(x=age, y = completed))+
+  geom_boxplot()
+
+#what this looks like to me: completers are a little bit happier, on average
+#and there's nothing much in age as a predictor of completion: possibly younger folk are a tiny bit more likely to complete, but it might also be nothing.
+
+#t test time!
+happycomptest <- 
+  with(couchto5k,
+     t.test(happiness ~ completed))
+#sort of as I thought?
+
+with(couchto5k,
+     t.test(age ~ completed))
+#as I thought
+
+#fancier boxplot:
+
+plot8 <- 
+ggplot(nonadata, aes(x = happiness, y = completed, fill = completed)) +
+    geom_boxplot(varwidth = TRUE, alpha=0.2) +
+    theme_light() +
+    theme(legend.position="none") + 
+    labs(title = "Plot 8")
+
+#I can also try a correlation test on the week_stopped variable - which isn't the same as completed but sort of? 'how far they got' measure. it is still not significant
+agewstest <- cor.test(couchto5k$age, couchto5k$week_stopped, method = "pearson")
+
+#made a new model anyway, just to check!
+
+compmodel <- lm(happiness ~ 1 + age + completed, data = nonadata)
+
+comps <- summary(compmodel)
+#confirmed, not a good predictor.
+
+```
+
+<!-- Building on your baseline model, are participants’ happiness ratings affected by whether or not they completed the programme? Describe the way in which programme completion influences happiness outcomes. -->
+
+The next possible iteration of the linear model examines any effects of a binary variable - whether or not the participant completed the programme - on happiness. As shown in Plot 8, the mean happiness reported by the group who did complete Couch to 5k is slightly higher ($\mu$ = `r happycomptest$estimate[2] %>% round(1)`) than that of the group who stopped before week 9 ($\mu$ = `r happycomptest$estimate[1] %>% round(1)`).  
+However, a `r happycomptest$method` showed that this difference was not statistically significant ($p$ = `r happycomptest$p.value`). There is insufficient evidence to reject the null hypothesis that there is no true difference in means between the two groups, and therefore, programme completion should not be used as a predictor in our regression model.
+
+
+```{r q3a plots, fig.align = 'center', fig.dim = c(4, 3)}
+
+plot8
+
+```
+
+
+## Question 3b
+
+```{r q3b, include=FALSE}
+
+#does health predict happiness for any age group?
+ggplot(data = couchto5k, aes(x = health, y = happiness, col = agegroup)) + 
+  geom_point() + 
+  facet_wrap(~agegroup, scales="free_x")
+#maybe 40-49?
+
+forties <- subset(couchto5k, agegroup = "4049")
+ggplot(forties, aes(x = health, happiness)) +
+  geom_point() +
+  geom_smooth(method = lm)
+#huh. nope
+
+#correlation tests
+agehealthtest <- cor.test(couchto5k$age, couchto5k$health, method = "pearson")
+haphealthtest <- cor.test(couchto5k$happiness, couchto5k$health, method = "pearson")
+
+#visual test for linear relationships:
+couchto5k %>% 
+  select(age, health, happiness) %>%
+  pairs.panels()
+
+#zooming in to recreate the most significant-looking one there:
+plot9 <- 
+ggplot(nonadata, aes(x = age, health)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = lm) +
+  theme_light() +
+  labs(title = "Plot 9")
+
+#trying out some models...
+healthmodel <- lm(happiness ~ 1 + age + health, data = nonadata)
+healthmodel2 <- lm(happiness ~ 1 + age + completed + health, data = nonadata)
+healthmodel3 <- lm(happiness ~ 1 + health, data = nonadata)
+healthmodel4 <- lm(happiness ~ 1 + age * health, data = nonadata)
+
+summary(healthmodel2)
+summary(healthmodel3)
+summary(healthmodel4)
+
+healths <- summary(healthmodel)
+
+```
+
+<!-- Building on the analysis in (3a), is happiness additionally affected by the “health metric”? -->
+
+Holding the effects of age constant, participants' score on the 'health' metric is not a predictive variable for happiness. Health and happiness do not show evidence of correlation ($p$ = `r haphealthtest$p.value`), and adding health to our existing linear model results in an adjusted $R$^2^ of `r healths$adj.r.squared`, meaning less of the variance is explained than in the model with just one predictor (adjusted $R$^2^ = `r ages$adj.r.squared`). 
+
+As might be expected, there is a moderate, negative linear relationship between age and health scores for the participants in the sample. The health metric tends to decrease, on average, with each year of age. The correlation coefficient of this relationship is `r agehealthtest$estimate` and it is illustrated in Plot 9.
+
+```{r q3b plots,fig.align = 'center', fig.dim = c(7, 5), message=FALSE}
+
+plot9
+
+```
+
+
+
+## Question 3c
+
+```{r q3c, include=FALSE}
+
+#relationship between health and happiness for the groups who stopped early, stopped late or finished:
+result_int <-
+ggplot(data = couchto5k, aes(x = health, y = happiness, col = result)) + 
+  geom_point() + 
+  facet_grid(~result, scales="free_x") +
+  theme(legend.position = "none") +
+  geom_smooth(method = lm) + 
+  labs(title = "Plot 10")
+#nice!!
+
+result_int_mdl <- lm(happiness ~ 1 + health*week_stopped, data = couchto5k)
+summary(result_int_mdl)
+
+```
+
+
+<!-- It’s been hypothesised that the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier. Building on the model in (3b), can you test this hypothesis? -->
+
+As discussed above, the health metric is not a reliable predictor of happiness for the entire sample population. However, the effect of health on happiness appears to vary depending on the stage of the Couch to 5K programme that a participant reached, as illustrated in plot 10.   
+
+For the subset of participants who completed the programme there is a moderate positive effect of health on happiness - perhaps these individuals were more motivated to run due to the happiness they derive from healthy behaviour. Conversely, for those participants who stopped in the first four weeks of the programme there is a negative linear relationship between happiness and the health metric. These participants are unlikely to be motivated by 'the feeling of acting healthily'.  
+
+For the third group, participants who stopped in weeks 5-8, no significant effect of health on happiness is indicated. It should be noted that this is by far the smallest of the three groups (n = `r sum(couchto5k$result == "stopped_late")`). 
+
+```{r q3c plots, fig.align = 'center', fig.dim = c(6, 3), message=FALSE}
+
+result_int
+
+```
+
+
+
+## Question 3d
+
+```{r q3d, include=FALSE}
+
+#season: springsummer vs. autumnwinter - this affects happiness more (and more predictably) than a specific season does, so needs a new variable
+#could do 'summer vs any other time' or 's/s vs. a/w'
+#LOVE. COLUMNS. LOVE EM.
+
+couchto5k <- mutate(
+  couchto5k, pairedseasons = 
+    ifelse(season == "winter"|season == "autumn", "cold", "warm"))
+
+couchto5k <- mutate(
+  couchto5k, warmseason = 
+    ifelse(pairedseasons == "warm", 1, 0))
+
+with(couchto5k,
+     t.test(happiness ~ pairedseasons))
+
+anothercortest <- cor.test(couchto5k$selfmot, couchto5k$week_stopped)
+
+mymodel <- lm(happiness ~ 1 + pairedseasons + selfmot + age, data = couchto5k) 
+
+summary(mymodel)
+
+#the measurements need to be standardised.
+
+#standardising gives better b/beta values:
+
+standardCoefs(mymodel)
+
+#mean centre age because nobody in the data is 0y?
+
+#examine residuals 
+residualPlots(mymodel)
+
+plot(mymodel, which = 2)
+
+ncvmy <- ncvTest(mymodel)
+
+coef(mymodel)
+
+mys <- summary(mymodel) 
+
+vif(mymodel)
+#VIF values of <5 indicate that multicollinearity is not adversely affecting model estimates.
+
+```
+
+
+<!-- What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper. -->
+
+As discussed above, the relationship between season and happiness is non-linear, but if we split the year into two halves, spring/summer and autumn/winter, then we can define a more straightforward correlation whereby people are happier in the (typically) warmer, brighter seasons and less happy in autumn winter. In this way, seasons can be categorised as a binary variable, with autumn and winter coded as 0 and spring and summer as 1.  
+The strongest single predictor of happiness is a participant's self-motivation score. This might also be expected to positively predict likelihood of completing or getting further with the programme; however, a correlation test did not show any significant correlation ($p$ = `r anothercortest$p.value`), and as noted earlier, programme completion does not appear to have any effect on happiness. Accountability score, health score, and city also do not predict happiness.  
+
+The model that explains the largest amount of variance in happiness scores (adjusted $R$^2^ =`r (mys$adj.r.squared)*100`%) for this dataset is:  
+<br> 
+<center>Happiness = $b_{0}$+$b_{1}$(Spring/Summer)+$b_{2}$(Self-Motivation)+$b_{3}$(Age)+$\epsilon$</center>   <br>  
+Residuals were examined for this model. Plot 11 is a Normal Q-Q plot showing that the majority of residuals follow a normal distribution. Visual inspection of the residuals suggested no evidence of non-constant variance, and a `r ncvmy$test` did not yield evidence against the null hypothesis that error variance does not change across the fitted values ($X$^2^ (1) = `r ncvmy$ChiSquare`, $p$ = `r ncvmy$p`).
+
+```{r q3d plot, fig.align = 'center', fig.dim = c(4, 3), message=FALSE}
+
+plot(mymodel, which = 2,  main = "Plot 11")
+
+```
+
+
+We do not have measurements for other variables that impact happiness. These might include:  
+- social interaction and relationships;  
+- financial situation;  
+- global pandemic.  
+
+The latter would be likely to be associated with an increase in uptake of the programme (as lockdown prevented access to gyms for indoor exercise) as well as a fairly dramatic decrease in happiness for most people.
+
+
+# Question 4
+
+```{r q4 working, include=FALSE}
+
+finishers <- subset(couchto5k, completed=="TRUE")
+
+finishers %>% select(-completed, -stopped_early, -stopped_late, -result, -agegroup)
+
+#option 1
+ggplot(finishers, aes(x = season, y = mean(happiness), fill = city)) + 
+  geom_bar(stat = "identity")
+#it looks quite nice, but it doesn't communicate what it should! because it adds up all the happiness scores and makes it look like Glaswegians are always miserable
+
+
+#option 2, tried a mosaic plot... I WANT this to work, but it looks mental either way tbh
+library(ggmosaic)
+ggplot(data = finishers) +
+  geom_mosaic(aes(x = product(happiness,season), fill=season)) +
+  facet_grid(~city) +
+  theme(aspect.ratio = 1)
+
+#this?? no.
+ggplot(data = finishers) +
+  geom_mosaic(aes(x = product(happiness,city), fill=city)) +
+  facet_grid(~season) +
+  theme(aspect.ratio = 1)
+
+
+#option 4 it is, then, I guess
+finplot <-
+ggplot(finishers, aes(x=season, y=happiness, colour = city)) +
+  geom_jitter(width = 0.1, size = 5, alpha=0.5) +
+  geom_pointrange(mapping = aes(), stat = "summary", colour ="blue") +
+  labs(title = "Plot 12: Couch to 5k finishers")
+```
+
+
+<!-- Create a subset of the data, including only those participants who completed the programme. Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project. -->
+
+Plot 12 shows the mean and individual happiness ratings, grouped by season and city, for people who completed Couch to 5k.
+
+```{r q4, fig.align = 'center', fig.dim = c(7, 4.5), message=FALSE, warning=FALSE}
+
+finplot
+
+```
+
+
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5a, include=FALSE}
+
+#tested variables. self-mot, health and season are the likeliest lads
+
+ggplot(couchto5k, aes(x=numericalseason, y=completed))+
+  geom_point()+
+  geom_smooth(method="lm")
+
+ggplot(couchto5k, aes(x=selfmot, y=completed))+
+  geom_point()+
+  geom_smooth(method="lm")
+
+ggplot(couchto5k, aes(x=health, y=completed))+
+  geom_point()+
+  geom_smooth(method="lm")
+
+ggplot(couchto5k, aes(x=accountability, y=completed))+
+  geom_point()+
+  geom_smooth(method="lm")
+
+#accountability looks to be POSITIVELY correlated with quitting?? Which 1. is weird and 2. I don't have a hypothesis about that? so I might just leave it out of this. The question says 'Build a model' after all not 'build the most detailed model ever'
+
+#health, bin style:
+glmdata <- couchto5k %>% 
+  mutate(bin=cut_interval(health,10))
+dat <- glmdata %>% group_by(bin) %>%
+  summarise(prop=mean(completed))
+dat %>% ggplot(aes(x=bin,y=prop)) +
+  xlab("bin") + ylab("prop quit") +
+  geom_point(size=3) +
+  scale_x_discrete(label=1:10)
+
+#I need even more columns... so am going to make one last dataframe, it's getting unwieldy
+
+glmdata <- subset(couchto5k, select=c(2:9,13,16,17))
+
+glmdata <- mutate(
+  glmdata, quit = 
+    ifelse(result == "completed", 0, 1))
+
+glmdata <- mutate(
+  glmdata, Winter = 
+    ifelse(pairedseasons == "cold", 1, 0))
+
+#I am reversing 3 variables - subtract the actual observation from the max possible - to make negative versions of them because LOWER scores on them would can predict quitting rather than success
+
+glmdata <- glmdata %>% mutate(
+  health=100-health,
+  selfmot=35-selfmot,
+  age=60-age)
+
+names(glmdata)[names(glmdata)=="age"] <- "NegAge"
+names(glmdata)[names(glmdata)=="health"] <- "NegHealth"
+names(glmdata)[names(glmdata)=="selfmot"] <- "NegSelfMot"
+
+#I will make z-scores (measuring observations' sds away from the mean) because the variables are all measuring different things.
+
+z_health <- (glmdata$NegHealth-mean(glmdata$NegHealth))/sd(glmdata$NegHealth)
+
+glmdata <- mutate(
+  glmdata, z_health = z_health)
+
+#it worked for health, did not work for self motivation, I am too tired to find out why. I TRIED.
+#so... abandoning the z-scores thing then
+
+glm1 <- glm(quit ~ Winter, data = glmdata, family = "binomial")
+
+summary(glm1)
+
+myglm <- glm(quit ~ Winter + NegHealth + NegSelfMot, data = glmdata, family = "binomial")
+
+summary(myglm)
+
+coef(myglm)
+exp(coef(myglm))
+
+confint(myglm)
+exp(confint(myglm))
+
+plot_model(myglm) +
+  scale_y_log10(limits = c(1,10))
+
+ggplot(glmdata) + 
+  geom_jitter(aes(quit,NegSelfMot), colour="red") + 
+  geom_jitter(aes(quit,Winter), colour="blue") + 
+  geom_jitter(aes(quit,NegHealth), colour="green") +
+  geom_smooth(aes(quit,NegSelfMot), method=lm, se=FALSE) +
+  geom_smooth(aes(quit,Winter), method=lm, se=FALSE) +
+  geom_smooth(aes(quit,NegHealth), method=lm, se=FALSE) +
+  labs()
+#haa what plots
+
+#Calculate the predicted log-odds (probabilities on the logit scale): predict(model, type="link")
+#Calculate the predicted probabilities: predict(model, type="response")
+
+```
+
+
+<!-- Build a model that predicts the likelihood of dropping out (at all). -->
+
+Participants' likelihood of dropping out of the programme (at any stage) is modelled using logistic regression, with season (autumn/winter vs. spring/summer), self-motivation score, and health.   
+
+## Question 5b
+
+<!-- Briefly describe the effects in your model as you would in an academic paper. -->
+
+The probability of dropping out increases if the programme is started in autumn or winter; if the participant has a low self-motivation score; and if the participant is in poor health.  
+
+The odds increases of dropping out associated with each factor in the model are shown below.
+
+
+```{r q5b coef, fig.align = 'center'}
+
+kable(exp(coef(myglm)))
+
+```
+
+## Question 5c
+
+<!-- Draw a graph representing the probability of quitting as a function of how self motivated participants were. -->
+
+```{r q5c, include=FALSE}
+
+#honestly, I know this isn't right, but...
+#I tried?
+
+quitplot <- 
+glmdata %>% 
+  ggplot(aes(x=NegSelfMot,y=quit)) +
+  ylab("p(quit)") +
+  geom_jitter(size=3,width=0,height=.2,alpha=.1) +
+  geom_smooth(method="glm",method.args=list(family=binomial)) +
+  scale_y_continuous(breaks=seq(0,1,by=.2)) +
+  labs(title = "Plot 13: Probability of Quitting as a Function of Self-Motivation")
+
+```
+Plot 13 illustrates the probability of quitting as a function of how self motivated participants were.
+
+```{r q5c plot, fig.align = 'center', fig.dim = c(7, 4.5), message=FALSE, warning=FALSE}
+
+quitplot
+
+```
+
+

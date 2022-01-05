@@ -1,0 +1,255 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+params:
+  examnumber: B196462
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+options(warn = -1)
+# load any other packages that you require here:
+library(tidyverse)
+library(pander)
+library(broom)
+library(ggplot2)
+
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+couchto5k$wrong[couchto5k$age>100] <- "old age"
+couchto5k$wrong[couchto5k$selfmot<5] <- "low selfmot"
+couchto5k$wrong[couchto5k$week_stopped>9] <- "long week"
+wtab <- table(couchto5k$wrong) 
+
+couchto5k<- couchto5k %>% filter(is.na(wrong))
+total <- count(couchto5k)
+
+ city<- factor(couchto5k$city, levels=c("Edinburgh","Glasgow"))
+ season<- factor(couchto5k$season,levels=c("spring","summer","autumn","winter"))
+ season[is.na(season)]<- "autumn"
+ couchto5k$season <- as.data.frame(season) %>% unlist()
+```
+
+The data were inspected and wrong or unlikely values were removed, resulting in `r total` observations for analysis.  Table 1 gives a wrong of removed data.
+
+```{r  table, results="asis"}
+wtab %>% pander (caption="Table 1: Summary of wrong values.")
+
+```
+
+I removed the "week-stopped" data that are longer than 9 weeks, the "selfmot" data that are lower than 5 points, and the "age" data that are older than 100 years. And also classifies "city" by "Edinburgh" and "Glasgow";"season" by "spring","summer","autumn" and "winter".
+
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+```
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+couchto5k$week5stop<-NA
+couchto5k$week5stop[couchto5k$week_stopped==c("1","2","3","4")]<-"before week5"
+couchto5k$week5stop[couchto5k$week_stopped==c("5","6","7","8")]<-"after week5"     
+couchto5k$week5stop[couchto5k$week_stopped=="9"]<-"completed" 
+chisq.test(table(couchto5k$week5stop),p=c(.45,.10,.45))
+```
+
+Based on the results of the chi-square test, it is clear that the p-value is less than 0.05 and the results are significantly different. For the previous survey, 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme, and 45% in 6-8 weeks abandoned the program. The test now differs from the results, then the data in the sample is not consistent with the previous survey.
+
+
+## Question 1b
+
+```{r q1b}
+couchto5k$b1 <- c(NA)
+for(i in 1:length(couchto5k$b1)){
+  if(couchto5k$week_stopped[i]<5){
+    couchto5k$b1[i]="a"
+  }else if(couchto5k$week_stopped[i]>=5&&couchto5k$week_stopped[i]<9){
+    couchto5k$b1[i]="b"
+  }else{
+    couchto5k$b1[i]="c"
+  }
+}
+
+df2b <- table(couchto5k$b1,couchto5k$city)
+df2b
+chisq.test(df2b)
+
+```
+
+I defined the categories of "stopped before week 5", "stopped after week 5", and "completed" as "a ", "b", "c", and then constructed a columnar table with urban differences. Based on the results of the chi-square test, we found a p-value of 0.03, which is less than 0.05, so we reject the original hypothesis at the 95% confidence interval.Therefore, at the significance level of 0.05, the results indicate that the pattern of attrition rates differ by  the city.  
+
+
+## Question 1c
+
+```{r q1c}
+
+t.test(couchto5k$age~couchto5k$city)
+
+```
+
+Based on the results of the t-test, the p-value is 0.007 less than 0.05, so we reject the original hypothesis at the 95% confidence interval. It indicates that the mean age of participants in different cities is significantly different.
+
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+mod2a <- lm(happiness~season,data=couchto5k)
+summary(mod2a)
+```
+
+According to the F-test of linear regression, p-value=0.149, which is larger than the significance level of 0.05. It means that there is no significant difference in the participants' happiness in the four seasons. According to the test results we know that autunm will decrease the score by 25.80,summer will decrease the score by 7.60, winter will decrease the happiness by 6.72，the spring will increase the score of happiness by 53.91.
+
+## Question 2b
+
+```{r q2b}
+mod2b <- lm(happiness~age+season,data=couchto5k)
+summary(mod2b)
+
+```
+
+According to linear regression we found that the p-value of F-test = 0.048<0.05, so we reject the original hypothesis. We consider that the coefficient of age is not equal to 0, indicating that age is the variable of significant influence. It means that happiness is influenced by age.  
+
+
+## Question 2c
+
+```{r q2c}
+fun1 <- function(x){
+  a=ifelse(x<9,F,T)
+  return(a)
+  }
+
+couchto5k$finish <- lapply(couchto5k$week_stopped,fun1) %>% unlist()
+
+mod2c <- lm(happiness~finish,data=couchto5k)
+
+```
+
+Here we define a new variable finish, which is True if the project is completed and False otherwise. 
+Only the effect of whether or not the project is completed is considered here as the baseline model. Since we discussed the effect of happiness and completion in the first question of question 3, this baseline model should only contain the effect of completion.
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+summary(mod2c)
+
+```
+
+According to the results of the regression equation, we found that the p-value of the coefficient of "finish as True" is 0.85, which is larger than 0.05 and the result is not significant. This indicates that the participants' happiness ratings were not affected by the completion of the course.
+
+
+## Question 3b
+
+```{r q3b}
+mod3b <- lm(happiness~finish+health,data=couchto5k)
+anova(mod3b,mod2c)
+
+```
+
+Based on the analysis of variance between the model with added health indicators and the original model, we found that the p-value = 0.12 > 0.05, so the addition of health indicators does not affect the evaluation of happiness scores, indicating that happiness is not additionally influenced by health indicators.
+
+## Question 3c
+
+```{r q3c}
+mod3c <- lm(happiness~finish+health+week_stopped*health,data=couchto5k)
+summary(mod3c)
+```
+
+According to the model results we can know that when we add the interaction between the degree of walking and health, we find that the interaction operation between the degree of participation in the items and health indicators is very significant (p<0.05) and makes both the degree of walking in the items and health indicators significant. So this hypothesis can be proved.
+
+## Question 3d
+
+
+Based on the results of the above analysis, we can find that the level of happiness is not influenced by the season alone, the level of health alone, or whether or not the project is completed.
+If we consider the interaction between the degree of project completion and health, we can say that happiness is rather influenced by both together.
+
+
+# Question 4
+
+```{r q4}
+data4 <- filter(couchto5k,week_stopped==9)
+gro <- group_by(data4,season , city)
+
+df4 <- summarise(gro,num=mean(happiness))
+df4
+
+ggplot(df4, aes(fill=season, y=num, x=city)) + 
+    geom_bar(position="dodge", stat="identity")
+
+```
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+couchto5k$prob<-NA
+couchto5k$prob[couchto5k$week_stopped!="9"]<-1
+couchto5k$prob[couchto5k$week_stopped=="9"]<-0
+mod5a<-lm(prob~1+selfmot+accountability,data=couchto5k)
+summary(mod5a)
+```
+
+We predicted that self-motivation and accountability would have an impact on participants dropping out of the program. Therefore, a linear regression analysis was created to observe the relationship between self-motivation and responsibility and dropout.
+
+
+## Question 5b
+
+```{r q5b}
+pander(mod5a,caption = "Table2 : A test model of self-motivation and accountability and drop-out")
+```
+
+
+Based on the results of 5a and Table 2, we can conclude the following: first, the p-values in the test results are langer than 0.05 and the results are not significant. This indicates that self-motivation and accountability are not significantly associated with participants' dropping out from the program. Second, the "Multiple R-squared" and "Adjusted R-squared" of this model are very low, indicating a poor fit. We may expand the sample size to verify again.
+
+
+
+## Question 5c
+
+```{r q5c}
+
+couchto5k%>%ggplot(aes(x=selfmot,y=prob))+
+  geom_point()+
+  labs(x="Self-motivation",y="Probability of drop-out")+
+  geom_smooth(method="lm")+
+  theme_bw()
+```
+
+
+
+
+
+
+
+
+
+

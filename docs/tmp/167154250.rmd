@@ -1,0 +1,358 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+params:
+  examnumber: "B196795"
+editor_options: 
+  chunk_output_type: console
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. --> 
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+
+summary(couchto5k)
+view(couchto5k)
+
+#to visually these outliers/impossible data i ran a histogram on each numeric variable (LAB #7)
+hist(as.numeric(couchto5k$age)) #age of over 100 yrs old 
+hist(as.numeric(couchto5k$accountability))
+hist(as.numeric(couchto5k$selfmot))  #-99 ratings for self motivation 
+hist(as.numeric(couchto5k$health))
+hist(as.numeric(couchto5k$happiness))
+
+# to fix the problem with two participant ages being above 100, i used the code chunk below to make NA any ages over 100 
+couchto5k<- 
+  couchto5k %>%
+  mutate(
+    age = as.numeric(age),
+    age = ifelse(age>100, NA, age)
+  )
+#to check if that code above work and it did besties
+any(is.na(couchto5k$age))
+view(couchto5k)
+
+#mutate and ifelse functions to change values to NA in "self mot" 
+couchto5k<- 
+  couchto5k %>%
+  mutate(
+    selfmot = as.numeric(selfmot),
+    selfmot = ifelse(selfmot<0, NA, selfmot)
+  )
+any(is.na(couchto5k$selfmot))
+view(couchto5k)
+
+# used same code chunk for variable week_stopped bc program was only 9 weeks long and one entry was 13 weeks which is impossible 
+couchto5k<- 
+  couchto5k %>%
+  mutate(
+    week_stopped = as.numeric(week_stopped),
+    week_stopped = ifelse(week_stopped>9, NA, week_stopped)
+  )
+any(is.na(couchto5k$week_stopped))
+view(couchto5k)
+
+#in looking for any misspelling on the character variables found that "autumn" was spelled wrong on two data points.
+table(couchto5k$season)
+
+# replacing the misspelling of "autunm" to "autumn" 
+couchto5k[couchto5k$season=="autunm", ]
+couchto5k$season[couchto5k$season == "autunm"] <- "autumn"
+table(couchto5k$season)
+
+```
+
+```{r descriptives}
+#Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+#the output from this code will be shown. 
+
+library(ggplot2)
+
+#ggplot with age 
+ggplot(data = couchto5k, aes(x = age)) + 
+  geom_histogram(binwidth = 2)
+
+#ggplot-line with age and selfmot
+ggplot(data = couchto5k, aes(x = age, y=selfmot)) + 
+  geom_point()
+
+# ggplot with age and happiness 
+ggplot(data = couchto5k, aes(x = age, y=happiness)) + 
+  geom_point ()
+
+#ggplot with age and accountability 
+ggplot(data = couchto5k, aes(x = age, y=accountability)) + 
+  geom_point ()
+
+#ggplot with age and health 
+ggplot(data = couchto5k, aes(x = age, y=health)) + 
+  geom_point ()
+
+#ggplot-histogram of health 
+ggplot(data = couchto5k, aes(x = health)) + 
+  geom_histogram(binwidth = 2)
+
+#ggplot- histogram of happiness 
+ggplot(data = couchto5k, aes(x = happiness)) + 
+  geom_histogram(binwidth = 5)
+
+#season participants were interviewed in 
+table(couchto5k$season)
+
+#ggplot-bar graph of seasons
+ggplot(couchto5k, aes(x = factor(season))) +
+    geom_bar()
+
+#city they were recruited in 
+table(couchto5k$city)
+
+#ggplot-bar graph of city recruitment 
+ggplot(couchto5k, aes(x = factor(city))) +
+    geom_bar()
+
+#ggplot- bar graph of week participation ended 
+ggplot(couchto5k, aes(x = factor(week_stopped))) +
+    geom_bar()
+
+```
+
+# Question 1: General Checks 
+
+## Question 1A: In an earlier nationwide survey, researchers found that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme. Is the data in the sample you have been given in line with data from the earlier survey? Once you have created a suitable variable to map to the information in the question, you should be able to answer this using a simple statistical test.
+
+```{r q1a}
+# create new variable on when participants quit the program or if they completed it
+week_quit <- couchto5k %>%
+  select(week_stopped) %>%
+  mutate(week_stopped = case_when (
+    week_stopped < 5 ~ "BeforeWeek5",
+    week_stopped > 4 & week_stopped < 9 ~ "AfterWeek5",
+    week_stopped > 8 ~ "Completed"))
+
+table(week_quit$week_stopped)
+couchto5k$week_quit <- week_quit$week_stopped
+view(couchto5k)
+
+chisq.test(table(week_quit$week_stopped), p = c(.1, .45, .45)) 
+
+```
+
+## Question 1B: Using the same three categories (stopped before week 5, stopped after week 5, completed), examine whether the patterns of attrition rates differ by city. 
+
+```{r q1b}
+Edi_group <- filter(couchto5k, city == "Edinburgh")
+
+filter(couchto5k, week_quit == "Completed")
+
+table(Edi_group$week_quit)
+
+#proportion of above table 
+prop.table(table(Edi_group$week_quit))*100
+                              
+Glasgow_group <- filter(couchto5k, city == "Glasgow")
+
+table(Glasgow_group$week_quit)
+
+prop.table(table(Glasgow_group$week_quit))*100
+
+chisq.test(couchto5k$week_quit, couchto5k$city)
+
+table(couchto5k$city, couchto5k$week_quit)
+
+```
+
+## Question 1c, Do the average ages of participants who commenced the program differ by city? 
+```{r q1c}
+t.test(couchto5k$age ~ couchto5k$city) 
+```
+
+# Question 2: Happiness 
+
+## Question 2A: Are participants’ happiness ratings affected by the season they were interviewed in? Describe the way in which season influences happiness outcomes.
+
+```{r q2a Section 1}
+#We can plot the marginal distribution of happiness as a density curve, and add a boxplot underneath to check for the presence of outliers. There are no outliers because the ratings are between 0 to 100! 
+ggplot(data = couchto5k, aes(x = happiness)) +
+  geom_density() +
+  geom_boxplot(width = 1/500) +
+  labs(x = "Happiness Ratings", 
+       y = "Probability Denisty")
+#now lets look at the seasons they were interview in using a ggplot_histogram
+ggplot(data = couchto5k, aes(x = season)) +
+  geom_bar() +
+  labs(x = "Seasons", 
+       y = "Frequency")
+# To further summarize a distribution, it is typical to compute and report numerical summary statistics such as the mean and standard deviation.  
+couchto5k %>% 
+  summarize(
+    happiness_mean = mean(happiness), 
+    sd_happiness = sd(happiness)
+    )
+
+```
+
+
+``` {r q2a Section 2}
+#season is a character and LM doesn't do a dependent variable with a character string it needs to be numerical 
+
+#turn seasons into factors 
+couchto5k$season <- factor(couchto5k$season)
+levels(couchto5k$season)
+
+happinessmodel <- lm(happiness ~ 1 + season, data = couchto5k)
+
+coef(happinessmodel)
+
+#intercept = seasonautumn 
+summary(happinessmodel)
+
+ggplot(couchto5k, aes(x = season, y = happiness, fill=season)) +
+  geom_boxplot()
+
+happiness_season <- lm(happiness ~ season, data = couchto5k)
+
+anova(happiness_season)
+
+lm(season ~ happiness, data = couchto5k)
+
+plot(happiness_season)
+
+# removing pp -- wtf is this i forgot 
+
+couchto5k <- couchto5k[-c(55),]
+
+plot(happiness_season, which = 4)
+
+
+```
+## Question 2B: Accounting for any effects you discovered in (2a), is happiness affected by age? 
+``` {R q2b}
+## food for thought why don't i need seasons as binomial when doing the rest of the linear models?  
+
+happiness_season <- lm(happiness ~ season + age, data = couchto5k)
+summary(happiness_season)
+
+```
+## Question 2C: The models you have built above explore ‘baseline’ effects; that is, effects that are not of primary interest to the researchers but which might affect the outcome variable of happiness. For use in question 3, pick a specific baseline model and justify why you are using this.
+
+
+```{r q2c}
+# I will be using the happiness_model I created in the earlier questions for further analysis in question 3. 
+```
+
+# Question 3: Happiness and Health
+
+## Question 3A: Building on your baseline model, are participants’ happiness ratings affected by whether or not they completed the programme? Describe the way in which programme completion influences happiness outcomes.
+
+```{r q3a}
+happiness_season2 <- lm(happiness ~ season + week_quit, data = couchto5k)
+summary(happiness_season2)
+
+```
+
+## Question 3B: Building on the analysis in (3a), is happiness additionally affected by the “health metric”?
+
+```{r q3b}
+happiness_season3 <- lm(happiness ~ season + week_quit + health, data = couchto5k)
+summary(happiness_season3)
+
+```
+
+## Question 3C: It’s been hypothesised that the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier. Building on the model in (3b), can you test this hypothesis?
+
+```{r q3c}
+happiness_season4 <- lm(happiness ~ week_quit + health, data = couchto5k)
+summary(happiness_season4)
+```
+
+## Question 3D: What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper.
+
+# Question 4:Create a subset of the data, including only those participants who completed the programme.Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project.
+
+```{r q4}
+Q4_subset <- subset(couchto5k, week_quit == "Completed")
+
+ggplot(data = Q4_subset, aes(happiness,city,fill=season)) + 
+  geom_point() + 
+  facet_wrap(~season) +
+   scale_fill_brewer(palette ="BuPu")
+
+```
+
+# Question 5: Predictors of Drop-Out
+
+## Question 5A: Build a model that predicts the likelihood of dropping out (at all).
+
+```{r q5a}
+Dropout<- couchto5k %>% 
+  select(week_stopped) %>%
+  mutate(week_stopped = case_when (
+    week_stopped < 9 ~ "Dropout",
+    week_stopped > 8 ~ "Not_Dropout"))
+
+couchto5k$week_quit<- Dropout$week_stopped
+
+week_quit<- couchto5k$week_quit %>% factor(c("Dropout","Not_Dropout"))
+couchto5k$week_quit %>% factor(c("Dropout","Not_Dropout"))
+couchto5k$week_quit <- as.factor(couchto5k$week_quit)
+
+Q5A <- glm(week_quit ~ 1 + season + selfmot, data = couchto5k, family = "binomial")
+
+summary(Q5A)
+
+exp(coef(Q5A))
+
+levels(couchto5k$week_quit)
+
+plot(Q5A, which = 4) 
+
+
+```
+
+## Question 5B:  Briefly describe the effects in your model as you would in an academic paper. 
+WRITE UP HERE
+
+## Question 5C: Draw a graph representing the probability of quitting as a function of how self motivated participants were. 
+
+
+```{r Q5C}
+
+Q5C <-glm(week_quit~ selfmot, data =couchto5k, family="binomial")
+
+selfmot100 <- tibble(selfmot = 1:100)
+predict(Q5C, newdata = selfmot100, type = "response")
+selfmot100 <-
+  selfmot100 %>%
+  mutate(
+    predprobs = predict(Q5C, newdata = selfmot100, type = "response")
+  )
+
+
+ggplot(data = selfmot100, aes(x = selfmot, y = predprobs)) +
+  geom_line(size=.09) + geom_point(size=1)
+  
+
+```

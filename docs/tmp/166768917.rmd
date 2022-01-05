@@ -1,0 +1,416 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B173667
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(car)
+library(sjPlot)
+library(stargazer)
+library(psych)
+library(patchwork)
+library(formattable)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+
+# Question 0: Cleaning & Describing
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+
+summary(couchto5k)
+
+couchto5k$age[couchto5k$age < 0] <- mean(couchto5k$age)
+
+couchto5k$accountability[couchto5k$accountability < 5 | couchto5k$accountability > 35] <- mean(couchto5k$accountability)
+
+couchto5k$selfmot[couchto5k$selfmot < 5 | couchto5k$selfmot > 35] <- mean(couchto5k$selfmot)
+
+couchto5k$health[couchto5k$health < 0 | couchto5k$health > 100] <- mean(couchto5k$health)
+
+couchto5k$happiness[couchto5k$happiness < 0 | couchto5k$happiness > 100] <- mean(couchto5k$happiness)
+
+unique(couchto5k$season)
+couchto5k$season <- ifelse(couchto5k$season == "autunm", "autumn", couchto5k$season)
+
+couchto5k$week_stopped <- ifelse(couchto5k$week_stopped > 9, 9, couchto5k$week_stopped)
+
+```
+
+Substituting continuous variables which are not in their respective range with the mean of the variable.
+Substituting misspelled season with the correct spelling.
+Substituting weeks greater than 9 with week 9 as that's when the program ended.
+
+```{r}
+hist(couchto5k$age)
+```
+
+After cleaning the data, it seems that age is positively skewed
+
+```{r}
+hist(couchto5k$accountability)
+```
+
+After cleaning the data, it seems that accountability is normally distributed
+
+```{r}
+hist(couchto5k$selfmot)
+```
+
+After cleaning the data, it seems that self-motivation is normally distributed
+
+```{r}
+hist(couchto5k$health)
+```
+
+After cleaning the data, it seems that health is normally distributed
+
+```{r}
+hist(couchto5k$happiness)
+```
+
+After cleaning the data, it seems that happiness is uniformally distributed
+
+
+# Question 1: General Checks 
+
+## Question 1a
+
+```{r}
+
+couchto5k$participant_left <-
+  ifelse(couchto5k$week_stopped <= 5 , "stopped_before_week5",
+         ifelse(couchto5k$week_stopped > 5 & couchto5k$week_stopped < 9, "stopped_after_week5", "completed"))
+```
+
+Goodness-of-fit test is a statistical hypothesis test to see how well sample data fit a distribution from a population with a normal distribution. In other words, this test shows if your sample data represents the data you would expect to find in the actual population or if it is somehow skewed.
+
+```{r}
+table1 <- table(couchto5k$participant_left)
+```
+
+Looking at the table1, we can see what each of the three categories represent in the `participant_left` variable. Applying this number with the probabilities of the nationwide survey.
+
+Participants `stopped_before_week5` - probability = 0.45
+
+Participants `stopped_after_week5` - probability = 0.10
+
+Participants `completed` the program - probability = 1-(0.45+0.10) = 0.45
+
+```{r}
+number_of_participants <- c(53, 17, 68) 
+participant_left_gof <- chisq.test(number_of_participants, p = c(0.45, 0.10, 0.45))
+participant_left_gof
+```
+
+From the hypothesis testing, we can see that the `p> 0.05 (C.I.)`, we cannot reject the null hypothesis, hence - the sample is in line with the population.
+
+
+## Question 1b
+
+```{r}
+participant_left_count_by_city <- count(couchto5k, participant_left, city)
+```
+
+1. Using `chisq.test()` between the two cities for `stopped_before_week5` category
+
+```{r}
+chisq.test(c(41,12), p=c(0.5,0.5))
+```
+`p<0.05`, attrition rate differ for the two cities
+
+2. Using `chisq.test()` between the two cities for `stopped_after_week5` category
+
+```{r}
+chisq.test(c(14,3), p=c(0.5,0.5))
+```
+`p<0.05`, attrition rate differ for the two cities
+
+3. Using `chisq.test()` between the two cities for `completed` category
+
+```{r}
+chisq.test(c(48,20), p=c(0.5,0.5))
+```
+`p<0.05`, attrition rate differ for the two cities
+
+For all the three categories of `week_stopped`, p<0.05. Therefore, we can successfully conclude that the attrition rates differ by city.
+
+
+## Question 1c
+
+```{r q1c}
+
+# Using T-Test
+age_glasgow <- couchto5k$age[couchto5k$city == "Glasgow"]
+age_edinburgh <- couchto5k$age[couchto5k$city == "Edinburgh"]
+t.test(age_glasgow, age_edinburgh)
+
+# Using data aggregation
+aggregate(couchto5k$age, by=list(couchto5k$city), FUN=mean)
+```
+
+Looking at the T-Test results, `p>0.05`, average ages of participants who commenced the program do not differ by city.
+
+
+# Question 2: Happiness
+
+## Question 2a
+
+```{r q2a}
+
+# Plotting to check the linear relationship between Happiness and Season
+
+ggplot(data = couchto5k, aes(x = season, y = happiness)) +
+  geom_point(alpha = 0.5) +
+  labs(x = "Seasons", 
+       y = "Happiness Score(0-100)")
+
+# Fitting a linear model
+
+model1 <- lm(happiness ~ 1 + season, data = couchto5k)
+summary(model1)
+plot_model(model1)
+```
+
+From the `summary()` of model1, the coefficient for season autumn is the Intercept here. The “autumn” season category in this model is the reference level - it is the category against which other season categories are compared. As we can observe, `p<0.05`, indicating participants' happiness ratings are affected by the season they were interviewed in.
+
+
+## Question 2b
+
+```{r q2b}
+
+# Plotting to check the linear relationship between Happiness and Age
+
+ggplot(data = couchto5k, aes(x = age, y = happiness)) +
+  geom_point(alpha = 0.5) +
+  #geom_smooth(method="lm")
+  labs(x = "Age(in years)", 
+       y = "Happiness Score(0-100)")
+
+# Fitting a linear model
+
+model2 <- lm(happiness ~ 1 + age, data = couchto5k)
+summary(model2)
+plot_model(model2)
+```
+
+Looking at the `summary()` we see the `Multiple R-squared` value is `0.000392`, this tells us that only `0.039%` of the total variability in happiness scores of the participants is explained by the linear association with age. This is not significant, `p>0.05` which further solidifies that age has no effect on the happiness score. The `plot_model()` and `ggplot()` show the same result, there is no significant linear relation between the two variables.
+
+
+## Question 2c
+
+```{r}
+
+# Using a correlation test `cor()` to determine which variable affects the happiness score the most.
+
+couchto5k %>% 
+  select(happiness, accountability, selfmot, health) %>%
+  cor()
+```
+
+Looking at the results, we are only interested in correlation values of the happiness column, and from that we can conclude that `correlation` between `self-motivation` and `happiness` is the highest as compared to `accountability` and `health`.
+
+```{r}
+# Fitting a linear regression model between happiness and self-motivation based on the `cor()` value"
+
+model3 <- lm(happiness ~ 1 + selfmot, data = couchto5k)
+summary(model3)
+plot_model(model3)
+```
+
+From our baseline model `summary()` we observe that self-motivation is highly enriched in accounting happiness, `p<0.05`. But we also observe that self-motivation does not explain all the variability for our baseline model as the `Multiple R-squared` is `0.117` which only explains `11.7%` variability in our data if we only use `selfmot` as the only explanatory variable.
+
+
+# Question 3: Happiness and Health
+
+## Question 3a
+
+```{r}
+
+# Building on the baseline model in q2c, using a multiple regression model
+
+model4 <- lm(happiness ~ 1 + selfmot + week_stopped, data = couchto5k)
+summary(model4)
+```
+
+Building on our baseline model `q2c`, we observe that `selfmot` is still the strongest predictor of `happiness`, `week_stopped` being a statistically significant explanatory variable does not produce enough variability for the happiness score.
+
+```{r}
+# comparison ggplot()
+ 
+week_stopped_happiness <- 
+  ggplot(data = couchto5k, aes(x = week_stopped, y = happiness)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+  labs(x = "Week Stopped (range 1-9)", y = "Happiness Score (range 0-100)")
+
+selfmot_happiness <-
+  ggplot(data = couchto5k, aes(x = selfmot, y = happiness)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+  labs(x = "Self-motivation Score (range 5-35)", y = "Happiness Score (range 0-100)")
+
+week_stopped_happiness | selfmot_happiness
+
+```
+
+Doing comparison `ggplot()` of the two explanatory variables with one outcome variable
+
+
+## Question 3b
+
+```{r}
+
+# Building on the analysis of q3a, using a multiple regression model
+
+model5 <- lm(happiness ~ 1 + selfmot + week_stopped + health, data = couchto5k)
+summary(model5)
+```
+
+Looking at the p-value for `health` in `summary()` `p>0.05`, thus we can conclude that health metric has no additional effect on `happiness`. The comparison `ggplot()` depicts the same, the regression line is almost flat.
+
+```{r}
+# comparison ggplot()
+
+health_happiness <- 
+  ggplot(data = couchto5k, aes(x = health, y = happiness)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+  labs(x = "Health Score (range 0-100)", y = "Happiness Score (range 0-100)")
+
+selfmot_happiness <-
+  ggplot(data = couchto5k, aes(x = selfmot, y = happiness)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+  labs(x = "Self-motivation Score (range 5-35)", y = "Happiness Score (range 0-100)")
+  
+  week_stopped_happiness <- 
+  ggplot(data = couchto5k, aes(x = week_stopped, y = happiness)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+  labs(x = "Week Stopped (range 1-9)", y = "Happiness Score (range 0-100)")
+
+week_stopped_happiness | health_happiness | selfmot_happiness
+
+```
+
+Doing comparison `ggplot()` of the three explanatory variables with one outcome variable 
+
+
+## Question 3c
+
+```{r q3c}
+model6 <- lm(happiness ~ 1 + selfmot + health , data = couchto5k)
+summary(model6)
+```
+
+Null Hypothesis (`H0`) - the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the program might be more affected by the health metric than that of those who stopped earlier.")
+
+Alternative Hypothesis (`H1`) - Given the size of the data, the `F(2,135)=9.11,p<0.05`, this means that the F-statistic is only a little higher than 1, hence we can successfully reject null hypothesis.
+
+
+## Question 3d
+
+```{r q3d}
+
+print("We have been builiding up on our vaseline model to predict happiness score, adding and removing a variable to see what is the most fitting regression model. Through all the results we can conclude that `selfmot` is the best explanatory variable to predict the outcome of `happiness`. Whereas `health` does not produce a strong variability in the model, `week_Stopped` had some effect on the happiness scores.")
+```
+
+
+# Question 4
+
+```{r q4}
+
+# Creating subset of the data, including only those participants who completed the program.
+
+couchto5k$participant_left == "completed"
+completed_couchto5k <- couchto5k[couchto5k$participant_left == "completed", ]
+
+aggregate(completed_couchto5k$happiness, by=list(completed_couchto5k$season, completed_couchto5k$city), FUN=mean)
+
+# Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project.
+
+completed_couchto5k %>% 
+  select(happiness, season, city) %>%
+  pairs.panels()
+
+```
+
+
+# Question 5: Predictors of Drop-out
+
+## Question 5a
+
+```{r q5a}
+
+# To fit a model that predicts the likelihood of dropping-out at all, we need to first subset participants that left before completing the program.
+
+stopped_couchto5k <- couchto5k[couchto5k$week_stopped < 9, ]
+
+model7 <- lm(week_stopped ~ 1 + age + accountability + selfmot + health + happiness, data = stopped_couchto5k)
+summary(model7)
+plot_model(model7)
+```
+
+Observing the `summary()`, we can see that `accountability`,`health`, and `selfmot` are positvely proportional to the likelihood of participants dropping out of the program. The p-values help determine whether the relationships that you observe in your sample also exist in the larger population. The `p-value` for each independent variable tests the `null hypothesis` that the variable has no correlation with the dependent variable. We can see that `self-motivation` has the `correlation` with the likelihood of dropping out.
+
+
+## Question 5b
+
+```{r q5b}
+
+print("Aim - To predict the likelihood of participants dropping out of the program.")
+
+print("Hypothesis - Self-motivation is the most reliable explanatory variable for the outcome variable `week_stopped`.")
+
+print("Method - We first isolated the participants that left the program before week 9 in another subset called `stopped_couchto5k`. Based on that we built a multiple regression model, where the outcome variable was `week_stopped` with explanatory variables were `age`, `accountability`, `selfmot`, and `health`.")
+
+print("Result - Observing the `summary()`, we can see that `accountability`,`health`, and `selfmot` are positvely proportional to the likelihood of partcipants dropping out of the program. The p-values help determine whether the relationships that you observe in your sample also exist in the larger population. The p-value for each independent variable tests the null hypothesis that the variable has no correlation with the dependent variable. We can see that self-motivation has the correlation with the likelihood of dropping out.")
+
+```
+
+
+## Question 5c
+
+```{r q5c}
+
+selfmot_plot <- 
+  ggplot(data = stopped_couchto5k, aes(x = selfmot)) +
+  geom_density() +
+  geom_boxplot(width = 1/150) +
+  labs(x = "Self-motivation Score (range 5-35)", y = "Probability\ndensity")
+
+selfmot_plot
+
+```
+
+Density probability representing the probability of `quitting` as a function of how self motivated participants were. This `density probability` plot was created using the `stopped_couchto5k` subset data of the original `couchto5k` data.
+
+
+
+
+
+
+
+

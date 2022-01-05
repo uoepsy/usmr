@@ -1,0 +1,809 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: "B195926"
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(sjPlot)
+library(psych)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+### Glimpse & Preprocessing
+
+It's necessary to pre-process the data to make sure that it's clean & intact in terms of range & missingness. Before filtering & fixing them, we can first take a look at the data by using `view(data)` and found that some columns have quite impossible values such as someone that has came to the age of '141' . We should also use check the data type of columns in the dataframe by calling `glimpse(data)`.
+
+#### Missingness
+
+Missing values in R are code by `NA` and we could use the function `is.na(data)` to produce a Boolean value (either 0 or 1) telling us whether there is a missing value. As we are performing missing check upon a dataset instead of a single variable, we should use  `sum(is.na(data))` instead of inspecting many lines of `False`. The function gave us 0, so we could conclude that there is no missing data.
+
+#### Range
+
+When it comes to the range of the columns in our dataframe, we need to do checks for columns in accordance with their types. As for `numerical` columns, we can use `filtered = data %>% filter()` to filtered out rows containing column values out of the predefined range. We can pass several conditions to `filter()` as its arguments specifying ranges of every numerical column. For example, for `accountability`, we could use `accountability %in% (7:35)` since the column is defined as the sum of 5 questions each scored 1-7. Concerning columns of character type, such as `season` & `city`, we can check their distinct values by calling `data$season %>% unique` and it turns out that there are some typos of `autumn` as `autunmn`. We could call `ifelse(filtered$season == "autunm", "autumn", filtered$season)` to fix this.
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+data = couchto5k
+glimpse(data)
+view(data)
+
+data
+
+# check missing values
+sum(is.na(data))
+
+# check range of numerical columns
+for(i in data) {
+  print(range(i))
+}
+
+# check value of character columns
+# check season
+season = data$season %>% unique
+season
+
+# check city
+city = data$city %>% unique
+city
+
+
+# filter with numerical range
+filtered = data %>% filter(
+  age %in% (0:100),
+  accountability %in% (7:35),
+  selfmot %in% (7:35),
+  health %in% (0:100),
+  happiness %in% (0:100),
+  week_stopped %in% (1:9),
+  )
+filtered
+
+# fix character error in column "season"
+filtered$season <- ifelse(filtered$season == "autunm", "autumn", filtered$season)
+view(filtered)
+
+# make sure season is clear
+# season = filtered$season %>% unique
+# season
+
+```
+
+### Describing
+
+Data was obtained from "https://uoepsy.github.io/data/usmr_2122_data.R": a dataset containing information on 128 participants. After filtering & fixing we have a reduced sample size of  122. Those excluded numerical observations are out of the pre-defined range listed below. Several typo of character were also fixed("autunm" to "autumn").
+
+| Column         | Range   |
+| -------------- | ------- |
+| age            | (0:100) |
+| accountability | (7:35)  |
+| selfmot        | (7:35)  |
+| health         | (0:100) |
+| happiness      | (0:100) |
+| week_stopped   | (1:9)   |
+
+We could use `describe(filterd)` to get a comprehensive view of all 9 variables.
+
+Notice that `ppID` follows a self-incremental pattern so it does not particularly need an analysis of distribution.
+
+As for other numerical variables, we could make a rough estimation on their normality inspecting their symmetric property together with their density curves (given by `geom_density()`). We choose density curves since they are numerical variables though most of them are integers (`typeof()` actually gave `double`).
+
+-  `age` has a mean of 36.35, min of 18, and max of 60, which indicated a poor fit on normality(18.35 vs 23.65). This is also supported by the density curve plot. A huge dip is presented and the curve looked liked a bimodal distribution.
+```{r descriptives_0.1}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+describe(filtered)
+
+
+filtered %>% ggplot() +
+     aes(x = age) +
+     geom_density()
+```
+
+-  `accountability` has a better symmetric fit of 12.08 vs 14.92. There is still a dip on the middle, but much less obvious. Altogether it can be viewed as a flawed normal distribution with a mean of 20.08 & standard error of 0.47.
+
+
+
+```{r descriptives_0.2}
+filtered %>% ggplot() +
+     aes(x = accountability) +
+     geom_density()
+```
+
+-  `selfmot` has a symmetric fit of 7.0 vs 9.0 which is also quite normal. Likewise it's a little bit flawed as it including a small dip on its density curve as well.
+
+```{r descriptives_0.3}
+filtered %>% ggplot() +
+     aes(x = selfmot) +
+     geom_density()
+```
+
+-  `health` shows the most terrible symmetric property of 32.97 vs 23.03. Its density plot is presented as a left-skewed flawed normal with a dip to its left. In this case we further the demonstration by using a box plot where the difference between sizes of rectangles represents the degree of skewness to one direction.  A small left skewness can also be observed  by calling `geom_boxplot`.
+```{r descriptives_0.4}
+
+filtered %>% ggplot() +
+     aes(x = health) +
+     geom_density()
+
+filtered %>% ggplot() +
+     aes(x = health) +
+     geom_boxplot(outlier.colour="black", outlier.shape=16,
+             outlier.size=1, notch=FALSE)
+
+```
+
+-  `happiness` was assumed to be symmetric measuring with a min-mean-max distances of 50.08 vs 49.02. But the density plot shows that it's in fact very unnormal with a deep valley at its rightwing. This is also captured by the negative `skew` of -0.18 in `describe()`.
+
+```{r descriptives_0.5}
+filtered %>% ggplot() +
+     aes(x = happiness) +
+     geom_density()
+
+```
+
+
+
+-  `week_stopped` also has a negative skew and is far from normal when the plot is like a inverted & rotated bell curve.
+```{r descriptives_0.6}
+filtered %>% ggplot() +
+     aes(x = week_stopped) +
+     geom_histogram(binwidth = 1)
+
+```
+
+For `character` type variables, we can use `barplot` as they follows discrete distributions.
+
+-  The most dominant `season` is "Spring".
+
+```{r descriptives_0.7}
+barplot(table(filtered$season),
+        sub="figure 0.8 frequencies of seasons",
+        ylab="frequency",
+        )
+```
+
+-  Samples of `city` "Edinburgh" is three times more than "Glasgow" (93 vs 23 revealed by `table(filtered$city)`)
+```{r descriptives_0.8}
+barplot(table(filtered$city),
+        sub="figure 0.9 frequencies of cities",
+        ylab="frequency",
+        )
+```
+
+# Question 1 
+
+## Question 1a
+> In an earlier nationwide survey, researchers found that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme. Is the data in the sample you have been given in line with data from the earlier survey? Once you have created a suitable variable to map to the information in the question, you should be able to answer this using a simple statistical test.
+
+To solve this question we need to compare the observed proportions in our sample with the expected distribution in the earlier survey which means we could use a chi-square goodness of fit test.
+
+- **Null hypothesis (H0):** There is no significance difference between the observed and the expected value.
+- **Alternative hypothesis (H1):** There is a significance difference between the observed and the expected value.
+
+To acquire the percentages in our sample, we can first make a table of frequencies for `week`, and divide it by the total frequency (`sum()` over `week` table).  From there we directly slice the three parts we want. For example, for the middle part, we can use:
+
+```R
+further = sum(percentage[5:8])
+```
+
+```{r q1a}
+survey = c(0.45, 0.10, 0.45)
+
+week = table(filtered$week_stopped)
+sum = sum(week)
+percentage = week/sum *100
+# percentage
+
+# abandon before week5
+pre = sum(percentage[1:4])
+# pre
+
+# abandon before week9
+further = sum(percentage[5:8])
+# further
+
+# make it to the end
+complete = sum(percentage[9])
+# complete
+
+# join
+joined = c(pre, further, complete)
+joined
+
+
+res = chisq.test(joined, p=survey)
+res
+```
+Now that having all three parts of shares on our sample (40.98, 9.02, 50.0) and the corresponding expected distribution is (0.45, 0.1, 0.45), we can proceed to performing a chi-squared goodness of fit test by calling `chisq.test()`.
+
+As we can see here the resulting p-value is 0.6 telling us there is no significance difference between the observed and the expected value. We come to the conclusion that the data in our sample is inline with the data from earlier survey.
+
+## Question 1b
+> Using the same three categories (stopped before week 5, stopped after week 5, completed), examine whether the patterns of attrition rates differ by city.
+
+We can first use a mosaic plot to view the three-parts proportion across the cities. As depicted in figure 1.0, there is a difference between the patterns of Edinburgh and Glasgow.
+
+```{r q1b}
+filtered_detailed = filtered %>%
+    mutate(WeekType = case_when(week_stopped < 5 ~ 0,
+                                week_stopped %in% (5:8) ~ 1,
+                                week_stopped == 9 ~ 2))
+# filtered_detailed
+t = table(filtered_detailed$city, filtered_detailed$WeekType)
+
+mosaicplot(t,
+  main = "Mosaic plot",
+  color = TRUE,
+  sub="figure 1.0 frequencies of cities",
+)
+
+```
+
+In this case we wish to discover whether there is a difference between the frequency tables of two categorical variables. It seems like we should use a chi-square test of independence. However, we should pick Fisher's exact test instead of chi-square because of a small sample size. Notice that we have only one participant from Glasgow in the middle subset.
+
+
+```{r q1b_2}
+t
+# chisq.test(t)
+f <- fisher.test(t)
+f
+```
+- **Null hypothesis (H0)**: proportions and `city` are independent.
+- **Alternative hypothesis (H1)**: proportions and `city` are dependent
+
+The resulting p-value of Fisher's test is 0.006 < alpha = 0.05 suggesting that we should reject H0 and favor H1. We can conclude that proportions and `city` are dependent (patterns do differ by city).
+
+
+
+## Question 1c
+> Do the average ages of participants who commenced the programme differ by city?
+
+We can use a two-samples t test here as we wish to compare the mean of two different groups. We can first filter ages of Edinburgh and Glasgow and compute there averages respectively by using `mean()`.
+
+```R
+edin = filtered[filtered$city=="Edinburgh",]$age
+ave_edin = mean(edin)
+```
+
+After acquiring these means, we turn them into a dataframe so that later they could be fed to a two-samples t-test.
+
+```{r q1c_1}
+
+edin = filtered[filtered$city=="Edinburgh",]$age
+ave_edin = mean(edin)
+# ave_edin
+
+gla = filtered[filtered$city=="Glasgow",]$age
+ave_gla = mean(gla)
+# ave_gla
+
+aves = c(ave_edin, ave_gla)
+cities = c("Edinburgh", "Glasgow")
+
+# barplot(aves,
+# xlab = "Age",
+# names.arg =cities,
+# col = "darkred",
+# sub="figure 1.1 Average age of participants from cities",
+# horiz = TRUE)
+
+city = data.frame(unlist(cities), unlist(aves))
+names(city) = c("City", "Average")
+# chisq.test(table(city$Average, city$City))
+city
+
+# boxplot visualization
+ggplot(data = filtered, aes(x = city, y = age)) +
+  geom_boxplot()+
+  ggtitle(label = "Effect of city on age",subtitle = "Figure 1.2 inspecting age by cities")
+
+
+```
+
+One additional step we need to do before the t test is to make sure `age` is normally distributed under Edinburgh and Glasgow. We can do this by using the Shapiro-Wilk's test where null hypothesis is "sample distribution is normal".
+
+```{r q1c_2}
+# Shapiro-Wilk normality test check assumptions
+shapiro.test(filtered$age[filtered$city=="Edinburgh"])
+shapiro.test(filtered$age[filtered$city=="Glasgow"])
+```
+
+The test on Edinburgh turns out to be significant so `age` is not normally distributed for participants from Edinburgh. This property is the same as what we observed in the density plot of `age` over all cities combined. We are probably seeing this because of a small sample size.
+
+Another assumption we need to ensure is that there is no significance difference between variances. This can be done by using a F-test. As the p-value 0.2 is greater than significance level 0.05, the homogeneity assumption of variances is confirmed
+
+```{r q1c_3}
+# F-test to test for homogeneity in variances
+with(filtered, var.test(age ~ city))
+```
+Now we proceed to a two-samples t test. Specifically, we can use a two-tailed test because we only care there is a effect or not.
+
+- **Null hypothesis (H0)**: no significant difference between `age `means of different `city`
+- **Alternative hypothesis (H1)**: there is significant difference between `age` means of different `city`
+
+The resulting p-value is 0.3 which suggests that we should accept the null hypothesis that the average ages of  participants does not differ by city.
+```{r q1c_4}
+# samples independent t-test
+with(filtered, t.test(age ~ city, alternative = "greater"))
+```
+
+
+
+
+# Question 2
+
+## Question 2a
+> 2a. Are participants’ happiness ratings affected by the season they were interviewed in? Describe the way in which season influences happiness outcomes.
+
+Given the fact that `happiness` being numerical & `season` being character of 4 levels, we need a multiple comparison method instead of the two-sample-test which are designed for just two independent groups. Therefore, we should use analysis of variance (ANOVA) to study the relationship between `happiness` & `season`.
+
+The Null Hypothesis of a one-way ANOVA test is that all distributions of a continuous variable in different groups have equal means. We can roughly compare these means by plotting multiple box plots based on the four seasons. As illustrated in figure 2.1, there is a certain level of differences between seasons. More specifically, the order of seasons with respect to increasing amount of happiness is winter, autumn, spring, summer. Summer can be observed the season with the highest overall happiness.
+
+```{r q2a.1}
+season_data = filtered[, (names(filtered) %in% c("happiness","season"))]
+season_data  %>% 
+  ggplot(., aes(x = season, y = happiness))+geom_boxplot(aes(fill=season))+
+  ggtitle(label = "Effect of seasons on happiness",subtitle = "Figure 2.1 inspecting happiness by seasons")
+# season_data
+# sum(season_data$happiness)
+```
+
+One assumption of the ANOVA test is that distributions of different groups should have equal or close variance. we get these variances by using `var()` on every season data. The result is quite uneven. However, we should recall the fact that sample sizes of these seasons are not evenly distributed from the very beginning. Winter has merely 12 samples while spring has 61 samples weighing 50% of the total sample size.
+
+The one-way ANOVA test can be performed by calling `aov(happiness ~ season)`. As the p-value is less than the significance level 0.05, we can conclude that there are significance differences between the seasons' effects on happiness.
+
+```{r q2a.2}
+spring = filtered[filtered$season=="spring",]$happiness
+summer = filtered[filtered$season=="summer",]$happiness
+autumn = filtered[filtered$season=="autumn",]$happiness
+winter = filtered[filtered$season=="winter",]$happiness
+
+vars = c(var(spring), var(summer), var(autumn), var(winter))
+vars
+lengths = c(length(spring), length(summer), length(autumn), length(winter))
+lengths
+
+# joined_seasons = data.frame(cbind(spring, summer, autumn, winter))
+# joined_seasons
+# 
+# 
+# stacked_seasons = stack(joined_seasons)
+# stacked_seasons
+# Anova_res = aov(values ~ ind, data=stacked_seasons)
+# summary(Anova_res)
+
+# season_data
+Anova_res_2 = aov(season_data$happiness ~ season_data$season)
+summary(Anova_res_2)
+```
+
+## Question 2b
+
+> Accounting for any effects you discovered in (2a),  is happiness affected by age?
+
+As we've discovered in (2a) that the degree of `happiness` is indeed affected by `season`, we need to hold `season` label constant if we wish to study the relationship between `happiness` & `age`.
+
+We began by slicing a subset of filtered data including only records of season Spring. Notice that both `happiness` & `age` are numerical, we could study their correlation.  The correlation test requires that the two variables to be normally distributed which is not true in our dataset. We've already seen in Question 0, during data description, both `happiness` & `age` are far from a standard normal distribution. We can re-confirm this by calling Shapiro-Wilk normality test on them by using `shapiro.test()`. However, I decided to proceed on performing correlation test because again we are dealing with data of rather small sample size (61). Such test can be done in R by using `cor.test(age, happiness)`. As the p-value 9e-04 is less than the significance level alpha=0.05. The test claimed that `happiness` and `age` are correlated with a correlation coefficient of 0.414 & p-value of 9e-04.
+
+```{r q2b_1}
+spring = filtered[filtered$season=="spring",]
+# spring
+
+shapiro.test(spring$age)
+shapiro.test(spring$happiness)
+
+# correlation test
+cor.test(spring$age, spring$happiness)
+```
+Because of a correlation test of a compromised normal assumption, we should definitely plot their relationship. The plot suggests that there might be a complex pattern beyond a simple linear regression model with `age` being the only one predictor. We can observed some points forming a horizontal line near the top of the plot. The pattern of the remaining points seems to follow another different linear distribution.
+
+```{r q2b_2}
+ggplot(spring, aes(x=age, happiness))+
+  geom_point()+
+  ggtitle(label = "Effect of age on happiness",subtitle = "Figure 2.2 inspecting happiness by age")
+
+
+# linear model test
+mod = lm(spring$happiness ~ spring$age)
+summary(mod)
+
+# mod = lm(happiness ~ factor(season) + age,data=filtered)
+# summary(mod)
+```
+Although we've seen that the pattern between `happiness` and `age` are complex, we can still try to model it with a univariate linear model `lm(happiness ~ age)`, and keep building on it in 2c. The summary of the model shows that increasing one unit of `age` brings 1.149 units of `happiness`.
+
+
+## Question 2c
+> The models you have built above explore ‘baseline’ effects; that is, effects that are not of primary interest to the researchers but which might affect the outcome variable of happiness. For use in question 3, pick a specific baseline model and justify why you are using this.
+
+Question 3 aims to study the relationship between `happiness` & `health` so we have to build a baseline model including other variables that might have an effect on `happiness` and excluding `health` for Q3 study. Candidates numerical variables would be `selfmot`, `age`, `accountbility`, `week_stopped`. In addition, as we've already figured out that `city` has no effect on the mean of `happiness`,  the model would be built on all cities.
+
+My first proposed multi linear regression model would be:
+
+```R
+model_1 = lm(happiness ~ selfmot + age + accountability + week_stopped, data=spring)
+```
+```{r q2c_1}
+
+# spring = filtered[filtered$city=="Edinburgh",]
+spring
+
+# baseline model attempt1
+model_1 = lm(happiness ~ selfmot + age + accountability + week_stopped, data=spring)
+summary(model_1)
+# mean(resid(model_1))
+```
+
+
+Notice that the median of residuals is 2.95 which is not close to zero. Recall the normality assumption of residuals requires an almost zero median. So my decision is to remove some of the variables that are not linearly significant in `model_1`.  My second attempt `model_2` has only two predictors `selfmpt` & `age`:
+
+```R
+model_2 = lm(happiness ~ selfmot + age, data=spring)
+```
+
+```{r q2c_2}
+# baseline model attempt2
+model_2 = lm(happiness ~ selfmot + age, data=spring)
+summary(model_2)
+mean(resid(model_2))
+```
+
+We noticed a median of 0.3 which is much better than the last time. The first and the third quartile are well symmetric.The min-max pair is slightly right-biased (-55.2 vs 60.8). So at least on the model's summary level, it follows normality. Apart from the summary, we can acquire the mean of the residuals by using `mean(resid(model_1))` which returns -1.75e-15 which is ideal and very close to zero.
+
+Next we should check whether the linearity assumption is satisfied by plotting the following residual-fitted figure. In this case a pattern is presented as a bend appearing in the middle of the line. The observations indicates that the mean deviates a little bit from 0 at about half the dataset. I recognized it as an almost horizontal line and the linearity assumption still holds though was challenged.
+
+```{r q2c_3}
+# fitted-residual
+plot(model_2, which=1)
+```
+
+Apart from the symmetric property we previously checked, we can also check the normality of residuals by using the Q-Q plot. It turns most of the observations appear on the line indicating the residuals are quite normally distributed. There are some variance towards two edges which is quite common and does no harm to our conclusion.
+
+```{r q2c_4}
+# Q-Q plot
+plot(model_2, which=2)
+```
+
+
+When it comes to the homogeneity assumption of residuals (differences from $\hat{y}$ shouldn't be systematically smaller or larger for different $x$), we could utilize a third plot to see if there the size of residuals is approximately the same across all estimated values. The result again is not perfect, with a small bend appearing in the middle. The result can be explained by the small sample size.
+```{r q2c_5}
+# variance change plot
+plot(model_2, which=3)
+```
+
+The last thing we need to check is the existence of influential outliers. We can do this by inspecting the cook distance of every observation. As showed in the following figure, there is no observation comes with a cook distance greater than 0.5, so we don't need to exclude any of them.
+```{r q2c_6}
+# cook distance plot
+plot(model_2, which=4)
+```
+
+Returning to the summary of our baseline linear regression model, the p-values of 0.00044 & 0.00029 suggests that both `age` & `selfmot` are significant predictors in the linear model. The model tells us that increasing one unit of `selfmot` would cause 4.662 units of `happiness` and increasing one unit of `age` brings 1.150 units of `happiness`.
+
+We can also compare the ability of explaining variance of this baseline model with that of the univariate model in 2b.
+
+`anova(model_2)` gave following results.  **The F-statistic** shows that the predictor `selfmot` itself is able to explain 13.9% of the total variance and `age` helps explain 14.9% in addition. Noted that we should be careful when setting the order of predictors in this case. We put `selfmot` before `age` because it turns out to have a steeper slope (greater influence per unit on predictee `happiness`).
+
+The most important statistic that demonstrates an overall improvement on the ability of explaining variances is **the Multi R-squared** which rises from 17.1% in univariate model to 33.1% in the current baseline model. This might explain why we saw a complex pattern in 2b and why univariate model is not sufficient to depict this pattern. 
+
+
+```{r q2c_7}
+anova(model_2)
+summary(model_2)
+# check improvement over 2b
+
+```
+
+# Question 3
+
+## Question 3a
+> Building on your baseline model, are participants’ happiness ratings affected by whether or not they completed the programme? Describe the way in which programme completion influences happiness outcomes.
+
+The completeness in this case is a categorical variable like `city`. We can add this new column into the dataframe by using both `mutate` and conditional assignment `casewhen()`. 
+
+```R
+spring = spring %>%
+    mutate(Completed = case_when(week_stopped < 9 ~ 0,
+                                week_stopped == 9 ~ 1))
+```
+
+​	The task requires that we integrate this categorical variable `Completed` into our baseline model. This can be by first factorizing it and add it into the model.
+
+```R
+model_2 = lm(happiness ~ selfmot + age + factor(Completed), data=spring)
+```
+
+We can see in the following summary that p-value of those who completed the entire program is 0.10722 which is not significant. Therefore, program completion doses not influence happiness outcomes.
+```{r q3a}
+spring = spring %>%
+    mutate(Completed = case_when(week_stopped < 9 ~ 0,
+                                 week_stopped == 9 ~ 1))
+# spring
+
+model_2 = lm(happiness ~ selfmot + age + factor(Completed), data=spring)
+summary(model_2)
+# anova(model_2)
+```
+
+## Question 3b
+> Building on the analysis in (3a), is happiness additionally affected by the “health metric”?
+
+The task requires us to add one more numerical variable `health metric` into our improved baseline model.
+
+```R
+model_2 = lm(happiness ~ selfmot + health + age, data=spring)
+```
+
+```{r q3b}
+# spring
+
+# model_2 = lm(happiness ~ selfmot + age, data=spring)
+# summary(model_2)
+
+# model_2 = lm(happiness ~ health + selfmot + age, data=spring)
+# summary(model_2)
+
+
+model_2 = lm(happiness ~ selfmot + health + age, data=spring)
+s = summary(model_2)
+a = anova(model_2)
+
+
+
+# model_2 = lm(happiness ~ factor(season) + selfmot + health + age, data=filtered)
+# summary(model_2)
+# anova(model_2)
+```
+
+Notice that I've switched the order of `age` & `health` as it turns out `health` comes with a greater absolute value of slope. The summary indicates that `selfmot` & `heath` show significant linear influences on `happiness` with p-values much smaller than 0.05. However, it's quite interesting that the variable`age` , which is previously measured to be influential, turns out to be insignificant once `health` is introduced.
+
+We also observed a significant improvement on **Multi R-squared** indicating that our overall ability of explaining variances has been raised to `r toString(round(s$r.squared, 2)*100)`% from 33.1% in 2c.
+
+So, for question 3b, we can come to the conclusion that `happiness` is affected by `health`. Increasing one unit of happiness causes a decreasing of `happiness` by `r toString(round(abs(model_2$coef[3]), 2))` units.
+
+## Question 3c
+
+> It’s been hypothesised that the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier. Building on the model in (3b), can you test this hypothesis?
+
+I decided not to cut `weeks_stopped` into categories but instead use them directly as some numerical data representing how long participants stayed in the program.
+
+To reveal how `weeks` affects the relation between `happiness` & `health`, we need to study the interaction between `health` & `weeks`. In this case we want to exam how the effect of `health` on `happiness` depends on `weeks` , which requires us to estimate a parameter $b$ such that the outcome is predicted by $b(health \times week)$.
+
+More formally, we need to build the following model:
+$$
+happiness=b_0+b_1(selfmot)+b_2(health)+b3(weeks)+b_4(health\times weeks) + \epsilon
+$$
+In R we have the shortcut of directly fitting `health` & `weeks`:
+
+```R
+mod_interaction <- lm(happiness ~ 1 + selfmot + health * week_stopped, data = spring)
+```
+
+Notice that I removed `age` from the baseline model because it's been proven to be insignificant in 3b.
+
+
+```{r q3c}
+
+# mod_interaction <- lm(happiness ~ 1 + health * week_stopped, data = spring)
+
+mod_interaction <- lm(happiness ~ 1 + selfmot + health * week_stopped, data = spring)
+plot_model(mod_interaction, type="int", title = "Figure 3.1 Interactional Effect of Health and Week")
+
+mod_interaction
+```
+Figure 3.1 illustrates predicted values of `happiness` with respect to `health`.  Red stands for staying in the program for 1 week. Blue represent completing entire program at week 9. The `health:week_stopped` value in the summary is `r toString(round(mod_interaction$coef[5], 3))`. It tells us how the slope of lines changes when we are moving from the red to the blue. As it's a rather small positive number, we can see slightly moving upwards from week 1 to week 9. 
+
+Given the fact in 3b and here `health` presents a negative effects on `happiness` and a positive coefficient `health:week_stopped` enhancing this effect, we can conclude that the hypothesis of "the happiness of participants who got further along the program might be more affected by the health metric than those who stopped earlier" is true.
+
+## Question 3d
+
+> What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper.
+
+I conducted a research on the various causes of `happiness` in our data.
+
+```{r q3d}
+model_fine <- lm(happiness ~ 1 + accountability + factor(season) +selfmot + health * week_stopped, data = filtered)
+summary(model_fine)
+```
+First, `season` does effect `happiness`.  If I include `season` in our baseline (shown above) we can find that only summer has the most significant influence which might be the cause of making all other variables such as `health` & `age` becomes insignificant with p-values lower than 0.05. For this reason I filtered the source data so that only season spring is included as it has the greatest sample size among all seasons.
+
+```{r q3d_2}
+summary(mod_interaction)
+```
+By keeping `season` constant, I further investigated the effects of `selfmot`, `age`, `health`, and `week_stopped`. 
+
+- `age` has no significant effect on `happiness` with a p-value higher than 0.05.
+- `selfmot` has a significant effect on `happiness`. Increasing one unit of `selfmot` brings 4.490 units of increasing on `happiness`.
+- `health` has a significant effect on `happiness`. Increasing one unit of `happiness` brings 2.02 units of decreasing on `happinesss`.
+- `week_stopped` has a positive interaction with `health` which means that the happiness of participants staying longer in the program are more likely to be affected by health metric.
+
+# Question 4
+
+> Create a subset of the data, including only those participants who completed the programme. Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project.
+
+First we could use `filter()` to acquire the subset of participants that have completed the program.  The we call the `aggregate()` function to get means grouped by all seasons & cities. As the data is now ready we use `ggplot` to plot the grouped results.
+
+```{r q4}
+completed = filtered %>% filter(
+  week_stopped == 9,
+  )
+# completed
+agg = aggregate(x=completed$happiness,
+                by=list(completed$city,completed$season),
+                FUN=mean)
+
+agg
+
+ggplot(agg,
+       aes(x = Group.1,
+           y = x,
+           fill = Group.2)) +
+  geom_bar(stat = "identity",position = "dodge") +
+  labs(y="Happiness", x = "Cities") +
+  ggtitle(label = "Mean of Happiness based on season & city",subtitle = "Figure 4.1 inspecting happiness by season & city")
+```
+
+
+# Question 5
+
+## Question 5a
+
+> Build a model that predicts the likelihood of dropping out (at all).
+
+To be able predict the likelihood of dropping out, we need a logistic regression model that could tell us, given a set of predictor variables, how likely the corresponding participant is going to drop out, for which we would need a generalized  linear model.
+
+First we need to loop the original data set and mark those participants who failed to complete the entire program as 1. Those who made it would be tagged as 0. We slightly switch the codes for these two categories as opposed to what we've done in 3a completeness study because the given question cares about the the **likelihood of dropping out**.
+
+We could then include all possible variables in our GLM and remove those later proved to be insignificant in the chi-square test.
+
+```R
+mod_general = glm(Droped ~ 
+                  age + accountability + selfmot + health + happiness + factor(season) + 
+                  factor(city),
+                  family = binomial,
+                  data = drop)
+```
+
+
+```{r q5a_1}
+
+# prepare data so drop out = 0, complete = 1
+# filtered
+drop = filtered %>%
+    mutate(Droped = case_when(week_stopped < 9 ~ 1 ,
+                              week_stopped == 9 ~ 0))
+# drop
+
+# fit generalized lm
+mod_general = glm(Droped ~ 
+                  age + accountability + selfmot + health + happiness + factor(season) + factor(city),
+                  family = binomial,
+                  data = drop)
+summary(mod_general)
+# anova(mod_general)
+anova(mod_general, test="Chisq")
+```
+The summary tells us the model has a overall null deviance of 169.128 which is reduced to a residual deviance of 64.553, so we roughly have a model explainable deviance of 104.575.
+
+To evaluate this model we need to call `anova(mod_general, test="chisq")` and check for individual explainable deviance of each predictor. 
+
+Significant predictors are presented here:
+
+-  `selfmot` contributes 13.8 deviance to the total model deviance
+- `season` helps explain 84.2 deviance in the total model deviance
+- `ctiy` accounts for 4.3 deviance in the total model deviance.
+
+Rest of the predictors have been recognized to be insignificant in explaining model deviance. Removing these we have a new GLM of three predictors:
+
+```R
+mod_general = glm(Droped ~ 
+                  selfmot + factor(season) + factor(city),
+                  family = binomial,
+                  data = drop)
+```
+
+
+
+```{r q5a_2}
+mod_general = glm(Droped ~ 
+                  selfmot + factor(season) + factor(city),
+                  family = binomial,
+                  data = drop)
+anova(mod_general)
+summary(mod_general)
+```
+This time we get a clearer vision with respect to the two categorical variables. 
+
+The normality is slightly flawed but acceptable because in the summary, the first quartile is more to the left than the degree of the third quartile to the right (-0.4282 vs 0.3688). This is also true when we are comparing the symmetric property of  min & max.
+
+Description of the effects of these predictors are presented in 5b. But overall we can observe that `city` being Glasgow & increasing `selfmot` both suggest a lower likelihood of dropping out of the program. In contrast, `season` being Spring would cause a higher likelihood of dropping out. 
+
+We then proceed to use the model to predict the probability of a hallucinate sample. Imaging having a participant from Edinburgh that attended the program in Spring, with a selfmot value of 20. As the pattern suggested by our model, he/she is very likely to drop out of the program before week 9.
+
+```R
+newdata = data.frame(season="spring", city="Edinburgh", selfmot=20)
+predict(mod_general, newdata, type="response")
+```
+
+Our GLM produced the likelihood of 71.5%, which is a very good estimation of this particular participants.
+
+```{r}
+newdata = data.frame(season="spring", city="Edinburgh", selfmot=20)
+predict(mod_general, newdata, type="response")
+```
+
+
+
+## Question 5b
+
+> Briefly describe the effects in your model as you would in an academic paper.
+
+-  `selfmot` contributes 13.2 deviance to the total model deviance. Given it has a negative coefficient, the higher `selfmot` is, the less likely a participant would drop out of the program. The point makes sense because a person with a higher degree of motivation would tend to insist walk longer than those need pressures/motivations from the outside world.
+
+- `season` helps explain 73.7 deviance in the total model deviance. Participants attend in Spring has a higher probability of drop-out.
+
+- `ctiy` accounts for 7.7 deviance in the total model deviance. Participants from Edinburgh show a greater tendency to dropout while Glasgow citizens are more likely to make it to the end.
+```{r q5b}
+
+```
+
+## Question 5c
+
+**selfmot-p(drop-out) plot with points denoting (selfmot, p(drop-out))**
+```{r q5c}
+drop_sub = drop[ , c("Droped", "selfmot")]
+# drop_sub
+m = glm(Droped ~ selfmot,
+        family = binomial,
+        data = drop_sub)
+
+# anova(m, test = 'Chisq')
+p = predict(m, drop, type="response")
+
+predicted = data.frame(probability = predict(m, drop_sub, type="response"), selfmot=drop$selfmot)
+# predicted
+
+ggplot(data=predicted, aes(x=selfmot, y=probability)) +
+  ylab("p(Drop-out)") +
+  geom_jitter(size=3, width=0, height=.2, alpha=.2) +
+  geom_smooth(method="glm",method.args=list(family=binomial), formula = y ~ x) +
+  scale_y_continuous(breaks=seq(0,1,by=.2))
+```
+
+
+**selfmot-p(drop-out) plot with points denoting (selfmot, drop-or-not)**
+
+
+```{r}
+ggplot(data=drop_sub, aes(x=selfmot, y=Droped)) +
+  ylab("p(Drop-out)") +
+  geom_jitter(size=3, width=0, height=.2, alpha=.2) +
+  geom_smooth(method="glm",method.args=list(family=binomial), formula = y ~ x) +
+  scale_y_continuous(breaks=seq(0,1,by=.2))
+```
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,585 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+params:
+  examnumber: B199374
+---
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 2 dp
+options(digits=2)
+# load any other packages that you require here:
+library(tidyverse)
+library(patchwork)
+library(sjPlot)
+library(car)
+library(pander)
+library(broom)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+
+## Cleaning
+
+```{r cleaning, include = FALSE}
+# Impossible Values: Age
+hist(as.numeric(couchto5k$age))
+summary(couchto5k$age)
+## replace impossible values over 120
+couchto5k$age[couchto5k$age>120] <- NA 
+
+# Impossible Values: Accountability
+hist(as.numeric(couchto5k$accountability))
+summary(couchto5k$accountability)
+
+# Impossible Values: Selfmot
+hist(as.numeric(couchto5k$selfmot))
+summary(couchto5k$selfmot)
+## replace impossible values less than 5
+couchto5k$selfmot[couchto5k$selfmot<5] <- NA
+
+# Impossible Values: Health
+hist(as.numeric(couchto5k$health))
+summary(couchto5k$health)
+
+# Impossible Values: Happiness
+hist(as.numeric(couchto5k$happiness))
+summary(couchto5k$happiness)
+
+# Impossible Values: Season
+table(couchto5k$season)
+## rename 'autunm' typo
+couchto5k$season[couchto5k$season=="autunm"] <- "autumn" 
+
+# Impossible Values: City
+table(couchto5k$city)
+
+# Impossible Values: Week_stopped
+hist(as.numeric(couchto5k$week_stopped))
+summary(couchto5k$week_stopped) 
+## replace impossible values greater than 9
+couchto5k$week_stopped[couchto5k$week_stopped>9] <- NA
+```
+As part of the data cleaning process, impossible values were checked for in the dataset. Impossible values were discovered amongst the following variables: age (two participants were over the age of 120), self-motivation (two participants scored -99 despite the possible range of scores on the measure being 5-35), season (typo where 5 participants reported ‘autunm’ as a season), and the week of programme participants stopped in (1 participant reported stopping in week 12, despite Couch to 5k being a 9-week programme). Impossible values were replaced with NA’s for age, self-motivation, and the week participants stopped in. ‘Autunm’ typos were replaced with the correct spelling of ‘autumn’ under the season variable. 
+
+## Descriptives
+
+```{r descriptives}
+# City
+descriptives_city <- table(couchto5k$city)
+
+# Age
+descriptives_age <- couchto5k %>% 
+  summarise(
+    min_age = min(age, na.rm=T),
+    max_age = max(age, na.rm=T),
+    mean_age = mean(age, na.rm=T),
+    sd_age = sd(age, na.rm=T)
+    )
+
+# Week stopped
+descriptives_weeks <- table(couchto5k$week_stopped)
+mean_week <- mean(couchto5k$week_stopped, na.rm=T)
+sd_week <- sd(couchto5k$week_stopped, na.rm=T)
+```
+`r descriptives_city[1]` adults from Edinburgh and `r descriptives_city[2]` adults from Glasgow participated in the Couchto5k programme, adding up to `r descriptives_city[1] + descriptives_city[2]` participants in total. Ages ranged from `r descriptives_age$min_age[1]`- to `r descriptives_age$max_age[1]`-years-old, with a mean age of `r descriptives_age$mean_age[1]` (*SD* = `r descriptives_age$sd_age[1]`). `r descriptives_weeks[9]` of the participants fully completed the 9-week programme; on average, participants stopped around week 6 (*M* = `r mean_week[1]`, *SD* = `r sd_week[1]`). Participants took part throughout all four seasons, with Spring being the most popular (see Figure 1).
+
+**Figure 1**
+
+*Frequency of participants starting Couch to 5k in each season.*
+
+```{r descriptives 1}
+# Season (Figure 1)
+ggplot(data = couchto5k, aes(x = season)) +
+  geom_bar() +
+  labs(x = "Season", y = "No. of participants") +
+  theme_classic()
+```
+
+```{r descriptives 2}
+# Self-report measures
+measures <- couchto5k %>% 
+  summarise(
+    mean_accountability = mean(accountability),
+    sd_accountability = sd(accountability),
+    mean_selfmot = mean(selfmot, na.rm=T),
+    sd_selfmot = sd(selfmot, na.rm=T),
+    mean_health = mean(health),
+    sd_health = sd(health),
+    mean_happiness = mean(happiness),
+    sd_happiness = sd(happiness)
+  )
+```
+Participants completed several self-report measures of accountability, self-motivation, health, and happiness. Mean scores were as follows: `r measures$mean_accountability[1]` out of 35 for accountability (*SD* = `r measures$sd_accountability[1]`); `r measures$mean_selfmot[1]` out of 35 for self-motivation (*SD* = `r measures$sd_selfmot[1]`); `r measures$mean_health[1]` out of 100 for health (*SD* = `r measures$sd_health[1]`); `r measures$mean_happiness[1]` out of 100 for happiness (*SD* = `r measures$sd_happiness[1]`). 
+
+# Question 1
+
+## Question 1a
+
+```{r q1a i}
+# Create new variable 'programme_engagement'
+couchto5k$programme_engagement <- couchto5k$week_stopped 
+## Create factor for participants who stopped before week 5
+couchto5k$programme_engagement[couchto5k$week_stopped==1 | 
+                                 couchto5k$week_stopped==2 |
+                                 couchto5k$week_stopped==3 |
+                                 couchto5k$week_stopped==4] <- "Incompleted"
+## Create factor for participants who stopped after week 5
+couchto5k$programme_engagement[couchto5k$week_stopped==5 | 
+                                 couchto5k$week_stopped==6 |
+                                 couchto5k$week_stopped==7 |
+                                 couchto5k$week_stopped==8] <- "Half_completed"
+## Create factor for participants who completed programme
+couchto5k$programme_engagement[couchto5k$week_stopped==9] <- "Completed"
+```
+A chi-square goodness-of-fit test was conducted to determine whether the data from the current sample was in line with data from an earlier survey where proportions of participants who had completed, stopped after week 5, or stopped before week 5, were 45%, 10%, and 45% respectively. 
+
+A new categorical variable for programme engagement was completed for this purpose, consisting of three levels: Incompleted (participants stopped before week 5), Half-completed (participants continued past week 5 but did not finish the programme), and Completed (participants completed the full 9 weeks). Observed proportions can be seen in Figure 2. 
+
+**Figure 2**
+
+*Observed proportions of programme engagement.* 
+
+```{r q1a ii}
+# Observed proportions (Figure 2)
+barplot(prop.table(table(couchto5k$programme_engagement))*100,
+        xlab="Programme engagement", ylab="Percentage of participants")
+```
+
+```{r q1a iii}
+# Chi-square goodness-of-fit test
+chisq.test_1a <- chisq.test(table(couchto5k$programme_engagement), p = c(0.45, 0.1, 0.45)) 
+test_1a <- tidy(chisq.test_1a)
+```
+The chi-square goodness-of-fit test indicated that the current participants engagement in the programme in terms of weeks was not significantly different to the participants of the earlier survey (χ2(`r test_1a$parameter[1]`) = `r test_1a$statistic[1]`,*p* = `r test_1a$p.value[1]`). Therefore, both datasets had similar distributions. 
+
+## Question 1b
+
+```{r q1b i, warning=FALSE}
+# Expected and observed proportions
+Observed_proportions <- couchto5k %>%
+  select(city, programme_engagement) %>% table()
+
+Expected_proportions <- (rowSums(Observed_proportions) %o% colSums(Observed_proportions) / sum(Observed_proportions))/139
+
+# Chi-square test of independence
+chisq.test_1b <- chisq.test(table(couchto5k$city, couchto5k$programme_engagement))
+test_1b <- tidy(chisq.test_1b)
+```
+A chi-square test of independence was conducted between participants’ home city and programme engagement to examine whether attrition rates differed by city. Expected and observed proportions were calculated and are displayed in Figures 3 and 4 display respectively. There was no significant association between participant’s city and programme engagement (χ2(`r test_1b$parameter[1]`) = `r test_1b$statistic[1]`, *p* = `r test_1b$p.value[1]`).  
+
+**Figure 3**
+
+*Expected proportions of programme engagement by city.*
+
+```{r q1b ii}
+# Expected proportions
+plot(as.table(Expected_proportions))
+```
+
+**Figure 4**
+
+*Observed proportions of programme engagement by city.*
+
+```{r q1b iii}
+# Observed proportions
+plot(Observed_proportions)
+```
+
+## Question 1c
+
+```{r q1c assumptions, include = FALSE}
+## Normality
+qqnorm(couchto5k$age) 
+## Homogeneity of variances
+with(couchto5k, var.test(age ~ city))
+```
+
+```{r q1c i}
+# Descriptives
+## Edinburgh
+mean_ageEDI <- mean(couchto5k$age[couchto5k$city=="Edinburgh"], na.rm=T)
+se_ageEDI <- sd(couchto5k$age[couchto5k$city=="Edinburgh"], na.rm=T) /
+  sqrt(length(couchto5k$age[couchto5k$city=="Edinburgh"]))
+## Glasgow
+mean_ageGLA <- mean(couchto5k$age[couchto5k$city=="Glasgow"], na.rm=T)
+se_ageGLA <- sd(couchto5k$age[couchto5k$city=="Glasgow"], na.rm=T) /
+  sqrt(length(couchto5k$age[couchto5k$city=="Glasgow"]))
+
+# Independent Sample t-test
+ttest_1c <- with(couchto5k, t.test(age ~ city))
+t.test_1c <- tidy(ttest_1c)
+```
+
+An independent samples t-test was conducted to determine if there was a difference in the average age of participants between the cities of Edinburgh and Glasgow. The assumption of normality was met through an inspection of a Q-Q plot, and there was homogeneity of variances according to an F test to compare two variances (*p* > 0.05). The average age of participants in Edinburgh was `r mean_ageEDI[1]` (*SE* = `r se_ageEDI[1]`) while in Glasgow it was `r mean_ageGLA[1]` (*SE* = `r se_ageGLA`); see Figure 5). However, the difference was not significantly different (*t*(`r t.test_1c$parameter[1]`) = `r t.test_1c$statistic[1]`, *p* = `r t.test_1c$p.value[1]`). 
+
+**Figure 5**
+
+*Mean ages (with standard errors) across cities.*
+```{r q1c ii, message=FALSE}
+# Figure 5
+graph_1c <- couchto5k %>% group_by(city) %>%
+  summarise(mean_se(age))
+
+graph_1c %>% ggplot(aes(x=city,y=y,
+                        ymin=ymin,ymax=ymax)) +
+  geom_bar(stat="identity") +
+  geom_errorbar(width=.2) +
+  ylab("Age") + 
+  xlab("City") +
+  theme_classic()
+```
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+# Linear model 
+model_2a <- lm(happiness ~ 1 + season, data=couchto5k) 
+mod_2a <- tidy(model_2a)
+mod_2a_fstatistics <- summary(model_2a)$fstatistic
+mod_2a_r.squared <- summary(model_2a)$r.squared*100
+
+```
+
+```{r q2a assumptions, include = FALSE}
+#Assumptions
+## linearity 
+plot(model_2a, which =1)
+## normality of residuals
+plot(model_2a, which =2)
+## homogeneity of variance
+plot(model_2a, which = 3)
+## independence
+dwt(model_2a)
+## influence
+plot(model_2a, which = 4)
+```
+
+A linear regression was performed to see if participants’ happiness ratings were affected by the season that they were interviewed in. Assumptions of linearity, normality, and equal variances were met by assessment of plots. A Durbin-Watson test indicated that residuals were independent of one another. Cook’s distance values were used to assess influential outliers and were only inspected if they were greater than 0.5. All values were less than 0.5.
+  
+The linear regression model was not a significant predictor of happiness ratings (*F*(`r mod_2a_fstatistics[2]`,`r mod_2a_fstatistics[3]`) = `r mod_2a_fstatistics[1]`, *p* = 0.17), explaining `r mod_2a_r.squared`% of the variability. The season of autumn was a significant predictor (*t*(`r model_2a$df.residual[1]`) = `r mod_2a$statistic[1]`, *p* = `r mod_2a$p.value[1]`), whereby participants who were interviewed in autumn had a positive increase `r mod_2a$estimate[1]` in happiness ratings compared to other participants not interviewed in autumn. However overall, season does not appear to influence the happiness outcomes of participants.  
+
+## Question 2b
+
+```{r q2b i}
+## linear model
+model_2b <- lm(happiness ~ 1 + season + age, data=couchto5k)
+mod_2b <- tidy(model_2b)
+mod_2b_fstatistics <- summary(model_2b)$fstatistic
+mod_2b_adjr <- summary(model_2b)$adj.r*100
+```
+
+```{r q2b assumptions, include = FALSE}
+# Assumptions
+## linearity 
+plot(model_2b, which =1)
+## normality of residuals
+plot(model_2b, which = 2)
+## homogeneity of variance
+plot(model_2b, which = 3)
+## independence
+dwt(model_2b)
+## influences
+plot(model_2b, which = 4)
+## multicollinearity
+vif(model_2b)
+```
+
+In order to assess whether age predicts happiness outcomes taking into account the effect of season, a multiple linear regression was run with both season and age as predictors. Testing of assumptions followed the same procedure as in Question 2a, and all assumptions were met. As there was more than one predictor, multicollinearity was inspected using the variance inflation factor. Using a cut-off point of <5, multicollinearity was not judged to be a problem. 
+
+The multiple regression model significantly predicted happiness ratings (*F*(`r mod_2b_fstatistics[2]`,`r mod_2b_fstatistics[3]`) = `r mod_2b_fstatistics[1]`, *p* = 0.04), accounting for `r mod_2b_adjr`% of the explained variability (see Figure 6). Age was not a significant predictor (*t*(`r model_2b$df.residual[1]`) = `r mod_2b$statistic[5]`, *p* = `r mod_2b$p.value[5]`), and so it appears age does not affect happiness ratings when taking season into account. 
+
+**Figure 6**
+
+*Prediction of happiness ratings by season and age.*
+
+```{r q2b ii}
+# Graph (Figure 6) 
+plot_model(model_2b, type = "pred", terms=c("age","season"), show.data=TRUE)
+```
+
+## Question 2c
+
+```{r q2c cleaning, include = FALSE}
+# Create new dataset to compare models with equal no. of entries for age and season predictors
+couchto5k_2c <- couchto5k
+
+# Remove rows where age = NA
+is.na(couchto5k_2c$age)
+## remove rows 30 and 129
+couchto5k_2c <- couchto5k_2c[-c(30,129), ]
+```
+
+```{r q2c}
+# Run linear models with removed values
+model_2a1 <- lm(happiness ~ 1 + season, data=couchto5k_2c) 
+model_2b1 <- lm(happiness ~ 1 + season + age, data=couchto5k_2c)
+
+# Run ANOVA
+null_model <- lm(happiness ~ 1, data = couchto5k_2c)
+model_2a1var <- summary(model_2a1)$adj.r.sq*100
+model_2b1var <- summary(model_2b1)$adj.r.sq*100
+Q2c_anova <- anova(model_2a1, model_2b1)  
+```
+
+An ANOVA was run to compare the two models from Question 2a and Question 2b. As model 2b had less entries due to the NA values in the age variable, these entries needed to be removed in order to compare the models with equal number of entries. A replicated dataset was created for this purpose, and the two entries with NA values under age were identified and removed. The linear regressions from Question 2a and 2b were run again with this new dataset. 
+
+Model 2a explained `r model_2a1var[1]`% of variance, while model 2b explained `r model_2b1var[1]`% of variance. The ANOVA showed that age (model 2b) did not explain a significant amount of variance in wellbeing scores over and above season (model 2a; *F*(`r Q2c_anova$Df[2]`,`r Q2c_anova$Res.Df[2]`) = `r Q2c_anova$F[2]`, *p* = `r Q2c_anova$"Pr(>F)"[2]`; see Table 1). As such, the model 2a from the original dataset was kept as a baseline model for use in Question 3.
+
+**Table 1**
+
+*Comparison of models 2a and 2b predicting happiness ratings.*
+```{r}
+pander(Q2c_anova) 
+```
+
+
+# Question 3
+
+## Question 3a
+
+```{r q3a i}
+# Create new variable 'programme_completed'
+couchto5k <-
+  couchto5k %>%
+  mutate(
+    programme_completed = ifelse(programme_engagement=="Completed","Yes","No")
+  ) 
+# Linear model
+model_3a <- lm(happiness ~ 1 + season + programme_completed, data = couchto5k)
+mod_3a <- tidy(model_3a)
+mod_3a_fstatistics <- summary(model_3a)$fstatistic
+mod_3a_adjr <- summary(model_3a)$adj.r*100
+```
+
+```{r q3a assumptions, include=FALSE}
+## linearity 
+plot(model_3a, which =1)
+## normality of residuals
+plot(model_3a, which =2)
+## homogeneity of variance
+plot(model_3a, which = 3)
+## independence
+dwt(model_3a)
+## influence
+plot(model_3a, which = 4)
+## multicollinearity
+vif(model_3a)
+```
+
+A multiple linear regression was run to test if participants’ happiness ratings were affected by whether or not they completed the programme, when accounting for the effects of season. A new binary variable (yes/no) to indicate whether participants completed the programme or not (i.e., finished at week 9) was created for this purpose. All assumptions were met following the same tests as used in Question 2b.
+
+The multiple regression model significantly predicted happiness ratings (*F*(`r mod_3a_fstatistics[2]`,`r mod_3a_fstatistics[3]`) = `r mod_3a_fstatistics[1]`, *p* = 0.03), accounting for `r mod_3a_adjr`% of the explained variability (see Figure 7). Programme completion was a significant predictor  (*t*(`r model_3a$df.residual[1]`) = `r mod_3a$statistic[5]`, *p* = `r mod_3a$p.value[5]`). Holding the effects of season constant, on average those participants who finished the 9 weeks scored higher by `r mod_3a$estimate[5]` on the happiness scale than those who did not.
+
+**Figure 7**
+
+*Prediction of happiness ratings by programme completion and season.*
+
+```{r q3a ii}
+# Figure 7
+plot_model(model_3a, type = "pred", terms=c("season","programme_completed"), show.data=TRUE)
+```
+
+
+## Question 3b
+
+```{r q3b}
+# linear model
+model_3b <- lm(happiness ~ 1 + season + programme_completed + health, data = couchto5k)
+mod_3b <- tidy(model_3b)
+mod_3b_fstatistics <- summary(model_3b)$fstatistic
+mod_3b_adjr <- summary(model_3b)$adj.r*100
+```
+
+```{r q3b assumptions, include=FALSE}
+## linearity 
+plot(model_3b, which =1)
+##normality of residuals
+plot(model_3b, which =2)
+## homogeneity of variance
+plot(model_3b, which = 3)
+## independence
+dwt(model_3b)
+## influence
+plot(model_3b, which = 4)
+## multicollinearity
+vif(model_3b)
+```
+To see if happiness was additionally affected by the “health metric”, a multiple linear regression was run with health, programme completion, and season as predictors (due to the significance of the previous model from Question 3a). Previous assessments of assumptions were followed and met.
+
+The multiple regression model did not significantly predict happiness ratings (*F*(`r mod_3b_fstatistics[2]`,`r mod_3b_fstatistics[3]`) = `r mod_3b_fstatistics[1]`, *p* = 0.06), accounting for `r mod_3b_adjr`% of the explained variability. Additionally, health itself was not a significant predictor in the model (*p* = `r mod_3b$p.value[6]`). As such, it can be concluded that health scores did not affect happiness ratings. 
+
+## Question 3c
+
+```{r q3c i}
+# create new variable for less/more weeks spent in programme
+couchto5k <-
+  couchto5k %>%
+  mutate(
+    high_engagement = ifelse(programme_engagement == "Incompleted", "No", "Yes")
+  )
+
+# linear model
+model_3c <- lm(happiness ~ 1 + season + health*high_engagement, data = couchto5k)
+mod_3c <- tidy(model_3c)
+mod_3c_fstatistics <- summary(model_3c)$fstatistic
+mod_3c_adjr <- summary(model_3c)$adj.r*100
+```
+
+```{r q3c assumptions, include = FALSE}
+## linearity 
+plot(model_3c, which =1)
+##normality of residuals
+plot(model_3c, which =2)
+## homogeneity of variance
+plot(model_3c, which = 3)
+## independence
+dwt(model_3c)
+## influence
+plot(model_3c, which = 4)
+## multicollinearity
+vif(model_3c)
+```
+
+It was hypothesised that those who spent more weeks at the programme would be influenced more by health scores, resulting in higher ratings of happiness. To test this hypothesis, a multiple linear regression was run with health and dropout level as both independent predictors and an interaction term. Season also continued to be included in the model. 
+
+A new binary variable (yes/no) was created indicating whether participants had high engagement in the programme (did 5 or more weeks) or not (did less than 5 weeks). All assumptions were met, except for multicollinearity, where this was a problem for the early dropout variable and the interaction term (>5). However, given the nature of the test (examining interactions), this was not judged as a major issue. 
+
+The multiple regression model significantly predicted happiness ratings (*F*(`r mod_3c_fstatistics[2]`,`r mod_3c_fstatistics[3]`) = `r mod_3c_fstatistics[1]`, *p* = 0.01), accounting for `r mod_3c_adjr[1]`% of the explained variability. Both health and high engagement were individually significant predictors. Holding season and high engagement constant, for every 1 increase in health rating there was a `r mod_3c$estimate[5]` decrease in happiness ratings (*p* = `r mod_3c$p.value[5]`). Holding season and health constant, participants who completed more than 5 weeks of the programme (high engagement) on average scored `r mod_3c$estimate[6]` less on happiness ratings compared to those who did not (*p* = `r mod_3c$p.value[6]`).  
+
+The interaction term of health and high engagement was an even higher significant predictor of happiness (*t*(`r model_3c$df.residual[1]`) = `r mod_3c$statistic[7]`, *p* = `r mod_3c$p.value[7]`). As such, when participants had high engagement in the programme (in terms of weeks), for every increase of 1 in their health metric, their happiness ratings improved by `r mod_3c$estimate[7]` (see Figure 8), thus providing support for the hypothesis.  
+
+**Figure 8**
+
+*Prediction of happiness ratings by programme engagement level and health metric ratings.*
+
+```{r q3c ii}
+# graph (Figure 8)
+plot_model(model_3c, type="int") 
+```
+
+
+## Question 3d
+
+The results demonstrate how participants happiness ratings may be predicted by their engagement in the programme. Those who completed the full 9 weeks of the programme were more likely to have higher happiness ratings than those who did not. Additionally, completing at least 5 weeks of the programme had an effect on health scores, and as such those with higher health scores had higher happiness ratings. The season in which participants were interviewed in also had various significant effects in the models, suggesting the need to include this as a control variable. 
+
+# Question 4
+
+**Figure 9**
+
+*Average happiness ratings by season and city.*
+```{r q4 cleaning, include = FALSE}
+# Create subset
+couchto5k_subset <- couchto5k[couchto5k$programme_completed=="Yes", ]
+## identify NA entries
+is.na(couchto5k_subset$programme_completed)
+## remove NA entries
+couchto5k_subset <- couchto5k_subset[-40, ]
+```
+
+```{r q4 ii, message=FALSE}
+# Figure 
+graph_4a <- couchto5k_subset %>% group_by(season,city) %>%
+  summarise(mean_se(happiness))
+
+graph_4a %>% ggplot(aes(x=season,y=y,fill=city,
+                        ymin=ymin,ymax=ymax)) +
+  geom_bar(stat="identity") +
+  labs(title = "Average Happiness Ratings by Season and City", x = "Season", 
+       y = "Mean happiness rating", fill = "City") +
+  theme_classic() 
+```
+
+# Question 5
+
+## Question 5a
+
+```{r q5a i}
+# create new variable for dropping out
+couchto5k <- couchto5k %>%
+  mutate(dropped_out =
+           ifelse(programme_completed=="No",1,0))
+
+# general linear model
+model_5a <- glm(dropped_out ~ 1 + age + accountability + selfmot + health + happiness + season + city, data = couchto5k, family="binomial") 
+model_5a_anova <- anova(model_5a, test = "Chisq")
+
+# new GLM
+model_5a1 <- glm(dropped_out ~ 1 + selfmot + health + season, data = couchto5k, family="binomial")
+model_5a1_anova <- anova(model_5a1, test = "Chisq")
+```
+A general linear model (GLM) was produced in order to predict the likelihood of dropping out at all of the programme. A new binary variable (yes/no) was created as to whether participants dropped out (week stopped = 1-8) or not (week stopped = 9). A logistic regression was first run using all possible predictors (age, accountability, self-motivation, health, happiness, season, city). A chi-squared test was run to statistically evaluate the model. The test showed that adding the predictors of self-motivation, health and season contributed to the significance of the model. As such, a new GLM was created with these three predictors. Another chi-squared test confirmed the significance of these predictors to the model, the summary of which can be seen in Table 2.
+
+**Table 2**
+
+*Summary of model predicting likelihood of dropping out.*
+```{r q5a ii}
+pander(model_5a1_anova)
+```
+
+
+
+## Question 5b
+
+```{r q5b i}
+# logistic regression
+mod_5a1 <- tidy(model_5a1)
+odds_coefficients <- exp(coef(model_5a1))
+```
+A logistic regression was run on the GLM to examine its effects. The regression showed that both self-motivation and health ratings had a significant effect on the likelihood of dropping out. For every increase of 1 in self-motivation scores, the odds of dropping out decreased by `r odds_coefficients[2]` (*p* = `r mod_5a1$p.value[2]`), while for every increase of 1 in health ratings, the odds of dropping out decreased by `r odds_coefficients[3]` (*p* = `r mod_5a1$p.value[3]`; see Figure 10).
+
+**Figure 10**
+
+*Odds of dropping out according to self-motivation, health, and season*
+```{r q5b ii, message=FALSE, warning=FALSE}
+# Figure 10
+sjPlot::plot_model(model_5a1)+
+  geom_hline(yintercept=1)+
+  scale_y_log10(limits = c(1e-05,10))
+```
+
+
+## Question 5c
+
+**Figure 11**
+
+*Probability of dropping out as a function of self-motivation*
+
+```{r q5c}
+# graph
+model_5c <- glm(dropped_out ~ selfmot, data = couchto5k, family="binomial")
+
+selfmot35 <- tibble(selfmot = 5:35)
+
+selfmot35 <-
+  selfmot35 %>%
+  mutate(
+    predprobs = predict(model_5c, newdata = selfmot35, type = "response")
+  )
+
+# figure 
+ggplot(data = selfmot35, aes(x = selfmot, y = predprobs)) +
+  geom_line()+
+  labs(y="Predicted probability of dropping out", x = "Self-motivation scores", title = "Probability of dropping out as a function of self-motivation")
+```
+
+
+
+
+
+
+
+
+

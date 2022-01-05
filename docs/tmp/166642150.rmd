@@ -1,0 +1,419 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B169712
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+options(tidyverse.quiet = TRUE)
+library(psych)
+library(car)
+library(sjPlot)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+options(dplyr.summarise.inform = FALSE)
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+```{r functions}
+#should return true if the max data is within 3 sds of the mean
+outlier_testing <- function(data,max){
+  data_sd <- sd(data, na.rm=TRUE)
+  data_mean <- mean(data, na.rm=TRUE)
+  return((data_mean + 3*data_sd) < max)
+}
+```
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+hist(couchto5k$week_stopped)
+couchto5k <- couchto5k[-c(123),]
+hist(couchto5k$selfmot)
+couchto5k$selfmot = ifelse(couchto5k$selfmot<0, NA, couchto5k$selfmot)
+couchto5k$season = ifelse(couchto5k$season=='autunm', 'autumn', couchto5k$season)
+hist(couchto5k$age)
+# testing if 100 is more than 3 sds from the mean
+outlier_testing(couchto5k$age, 100)
+couchto5k$age = ifelse(couchto5k$age>=100, NA, couchto5k$age)
+```
+
+We checked the various variables for impossible values. 'week_stopped' contained a value of 14. We deleted the row for the value for week_stopped (as opposed to converting the value to NA, for example) since other variables (happiness and health) were collected upon task completion, and it's not clear what the interpretation of these variables should be under the condition that completion was achieved under some uncertain circumstance.
+
+Self-motivation contained negative values, which we turned into 'NA' values in order to preserve the other explanatory variables. When grouping the data by seasons, we reveal that we have 5 seasons, one of which is 'autunm' (instead of 'autumn'). We converted all 'autunm' values to 'autumn', working under the assumption that these values are typos.
+
+Age contained a value for '150', which we chose to remove, since the oldest human on record is 122 [1]. There is also one other value (114) that appears to be an outlier based on the histogram, and we chose to remove it. It is still plausible in terms of human longevity, but it is far removed from the rest of the data, being more than 3 SDs from the mean.
+
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+summary(couchto5k)
+ggplot(data=subset(couchto5k, !is.na(age)), aes(y=age)) + geom_boxplot()
+ggplot(data=subset(couchto5k, !is.na(selfmot)), aes(y=selfmot)) + geom_boxplot()
+ggplot(couchto5k, aes(y=health)) + geom_boxplot()
+ggplot(couchto5k, aes(y=happiness)) + geom_boxplot()
+hist(couchto5k$week_stopped)
+hist(couchto5k$health)
+hist(couchto5k$happiness)
+hist(couchto5k$selfmot)
+hist(couchto5k$accountability)
+hist(couchto5k$age)
+```
+
+After cleaning, the data is a table of 138 observations of 9 variables. The boxplots from the continuous data show that there are unlikely to be any outliers in the data.
+
+We also checked for normal distributions by looking at the histograms of the continuous values. Age, happiness, and week_stopped all do not appear to be normally distributed, and we will test these assumptions in our explorations of the relationships between variables.
+
+The categorical variables are season and city, with season having four possible values ('winter','spring','autumn','summer'), and city having two ('Edinburgh','Glasgow').
+
+# Question 1 
+
+## Question 1a
+
+For the purposes of the following statistical tests, we will be testing distributions against an alpha-value of .05 in order to reject the null hypothesis.
+
+```{r q1a}
+
+couchto5k$stopped_before_wk5 = ifelse(couchto5k$week_stopped<5, yes=TRUE, no=FALSE)
+couchto5k$completed = ifelse(couchto5k$week_stopped==9, yes=TRUE, no=FALSE)
+couchto5k$stopped_after_wk5 = ifelse((couchto5k$stopped_before_wk5==FALSE & couchto5k$completed==FALSE), yes=TRUE, no=FALSE)
+chisq.test(table(couchto5k$stopped_before_wk5), p = c(.55,.45))
+chisq.test(table(couchto5k$stopped_after_wk5), p = c(.9,.1))
+stopped_early_chi <- chisq.test(table(couchto5k$stopped_before_wk5), p = c(.55,.45))
+stopped_late_chi <- chisq.test(table(couchto5k$stopped_after_wk5), p = c(.9,.1))
+```
+
+Comparing the values for those who dropped out before week 5 and those who dropped out between weeks 5 and 9, to the hypothesis that 45% dropped out before week 5, we can reject the null hypothesis. That is, the distribution of people who dropped out in our sample is significantly different from the earlier national survey. We used a Chi-Square goodness-of-fit test to test this hypothesis and we obtained p=`r stopped_early_chi$p.value`. 
+
+Testing the hypothesis that 10% dropped out between weeks 5 and 9, we cannot reject the null hypothesis. That is, the distribution of people who dropped out in our sample is not significantly different from the earlier national survey. We used a Chi-Square goodness-of-fit test to test this hypothesis and we obtained p=`r stopped_late_chi$p.value`.
+
+
+## Question 1b
+
+```{r q1b}
+chisq.test(table(couchto5k$stopped_before_wk5, couchto5k$city))
+chisq.test(table(couchto5k$stopped_after_wk5, couchto5k$city))
+chisq.test(table(couchto5k$completed, couchto5k$city))
+t1 <- chisq.test(table(couchto5k$stopped_before_wk5, couchto5k$city))
+t2 <- chisq.test(table(couchto5k$stopped_after_wk5, couchto5k$city))
+t3 <- chisq.test(table(couchto5k$completed, couchto5k$city))
+```
+Comparing the values of each group of drop out variables to the city variable, we can reject the null hypothesis that the distribution of people who dropped out before week 5 is proportionately distributed according to city. We tested the null hypothesis with the Chi-Square test of independence comparing city and whether or not a participan dropped out, p-value = `r t1$p.value` .
+
+We cannot say that participants dropped in disproportionate amounts with respect to the city they were recruited for those who dropped out between weeks 5 and 9, and those who completed the program. We reported a p-value of `r t2$p.value` for the distribution by city of those who dropped out between weeks 5 and 9 compared with the null hypothesis of proportionate distribution with the Chi-Square test of independence. Using the data from those who completed the program yielded a p-value of `r t3$p.value` .
+
+## Question 1c
+
+In order to test whether the two means are significantly different from each other, we performed a t-test against the null hypothesis that the difference in their means is 0. We also test the normality of age distribution by city. 
+
+```{r q1c}
+shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"])
+hist(couchto5k$age[couchto5k$city=="Edinburgh"], main = 'Age Frequency Counts in Edinburgh', xlab = 'Age')
+plot(density(couchto5k$age[couchto5k$city=="Edinburgh"], na.rm=TRUE), main = 'Density Plot of Age in Edinburgh')
+qqnorm(couchto5k$age[couchto5k$city=="Edinburgh"])
+shapiro.test(couchto5k$age[couchto5k$city=="Glasgow"])
+ggplot(data=subset(couchto5k, !is.na(age)), aes(x = age, y = city)) +
+  geom_boxplot()
+ttest <- with(couchto5k, t.test(age ~ city), na.rm=TRUE)
+
+```
+
+It appears that while Shapiro-Wilk testing does not reject the null hypothesis of normality for ages in Glasgow p=.2, we cannot say that ages are distributed normally in Edinburgh p=.0004. We rely on this normality assumption for a Welch t-test, therefore, it is difficult to say whether our result when performing the Welch t-test will be valid. Looking at the density and QQ norm plots for the data, it appears that ages in Edinburgh tend to skew towards the higher end. The QQ norm plot may still adhere to the normality assumption, as it does not appear too drastically different from what we would expect from normal data.
+
+In this example, we report a t-value of `r ttest$statistic`, p=`r ttest$p.value` from the Welch test, which does not allow us to reject the null hypothesis.
+
+# Question 2
+
+
+## Question 2a
+
+```{r q2a}
+ggplot(couchto5k, aes(x = season, y = happiness)) + geom_boxplot()
+seasonhapmodel <- lm(scale(happiness) ~ 1 + season, data=couchto5k)
+plot(seasonhapmodel, which = 4)
+plot(seasonhapmodel, which = 2)
+couchto5kunleverage <- couchto5k[-c(17,49,1,59,124),] #points of interest from QQNorm and Cook's Distance
+seasonhapmodel2 <- lm(scale(happiness) ~ 1 + season, data=couchto5kunleverage)
+plot(seasonhapmodel2, which = 4)
+anova(seasonhapmodel)
+summary(seasonhapmodel)
+```
+
+Looking at a boxplot of the data, we observe the means and spread of the happiness data according to season. By this visual alone, we can assume there is some relationship between season and happiness. We can specify the influence on happiness by season by creating a linear model which compares season to happiness scaled by standard deviations from the mean. Before making conclusions based of such a model, we need to test our assumptions that the errors of our model collectively have zero mean and are constant and normally spread across the predictor.
+
+Looking at the Cook's distance for our model, we see values that may be exhibiting high leverage which are also outliers. The QQ plot also shows that the tails of the data may exhibit residuals which are not normally distributed. Removing these points of interest, however, does not change that season has influence over happiness, and only reveals more possible points of leverage. Thinking about what the data represents, the idea that there might be several people who are 'unusually' happy in winter or autumn, for example, or unusually unhappy in the summer or spring, is not too unexpected. We decided to not remove any of the possible leverage points or points of abnormal residualness before interpreting our model.
+
+Looking at the model summary, we can see there is a .436 increase in standard deviations of happiness from autumn to spring, .481 increase from autumn to summer, and .214 decrease from autumn to winter. The influence of season on happiness is statistically significant when compared to the null distribution, which we tested using an incremental F-test (F = 3.08, p = .030). Looking at R-squared, season only predicts 6.46% of the variance in the data, however.
+
+## Question 2b
+
+```{r q2b}
+seasonhapagemodel <- lm(scale(happiness) ~ 1 + season + scale(age), data=couchto5k)
+seasonhapmodel2 <- lm(scale(happiness) ~ 1 + season, data=couchto5k[-c(105,44),]) #removing rows where age is NA
+plot(seasonhapagemodel)
+vif(seasonhapagemodel)
+anova(seasonhapagemodel)
+summary(seasonhapagemodel)
+anova(seasonhapagemodel,seasonhapmodel2)
+```
+
+Using another linear model, we can test if age and happiness have a relationship when season is constant. We removed the data from the happiness versus season model where age is NA, in order to have an even comparison between models. We investigated our assumptions about the model with season and age as predictors by looking at the QQ norm plot and Cook's distance. We did not find that the leverage points and residuals were of any further consideration than in question 2a. We also tested for multicolinearity between age and season, considering a VIF of 10 to be the cut-off point where the assumption of non-multi-colinearity would be violated. We found that the assumption was not violated (VIF of age = 1.01, VIF of season = 1.00)
+
+We used an incremental F-Test to see if age was a significant predictor when season is constant compared to both the null model and the model with just season as a predictor. Age was not shown to be a significant predictor (F = 0.01, p = .916 in the test against the null model, and F = 1.42, p=.23 in the test against the happiness predicted by season model.)
+
+
+## Question 2c
+
+
+```{r q2c}
+hapseasoncity <- lm(scale(happiness) ~ 1 + season + city, data=couchto5k)
+plot(hapseasoncity)
+vif(hapseasoncity)
+anova(hapseasoncity)
+hapseasoncityinteraction <- lm(scale(happiness) ~ 1 + season*city, data=couchto5k)
+anova(hapseasoncityinteraction)
+summary(hapseasoncity)
+```
+
+A possible baseline explanatory variable that is not the primary interest of the research question is city. We made a baseline model of happiness ~ 1 + season + city + error. We tested our assumptions about error means and residual distribution using QQ norm and Cook's distance and did not find that our assumptions were violated. We also tested our assumptions about multi-colinearity with VIF and found our assumptions were not violated (VIF season = 1.01, VIF city = 1.02).
+
+Using ANOVA to explore F-statistics for a linear model which explains happiness with respect to season and city, we see that city does accounts for a significant amount of variance when compared to the null model (F value = 5.59, p = .019). 
+
+If the model is fit with an interaction between season and city, we do not see any significant explanatory power from the interaction between the two when compared to the null model (F-value = 0.14, p = .934). The Adjusted R-squared shows that our baseline model predicts 7.53% of the data, while the model is unlikely to perform similarly to the null model (F-statistic = 3.79 on 4 and 133 DF, p = .006). Therefore, our baseline model will be happiness ~ 1 + season + city + error.
+
+# Question 3
+
+## Question 3a
+
+
+```{r q3a}
+hapseasoncitycomp <- lm(formula = scale(happiness) ~ 1 + season + city + completed, data = couchto5k)
+anova(hapseasoncitycomp)
+summary(hapseasoncitycomp)
+```
+
+When adding completion as an explanatory variable to our baseline model, the incremental F-test shows that completion is a significant explanatory variable (F value = 4.39, p = .0380). The Adjusted R-squared is 9.83%, so the addition of completion explained 2.30% more of the variance than the baseline. The overall F-statistic is 3.99 on 5 and 132 df (p = .00211), so our model is unlikely to perform similarly to a null model.
+
+## Question 3b
+
+
+```{r q3b}
+hapseasoncitycomphealth <- lm(formula = scale(happiness) ~ 1 + season + city + completed + scale(health), data = couchto5k)
+anova(hapseasoncitycomphealth)
+```
+
+When adding health as an explanatory variable to our baseline model, the incremental F-test shows that health is not a significant explanatory variable (F value = .25, p = .621).
+
+## Question 3c
+
+```{r q3c}
+hapseasoncitycomphealthint <- lm(formula = scale(happiness) ~ 1 + city + season + completed * scale(health), data = couchto5k)
+anova(hapseasoncitycomphealthint)
+summary(hapseasoncitycomphealthint)
+shapiro.test(residuals(hapseasoncitycomphealthint))
+couchto5kunleverage <- couchto5k[-c(17,49,1),] #points of interest from Cook's Distance
+finalmodelunleverage <- lm(scale(happiness) ~ 1 + season, data=couchto5kunleverage)
+vif(hapseasoncitycomphealthint)
+model_table <- tab_model(hapseasoncitycomphealthint)
+```
+
+When investigating whether completion and health interact with each other, that is, whether completing the program affects happiness depending on the participant's health, we found a significant p-value using the incremental F-test against the null model for the interaction of completion and health (F = 36.43, p = 1.5e-8). As compared to those who didn't complete the program, those who did complete the program saw an increase in happiness of .88 standard deviations for 1 standard deviation increase of health score.
+
+## Question 3d
+
+The research question investigated was whether health and completion have an effect on the happiness of participants in the NHS' Couch-to-5k program, accounting for season and city. Data were obtained from https://uoepsy.github.io/data/usmr_2122_data.R . The data set contained 138 observations of 9 variables after one observation was discarded for uninterpretable data. 2 observations had null values for age and 2 observations had null values for self-motivation. Other variables investigated included the city participants were recruited from (either Edinburgh or Glasgow), the participants' health and happiness after program drop out or completion (scored on a scale from 0 - 100), and the season the participants were interviewed in.
+
+In order to investigate whether health and completion effect participant happiness (when holding season and city constant), we fit a multiple regression model to our data. The z-scored value of participant happiness was modelled as a function of season, city, and the interaction of health and completion, both of which were z-scored. Effects were considered statistically significant at an alpha value of .05.
+
+The final model is described by the following equation and was fitted to our 138 observations:
+
+Happiness = β0 + β1S + β2C + β3H + β4P + β5H*P + ϵ
+
+where S = Season, C = City, H = Health, P = Program Completion.
+
+To address whether health and program completion interact to effect participant happiness, we considered the null hypothesis that the interaction coefficient is equal to zero, where:
+
+H0: β5 is equal to zero
+H1: β5 is not equal to zero
+
+The model met the assumptions of linearity, that residuals were fitted with relative constance (See Figure 1). Residuals were also normally distributed. We tested the normality of the error term using a Shapiro-Wilk test and found we did not violate the assumption of normality (W = 1, p-value = 0.7). We did observe possible leverage points (See Figure 2), but we chose to not remove these points, as removing them only introduced new leverage points (Figure 3), and our assumptions are not otherwise violated by these leverage points.
+
+We also tested multi-colinearity assumptions against a VIF of 10 as our threshold for the broken assumption. Our test showed that there was no significant multi-colinearity between explanatory variables (VIF = 1.03,1.10,1.33,1.34,1.33).
+
+```{r,fig.align = 'center'}
+plot(hapseasoncitycomphealthint, which = 1)
+```
+
+<center> __Figure 1. Data residuals indicating normal distribution__ </center>
+
+```{r,fig.align = 'center'}
+plot(hapseasoncitycomphealthint, which = 4)
+```
+
+<center> __Figure 2. Data with initial leverage points__ </center>
+
+```{r,fig.align = 'center'} 
+plot(finalmodelunleverage, which = 4)
+```
+
+<center> __Figure 3. Data after leverage points were removed. Note introduction of new leverage points.__ </center>
+
+Full regression results are shown in Figure 4. The model utility was measured using an F-test, and the model was found to likely not explain variance in a way that was consistent with the null model (F = 8.85 on 7 and 130 DF, p = 7.04e-9). The model explained 28.6% of the variance using the Adjusted R-Squared statistic.
+
+
+<center>
+
+```{r}
+model_table
+```
+
+__Figure 4__ </center>
+
+Our results indicate a significant association between health score, dependent on participant completion, on participant happiness (t = 6.04, p = 1.5e-8). As compared to those who didn't complete the program, those who did complete the program saw an increase in happiness of .88 standard deviations for 1 standard deviation increase of health score. Season and city were also significantly associated with participant happiness. As compared to autumn, spring is associated with a .68 increase in z-scored happiness (p = .014), and summer is associated with a .49 increase (p = .042). As compared to Edinburgh, being recruited from Glasgow is associated with a .55 decrease in z-scored happiness (p = .001). These interactions are displayed graphically in Figures 5 and 6.
+
+```{r,fig.align = 'center'}
+finallinearplot <- couchto5k %>% ggplot(aes(x=scale(health),y=scale(happiness),color=completed)) +
+     ylab("Scaled Happiness Score") +
+     xlab('Scaled Health Score') +
+     geom_smooth(method="lm") +
+     labs(title='Health and Completion Interaction on Happiness')
+     geom_point(size=2)
+finallinearplot
+```
+
+<center> __Figure 5: Completion and Health score interaction, without baseline effects.__ </center>
+
+```{r,fig.align = 'center'}
+finallinearplotfacets <- couchto5k %>% ggplot(aes(x=scale(health),y=scale(happiness),color=completed)) +
+     ylab("Scaled Happiness Score") +
+     xlab('Scaled Health Score') +
+     geom_smooth(method="lm") +
+     labs(title = 'Health and Completion Interaction on Happiness, across seasons and cities') +
+     geom_point(size=2) + facet_wrap(~season + city)
+suppressWarnings(print(finallinearplotfacets))
+```
+
+<center> __Figure 6: Completion and Health score interactions, with baseline effects as facets.__ </center>
+
+The results indicate that beyond the baseline effects of the season and the city of the participants, that participant health at the end of the program, dependent on whether the participant actually completed the program, were significantlt explanatory of participant happiness.
+
+# Question 4
+
+```{r q4}
+newdata <- couchto5k[which(couchto5k$completed == TRUE),]
+newdata %>% 
+  group_by(season, city) %>% 
+  summarise(mh = mean(happiness)) %>% 
+  ggplot(aes(x = season, y = mh, group = city, fill = season)) +
+  geom_col() + facet_wrap(~city) + labs(x = "Season", y = "Mean Happiness", title = "Mean Happiness by City and Season", fill = 'Season')
+```
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+couchto5k %>% 
+  select(age, completed, city, season, selfmot, accountability) %>%
+  pairs.panels()
+couchto5kfactor <- couchto5k
+couchto5kfactor$completed <- factor(couchto5k$completed,labels = c(0,1))
+couchto5kfactor$completed <- as.numeric(levels(couchto5kfactor$completed))[couchto5kfactor$completed]
+couchto5kfactor <- couchto5kfactor[!is.na(couchto5kfactor$selfmot),]
+couchto5kfactor$accountability <- scale(couchto5kfactor$accountability)
+couchto5kfactor$selfmot <- scale(couchto5kfactor$selfmot)
+model1 <- glm(completed ~ 1 + city, data = couchto5kfactor, family="binomial")
+summary(model1)
+model2 <- glm(completed ~ 1 + season, data = couchto5kfactor, family="binomial")
+summary(model2)
+model3 <- glm(completed ~ 1 + season + accountability, data = couchto5kfactor, family="binomial")
+summary(model3)
+model4 <- glm(completed ~ 1 + season + selfmot, data = couchto5kfactor, family="binomial")
+summary(model4)
+```
+I did not look at health or happiness because they are scores taken after the program is completed, and therefore are not predictors. 
+From comparing the correlation between age, accountability, city, season, and self-motivation, none have a strong correlative relationship, but all except accountability seem reasonable to take a look at. I scaled self-motivation and accountability relative to their z-scores before continuing.
+To test baseline relationships, I fit a model with season as a predictor and another with city as a predictor. Season had a p-value indicating it was unlikely to make predictions that lined up with the null hypothesis (p = .0056). City as a predictor was not significant (p = .09)
+I wanted to see if self-motivation and accountability were also plausible predictors for completion, taking season into account. Accountability was not a significant predictor taking season into account (p = .71). However, self-motivation was a significant predictor (p = .018).
+My final prediction model was log odds of completion ~ 1 + season + selfmot.
+
+## Question 5b
+
+```{r q5b}
+model4 <- glm(completed ~ 1 + season + selfmot, data = couchto5kfactor, family="binomial")
+exp(coef(model4))
+anova(model4, test='Chisq')
+seasonselfmotplot <- couchto5kfactor %>% ggplot(aes(x=selfmot,y=completed,color=season)) +
+  ylab("Probability of completion") +
+  xlab('Self-motivation') +
+  geom_smooth(method="glm",method.args=list(family=binomial)) +
+  geom_jitter(size=2,width=0,height=.1,alpha=.2) 
+  scale_y_continuous(breaks=seq(0,1,by=.2))
+summary(model4)
+guess <- predict(model4)
+guess <- ifelse(guess>0,1,0)
+hits <- sum(guess == couchto5kfactor$completed)
+hits/length(couchto5kfactor$completed)
+```
+
+The research question investigated was whether a participant completing the Couch to 5K program could be predicted by self-motivation, with season as a baseline explanatory variable. Data were obtained from https://uoepsy.github.io/data/usmr_2122_data.R . The data set contained 136 observations of 9 variables after one observation was discarded for uninterpretable completion date, and two more observations were discarded as they had null values for self-motivation. Other variables investigated included the city participants were recruited from (either Edinburgh or Glasgow), and the participants accountability score (a psychometric inventory with a max score of 35).
+
+In order to investigate whether self-motivation predicts participant completion (when holding season), we fit a logistic regression model to our data. A 0 or 1 value for completion was modelled as a function of season and self-motivation, self-motivation being scaled relative to its z-score. Effects were considered statistically significant at an alpha value of .05.
+
+The final model is described by the following equation and was fitted to our 136 observations:
+
+log-odds = β0 + β1S + β2M
+
+Where S is season, and M is self-motivation.
+
+Our model was shown to be a predictor of likelihood of completion. The accuracy of the model (when tested against the observations from the original data) was 81.6%. Looking at the model deviance and testing against a null distribution with a chi-square test, season had a residual deviance of 130 (p = 9.6e-13), and self motivation had a residual deviance of 124 (p = .014). Our model coefficients indicate that as compared to autumn, the spring is associated with a .02 increase in odds of completion, the summer is associated with a .43 increase in odds of completion, and winter is associated with a .35 increase in odds of completion (z value for season = 2.77, p = .0057). An increase in one standard deviation of self-motivation is associated with a 1.78 increase in odds of completion (z = .236, p = .0184). The model is displayed graphically in Figure 1.
+
+
+```{r,fig.align = 'center'} 
+seasonselfmotplot
+```
+
+<center> __Figure 1__ </center>
+
+
+Our investigation shows that whether or not a participant completed the Couch to 5K program can be predicted based on the season the participant is recruited, and the participant's self-motivation score before beginning the program.
+
+## Question 5c
+
+```{r q5c, fig.align = 'center'}
+selfmotpred <- couchto5kfactor %>% ggplot(aes(x=selfmot,y=completed)) +
+  ylab("Probability of completion") +
+  xlab('Self-motivation') +
+  geom_smooth(method="glm",method.args=list(family=binomial)) +
+  geom_jitter(size=2,width=0,height=.1,alpha=.2) +
+  scale_y_continuous(breaks=seq(0,1,by=.2))
+selfmotpred
+```
+
+## Citation
+
+1. Oldest person ever (female). 2021. Guinness Book of World Records. Accessed at https://www.guinnessworldrecords.com/world-records/oldest-person-(female).
+
+
+
+
+
+

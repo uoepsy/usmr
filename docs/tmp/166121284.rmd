@@ -1,0 +1,671 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B173659
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE)
+
+options(digits=3)
+
+library(tidyverse)
+library(knitr)
+library(psych)
+#install.packages('patchwork')
+library(patchwork)
+#install.packages("sjPlot")
+library(sjPlot)
+library(stats)
+#install.packages("pander")
+library(pander)
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+
+
+```{r cleaning, include = FALSE}
+# I chose to remove any impossible value just to be safe and assign them as NA. 
+# I created a dummy variable for week_stopped so I could have it as both a numerical and categorical variable.
+# I replaced 'autunm' with 'autumn', assuming it was a common typo.
+couchto5k<-couchto5k%>%
+  mutate(
+    selfmot=ifelse(selfmot<7, NA, selfmot),
+    week_stopped=ifelse(week_stopped>9, NA, week_stopped),
+    age=ifelse(age>=100, NA, age),
+    season=gsub("autunm", "autumn", season),
+    dummy_week_stopped=factor(week_stopped)
+  )
+#I changed both season and city variables into levels for later analysis
+couchto5k$season<-factor(couchto5k$season, levels=c("spring", "summer", "autumn", "winter"))
+couchto5k$city<-factor(couchto5k$city)
+
+couchto5k$missing<-NA
+couchto5k$missing[is.na(couchto5k$selfmot)]<- "Impossible self-motivation scores"
+couchto5k$missing[is.na(couchto5k$age)]<- "Impossible age data"
+couchto5k$missing[is.na(couchto5k$week_stopped)]<- "Impossible week stopped"
+
+missingtable<-table(couchto5k$missing)
+missingtable%>%
+  pander(caption="Impossible values removed per variable")
+```
+
+```{r descriptives}
+pairs.panels(couchto5k[2:9])
+```
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a, include=FALSE}
+week5<-ifelse(couchto5k$week_stopped<5, 1, 0)
+week9<-ifelse((couchto5k$week_stopped>=5)&(couchto5k$week_stopped<9), 1, 0)
+
+week5_stat<-t.test(week5, alternative="two.sided", mu=0.45)
+week9_stat<-t.test(week9, alternative="two.sided", mu=0.10)
+
+shapiro.test(couchto5k$week_stopped)
+```
+We want to know if our sample matches wider population. A simple calculation tells us `r (sum(week5, na.rm=T)/136)*100`% of participants in our sample gave up before week 5, and `r (sum(week9, na.rm=T)/136)*100`% of the remaining participants gave up before week 9. We chose to use a one sample t-test because our predicting variable is categorical while our measured variable is numerical. We chose a two-sided alternative since we cannot know the direction of the difference.
+
+```{r q1b plot assumption}
+ggplot(couchto5k, aes(x=week_stopped))+
+  geom_density(size=1)+
+  theme_classic()+
+  labs(x="Week stopped", y="Density")
+```
+
+Figure 1: Density curve of the week at which participants stopped the program.
+
+
+We used a Shapiro-Wilks test of normality to check assumptions of normality; these came back significant, meaning our data is not drawn from a normally distributed population (W=`r shapiro.test(couchto5k$week_stopped)[1]`, p=`r shapiro.test(couchto5k$week_stopped)[2]`). This is likely due to the fact most of our participants finished the program and we have a binomial distribution as shown in Figure 1. Therefore we'll continue our analysis while minding these effects.
+
+The first t-test we ran for the "abandon before week 5" did not give us significant results, t(`r week5_stat$parameter`)=`r week5_stat$statistic`, p=`r week5_stat$p.value` with a confidence interval of `r week5_stat$conf.int`, two-sided. 
+
+The second t-test we ran for the "abandon during or after week 5 but before week 9" condition did not turn out to be significant, t(`r week9_stat$parameter`)=`r week9_stat$statistic`, p=`r week9_stat$p.value` with a confidence interval of `r week9_stat$conf.int`, two-sided.
+
+Therefore our sample appears to be draawn from wider population.
+
+## Question 1b
+
+```{r q1b mutate}
+couchto5k<-couchto5k%>%
+  mutate(
+    condition= ifelse(week_stopped<5, 1, 0)+ ifelse((week_stopped>=5)&(week_stopped<9), 2, 0)+ifelse(week_stopped==9, 3, 0)
+  )
+couchto5k$condition<-factor(couchto5k$condition)
+
+```
+
+```{r q1b figure 2}
+couchto5k%>%
+  drop_na(condition)%>%
+  ggplot(aes(x = city, fill = condition))+
+  geom_bar(position="dodge")+
+  labs(x="", y="Number of Participants", fill="Week abandonned")+
+  scale_fill_manual( values = c("lightblue2", "lightblue3", "lightblue4"),labels=c("Before week 1", "Week 5 to 8", "Completed"))+
+  theme_classic()
+
+```
+
+Figure 1: Looking at number of participants dropping out per week of the program.
+
+
+We want to check if the rates of attrition differ by city. An initial look at Figure 1 shows a similar pattern in both cities. There appears to be a large drop out in the first 4 weeks, but the majority of participants who last 5 weeks seem to make it to the end.
+
+```{r q1b test}
+chitest1<-chisq.test(couchto5k$condition, couchto5k$city)
+```
+
+To check for different attrition rates we use a $\chi^2$ test of independence. This is because we are testing two categorical variables agaisnt eachother.
+
+The $\chi^2$ test of independance we ran to check that the city that participants live in impacts the aforementioned condition was not significant, $\chi^2$ (`r chitest1$parameter`, N = `r nrow(couchto5k)`) = `r chitest1$statistic`, p = `r chitest1$p.value`. 
+
+Our data suggests the city in which participants live does not impact the week in which they abandon.
+
+## Question 1c
+
+```{r q1c graph}
+ggplot(couchto5k, aes(x=city, y = age, fill = city))+
+  geom_boxplot(na.rm = TRUE, width=0.5)+
+  labs(x="", y="Participants' age", fill="City")+
+  theme_classic()+
+  scale_fill_manual(values=c("darkslategray3", "darkorange2"))
+
+```
+
+Figure 2: Boxplot comparing the ages of participants and the city where they did the program.
+
+
+We want to know if the city in which participants live influences participants' age. Looking at Figure 2, we can tell there doesn't seem to be a big diffeence, although participants in Glasgow tend to be slightly younger.
+
+```{r q1c test, include=FALSE}
+ttest_age<-t.test(couchto5k$age ~couchto5k$city, alternative="two.sided")
+shapiro.test(couchto5k$age)
+```
+
+In order to see if these two populations seem to be drawn for the same population we chose to run an independent t-test. The choice of this test is justified by our measured variable having two levels and being quantitative, and our predictive variable being categorical. We also chose a two-sided alternative given that we do not know the direction in which we expect our sample to change.
+
+```{r q1c graph 2}
+ggplot(couchto5k, aes(x=age))+
+  geom_density(size=1)+
+  theme_classic()+
+  labs(x="Age", y="Density")
+```
+
+Table 3: Density curve of participants' age
+
+
+A Shapiro-Wilks test was ran for the age variable, and came back significant, meaning our data does not seem to be drawn from a normally distributed population (W=`r shapiro.test(couchto5k$age)[1]`, p=`r shapiro.test(couchto5k$age)[2]`). Table 3 shws this is due to a dip in people in their 30s and people in their 50s partaking in the program. While we'll keep it in mid, this does not seem to get in the way of our analysis. 
+
+Our t-test came back non-significant, t(`r ttest_age$parameter`)=`r ttest_age$statistic`, p=`r ttest_age$p.value` with a confidence interval of `r ttest_age$conf.int`, two-sided.
+
+# Question 2
+
+## Question 2a
+
+```{r q2a graph}
+ggplot(couchto5k, aes(x=season, y= happiness, fill= season))+
+  geom_boxplot()+
+  labs(x="", y="Happiness scores", fill="Season")+
+  theme_classic()+
+  scale_fill_manual(values = c("darkolivegreen3", "gold3", "chocolate3", "cadetblue3"), labels=c("Spring", "Summer", "Autumn", "Winter"))
+```
+
+Figure 3: Comparison of happiness scores by season of the year
+
+
+We want to see if participants' happiness ratings are affected by the season they are starting the challenge in. A quick look at Figure 3 indicates participants appear to score slightly higher in Summer and lower in Autumn.
+
+In order to do so we are building a single linear regression model which looks at the effect of seasons on happiness ratings. 
+
+```{r q2a test, include=FALSE}
+mod1<-lm(happiness ~ season, data=couchto5k)
+
+summary(lm(happiness ~ season, data=couchto5k))
+
+plot(mod1)
+summary(mod1)
+```
+
+
+
+Visual checks of the linearity of the data, as well as normality and homogeneity of our residuals were done. Nothing abnormal was found. 
+
+```{r q2a table, results="asis"}
+tab_model(mod1, title = "Table 1: Single linear regression looking at the effect of season on happiness score")
+```
+
+
+Overall the effect is weak as shown in Table 1, there is some indication that winter might be linked with lower scores but there is no significance in any of the effects found. The confidence intervalls do not allow us to be certain about our analysis either.
+
+Our model is overall non significant (p=.0.134) and does not explain much of the variance in our data (adjusted $R^2$=`r summary(mod1)[9]`, F(`r summary(mod1)$fstatistic[2]`,`r summary(mod1)$fstatistic[3]` )=`r summary(mod1)$fstatistic[1]`).
+
+
+## Question 2b
+
+```{r q2b figure}
+p1<-couchto5k%>%
+  drop_na(age)%>%
+  ggplot(aes(x=age, y=happiness))+
+  geom_point(size=2, colour="darkslategray4")+
+  geom_smooth(method="lm")+
+  labs(x= "Participants' age", y="Happiness score")+
+  theme_classic()
+
+p1
+```
+
+Figure 4: Scatterplot of participants' happiness scores by age
+
+
+In the last question we did not find seasons to be a significant predictor of happiness scores. We now want to know if age can be a possible predictor of happiness scores. To do so we build a new single linear regression model that includes age as a factor.
+
+``` {r q2b test, include=FALSE}
+mod2<-lm(happiness ~age, data=couchto5k)
+
+plot(mod2)
+
+summary(mod2)
+```
+
+Visual checks of the linearity of the data, as well as normality and homogeneity of our residuals were done. Nothing abnormal was found.
+
+```{r q2b table}
+tab_model(mod2, title = "Table 2: Single linear regression looking at the effect of age on happiness score")
+```
+
+This model shows a fairly weak effect with a slope of .45, meaning for every year they get older participants score 0.45 more on the happiness scale. This effect is significant (p=0.029, CI=[0.05: 0.85]). This model accounts for 2.8% of the variance in our data (adjusted $R^2$=`r summary(mod2)[9]`, F(`r summary(mod2)$fstatistic[2]`,`r summary(mod2)$fstatistic[3]` )=`r summary(mod2)$fstatistic[1]`).
+
+Age therefore predicts a small portion of the variance in our data.
+
+## Question 2c
+
+```{r q2c}
+p2<-couchto5k%>%
+  drop_na(age)%>%
+  ggplot( aes(x=age, y=happiness, colour=season))+
+  geom_point(size=2)+
+  geom_smooth(method="lm", se=FALSE)+
+  labs(x= "Participants' age", y="Happiness score", colour="Season")+
+  scale_colour_manual(values = c("darkolivegreen3", "gold3", "chocolate3", "cadetblue3"), labels=c("Spring", "Summer", "Autumn", "Winter"))+
+  theme_classic()
+
+p1/p2
+```
+
+Figure 5: Side by side comparison of age as a predictor of happiness scores with and without taking seasons into account
+
+
+Looking at Figure 5, it appears there seems to me a medium interaction between age and seasons. More precisely, as participants get older their hapiness appears to be positively impacted by spring and summer seasons, and negatively impacted by autumn and winter seasons. This interaction could potentially explain some of the variance in our data.
+
+To enquire this further we'll build a multiple linear regression model which looks at them as predictors that  interact between them.
+
+```{r q2c tests, include=FALSE}
+mod4<-lm(happiness ~ age*season, data=couchto5k)
+
+summary(mod4)
+plot(mod4)
+anova(mod4)
+```
+
+```{r q2c table}
+tab_model(mod4, show.fstat = TRUE, title="Table 3: Multiple linear regression looking at the effect of the interaction between age and season on happiness score")
+```
+
+
+Overall as shown in Table 3, our model is still quite weak, with a couple of interactions that seem to be of interest (adjusted $R^2$=`r summary(mod4)[9]`, F(`r summary(mod4)$fstatistic[2]`,`r summary(mod4)$fstatistic[3]` )=`r summary(mod4)$fstatistic[1]`, p=0.014). First, age appears to significantly predict happiness as seen previously . The estimate indicates that for every year they get older, participants report `r summary(mod4)$coefficients[2]` more on average on the happiness score (p=`r summary(mod4)$coefficients[2,4]`, CI=[0.25: 1.37]).
+The other interaction of interest is between age and winter . For every year they get older, participants report -1.62 point onn the happiness score during winter (p=`r summary(mod4)$coefficients[8,4]`, CI=[-3.06: -0.18]).
+
+
+There are, however, two things which suggests we should not use this model.
+
+First, one of our assumptions for residuals seems to be violated as shown by the outliers in the following figure:
+
+```{r q2c graph 2}
+plot(mod4, 4)
+```
+
+Figure 6: Cook's Distance for our Multiple linear regression looking at the effect of the interaction between age and season on happiness score
+
+
+Furthermore, the anova ran in order to see if including the interaction between age and season improves our model over not including it, as shown in Table 4. 
+```{r q2c table anova}
+kable(anova(mod4), caption="Table 4")
+```
+
+Table 4:
+
+Results indicate the only predictor that significantly improves our model is age (p=`r anova(mod4)[1, 5]`; F value=`r anova(mod4)[1, 4]`). The interaction between age and season does not significantly improve our model to fit our data. 
+
+Given these results and our previous analysis, it seems reasonable to only include age as a predictor in our baseline model.
+
+# Question 3
+
+## Question 3a
+
+```{r q3a figure}
+couchto5k%>%
+  drop_na(dummy_week_stopped)%>%
+  ggplot(aes(x=dummy_week_stopped, y=happiness, group=dummy_week_stopped, fill=dummy_week_stopped))+
+  geom_boxplot()+
+  labs(y="Participants' happiness scores", x="", fill="Week stopped")+
+  theme_classic()
+```
+Figure 7: Representation of happiness scores and week at which participants stopped.
+
+
+We want to know whether participants’ happiness ratings are affected by whether or not they completed the programme. We'll build on our previous model which includes age as a predictor in order to investigate this effect. Looking at Figure 7, it's hard to say whether our data will show an effect.
+
+In order to verify this we'll build a multiple linear regressor model using our baseline and the week at which participants stopped as a predictor.
+
+Visual checks of the linearity of the data, as well as normality and homogeneity of our residuals were done. Nothing abnormal was found. 
+
+```{r q3a tests, include=FALSE}
+mod5<-lm(happiness ~ age + dummy_week_stopped, data=couchto5k)
+
+summary(mod5)
+plot(mod5)
+```
+
+```{r q3a table}
+tab_model(mod5, title="Table 5: Multiple linear regression looking at the effect of week stopped on our baseline model")
+```
+
+As shown in Table 4, our new multiple linear regression model includes both age and week stopped as predictors of our data. 
+
+Overall, week stopped does not predict variance in our data significantly (p>0.05). Although our $R^2$ value is sligthly higher than our previous model (adjusted $R^2$=`r summary(mod5)[9]`), this might just be to the fact we added another predictor to our model. 
+
+Therefore, our data does not suggest there is a significant interaction between the week at which participants stopped the program and their happiness ratings.
+
+## Question 3b
+
+```{r q3b figure}
+ggplot(couchto5k, aes(x=health, y=happiness))+
+  geom_point(size=2, colour="lightblue4")+
+  geom_smooth(method="lm", colour="gray16")+
+  theme_classic()+
+  labs(x="Health score", y="Happiness scores")
+```
+
+Figure 8: Comparison of participants' happiness ratings and their health scores
+
+
+We want to know if health is a predictor of happiness in our data. Looking at Figure 7 it seems unlikely.
+
+In order to verify this we'll build a multiple linear regressor model using our baseline and health scores as a predictor.
+
+Visual checks of the linearity of the data, as well as normality and homogeneity of our residuals were done. Nothing abnormal was found.
+
+```{r q3b tests, include=FALSE}
+mod6<-lm(happiness ~ age+health, data=couchto5k)
+plot(mod6)
+summary(mod6)
+```
+
+```{r table}
+tab_model(mod6, title="Table 6: Multiple linear regression looking at the effect of health on our baseline model")
+```
+
+Our new multiple linear regression model includes both age and health as predictors of our data. 
+
+Overall the effect of health is not significant (p=`r summary(mod6)$coefficients[3, 4]`, CI=[-0.18: -1.10]). Although our $R^2$ value is sligthly higher than our previous model ($R^2$=`r summary(mod6)[9]`), this might just be to the fact we added another predictor to our model. 
+
+Therefore, our data does not suggest health to be a predictor of data variance in participant's happiness ratings.
+
+## Question 3c
+
+```{r q3c figure}
+couchto5k%>%
+  drop_na(dummy_week_stopped)%>%
+  ggplot(aes(x=health, y=happiness, colour=dummy_week_stopped))+
+  geom_point(size=2)+
+  geom_smooth(method="lm", se=FALSE)+
+  theme_classic()+
+  scale_color_brewer(palette = "Set1")+
+  labs(x="Health scores", y="Happiness scores", colour="Week stopped")
+```
+
+Figure 9: Representation of the interaction between health scores and the week at which participants dropped out from the program
+
+It is possible that as participants feel healthier, they feel happier. As such, we want to know if the interaction between week dropped and happiness score is a significant predictor of variance in our data.
+
+In order to verify this we'll build a multiple linear regressor model using our baseline and the interaction between health score and the week in which participants dropped out as a predictor. We chose not to include both variables as independent predictors given they were previously found o be insignificnt in our models.
+
+Visual checks of the linearity of the data, as well as normality and homogeneity of our residuals were done. Nothing abnormal was found.
+
+```{r q3c tests, include=FALSE}
+couchto5k<-couchto5k%>%
+  mutate(
+    dropped_out=ifelse(condition=="3", 0, 1)
+  )
+
+mod7<-lm(happiness ~ age + dropped_out:health, data = couchto5k)
+plot(mod7)
+summary(mod7)
+
+mod8<-lm(happiness ~ age + health:dummy_week_stopped, data = couchto5k)
+plot(mod8)
+summary(mod8)
+
+mod85<-lm(happiness~ age + health:condition, data=couchto5k)
+plot(mod85)
+summary(mod85)
+
+
+```
+
+```{r q3c mod8 table}
+tab_model(mod8, title="Table 6: Multiple linear regression model including age and interaction between health and week stopped as predictors")
+
+```
+
+Overall the effect of the interaction between health and week stopped is not significant for any of the levels (p>0.05). Our data does not suggest the intereaction between week stopped and health significantly improves our knowledge of variance in the data.
+
+Another model was created including the 'condition' variable used earlier, which maps out three levels including participants who dropped out before week 5, during and after week 5, or finished the program. The reason behind this was binning weeks into several groups might show a more obvious trend. Similarly to our previous model, we tested the interaction between both variables and age. This variable did not turn out to be a significant predictor either (p<0.05)
+
+A last model was tested where the interaction of health and participant drop out improved our prediction. Instead of having a variable with 9 levels for each week, this one only accounts for whether each participant dropped out or not. This still evaluates a measure of participants' time spent being active, albeit simplified. We chose to once again only include the interaction of both variables without including them as single predictors given initial testing of the drop out variable found it not to be a significant predictor or happiness on its own.
+
+```{r}
+tab_model(mod7, title="Table 7: Multiple linear regression model including age and interaction between health and drop out as predictors")
+```
+
+The interaction between the drop out variable and health variable was found to be a significant predictor of happiness, such that participants who dropped out scored -.27 on their happiness score for evey additional point on their health score (p= `r summary(mod7)$coefficients[3, 4]`, CI=[-0.44 : -0.09]). Overall our model is still somewhat weak ($R^2$=`r summary(mod7)[9]`, F(`r summary(mod7)$fstatistic[2]`,`r summary(mod7)$fstatistic[3]`) =`r summary(mod7)$fstatistic[1]`). 
+
+## Question 3d
+What can we conclude about the various causes of happiness in our data?
+
+The analysis we ran on our data suggest there are two noticeable predictors of the variance in happiness scores. The first one is age, and the second one is the interaction betwen dropping out from the program and health scores.
+
+Our first predictor can be interpreted in a fairly simpl way: participants' happiness appears to be influence by their age. Older participants appear to be slightly happier. Therefore, aging seems to improve happiness on average.
+
+Our second predictor is a bit more complex, given it is the result of a intercation between two predictors. As seen in Figure 8, participants who dropped out of the program in the earlier weeks seemed to be score lower on happiness if they were healthy. But the effect was not straightforward as week 8 seemed to have a pretty low average happiness score, surely due to dropping out so close to the end. 
+Participants who finished the program however, semed to score higher on happine if they had a higher health score, as seen in week 9.
+
+Given that dropping out is not a significant predictor on it own, we can put aside the assumption that happiness scores were simply higher due to finishing the program.
+
+As such, we can hypothesize that healthy participant who drop early are likely to score low on happiness given they could be upset about their performance.This bias would not happen to participants who score low on health scores since they might not expect to finish the program anyway. As such, good health and dropping out early causes low mood, while good health and finishing the program causes high mood. 
+
+Another interpretation is that the effects of high health scores are amplified by the feeling of acting healthily. Therefore, regardless of the outcome of the program, participants could feel happier because they are active longer.
+
+# Question 4
+
+```{r q4}
+newdata<-subset(couchto5k, condition==3)
+
+ggplot(newdata, aes(x=season, y=happiness, fill=season))+
+  geom_bar(position = "dodge", fun="mean", stat = "summary", fun.y = "mean")+
+  facet_wrap(~city)+
+  labs(x="", y="Mean ratings of happiness", fill="Season of the year")+
+  scale_fill_manual(values = c("spring"="darkolivegreen1", "summer"="gold1", "winter"="cadetblue2", "autumn"="chocolate2"))
+```
+
+Figure 10: Average happiness scores for each season grouped by city
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+
+l2p<-function(logits){
+  odds=exp(logits)
+  prob=odds/(1+odds)
+  return(prob)
+}
+
+pairs.panels(couchto5k[-c(1,9:11)])
+```
+
+Figure 11: Cluster of correlations between variables in our data
+
+We want to build a model that predicts the likeliness of participants to drop out. Looking at Figure 11, the following variables seem to be worth investigating: season, happiness and self motivation.
+
+```{r q5a graphs}
+g1<-ggplot(couchto5k, aes(y=dropped_out, x=selfmot))+
+  geom_point()+
+  theme_classic()+
+  labs(x= "Self-motivation score", y="Drop out", title="12a")+
+ggplot(couchto5k, aes(y=dropped_out, x=happiness))+
+  geom_point()+
+  theme_classic()+
+  labs(x="Happiness score", y="Drop out", title = "12b")
+
+g2<-ggplot(couchto5k, aes(x=season, y=dropped_out, colour=season))+
+  geom_jitter()+
+  theme_classic()+
+  labs(x="", y="Drop out", colour="Season", title="12c")+
+  scale_colour_manual(values = c("darkolivegreen3", "gold3", "chocolate3", "cadetblue3"), labels=c("Spring", "Summer", "Autumn", "Winter"))
+
+g1/g2
+```
+
+Figure 12: Panel showing a comparison of self-motivation score and drop out (12a), of happiness ascores and drop out(12b) and of season of the year and drop out (12c) in our data.
+
+### Self-Motivation
+
+We are first looking at self-motivation as a predictor of dropping out early.
+
+```{r q5a test, include=FALSE}
+gmod_couchto5k<-couchto5k[-c(104),]
+
+gmod0<-glm(dropped_out~selfmot, family=binomial, data=couchto5k)
+
+gmod1<-glm(dropped_out~selfmot, family=binomial, data=gmod_couchto5k)
+summary(gmod1)
+
+```
+
+```{r 5qa assumption check}
+plot(gmod0, 4)
+```
+
+When checking our assumption, participant 104 seemed to be a significant outlier. Removing them seemed to be the best course of option for our analysis given they appear to be quite influential on the data.
+
+```{r q5a table}
+tab_model(gmod1, title="Table 7")
+```
+
+Our model suggests self-motivation significantly predicts the likelihood of dropping out (p<0.001, CI=[0.65: 0.88]. 
+For every additional point on the self-motivation scale, participants' odds of dropping out lowers by `r exp(coef(gmod1))[2]`.
+
+```{r q5a predictions, include=FALSE}
+newdata=data.frame(selfmot=c(1, 17, 35))
+predict(gmod1, newdata, type="response")
+```
+
+The self-motivation score goes from 1 to 35. The probability of dropping out for a participant who scores 1 on the self motivation scale is `r predict(gmod1, newdata, type="response")[1]`; For a participant who scores 17 it is `r predict(gmod1, newdata, type="response")[2]`; for a participant who scores 35 it is `r predict(gmod1, newdata, type="response")[3]`. So self-motivation is highly influential in whether a participant will drop out.
+
+### Happiness
+```{r q5a happiness tests, include=FALSE}
+
+gmod2<-glm(dropped_out~happiness, family=binomial, data=gmod_couchto5k)
+summary(gmod2)
+plot(gmod2, 4)
+
+```
+
+We'll then look at happiness as a predictor of dropping out early, by building onto our previous model, such that both self motivation and hapiness will be tested as predictors.
+
+Visual checks of the linearity of the data, as well as normality and homogeneity of our residuals were done. Nothing abnormal was found.
+
+```{r q5a happiness table 1}
+tab_model(gmod2, title="Table 8")
+```
+
+
+As seen in figure X, our new model does seem to indicate that happiness significantly predicts any variance in our data (p=`r summary(gmod2)$coefficients[2, 4]`, CI=[0.97:0.99]).
+For every additional point on the happiness scale, participants' odds of dropping out lowers by `r exp(coef(gmod2))[2]`. 
+
+```{r q5a prediction 2, include=FALSE}
+newdata1=data.frame(happiness=c(1, 50, 100))
+predict(gmod2, newdata1, type="response")
+```
+
+The happiness scale ranges from 1 to 100. The probability of dropping out for a participant who scores 1 the happiness scale is `r predict(gmod2, newdata1, type="response")[1]`; For a participant who scores 50 it is `r predict(gmod2, newdata1, type="response")[2]`; for a participant who scores 100 it is `r predict(gmod2, newdata1, type="response")[3]`. So happiness is highly influential in whether a participant will drop out.
+
+### Seasons
+
+We'll now look at whether the season of the year in which participants started the program is a reliable predictor of drop out.
+
+```{r q5a seasons test, include=FALSE}
+gmod4<-glm(dropped_out~season, family=binomial, data=gmod_couchto5k)
+summary(gmod4)
+gmod4
+
+```
+
+```{r q5a assumption 2}
+plot(gmod4, 4)
+```
+
+When checking our assumption, participant 3 seemed to be a significant outlier. When looking at our data, it is because they are the only participant who dropped out of the program in winter. Due to this, removing him causes our analysis to become very odd; thus doing this might not be the right move. To compensate for this we'll have to be careful in our interprettion, especially with confidence intervals. 
+
+```{r 5qa more tests, include=FALSE}
+gmod1_couchto5k<-gmod_couchto5k[-c(3),]
+
+gmod45<- glm(dropped_out~season, family=binomial, data=gmod1_couchto5k)
+
+summary(gmod45)
+```
+
+```{r}
+tab_model(gmod4)
+```
+
+Our new model shows seasons significantly predict the likeliness of participants to drop out (p<0.001)
+
+
+```{r q5a prediction, include=FALSE}
+newdata2=data.frame(season=c("spring", "summer", "autumn", "winter" ))
+predict(gmod4, newdata2, type="response")
+```
+
+The probability of someone dropping out in Spring is `r predict(gmod4, newdata2, type="response")[1]`; in Summer it is `r predict(gmod4, newdata2, type="response")[2]`; in Autumn it is `r predict(gmod4, newdata2, type="response")[3]`; in Winter it is `r predict(gmod4, newdata2, type="response")[4]`. So the season in which participants start the program is highly influencial in their likeliness to drop out.
+
+Our model will then include self-motivation, happiness and seasons as a predictor of dropping out.
+
+```{r, include=FALSE}
+gmod5<-glm(dropped_out~selfmot+happiness+season, family=binomial, data=gmod_couchto5k)
+summary(gmod5)
+
+
+```
+
+```{r q5a table last model}
+tab_model(gmod5)
+anova(gmod5, test = "Chisq")
+```
+
+
+
+Table 11: 
+
+As seen in Table 11, self motivation, happiness and season all significantly improve our prediction of participant's probability to drop out.
+
+
+
+## Question 5b
+
+Our data suggests there are three variables that predict some of the variance in our data namely self-motivation, happiness and season ($R^2$=0.491). Higher scores on self motivation appear to significantly predict a lower probability of dropping out, such that someone scoring the lowest on the scale has a probability of  `r predict(gmod1, newdata, type="response")[1]` and someone scoring the highest has a probability of  `r predict(gmod1, newdata, type="response")[3]` (p<0.0001).
+Higher scores on the happiness scale appear to also significantly predict a lower probability of dropping out, although to a lesser extent than self-motivation, such that someone scoring the lowest on the scale has a probability of  `r predict(gmod2, newdata1, type="response")[1]` and someone scoring the highest has a probability of  `r predict(gmod2, newdata1, type="response")[3]` (p=0.046).
+
+Seasons appear to very significantly predict the linekliness of participants dropping out. The highest probability of dropping out is for participants starting the program in Spring, such that someone starting the program then has a probability of `r predict(gmod4, newdata2, type="response")[1]`. It is followed by Autumn with a probability of `r predict(gmod4, newdata2, type="response")[3]`, Summer with a probability of `r predict(gmod4, newdata2, type="response")[2]` and lastly Winter with a probability of `r predict(gmod4, newdata2, type="response")[4]` (p<0.0001) 
+
+Therefore someone starting the program in Spring and scores low on both self-motivation and happiness will have a high likelhood of dropping out, while someone starting in Winter with high motivation and happiness will be less likely to drop out.
+
+It's important to note that the direction of the causality is not assumed here, i.e. someone might not necessarily be more motivated because it is Winter but rather only motivated people start the program despite the fact it is Winter.
+
+
+Figure 12:
+
+## Question 5c
+
+```{r q5c}
+ggplot(couchto5k, aes(x=selfmot, y=dropped_out))+
+  geom_jitter(size=3, colour="darkslategray4")+
+  labs(x="Pariticipants' self-motivation score", y="Drop out")+
+  theme_classic()+
+  geom_smooth(method="glm", method.args=list(family=binomial))
+```
+
+
+Figure 13:
+
+
+
+
+
+
+
+
+

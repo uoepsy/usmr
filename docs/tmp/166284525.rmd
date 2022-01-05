@@ -1,0 +1,249 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+params:
+  examnumber: B202434
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+couchto5k <-
+  couchto5k %>% 
+  filter(age <= 100)
+couchto5k <-
+  couchto5k %>% 
+  filter(selfmot >= 5)
+couchto5k$season <- gsub("autunm","autumn", couchto5k$season, ignore.case = T)
+factor(couchto5k$season)
+factor(couchto5k$city)
+couchto5k <-
+  couchto5k %>% 
+  filter(week_stopped <= 9)
+
+```
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+summary(couchto5k)
+sd(couchto5k$age)
+sd(couchto5k$accountability)
+sd(couchto5k$selfmot)
+sd(couchto5k$health)
+sd(couchto5k$happiness)
+sd(couchto5k$week_stopped)
+shapiro.test(couchto5k$accountability)
+shapiro.test(couchto5k$selfmot)
+shapiro.test(couchto5k$health)
+shapiro.test(couchto5k$happiness)
+
+attach(couchto5k)
+par(mfrow=c(2,2))
+plot(density(couchto5k$accountability))
+plot(density(couchto5k$selfmot))
+plot(density(couchto5k$health))
+plot(density(couchto5k$happiness))
+```
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+couchto5k <-
+  couchto5k %>%
+  mutate(
+    quitbefore5 = ifelse(week_stopped <= 5,1,0)
+  )
+couchto5k <-
+  couchto5k %>%
+  mutate(
+    quitafter5before9 = ifelse(week_stopped > 5 & week_stopped < 9,1,0)
+  )
+sum(couchto5k$quitbefore5)/length(couchto5k$quitbefore5)
+t.test(couchto5k$quitbefore5, mu = 0.45)
+sum(couchto5k$quitafter5before9)/length(couchto5k$quitafter5before9)
+t.test(couchto5k$quitafter5before9, mu = 0.1)
+
+```
+
+## Question 1b
+
+```{r q1b}  
+couchto5k <-
+  couchto5k %>%
+  mutate(
+    quit = ifelse(week_stopped <= 5 ,'stopped before week 5',ifelse(week_stopped > 5 & week_stopped < 9,'stopped after week 5','completed'))
+  )
+
+a<-matrix(table(couchto5k$city),nrow=1,ncol=2)
+b<-matrix(table(couchto5k$city),nrow=1,ncol=2)
+c<-matrix(table(couchto5k$city),nrow=1,ncol=2)
+matrix1<-rbind(a,b,c)
+attrition <- table(couchto5k$quit,couchto5k$city)/matrix1
+attritionrate <- data.frame(matrix(attrition,3,2, dimnames = list(c("r1", "r2","r3"), c("c1", "c2"))))
+
+chisq.test(attritionrate[,1],attritionrate[,2])
+
+```
+
+
+## Question 1c
+
+```{r q1c}
+with(couchto5k,t.test(age ~ city))
+
+```
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+mh<-aggregate(happiness~season,data = couchto5k,mean)
+attach(mh)
+model1 <- aov(couchto5k$happiness~couchto5k$season)
+summary(model1)
+TukeyHSD(model1)
+
+```
+
+## Question 2b
+
+```{r q2b}
+cor.test(couchto5k$age,couchto5k$happiness)
+model2 <- lm(couchto5k$happiness~1+couchto5k$age)
+summary(model2)
+
+```
+
+## Question 2c
+
+```{r q2c}
+model3 <- lm(couchto5k$happiness~1+couchto5k$season*couchto5k$age)
+summary(model3)
+
+```
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+couchto5k <-
+  couchto5k %>%
+  mutate(
+    complete = ifelse(week_stopped == 9,1,0)
+  )
+model4 <- lm(couchto5k$happiness~ 1+couchto5k$season*couchto5k$age + couchto5k$complete)
+summary(model4)
+
+```
+
+## Question 3b
+
+```{r q3b}
+model5 <- lm(couchto5k$happiness~ 1+couchto5k$age*couchto5k$season + couchto5k$health)
+summary(model5)
+
+```
+
+## Question 3c
+
+```{r q3c}
+complete <- 
+  couchto5k %>% 
+  filter(week_stopped == 9)
+drop <- 
+  couchto5k %>% 
+  filter(week_stopped != 9)
+cor.test(complete$health,complete$happiness)
+cor.test(drop$health,drop$happiness)
+```
+
+## Question 3d
+
+
+# Question 4
+
+```{r q4}
+couch<-
+  couchto5k %>% 
+  filter(quit == 'completed')
+meanh<-aggregate(happiness~season*city,data = couch,mean)
+attach(meanh)
+ggplot(meanh, mapping = aes(x=season,y=happiness,fill=city))+ 
+  geom_bar(stat='identity',position='dodge') +
+  labs(x = "Season", y = "Happiness", title = "The Average Happiness Ratings")
+
+```
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+couchto5k <-
+  couchto5k %>%
+  mutate(
+    dropout = ifelse(week_stopped != 9,1,0)
+  )
+mod <- glm(dropout ~ 1+age+accountability+selfmot+health+happiness+season+city,couchto5k,family = "binomial")
+summary(mod)
+model <- glm(dropout ~ 1 + age + selfmot + health + season,couchto5k,family = "binomial")
+```
+
+## Question 5b
+
+```{r q5b}
+model <- glm(dropout ~ 1 + age + selfmot + health + season,couchto5k,family = "binomial")
+summary(model)
+
+```
+
+## Question 5c
+
+```{r q5c}
+ggplot(couchto5k, aes(x = selfmot, y = dropout)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  labs(x = "Self Motivation", y = "Probability of Dropping Out",title = "Self Motivation and Probability of Dropping Out")+
+  scale_y_continuous(breaks = seq(0,1.2,0.2))+
+  scale_x_continuous(breaks = seq(8,21,2))
+
+```
+
+
+
+
+
+
+
+
+
+

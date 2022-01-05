@@ -1,0 +1,355 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+params:
+  examnumber: "B200902"
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+Using the summary command, we can see that there are several impossible values in the sample data. Firstly, the maximum of age is 143. In fact, it is very rare to have people over 100-year-old, so I decide to filter out participants over 100-year-old. According to the information about this programme,the value of accountability and selfmot should be from 5 to 35, and the value of health and happiness should be from 0 to 100, but we can see two negative values "-99" in the column of selfmot. These two negative values are impossible to appear, and they will affect the analysis of data, so I filter them out from the data. Finally, we know that this programme only lasts 9 weeks, so the value of week_stopped should be 1-9. But there is one value "14" in the data which is impossible to appear, so I also filter it out. The function here I use to filter impossible data is filter().
+Apart from numeric data, I also find some spelling mistakes in the column of season. For example, "autumn" is misspelled as "autunm", so I change the misspelling words into the correct version.
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+summary(couchto5k)
+couchto5k <-
+  couchto5k %>%
+  filter(age <= 100) %>%
+  filter(selfmot >= 5) %>% 
+  filter(selfmot <= 35) %>%
+  filter(week_stopped < 10)
+
+# correct the wrong spelling of "autumn"
+couchto5k[couchto5k$season == "autunm", "season"] <- "autumn"
+
+```
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+summary(couchto5k)
+ggplot(couchto5k, aes(x=age)) +
+  geom_density() +
+  geom_boxplot(width = 1/300)
+
+ggplot(couchto5k, aes(x=accountability)) +
+  geom_density() +
+  geom_boxplot(width = 1/300)
+
+ggplot(couchto5k, aes(x=selfmot)) +
+  geom_density() +
+  geom_boxplot(width = 1/300)
+
+ggplot(couchto5k, aes(x=health)) +
+  geom_density() +
+  geom_boxplot(width = 1/300)
+
+ggplot(couchto5k, aes(x=happiness)) +
+  geom_density() +
+  geom_boxplot(width = 1/300)
+```
+
+# Question 1 
+
+## Question 1a
+To investigate whether the data in the sample is in line with data from the earlier survey, I first filter the sample data into three groups based on the "week_stopped". The first group is participants dropping out before week 6, the second group is participants dropping out after week 5 but before week 9, while the third group is participants completing the survey.
+Then, based on the total number of participants and the number of partipants in each group, we can calculate the proportion of each group.
+```{r q1a}
+#total number of participants
+totaln <- nrow(couchto5k)
+#number of participants left before the halfway point in week 5
+halfway <-
+  couchto5k %>%
+  filter(week_stopped < 6)
+s1 <- nrow(halfway)
+phalfway <- s1 / totaln
+#number of participants left before the end 
+bfend <- 
+  couchto5k %>%
+  filter(5 < week_stopped) %>%
+  filter(week_stopped < 9)
+s2 <- nrow(bfend)
+pbfend <- s2 / totaln
+comp <-
+  couchto5k %>%
+  filter(week_stopped == 9)
+pcomp <- 100 - phalfway - pbfend
+
+earlier = c(.45,.1,.45)
+psample = c(phalfway, pbfend, pcomp)
+chisq.test(psample, p=earlier)
+
+```
+Here the proportions I calculate is the observed data, and the proportions from the earlier survey is the expected data. To check whether the observed data is in line with the expected data, I conduct a chi-squared Goodness of Fit test. The null hypothesis (H0) and the alternative hypothesis (H1) are shown as follows:
+H0: the data in the sample is in line with data from the earlier survey
+H1: the data in the sample is not in line with data from the earlier survey
+From the results of the chi-squared test, we can see that X-squared is 120, degree of freedom is 2, and the p-value is smaller than 2e-16. Since the p-value is much smaller than the significance level alpha = 0.05, we should reject the null hypothesis, and we can conclude that the observed proportions of participants dropping a survey are not significantly in line with the expected proportions of participants dropping a survey.
+
+## Question 1b
+Based on the three categories of week_stopped, I generate a new variable called weektype using the mutate command. The first category of week_stopped is assigned to 1, the second category of week_stopped is assigned to 2, and the last category of week_stopped is assigned to 3. The three categories of week_stopped are same to the three groups in question 1a.
+After generating this new variable, I get the table of city and weektype and a mosaiplot of them. The mosaicplot can help me visualize the distribution of three categories in two cities. Moreover, I run a chi-squared test of independence to examine whether the patterns of attrition rates differ by city.
+```{r q1b}
+#generate a new variable for week_stopped
+weekdetail <-
+  couchto5k %>%
+  mutate(weektype = case_when(week_stopped < 6 ~ 1,
+                              week_stopped %in% (5:8) ~ 2,
+                              week_stopped == 9 ~ 3))
+#get the table between city and weektype
+attritionrate = table(weekdetail$city, weekdetail$weektype)
+#draw a plot showing distributions
+mosaicplot(attritionrate,
+           main = "mosaic plot",
+           color = TRUE,
+           sub = "attrition rates of cities")
+
+chisq.test(attritionrate)
+```
+The null hypothesis and the alternative hypothesis of the chi-squared test of independence are shown below:
+H0: the patterns of attrition rates are independent on city
+H1: the patterns of attrition rates are not independent on city
+The results above shows that X-squared is 0.3, degree of freedom is 2, and the p-value is 0.9, which is larger than 0.05, so we cannot reject the null hypothesis. And we can conclude that the patterns of attrition rates don't differ by city.
+
+
+## Question 1c
+To check whether the average ages of participants who commenced the programme differ by city, I would like to use unpaired two samples t-test. Before using the t-test, I first need to filter out the data of each city. After filtering out data, I also need to check whether the data of age are normally distributed, and I use the qqplot to check. From the output graph of qqplot below, we can infer that the data of age in Edinburgh and Glasgow are both normally distributed.
+Besides, I also use variance test to check the variance between two groups. The ratio of variances is 1.06, so I conclude that I can accept the null hypothesis that there is no significant difference between two variances.
+After checking normality and variance, I can now run the unpaired two samples t-test.
+```{r q1c}
+#filter the data based on city
+ed <- 
+  couchto5k %>%
+  filter(city == "Edinburgh")
+gl <- 
+  couchto5k %>%
+  filter(city == "Glasgow")
+
+qqplot(ed$age, gl$age, frame = TRUE, main = "Q-Q plot")
+
+#check variance 
+var.test(ed$age,gl$age)
+
+with(couchto5k, t.test(age ~ city))
+```
+Given the results of the t-test above, we can observe that mean in group Edinburgh and in group Glasgow are different. Thus, we infer that the average ages of participants who commenced the programme differ by city.
+H0: Average age of participants not differ by city
+H1: Average age of participants differ by city
+Since the p-value is 0.7, which is bigger than the significant level alpha= = 0.05, so we accept the H0 and conclude that the average ages of participants who commenced the programme are not differ by city.
+
+# Question 2
+
+## Question 2a
+
+To investigate the way in which season influences happiness outcomes, first I draw the boxplot and jitter graph between four seasons and happiness. Then I apply the aov test because there are four independent discrete samples (spring, summer, autumn and winter), which cannot be tested by unpaired two samples t-test. 
+```{r q2a}
+ggplot(couchto5k, aes(x = season, y = happiness)) + 
+  geom_boxplot()
+ggplot(couchto5k, aes(x = season, y = happiness)) + 
+  geom_jitter(height=0, width=.05)
+
+#do aov
+anova_season = aov(couchto5k$happiness ~ couchto5k$season)
+summary(anova_season)
+
+```
+The null hypothesis and the alternative hypothesis of the aov test are as follows:
+HO: season has no influence in happiness outcomes
+H1: season has influence in happiness outcomes
+From the summary output of the aov test, we can see that the Pr value 0.036 is smaller than the significant level alpha = 0.05, so we should reject the H0. It indicates that season has influence on the happiness outcomes.
+
+## Question 2b
+From (2a) I conclude that season has influence on the happiness outcomes, so we should control the season factor to be "spring" to do further analysis. I control the season factor as "spring" by filtering out the data with "spring" in the column of season, because among the four seasons "spring" has the most data to test. 
+Since the variables "age" and "happiness" are both continuous, I build the following linear model to investigate whether age affect happiness:
+Happiness = b0 + b1 Age + ϵ
+```{r q2b}
+# keep the season constant "spring"
+spring_data <-
+  couchto5k %>%
+  filter(season == "spring")
+model1 <- lm(happiness ~ 1 + age, data = spring_data)
+summary(model1)
+
+ggplot(spring_data, aes(x=age, y=happiness)) +
+  geom_point() +
+  ggtitle(label = "Distribution between Age and Happiness")
+```
+The null hypothesis and the alternative hypothesis of the model are as follows:
+H0: age has no significant influence on happiness 
+H1: age has significant influence on happiness
+Given the summary results from linear model, we can see that the Pr value of age is 0.062, which is bigger than the significant level alpha= = 0.05, so we should accept the null hypothesis, and conclude that happiness is not significantly influenced by the age. 
+
+## Question 2c
+According to question (3), the primary factors that researchers interested in are "week_stopped" and "health metric". Excluding these two variables, I add  "accountability", "selfmot", "city" and "season" to the baseline model from the remaining variables. Also, I have conclude that happiness is not significantly influenced by age in (2b).
+So, my original baseline model will be as follows:
+Happiness = b0 + b1 accountability + b2 selfmot + b3 factor(city) + b4 factor(season) + ϵ
+```{r q2c}
+baseline <- lm(happiness ~ 1 + accountability + selfmot + factor(city) + factor(season), data = couchto5k)
+summary(baseline)
+```
+Using this linear model, we can see from the summary output that the Pr values of "accountability" is 0.38, which is bigger than 0.05. It means "accountability" is not significant, so I will exclude it in the final baseline model.
+Besides, the Pr value of "selfmot" is 0.0009, which is relatively smaller than the significant level alpha = 0.05, so I infer that happiness outcomes will be significantly influenced by the "selfmot". Thus, we cannot exclude "selfmot" in the model. Apart from "selfmot", "season" and "city" are also significant, so I keep them in the baseline model.
+Based on the analysis above, my final baseline model will be:
+Happiness = b0 + b1 selfmot + b2 factor(city) + b3 factor(season) + ϵ
+```{r}
+baseline <- lm(happiness ~ 1 + selfmot + factor(city) + factor(season), data = couchto5k)
+summary(baseline)
+```
+
+
+# Question 3
+
+## Question 3a
+Based on question 2, my baseline model is now: 
+Happiness = b0 + b1 selfmot + b2 factor(city) + b3 factor(season) + ϵ
+To figure out whether participants’ happiness ratings are affected by whether or not they completed the programme, I first generate a new variable called "comptype" by recategorise the week_stopped column into two groups (completion or incompletion): the week_stopped smaller than 9 is assigned to 0, while the week_stopped equal to 9 is assigned to 1. After grouping them, I add the factor(comptype) to the baseline model. Since the effect of the factor(season) is very big, it will affect other variables with smaller effect, so here I control the factor(season) as "spring" when filtering the sample data. Thus, the model now is the following:
+Happiness = b0 + b1 selfmot + b2 factor(city) + b3 factor(comptype) + ϵ
+The null hypothesis and the alternative hypothesis of the model is as follows:
+H0: comptype has no significant influence on happiness
+H1: comptype has significant influence on happiness
+```{r q3a}
+compdetail <-
+  couchto5k %>%
+  filter(season=="spring") %>%
+  mutate(comptype = case_when(week_stopped < 9 ~ 0,
+                              week_stopped == 9 ~ 1))
+model2 <- lm(happiness ~ 1 + selfmot + factor(city) + factor(comptype), data = compdetail)
+summary(model2)
+```
+From the summary output of the model, we can see that the Pr value of comptype is 0.696, which is bigger than the significant level alpha = 0.05. Thus, we should accept the null hypothesis indicating that participants’ happiness ratings are not affected by whether or not they completed the programme.
+
+## Question 3b
+Based on the analysis in (3a), we remove the variable "comptype" from the model because it is not significant. To investigate whether happiness additionally affected by the “health metric”, here I add the "health metric" variable to the model built in question (3a) and run the linear model again. The linear model now looks like the following:
+Happiness = b0 + b1 selfmot + b2 health + b3 factor(city) + ϵ
+
+```{r q3b}
+model3 <- lm(happiness ~ 1 + selfmot + health + factor(city), data = compdetail)
+summary(model3)
+
+```
+The null hypothesis and the alternative hypothesis following are similar to other linear models.
+H0: "health metric" not affect happiness
+H1: "health metric" affects happiness
+Based on the summary of this model, we can see that the Pr value of "health" is .024, which is smaller than the significant level alpha = 0.05, so I should reject the H0 and conclude that "health metric" does affect happiness.
+
+## Question 3c
+Through all analysis above, my model from (3b) is the following:
+Happiness = b0 + b1 selfmot + b2 health + b3 factor(city) + ϵ
+As we learned in class, if we are wanting to examine how the effect of x on y depends on z, we would want to estimate a parameter b such that our outcome is predicted by b(x×z), and we also need to include x and z themselves: y = b0 + b1(x) + b2(z) + b3(x×z).
+Similarly in this question, we want to examine how the effect of health on happiness depends on week_stopped, so I add the variable "week_stopped" and the interaction between health and week_stopped (health*wealth_stopped) to the model from (3b), which looks as follows:
+Happiness = b0 + b1 selfmot + b2 health + b3 factor(city) + b4 week_stopped + b5 (health*week_stopped) + ϵ
+Then I use lm() to fit this model.
+```{r q3c}
+model4 <- lm(happiness ~ 1 + selfmot + health + factor(city) + week_stopped + (health*week_stopped), data = compdetail)
+summary(model4)
+library(sjPlot)
+plot_model(model4, type="int")
+```
+From the summary of this model, I observe that the Pr values of "health", "week_stopped" and the interaction "health*week_stopped" are all smaller than the significant level alpha = 0.05, which indicate that they all have significant effect on happiness. 
+Using plot_model() from the sjPlot package, I get the plot above from the regression model. As the plot above indicates, the happiness of participants who got further along the programme is positively affected by the the health metric, while the happiness of participants who dropped out the programme in the first week is negatively affected by the the health metric. So the result from my model does not align with the hypothesis in the question (3c). 
+
+## Question 3d
+So far, the linear model for happiness I build is shown as follows:
+Happiness = b0 + b1 selfmot + b2 health + b3 factor(city) + b4 week_stopped + b5 (health*week_stopped) + ϵ
+Firstly, the factor(season) has a significant effect on happiness, and have been controlled constant as "spring" in the analysis above. Apart from the factor(season), I have also investigated that "selfmot", "health", "city", "week_stopped" all are causes of happiness in the model above. The detailed effect of each variable is illustrated below:
+"selfmot": has a significant effect on “happiness”. Increasing one unit of “selfmot” leads to the increasing of 2.325 units on “happiness”.
+"health": has a significant effect on “happiness”. Increasing one unit of “health” leads to the decreasing of 3.151 units on “happiness”.
+"city": has a significant effect on “happiness”. The city Glasgow has a negative slope of -20.678 to “happiness”.
+"week_stopped": has a significant effect on “happiness”. Increasing one unit of “health” leads to the decreasing of 31.06 units on “happiness”. & has some interaction with “health”. The happiness of participants staying longer in the program are likely to be positively affected by the health metric, while the happiness of participants staying shorter in the program are likely to be negatively affected by the health metric.
+
+# Question 4
+
+```{r q4}
+#filter data of only those participants who completed the programme
+comp <-
+  couchto5k %>%
+  filter(week_stopped == 9)
+  
+#group out data by city and season, and calculate the mean of happiness in each group
+groupby <- aggregate(x=comp$happiness,
+                     by=list(comp$city,comp$season),
+                     FUN=mean)
+
+#make a barplot showing Average Happiness Ratings Grouped by City & Season
+ggplot(groupby, aes(x=Group.1, y=x, fill=Group.2)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x="Group.1 Cities", y="Happiness") +
+  ggtitle(label="Average Happiness Ratings Grouped by City & Season")
+```
+
+
+# Question 5
+
+## Question 5a
+To build a model that predicts the likelihood of dropping out, this model should be logistic regression. Given some particular predictor variables, the model should tell us how likely the corresponding participant will drop out. Before building the model, I first need to generate a new binary variable which represents dropping out or not in the sample data. In this new predictor variable, the values of week_stopped smaller than 9 are tagged as 1, while the values of week_stopped equal to 9 are tagged as 0. After getting this new sample data, I then put all 10 predictor variables in the GLM. The insignificant variables will be removed after fitting the model and running the chi-squared test. The GLM is shown as follows:
+model5 <- glm(drop ~ age + accountability + selfmot + health + happiness + factor(city) + factor(season), data = dropout, family=binomial)
+```{r q5a}
+#generate a binary variable：drop out(1) or not(0)
+dropout <-
+  couchto5k %>%
+  mutate(drop = case_when(week_stopped < 9 ~ 1,
+                              week_stopped == 9 ~ 0))
+#git the glm
+model5 <- glm(drop ~ age + accountability + selfmot + health + happiness + factor(city) + factor(season), data = dropout, family=binomial)
+summary(model5)
+
+#use anova
+anova(model5, test="Chisq")
+```
+The summary of GLM above shows us that the model has a null deviance of 186.96 which is reduced to a residual deviance of 108.91.  Thus, we can infer that the GLM has an explainable deviance of 78.05. Intuitively, we want the residual deviance to be as small as possible and the explainable deviance to be as large as possible.
+
+
+```{r}
+model6 <- glm(drop ~ factor(season), data = dropout, family=binomial)
+summary(model6)
+
+```
+
+## Question 5b
+To see how the effects in the model are, I use the summary function. The summary output of the GLM shows us the factor(season) accounts for 68.2 deviance in the total model deviance. 
+The outcomes provided by the chi-squared test exhibits that among four seasons, spring is the only significant one. It indicates that participants attend the programme in spring is more likely to drop out.
+```{r q5b}
+anova(model5, test="Chisq")
+summary(model6)
+```
+
+## Question 5c
+
+```{r q5c}
+dropout_set = dropout[,c("drop","selfmot")]
+ggplot(data = dropout_set, aes(x=selfmot, y=drop)) +
+  ylab("p(Dropout)") +
+  geom_jitter(size=3,width=0,height=.2,alpha=.2) +
+  geom_smooth(method="glm",method.args=list(family=binomial), formula=y ~ x) +
+  scale_y_continuous(breaks=seq(0,1,by=.2))
+```
+
+
+
+
+
+
+
+
+
+

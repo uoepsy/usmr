@@ -1,0 +1,279 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+params:
+  examnumber: "B191351"
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(pander)
+library(broom)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+  The dataset obtained from https://uoepsy.github.io/data/usmr_2122_data.R consists of 129 participants information who attended an NHS-sponsored fitness program called Couch to 5k, including ID, age, measures of accountability (5 questions with each scored 1-7), self-motivation (5 questions with each scored 1-7), health (score range from 0-100) and happiness (score range from 0-100), interviewed season, recruited city and withdrawl week. Therein, accountability and self-motivation were measured at week 0 while happiness as well as health were measured at the week participants withdrew.
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+summary(couchto5k)
+#eliminate unreasonable values
+couchto5k$missing<-NA
+couchto5k$missing[couchto5k$age>100]<-"impossible age"
+couchto5k$missing[couchto5k$selfmot<5]<-"unreasonable self-motivation score"
+couchto5k$missing[couchto5k$week_stopped>9]<-"unreasonable withdrawal week"
+missingtable<-table(couchto5k$missing)
+couchto5k<-couchto5k%>%filter(is.na(missing))
+
+#encoding categorical variables
+miscoded<-sum(couchto5k$season=="autunm")
+couchto5k$season[couchto5k$season=="autunm"]<-"autumn"
+couchto5k$season<-as.factor(couchto5k$season)
+couchto5k$city<-as.factor(couchto5k$city)
+summary(couchto5k)
+```
+
+  First of all, the data were reviewed and total 5 values were removed as shown in table 1. In addition, `r miscoded` miscodings of "autunm" were recoded as "autumn. As a result, this analysis has `r count(couchto5k)` valid observations overall. 
+
+```{r table, results='asis'}
+missingtable%>%pander(caption="Table 1: Summay of missing values.")
+```
+
+```{r frequency of categorical variables}
+pct_spring<-sum(couchto5k$season=="spring")/count(couchto5k)*100
+pct_summer<-sum(couchto5k$season=="summer")/count(couchto5k)*100
+pct_winter<-sum(couchto5k$season=="winter")/count(couchto5k)*100
+pct_autumn<-sum(couchto5k$season=="autumn")/count(couchto5k)*100
+```
+  
+  Figure 1 presented descriptive statistics of participants including age (*M* = `r mean(couchto5k$age)%>%round(2)`, *SD* = `r sd(couchto5k$age)%>%round(2)`), psychometric measures of accountability (*M* = `r mean(couchto5k$accountability)%>%round(2)`, *SD* = `r sd(couchto5k$accountability)%>%round(2)`) and self-motivation (*M* = `r mean(couchto5k$selfmot)%>%round(2)`, *SD* = `r sd(couchto5k$selfmot)%>%round(2)`), health (*M* = `r mean(couchto5k$health)%>%round(2)`, *SD* = `r sd(couchto5k$health)%>%round(2)`) and happiness (*M* = `r mean(couchto5k$happiness)%>%round(2)`, *SD* = `r sd(couchto5k$happiness)%>%round(2)`). The majority `r pct_spring%>%round(2)`% of participants were interviewed in spring while `r pct_summer%>%round(2)`% were in summer, `r pct_winter%>%round(2)`% in winter and `r pct_autumn%>%round(2)`% in autumn. Participants were  recruited either in Edinburgh `r sum(couchto5k$city=="Edinburgh")/count(couchto5k)*100%>%round(2)`%) or Glasgow (`r sum(couchto5k$city=="Glasgow")/count(couchto5k)*100%>%round(2)`%)).
+```{r descriptives, fig.asp=.6,fig.cap="Figure 1: Descriptive figures of (1) participants age, (2) accountability, (3) self-motivation, (4) helath and (5) happiness"}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+library(patchwork)
+age_plot<-ggplot(data=couchto5k,aes(x=age))+
+  geom_histogram(bins=sqrt(nrow(couchto5k)))+
+  theme_bw()+
+  labs(x="age",y="Frequency")
+acc_plot<-ggplot(data=couchto5k,aes(x=accountability))+
+  geom_histogram(bins=sqrt(nrow(couchto5k)))+
+  theme_bw()+
+  labs(x="accountability",y="Frequency")
+selfmot_plot<-ggplot(data=couchto5k,aes(x=selfmot))+
+  geom_histogram(bins=sqrt(nrow(couchto5k)))+
+  theme_bw()+
+  labs(x="Self motivation",y="Frequency")  
+health_plot<-ggplot(data=couchto5k,aes(x=health))+
+  geom_histogram(bins=sqrt(nrow(couchto5k)))+
+  theme_bw()+
+  labs(x="Health",y="Frequency")
+happiness_plot<-ggplot(data=couchto5k,aes(x=happiness))+
+  geom_histogram(bins=sqrt(nrow(couchto5k)))+
+  theme_bw()+
+  labs(x="Happiness",y="Frequency")
+age_plot|acc_plot|selfmot_plot|health_plot|happiness_plot
+```
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+couchto5k$w5_stopped<-NA
+couchto5k$w5_stopped[couchto5k$week_stopped==c("1","2","3","4")]<-"before w5"
+couchto5k$w5_stopped[couchto5k$week_stopped==c("5","6","7","8")]<-"after w5"     
+couchto5k$w5_stopped[couchto5k$week_stopped=="9"]<-"completed" 
+chisq_w5<-chisq.test(table(couchto5k$w5_stopped),p=c(.45,.10,.45))
+
+```
+To calculate the proportion of participants withdrawing from the program before week 5, after week 5 and completing the program, a new categorical variable with 3 categories was created. According to the chi-square goodness-of-fit test results, our data is significantly different from the earlier survey data, (*χ2*(`r chisq_w5$parameter`, *N* = 124) = `r chisq_w5$statistic`, *p* < .001). Figure 2 exhibits that 13.89% of participants dropped out before week 5, 5.56% after week 5 and 80.56% completed the program.
+
+```{r barplot,fig.cap="Figure 2: Proportion of participants completing the program or dropping out before week5 and after week5"}
+barplot(prop.table(table(couchto5k$w5_stopped))*100)
+```
+
+## Question 1b
+
+```{r q1b}
+chisq_city<-chisq.test(table(couchto5k$city,couchto5k$w5_stopped))
+
+```
+
+```{r table2}
+table_cityw5<-couchto5k%>%select(city,w5_stopped)%>%table()
+table2<-table_cityw5/rowSums(table_cityw5)*100
+pander(table2, caption = "Table 2: Attrition rates of three categories of participants across different cities")
+```
+
+The attrition rates of participants completing the whole program, dropping out from the program before week 5 and after week 5 are constant across different recruited city as marked by nonsignificant chi-square results (*χ2*(`r chisq_city$parameter`, *N* = 124) = `r chisq_city$statistic`, *p* = `r chisq_city$p.value`). In our observed data as presented in table 1, `r table2[1,2]/rowSums(table2)[1]*100`% of participants recruited from Edinburgh dropped out from the program before week 5, `r table2[1,1]/rowSums(table2)[1]*100`% after week 5 and `r table2[1,3]/rowSums(table2)[1]*100`% completed the program. By contrast, among participants recruited from Glasgow, `r table2[2,2]/rowSums(table2)[2]*100`% withdrew before week 5 and `r table2[2,3]/rowSums(table2)[2]*100`% completed the program without anyone withdrawing after week 5.
+
+## Question 1c
+
+```{r q1c}
+#assumption checking
+normality_Edin<-shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"])
+normality_Glas<-shapiro.test(couchto5k$age[couchto5k$city=="Glasgow"])
+variance<-with(couchto5k, var.test(age ~ city))
+
+t_age_city<-t.test(couchto5k$age~couchto5k$city)
+```
+
+```{r figure2,fig.cap="Figure 3: Participants' age comparison between two cities"}
+
+ggplot(data=couchto5k, aes(x=age, y=city)) +
+  geom_boxplot()
+```
+
+An independent sample t-test was conducted to examine whether participants' average age was different by city and normality as well as variance assumptions were checked. Notably, Shapiro-Wilk normality test of participants' age in Edinburgh has significant result, against the assumption (*W* = `r normality_Edin[["statistic"]][["W"]]`, p <.001). No significant difference was found between Edinburgh (*M* = `r mean(couchto5k$age[couchto5k$city=="Edinburgh"])%>%round(2)`, *SD* = `r sd(couchto5k$age[couchto5k$city=="Edinburgh"])%>%round(2)`) and Glasgow (*M* = `r mean(couchto5k$age[couchto5k$city=="Glasgow"])%>%round(2)`, *SD* = `r sd(couchto5k$age[couchto5k$city=="Glasgow"])%>%round(2)`), *t*(`r t_age_city$parameter%>%round(0)`) = `r t_age_city$statistic`, *p* = `r t_age_city$p.value`. Figure 3 demonstrates participants' age recruited in Edinburgh and Glasgow.
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+couchto5k<-couchto5k%>%mutate(
+  happiness_cent=happiness-mean(happiness)
+) 
+mod1<-lm(happiness_cent~1+season,data=couchto5k)
+F_mod1<-summary(mod1)
+stat_mod1<-tidy(mod1)
+
+```
+A model of happiness predicted by interviewed season was produced, explaining `r F_mod1$r.squared*100%>%round(1)`% of the variance (*R2* = `r F_mod1$r.squared%>%round(3)`, *F*(`r F_mod1[["fstatistic"]][["numdf"]]`, `r F_mod1[["fstatistic"]][["dendf"]]`) = `r F_mod1[["fstatistic"]][["value"]]%>%round(2)`, *p* = `r anova(mod1)[1,5]`). Therein, happiness rating scores were standardized by subtracting the mean. No influential data point was removed after assumption checking of the model. The estimated average happiness for participants interviewed in autumn is `r stat_mod1$estimate[1]`, (*t*(120) = `r stat_mod1$statistic[1]%>%round(2)`, *p* = `r stat_mod1$p.value[1]`). Moreover, there will be estimated significant increase of `r stat_mod1$estimate[4]` standard deviation in happiness ratings for participants interviewed in winter on average, compared to participants in autumn, (*t*(120) = `r stat_mod1$statistic[4]%>%round(2)`, *p* = `r stat_mod1$p.value[4]`). Nevertheless, it's estimated that no significant change will occur in happiness when comparing participants interviewed in autumn with those in spring (*t*(120) = `r stat_mod1$statistic[2]%>%round(2)`, *p* = `r stat_mod1$p.value[2]`) or summer (*t*(120) = `r stat_mod1$statistic[3]%>%round(2)`, *p* = `r stat_mod1$p.value[3]`).
+
+## Question 2b
+
+```{r q2b}
+mod2<-lm(happiness_cent~1+season+age,data=couchto5k)
+F_mod2<-summary(mod2)
+
+```
+Accounting for the effect of interviewed season, happiness ratings is not significantly affected by age either with the model only explaining `r F_mod2[["adj.r.squared"]]*100%>%round(1)`% of variability (adjusted *R2* = `F_mod2[["adj.r.squared"]]%>%round(3)`, *F*(`r F_mod2[["fstatistic"]][["numdf"]]`, `r F_mod2[["fstatistic"]][["dendf"]]`) = `r F_mod2[["fstatistic"]][["value"]]%>%round(2)`, *p* = 0.371).
+
+## Question 2c
+
+```{r q2c}
+comp_mod12<-anova(mod1,mod2)
+```
+I will choose the first baseline model only including interviewed season predictor because the proportion of variability in happiness is not significantly better explained by the second model including age and interviewed season (*F*(`r comp_mod12$Df[2]`, `r comp_mod12$Res.Df[2]`) = `r comp_mod12$F[2]%>%round(2)`, *p* = `r comp_mod12$Pr[2]`.
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+couchto5k$program_completion<-NA
+couchto5k$program_completion[couchto5k$week_stopped!="9"]<-0
+couchto5k$program_completion[couchto5k$week_stopped=="9"]<-1
+mod3<-lm(happiness_cent~1+season+program_completion,data=couchto5k)
+F_mod3<-summary(mod3)
+stat_mod3<-tidy(mod3)
+```
+Based on the first baseline model including only age as predictor, the model adding program completion as the second predictor is not an effective model compared to the null model, only explaining `r F_mod3[["adj.r.squared"]]*100%>%round(1)`% of the variance in happiness ratings (adjusted *R2* = `r F_mod3[["adj.r.squared"]]%>%round(3)`%, *F*(`r F_mod3[["fstatistic"]][["numdf"]]`, `r F_mod3[["fstatistic"]][["dendf"]]`) = `r F_mod3[["fstatistic"]][["value"]]%>%round(2)`, *p* = 0.362). The status of program completion is also not an effective predictor (*t*(119) = `r stat_mod3$statistic[5]%>%round(2)`, *p* = `r stat_mod3$p.value[5]`). 
+
+## Question 3b
+
+```{r q3b}
+mod4<-lm(happiness_cent~1+season+program_completion+health,data=couchto5k)
+F_mod4<-summary(mod4)
+F_mod34<-anova(mod3,mod4)
+```
+
+Building on the model with predictors of interviewed season and program completion, the model with additional predictor of health explains mere `r F_mod4[["adj.r.squared"]]*100%>%round(1)`% of the variance (adjusted *R2* = `r F_mod4[["adj.r.squared"]]%>%round(3)`%, *F*(`r F_mod4[["fstatistic"]][["numdf"]]`, `r F_mod4[["fstatistic"]][["dendf"]]`) = `r F_mod4[["fstatistic"]][["value"]]%>%round(2)`, *p* = 0.497. Likewise, the results of incremental F-test also find no significant amount of variance explained by health over and above interviewed season and program completion (*F*(`r F_mod34$Df[2]`, `r F_mod34$Res.Df[2]`) = `r F_mod34$F[2]%>%round(2)`, *p* = `r F_mod34$Pr[2]`).
+
+## Question 3c
+
+```{r q3c}
+couchto5k<-couchto5k%>%mutate(
+  health_cen=health-mean(health)
+)
+mod5<-lm(happiness_cent~1+season+program_completion+health_cen*week_stopped,data=couchto5k)
+F_mod5<-summary(mod5)
+stat_mod5<-anova(mod5)
+
+```
+The hypothesis is supported that for every 1 increase of standard deviation health score, the change in happiness associated with 1 more week staying in the program is significantly adjusted by `r tidy(mod5)$estimate[8]` (*t*(116) = `r tidy(mod5)$statistic[8]%>%round(2)`, *p* < .001). 
+
+## Question 3d
+
+A multiple regression model predicting happiness based on interviewed season, program completion, health and the number of attending week was created and the total explained variance is `r F_mod5[["adj.r.squared"]]*100%>%round(1)`% (adjusted *R* = `r F_mod5[["adj.r.squared"]]%>%round(3)`, *F*(`r F_mod5[["fstatistic"]][["numdf"]]`,`r F_mod5[["fstatistic"]][["dendf"]]`) = `r F_mod5[["fstatistic"]][["value"]]`, *p* =.001). As shown in ANOVA test, the number of attending week is a significant predictor (*F*(`r stat_mod5$Df[4]`, `r stat_mod5$Df[6]`) = `r stat_mod5$F[4]%>%round(2)`, *p* = `r stat_mod5$Pr[4]`) over and above interviewed season, program completion and health. Specifically, participants' happiness ratings will increase by `r tidy(mod5)$estimate[7]` standard deviation on average as participants attend 1 more week of the program. Furthermore, the interaction between health and the number of attending week is also a significant predictor (*F*(`r stat_mod5$Df[5]`, `r stat_mod5$Df[6]`) = `r stat_mod5$F[5]%>%round(2)`, *p* <.001).
+
+# Question 4
+
+```{r q4}
+subset<-couchto5k[couchto5k$week_stopped=="9",]
+subset_plot<-ggplot(data=subset,aes(x=season,y=happiness,fill=city))+
+  geom_bar(stat="identity", position=position_dodge())
+
+```
+A subset including only `r count(subset)` participants who completed the program was created where average happiness rating is `r mean(subset$happiness)%>%round(2)` with standard deviation of `r sd(subset$happiness)%>%round(2)`. As figure displayed, participants have highest happiness ratings when interviewed in summer (*M* = `r mean(subset$happiness[subset$season=="summer"])%>%round(2)`, *SD* = `r sd(subset$happiness[subset$season=="summer"])%>%round(2)`), followed by winter (*M* = `r mean(subset$happiness[subset$season=="winter"])%>%round(2)`, *SD* = `r sd(subset$happiness[subset$season=="winter"])%>%round(2)`), spring (*M* = `r mean(subset$happiness[subset$season=="spring"])%>%round(2)`, *SD* = `r sd(subset$happiness[subset$season=="spring"])`) and autumn (*M* = `r mean(subset$happiness[subset$season=="autumn"])%>%round(2)`, *SD* = `r sd(subset$happiness[subset$season=="autumn"])%>%round(2)`). 
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+couchto5k$prob_quit<-NA
+couchto5k$prob_quit[couchto5k$program_completion==0]<-1
+couchto5k$prob_quit[couchto5k$program_completion==1]<-0
+mod6<-glm(prob_quit~selfmot+accountability,family="binomial",data=couchto5k)
+
+chisq_mod6<-anova(mod6,test="Chisq")
+stat_mod6<-tidy(mod6)
+odds<-exp(coef(mod6))
+CI<-exp(confint(mod6))
+#Accuracy
+guess<-predict(mod6)
+guess <- ifelse(guess>0,1,0)
+hits <- sum(guess == couchto5k$prob_quit)
+accuracy<-hits/length(couchto5k$prob_quit)*100
+
+```
+
+A generalized linear model taking self-motivation and accountability as predictors for the likelihood of dropping out was built where the likelihood of dropping is a new categorical variable indicating whether participants drop out.
+
+## Question 5b
+
+```{r q5b,results='asis'}
+pander(mod6,caption = "Table 3: Fitting model of the likelihood of dropping out predicted by self-motivation and accountability")
+
+```
+
+The chi-square test results, presented in table 3, demonstrate that deviance explained by self-motivation improves significantly over the null model (*95% CI:* `r CI[2,1]` to `r CI[2,2]%>%round(2)`, *p* = `r chisq_mod6$Pr[2]%>%round(2)`) and explained deviance of accountability also significantly improves over and above self-motivation (*95% CI:* `r CI[3,1]%>%round(2)` to `r CI[3,2]%>%round(2)`, *p* = `r chisq_mod6$Pr[3]`). For participants with accountability and self-motivation of 0, the odds of dropping out is `r odds[1]%>%round(2)`. The odds of dropping out decrease by `r odds[2]%>%round(2)`for every one point of increase in self-motivation whereas for one point of increase in accountability, the odds of dropping out decrease by `r odds[3]%>%round(2)`. This model correctly predicts `r accuracy%>%round(2)`% of the observed data according to accuracy calculation. 
+
+## Question 5c
+
+```{r q5c, fig.asp=.6,fig.cap="Figure 4: Generalized linear model of probability of quitting predicted by self-motivation", message=FALSE}
+ggplot(data=couchto5k,aes(x=selfmot,y=prob_quit)) +
+labs(x="Self motivation",y="probablity of quitting") +
+geom_jitter(size=3,width=0,height=.2,alpha=.1) +
+geom_smooth(method="glm",method.args=list(family=binomial)) +
+scale_y_continuous(breaks=seq(0,1,by=.2))
+```
+
+
+
+
+
+
+
+
+
+

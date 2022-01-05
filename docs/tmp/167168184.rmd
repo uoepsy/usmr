@@ -1,0 +1,516 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B190697
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(ggpubr)
+library(ggplot2)
+library(vegan)
+options(warn=-1)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(car)
+#library(stargazer)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+  
+__The alpha-level for the analysis below is set to 0.05__
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+couchto5k <- couchto5k%>%
+  mutate(
+    season = ifelse(season == "autunm", "autumn", season),
+    season = factor(season, levels = c("spring", "summer", "autumn", "winter")),
+    city = as.factor(city),
+    age = ifelse(age > 100, NA, age),
+    accountability = ifelse(accountability < 5 | accountability > 35, NA, accountability),
+    selfmot = ifelse(selfmot < 5 | selfmot > 35, NA, selfmot),
+    health = ifelse(health < 0 | health > 100, NA, health),
+    happiness = ifelse(happiness < 0 | happiness > 100, NA, happiness),
+    week_stopped = ifelse(week_stopped < 0 | week_stopped > 9, NA, week_stopped)
+  )
+
+#noNA_couchto5k <- na.omit(couchto5k)
+summary(couchto5k)
+```
+  
+  The data set for the program _Counch_ _to_ _5k_ contains data from 127 participants. For each participant, eight kinds of measures are given. Table 1 and Figure 1 below shows information of five of the measures: participant's age; the accountability and self-motivation score measured before the program; health and happiness score measured when the participant completed the program (or when they dropped out halfway). Data points with impossible values are converted to _NAs_; the amount of _NAs_ are given in the table. 
+
+<br/>
+Table 1 The minimum, maximum, mean values as well as amount of _NAs_ of five categories of the data
+
+Data             |Min   |Max   |Mean  |(NAs)  
+:----------------|:----:|:----:|:----:|:----:
+Age              |18    |60    |39.5  |2
+Accountability   |5.0   |30.0  |19.8  |0
+Self-motivation  |7.0   |21.0  |14.5  |2
+Health           |31.0  |78.0  |57.0  |0
+Happiness        |0.0   |100.0 |55.8  |0
+                 |      |      |      | 
+
+
+```{r descriptive_1}
+plot1 <- ggplot(couchto5k, aes(x = age)) + 
+  geom_density() + 
+  geom_boxplot(width = 1/450) + 
+  labs(x = "age (year)", y = "probability\ndensity")
+
+plot5 <- ggplot(couchto5k, aes(x = accountability)) + 
+  geom_density() +
+  geom_boxplot(width = 1/150) + 
+  labs(x = "accoutability score\n(range 5-35)", y = "probability\ndensity")
+
+plot6 <- ggplot(couchto5k, aes(x = selfmot)) + 
+  geom_density() +
+  geom_boxplot(width = 1/100) + 
+  labs(x = "self-motivation score\n(range 5-35)", y = "probability\ndensity")
+
+plot7 <- ggplot(couchto5k, aes(x = health)) + 
+  geom_density() +
+  geom_boxplot(width = 1/300) + 
+  labs(x = "health score\n(range 0-100)", y = "probability\ndensity")
+
+plot8 <- ggplot(couchto5k, aes(x = happiness)) + 
+  geom_density() +
+  geom_boxplot(width = 1/1000) + 
+  labs(x = "happiness score\n(range 0-100)", y = "probability\ndensity")
+
+ggarrange(plot1, plot5, plot6, plot7, plot8, nrow = 2, ncol = 3)
+```
+  <center>Figure 1 Density plots and box plots of five categories of the data</center>  
+<br/> 
+  Besides, the season each participant was interviewed in, the city each participant was recruited in and the week the participant stopped in (week 9 = completed the program) are also recorded, as shown in Figure 2. The _week_ data contains one _NA_.
+  
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+plot2 <- ggplot(couchto5k, aes(x = season)) + 
+  geom_bar() +
+  labs(x = "season participants\nwere interviewed in")
+
+plot3 <- ggplot(couchto5k, aes(x = city)) + 
+  geom_bar(width = 0.5) +
+  labs(x = "city participants\nwere recruited in")
+
+plot4 <- ggplot(couchto5k, aes(x = week_stopped)) +
+  geom_bar() +
+  scale_x_continuous(breaks = 1:10) + 
+  labs(x = "week of programme\nparticipants stopped in")
+
+#plot4 <- ggplot(couchto5k, aes(x = week_stopped)) + 
+  #geom_histogram(breaks = seq(0, 9, 1))  +
+  #xlim(-1, 11)
+
+ggarrange(plot2, plot3, plot4, nrow = 1, ncol = 3)
+
+```
+<center>Figure 2 Bar plots of three more categories of the data</center>
+
+# Question 1 
+
+## Question 1a
+  To answer this question, a chi-square goodness-of-fit test is performed. The result (p-value > 0.05) shows that there is no enough evidence to infer that the data in the sample is not in line with data from the earlier survey. 
+  
+```{r q1a}
+couchto5k <- couchto5k %>%
+  mutate(
+    completion_status = ifelse(week_stopped < 5, "stopped_before_week5", ifelse(week_stopped < 9, "stopped_after_week5", "completed")),
+    completion_status = as.factor(completion_status)
+  )
+
+chisq.test(table(couchto5k$completion_status), p = c(0.45, 0.1, 0.45))
+```
+
+## Question 1b
+  To explore if the patterns of attrition rates differ for the two cities, a chi-square test-for-independence is performed. The results (p-value > 0.05) shows that, there is no enough evidence to infer that the patterns of attrition rates differ by city.  
+  
+```{r q1b}
+chisq.test(table(couchto5k$city, couchto5k$completion_status))
+```
+  Figure 3 is a plot comparing the attrition patterns of the two cities.  
+
+```{r qib_2}
+plot(table(couchto5k$city, couchto5k$completion_status))
+```
+<center>Figure 3 Box plot comparing the attrition patterns of the two cities</center>
+
+## Question 1c
+  To answer this question, firstly the distribution of the data is checked. Figure 4 is a density plot of the age of participants who are form Edinburgh, which shows clearly that the age is not normally distributed. Therefore, t-test cannot be applied.
+
+```{r q1c}
+couchto5k %>% filter(city == "Edinburgh") %>% 
+  ggplot(aes(x = age)) + 
+  geom_density() +
+  labs(x = "age (of Edinburgh participants, measured in year)", y = "probability density")
+
+#shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"])
+```
+<center>Figure 4 Density plot of the age of Edinburgh participants</center>
+<br/>
+  A chi-square test-for-independence is performed instead. Here _age_ is categorized into three levels: 15-30, 30-45, 45-60 (each level includes the right boundary and exclude the left boundary). The result of the test (p-value > 0.05) shows that there is no enough evidence to infer that the average ages of participants differ by city.  
+  
+
+```{r q1c_2}
+couchto5k <- couchto5k %>%
+  mutate(
+    age_range = ifelse(age > 15 & age <= 30, "15-30", ifelse(age > 30 & age <= 45, "30-45", "45-60")),
+    age_range = as.factor(age_range)
+  )
+
+chisq.test(table(couchto5k$city, couchto5k$age_range))
+```
+  
+  Figure 5 is a plot comparing the age distribution patterns of the two cities.
+
+```{r q1c_3}
+plot(table(couchto5k$city, couchto5k$age_range))
+```
+<center>Figure 5 Box plot comparing the age distribution patterns of the two cities</center>
+<br/>
+  Moreover, Mann-Whitney U test, a non-parametric test is also performed. The test keeps more information of the data and have more power than the chi-square test above. The result (p-value > 0.05) nonetheless leads us to the same conclusion that, there is no enough evidence to infer that the average ages of participants differ by city.  
+  
+
+```{r q1c_4}
+wilcox.test(age ~ city, data = couchto5k, paired = FALSE)
+```
+
+# Question 2
+
+## Question 2a
+
+  A point plot of participants' happiness scores in different seasons are made as in Figure 6.
+
+```{r q2a_1}
+couchto5k %>% ggplot(aes(x = season, y = happiness)) + 
+  geom_jitter() + 
+  labs(y = "happiness score (range 0-100)")
+```
+
+<center>Figure 6 Point plot of participants' happiness scores in different seasons</center>
+<br/>
+
+```{r q2a_2, include = FALSE}
+model1 <- lm(happiness ~ 1 + season, data = couchto5k)
+summary(model1)
+```
+  
+  A linear regression model (happiness ~ season) is built. Assumptions of the model are checked through plots in Figure 7:
+  
+```{r q2a_3}
+split.screen(c(2, 2))
+screen(1)
+plot_a <- plot(model1, which = 1)
+screen(2)
+plot_b <- plot(model1, which = 2)
+screen(3)
+plot_c <- plot(model1, which = 3)
+screen(4)
+plot_d <- plot(model1, which = 5)
+close.screen(all = TRUE)
+```  
+
+<center>Figure 7 Plots checking the assumptions of the model _happiness_ _~_ _season_</center>
+<br/>
+  Plots in Figure 7 show that the model to a large extent meets the assumptions. Regression results of the model are therefore summarized in the Table 2 below.
+<br/>
+<br/>
+Table 2 Summary of the linear regression model _happiness_ _~_ _season_
+```{r q2a_4}
+tab_model(
+  model1,
+  string.ci = "Conf.Int (95%)",
+  string.p = "p-value"
+)
+```
+<br>
+  According to results of the model, participants' happiness ratings are affected by the season they were interviewed in. Participants who were interviewed in Spring have an average happiness rating of 61.74 (statistically significant); participants interviewed in winter has an average happiness rating which is 30.41 (statistically significant) lower on average than that in spring.
+
+## Question 2b
+
+  The point plot in Figure 8 shows how participants happiness ratings distributed across age. The distribution is grouped by season.
+
+```{r q2b_1}
+couchto5k %>% ggplot(aes(x = age, y = happiness)) + 
+  geom_point() +
+  facet_grid( ~ season) +
+  labs(x = "age (year)", y = "happiness score (range 0-100)")
+```
+
+<center>Figure 8 Point plot of participants' happiness ratings across age range, grouped by season</center>
+<br/>
+<br/>
+```{r q2b_2, include = FALSE}
+model2 <- lm(happiness ~ 1 + season + age, data = couchto5k)
+summary(model2)
+```
+
+  A linear regression model (happiness ~ season + age) is built. The regression results are summarized below in Table 3  
+<br/>
+Table 3 summary of the linear regression model _happiness_ _~_ _season_ _+_ _age_
+```{r q2b_3}
+tab_model(
+  model2,
+  string.ci = "Conf.Int (95%)",
+  string.p = "p-value"
+)
+```
+<br/>
+  According to the results of the model (p-value of predictor _age_ is > 0.05), happiness is not affected by age. 
+
+## Question 2c
+
+The models built in 2a and 2b are compared using _anova_ _(_ _)_ function, as shown below. 
+
+```{r q2c}
+data_q2c <- couchto5k %>% filter(age != "NA")
+model1a <- lm(happiness ~ 1 + season, data = data_q2c)
+anova(model1a, model2)
+```
+  The result (p-value of F-statistic > 0.05) shows that, the second model (happiness ~ season + age) is not significantly better than the first model (happiness ~ season). The results in 2b also show that age is not a necessary predictor. Therefore, the baseline model will be the one built for 2a (happiness ~ season).
+
+
+# Question 3
+
+## Question 3a
+
+```{r q3a_1}
+couchto5k <- couchto5k %>% 
+  mutate(
+    completion_status2 = ifelse(completion_status == "completed", "completed", "not_completed"),
+    completion_status2 = as.factor(completion_status2)
+  )
+```
+
+```{r q3a_2, include = FALSE}
+model3 <- lm(happiness ~ 1 + completion_status2 + season, data = couchto5k)
+summary(model3)
+```
+  Based on the baseline model, a new model taking into consideration of the effects of completion status (happiness ~ completion status + season) is built. The assumptions of the model are checked through the plots in Figure 9.
+
+```{r q3a_3}
+split.screen(c(2, 2))
+screen(1)
+plot_a <- plot(model3, which = 1)
+screen(2)
+plot_b <- plot(model3, which = 2)
+screen(3)
+plot_c <- plot(model3, which = 3)
+screen(4)
+plot_d <- plot(model3, which = 5)
+close.screen(all = TRUE)
+```
+<br/>
+<center>Figure 9 Plots checking the assumptions of the model _happiness_ _~_ _completion_ _status_ _+_ _season_</center>  
+<br/>
+<br/>
+  The red lines in plots above seem to be undulant, especially the one in the bottom left plot. This means the variance of the residuals seems not to be constant. A Breusch-Pagan test therefore is performed for further check, as shown below.
+  
+```{r q3a_4}
+ncvTest(model3)
+```
+  The result of the Breusch-Pagan test above (p-value > 0.05) fails to reject the null hypothesis that the variance of the residuals is constant. Therefore, it will be assumed that the model built in 3a meets the assumptions. Regression results of the model are summarized in Table 4 below.  
+<br/>
+Table 4 Summary of the linear regression model _happiness_ _~_ _completion_ _status_ _+_ _season_
+```{r q3a_5}
+tab_model(
+  model3,
+  string.ci = "Conf.Int (95%)",
+  string.p = "p-value"
+)
+```
+<br/>
+According to the results of the model (p-value of the predictor _completion_ _status_ is < 0.05), participants' happiness ratings are affected by the completion status. For participants who were interviewed in the same season, if they did not complete the program, their happiness ratings are predicted to drop 19.03 on average.
+
+```{r q3a_6, include = FALSE}
+table_3a <- couchto5k %>%
+  filter(completion_status2 != "NA")
+table_3a %>% ggplot(aes(x = completion_status2, y = happiness)) + 
+  geom_point() +
+  facet_grid( ~ season) +
+  labs(x = "completion status", y = "happiness score (range 0-100)")
+```
+
+
+## Question 3b
+
+The linear regression model _happiness_ _~_ _completion_ _status_ _+_ _health_ _+_ _season_ is built and the assumptions are checked through plots in Figure 10
+```{r q3b, include=FALSE}
+model4 <- lm(happiness ~ 1 + completion_status2 + health +season, data = couchto5k)
+summary(model4)
+```
+
+```{r}
+split.screen(c(2, 2))
+screen(1)
+plot_a <- plot(model4, which = 1)
+screen(2)
+plot_b <- plot(model4, which = 2)
+screen(3)
+plot_c <- plot(model4, which = 3)
+screen(4)
+plot_d <- plot(model4, which = 5)
+close.screen(all = TRUE)
+```
+
+<center>Figure 10 Plots checking the assumptions of the model _happiness_ _~_ _completion_ _status_ _+_ _health_ _+_ _season_</center>
+<br/>
+
+According to plots in Figure 10, the model to a large extent meets the assumptions. The regression results are therefore summarized in Table 5.
+<br/>
+<br/>
+Table 5 Summary of the linear regression model _happiness_ _~_ _completion_ _status_ _+_ _health_ _+_ _season_
+```{r}
+tab_model(
+  model4,
+  string.ci = "Conf.Int (95%)",
+  string.p = "p-value"
+)
+```
+<br/>
+The results of the model (p-value of the predictor _health_ is > 0.05) shows that happiness is not likely to be additionally affected by the _health_ metric
+
+## Question 3c
+
+To test this hypothesis, a linear regression model taking into consideration of the interaction between _completion_ _status_ and _health_ is built. The assumptions are checked through plots in Figure 11.
+
+```{r q3c, include=FALSE}
+model5 <- lm(happiness ~ 1 + completion_status2 * health + season, data = couchto5k)
+summary(model5)
+
+#anova(model4, model5)
+```
+
+```{r q3c_2}
+split.screen(c(2, 2))
+screen(1)
+plot_a <- plot(model5, which = 1)
+screen(2)
+plot_b <- plot(model5, which = 2)
+screen(3)
+plot_c <- plot(model5, which = 3)
+screen(4)
+plot_d <- plot(model5, which = 5)
+close.screen(all = TRUE)
+```
+<center>Figure 11 Plots checking the assumptions of the model _happiness_ _~_ _completion_ _status_ * _health_ _+_ _season_</center>
+<br/>
+Plots in Figure 11 show that the model to a large extent meets the assumptions. Regression results of the model are therefore summarized in Table 6.
+<br/>
+<br/>
+Table 6 Summary of the linear regression model _happiness_ _~_ _completion_ _status_ * _health_ _+_ _season_
+```{r q3c_3}
+tab_model(
+  model5,
+  string.ci = "Conf.Int (95%)",
+  string.p = "p-value"
+)
+```
+<br/>
+The results of the model (p-value of the predictor of interaction is < 0.05, the estimate of the predictor of interaction < 0) support the hypothesis that, the happiness of participants who got further along the program might be more affected by the health metric than that of those who stopped earlier
+
+
+## Question 3d
+According to results of the linear regression models built above, there are three factors which are likely to influence participants happiness ratings: participants' completion status, the interaction between completion status and health metrics, season. When not considering the interaction effect of the factors, for participants who were interviewed in the same season, if they did not complete the program, their happiness ratings are predicted to drop 19.03 on average; for participants who have the same completion status, their happiness ratings are likely to drop 17.50 in summer, 31.81 in autumn, 44.40 in winter, compared to that in spring. When considering the interaction between completion status and health metrics, the effects of the factors would have some changes as it has been tested that the happiness of participants who got further along the program might be more affected by the health metric than that of those who stopped earlier.
+
+# Question 4
+
+```{r q4}
+week9_couchto5k <- couchto5k %>%
+  filter(week_stopped == 9)
+
+#week9_couchto5k %>% ggplot(aes(x = happiness)) +
+  #geom_histogram() +
+  #facet_grid(season ~ city)
+
+week9_couchto5k %>% ggplot(aes(x = happiness)) +
+  geom_density() +
+  geom_boxplot(width = 1/500) +
+  facet_grid(season ~ city) +
+  labs(x = "happiness score for participants who completed the program\n(range 0-100)", y = "probability density ")
+```
+<center>Figure 12 Density plots of happiness scores for participant who completed the program, grouped by city and season.<center/>
+
+# Question 5
+
+## Question 5a
+Since the predictee _drop_ _out_ _or_ _not_ is categorical, a generalized linear model is built. For the first try, the model takes into account the effects of accountability and self-motivation ratings of the participants, only to find there are no significant correlations between the likelihood of dropping out and either of these two predictors. Therefore, a more correlated predictor _season_ is taking into account for building the model:
+<br/>
+<br/>
+glm (completion status ~ season)
+
+```{r q5a, include=FALSE}
+model6 <- glm(completion_status2 ~ accountability + selfmot, data = couchto5k, family = "binomial")
+model7 <- glm(completion_status2 ~ season, data = couchto5k, family = "binomial")
+summary(model6)
+summary(model7)
+```
+
+## Question 5b
+
+Regression results of the model _glm_ _(_ _completion_ _status_ _~_ _season_ _)_ are summarized in Table 7.
+<br/>
+
+Table 7 Summary of the generalized linear model _glm_ _(_ _completion_ _status_ _~_ _season_ _)_
+```{r q5b}
+tab_model(
+  model7,
+  string.ci = "Conf.Int (95%)",
+  string.p = "p-value"
+)
+```
+<br/>
+As shown in Table 7, the odds of completing the program in spring is 4.50; the odds of completing the program in summer is 4.50 x 0.05 = 0.225; the odds of completing the program in autumn or winter is 4.50 x 0.02 = 0.09.
+
+## Question 5c
+
+```{r q5c}
+model8 <- glm(completion_status2 ~ selfmot, data = couchto5k, family = "binomial")
+#summary(model8)
+
+q5_table <- couchto5k %>%
+  select(completion_status2, selfmot) %>%
+  na.omit() %>%
+  mutate(
+    drop_probability = predict(model8, type = "response")
+  )
+
+q5_table %>% ggplot(aes(x = selfmot, y = drop_probability)) +
+  geom_line() +
+  labs(x = "self-motivation score of the participants\n(range 5-35)", y = "predicted probability of dropping out\n(range 0-1)")
+```
+<center>Figure 13<center/>
+
+
+
+
+
+
+
+
+

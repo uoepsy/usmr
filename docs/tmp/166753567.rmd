@@ -1,0 +1,283 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: 'B197708'
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(broom)
+library(pander)
+library(Hmisc)
+library(knitr)
+library(psych)
+library(car)
+library(sjPlot)
+library(corrplot)
+library(cowplot)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+couchto5k$missing<-NA
+couchto5k$missing[couchto5k$age>100]<-"unlikely age"
+couchto5k$missing[couchto5k$selfmot<5]<-"unlikely selfmot score"
+couchto5k$missing[couchto5k$week_stopped>9]<-"unlikely week"
+miscoded<-sum(couchto5k$season=="autunm")
+couchto5k$season[couchto5k$season=="autunm"]<-"autumn"
+couchto5k$season<-as.factor(couchto5k$season)
+couchto5k$city<-as.factor(couchto5k$city)
+mtab<-table(couchto5k$missing)
+couchto5k<-couchto5k %>% filter(is.na(missing))
+total<-count(couchto5k)
+
+```
+All the data were screened and deleted, and `r total` were retained for analysis.  Table 1 showed the reasons for data removal. In addition, `r miscoded` season entries were initially misentered as "autunm".  These were recoded as "autumn".
+
+```{r table, results='asis'}
+mtab %>% pander(caption="Table 1: Summary of error values.")
+```
+
+We conducted a descriptive analysis of the remaining `r total` samples according to the types of variables, and found that 86 participants were from Edinburgh and 41 were from Glasgow. In addition, most of the participants’ interview time was in spring and summer (68 and 42), a small number of participants were interviewed in autumn and winter (11 and 6).At the same time, we performed descriptive analysis and correlation analysis on other continuous variables in this sample, and the results are shown in Table 2 and Figure 1:
+```{r descriptives}
+kable(describe(couchto5k[,c(-1,-7,-8,-10)]),caption = "Table 2: Descriptive analysis after cleaning.")
+```
+
+```{r figure1, fig.asp=.6, fig.cap="Figure 1: Correlation coefficient between variables.", message=F}
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(cor(couchto5k[,c(-1,-7,-8,-10)]), method = "shade", type = {"lower"}, shade.col = NA, tl.col = "black", tl.srt = 0, col = col(200), addCoef.col = "black", 
+cl.pos = NULL, order = "AOE")
+```
+
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+couchto5k<-
+  couchto5k %>%
+  mutate(
+    termination_phase=ifelse(week_stopped<5,"a",ifelse(week_stopped==9,"c","b"))
+  )
+chitest<-tidy(chisq.test(table(couchto5k$termination_phase),p=c(0.45,0.1,0.45)))
+```
+We re-encoded the week stopped variable in the sample to get a new categorical variable -termination phase(stopped before week 5, stopped after week 5, completed)，Then we performed a chi-square analysis on the new variable, and found that the statistics of this project did not differ significantly from the results of the nationwide survey previously conducte (χ2=`r chitest$statistic`,df=`r chitest$parameter`, p<1).
+
+## Question 1b
+
+```{r q1b}
+chitest1<-tidy(chisq.test(table(couchto5k$city,couchto5k$termination_phase)))
+```
+According to the requirements of the question, we performed (2*3) Pearson's Chi-squared test on the sample, and found that the patterns of attrition rates did not differ by city.(χ2=`r chitest1$statistic`,df=`r chitest1$parameter`, p<1)
+
+## Question 1c
+
+```{r q1c, include = FALSE}
+shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"])
+shapiro.test(couchto5k$age[couchto5k$city=="Glasgow"])
+qqnorm(couchto5k$age[couchto5k$city=="Edinburgh"])
+qqnorm(couchto5k$age[couchto5k$city=="Glasgow"])
+with(couchto5k,var.test(age~city))
+t_test<-tidy(with(couchto5k,t.test(age~city)))
+```
+We first used the Shapiro–Wilk test to test the age data of different cities, and found that the age data of the two cities are not normally distributed(p<.01).Then we checked the qq-plot corresponding to each age data and found that the age data distribution of the two cities was close to the normal distribution.At the same time, we tested the data for the homogeneity of variance, and found that there is no significant difference in the variance of the age data between different cities(p<1).Therefore, we think we can perform independent sample t-test on the data, and it turns out that the average ages of participants who commenced the programme differ by city(t=`r t_test$statistic`,df=80,p<.01). The average age of the participants from Edinburgh was greater than that of the participants from Glasgow.
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+couchto5k$season<-factor(couchto5k$season,levels = c("spring","summer","autumn","winter"))
+model1<-lm(scale(happiness)~season,couchto5k)
+model1s<-tidy(model1)
+```
+In order to investigate the influence of season on the level of happiness, we need to build a regression model.Therefore, we first set the "spring" level in the categorical variable season as the baseline and standardize continuous variable happiness. Subsequently, model 1 with happiness as the dependent variable and season as the independent variable was established. It was found that the subjects’ happiness score in winter was significantly lower than the subjects’ happiness score in spring.(β=`r model1s$estimate[4]`,t=`r model1s$statistic[4]`,p<.05).That is, compared with the subjects interviewed in the spring, the happiness level of the subjects interviewed in the winter is 0.84 standard deviations lower than that in the spring. While the happiness of subjects in other seasons  not statistically different from that of spring(See Figure 2).
+
+```{r figure2, fig.asp=.6, fig.cap="Figure 2: Happiness in different seasons", message=F}
+ggplot(couchto5k,aes(x=season,y=scale(happiness),fill=season))+
+  geom_boxplot(width=0.5,varwidth = TRUE)+
+  geom_point(size=5,alpha=0.5)+
+  theme(legend.position = "none")
+```
+
+
+## Question 2b
+
+```{r q2b, include = FALSE}
+model2<-lm(scale(happiness)~season+age,couchto5k)
+model2s<-tidy(summary(model2))
+plot(model2)
+```
+In order to detect whether age will affect the happiness level of subjects, we need to build a new multiple regression model based on model 1.Therefore, we added age as an independent variable to the previous model 1 and established model 2.However,the results of regression analysis indicated that only the season still had an significant effect on happiness(β=`r model2s$estimate[4]`,t=`r model2s$statistic[4]`,p<.05), while age did not affect the happiness level of subjects(β=`r model2s$estimate[5]`,t=`r model2s$statistic[5]`,p<1).
+
+## Question 2c
+
+```{r q2c}
+pick<-tidy(anova(model2))
+```
+We think model 1 is more suitable as a baseline model for subsequent analysis.Because in model 1 we found the influence of season on happiness level, while we add age to model 1 to form model 2, only season still has an impact on happiness(F(3,`r pick$df[3]`)=`r pick$statistic[1]`, p<.05).This means that the addition of age does not improve model 1. Moreover, the addition of irrelevant variables will also affect our subsequent evaluation of the model, so we choose model 1 as the baseline model.
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+couchto5k<-
+  couchto5k%>%
+  mutate(
+    completion_status=ifelse(week_stopped==9,"completed","uncompleted")
+  )
+couchto5k$completion_status<-as.factor(couchto5k$completion_status)
+model3<-lm(scale(happiness)~season+completion_status,couchto5k)
+model3s<-tidy(summary(model3))
+
+```
+In order to detect whether the completion of the project will affect the level of happiness, we need to build model 3 on the basis of the baseline model.First of all, we need to establish a new binary categorical variable based on the weeks stopped--completion status. Subsequently, we add the completion status as an independent variable to the previous model 1 and build model 3.Finally, we performed an F-test to model3 for the overall significance of the regression.(F(4,122)=3.38,p<.01) ,the results show that model 3 is effective, and the adjusted R-squared is 0.0702. Therefore, based on the results of multiple regression analysis, the completion status of the project will affect the individual's happiness level(β=`r model3s$estimate[5]`,t=`r model3s$statistic[5]`,p<.05). Comparing completed individuals to uncompleted individuals, their happiness level will increase by 0.5 standard deviations. In addition, due to the addition of completion status, the autumn in the season also begins to have an impact on happiness(β=`r model3s$estimate[3]`,t=`r model3s$statistic[3]`,p<.05).
+
+
+## Question 3b
+
+```{r q3b}
+model4<-lm(scale(happiness)~season+completion_status+scale(health),couchto5k)
+model4s<-tidy(summary(model4))
+```
+In order to test whether the happiness level will be additionally affected by health metric, we need to add the health variable(after standardization) on the basis of model 3 and establish model 4. Subsequently, we performed an F-test to model 4 for the overall significance of the regression.(F(5,121)=2.83,p<.05) ,the results show that model 4 is effective, and the adjusted R-squared is 0.0676.Therefore, based on the results of multiple regression analysis, we found that happiness level was not additionally affected by health metric(β=`r model4s$estimate[6]`,t=`r model4s$statistic[6]`,p<1).
+
+## Question 3c
+
+
+```{r q3c, include=FALSE}
+model5<-lm(scale(happiness)~season+completion_status+scale(health)+scale(health):completion_status,couchto5k)
+ncvTest(model5)
+durbinWatsonTest(model5)
+shapiro.test(model5$residuals)
+model5s<-tidy(summary(model5))
+
+```
+In order to verify this hypothesis, we need to test whether there was an interaction effect between health and completion status.Therefore, we need to add the interactive effect of health and completion status on the basis of model 4 to form model 5.To ensure that our model 5 meets all assumptions, We tested the model's linearity(see plot of model residuals vs fitted values, Figure 3), homoscedasticity(non-constant variance test indicated no evidence against the null hypothesis that the error variance is constant across level of the response(χ2(1) =3.25, p<1)),independence of errors(Durbin-Watson test for autocorrelation of residuals(DW =2.08, p<1)), and normality of error term(See plot of Normal Q-Q,Figure 4).Therefore, the analysis result of model 5 was reliable. The results indicated that there was an interaction effect between health and completion status(β=`r model5s$estimate[7]`,t=`r model5s$statistic[7]`,p<.05). So the hypothesis is correct.
+
+```{r figure3, fig.asp=.6, fig.cap="Figure 3: Residuals vs Fitted plot demonstrating overall near constant mean and variance of error term across levels of the response.", message=F}
+plot(model5,which=1)
+```
+
+```{r figure4, fig.asp=.6, fig.cap="Figure 4: Normal Q-Q plot demonstrating residuals  normally distributed.", message=F}
+plot(model5,which=2)
+```
+
+
+
+Full regression results including 95% Confidence Intervals are shown in Table 3. The interaction between health and completion status in predicting happiness is visually presented in Figure 5. The F-test for model utility was significant (F(6,120)=3.16, p<.01), and the model explained approximately 9.3% of the variability in happiness Scores.
+
+Table 3: Regression table for model 5.
+```{r table3, results='asis'}
+tab_model(model5)
+```
+
+```{r figure5, fig.asp=.6, fig.cap="Figure 5: data and predictions for health and completion status", message=F}
+couchto5k %>% 
+  ggplot(aes(x=scale(health),y=scale(happiness),colour=completion_status)) +
+  geom_point(size=2,alpha=0.5) +
+  geom_smooth(method="lm") +
+  theme_bw()
+```
+
+## Question 3d
+
+Results of Model 5 showed a significant conditional association between health scores (Z-scored) and happiness scores (Z-scored)(β=`r model5s$estimate[6]`,SE=`r model5s$std.error[6]`,p<.05), indicating for those completion status without changing, scores on the health increase by 1 standard deviation for every 0.26 standard deviation increase in happiness scores. At the same time, a significant conditional association was also evident between completion status and happiness scores (Z-scored)(β=`r model5s$estimate[5]`,SE=`r model5s$std.error[5]`,p<.05), indicating for those who score the mean on the health, subjects who have not completed the project have a happiness score 0.49 standard deviations lower than those who have completed the project. In addition, the results also showed that there was a significant relationship between seasons and happiness scores, indicating that when the subjects were interviewed in autumn and winter, they would get lower happiness scores. More importantly, the correlation between health and happiness was found to be dependent upon the completion status, with a negative relationship between the two for those uncompleted(β=`r model5s$estimate[7]`,SE=`r model5s$std.error[7]`,p<.05). This interaction effect is presented in Figure 5.
+
+In conclusion, the results presented here indicated that the relationship between subjects’ health scores and happiness scores was affected by the completion status. Subjects who successfully completed the project had a positive correlation between their health scores and happiness scores, indicating that the improvement of health contributes to the improvement of individual happiness. But our results also found that the health scores of those who gave up halfway were negatively correlated with their happiness scores, which is obviously counterintuitive. Considering that the current model's explanatory power is still relatively low, we believe that there are other factors that affect the relationship between health and happiness. Therefore, further research is needed in the future to draw accurate conclusions.
+
+
+
+
+# Question 4
+According to the requirements of the question, we create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funder of the project(see Figure 5).
+```{r q4, figure6, fig.asp=.6, fig.cap="Figure 6: average happiness ratings grouped by season and city.", message=F}
+c1=c("spring","summer","autumn","winter")
+c2=c("Edinburgh","Glasgow")
+s<- filter(couchto5k,couchto5k$completion_status=="completed") %>% group_by(season) %>%
+  summarise(mean_se(happiness))
+s=cbind(s,c1)
+plots<-
+  s%>%
+  ggplot(aes(x=season,y=y,ymin=ymin,ymax=ymax,fill=c1)) +
+  geom_bar(stat="identity",width = 0.3) +
+  geom_errorbar(width=0.2) +
+  ylab("happiness")
+c<-filter(couchto5k,couchto5k$completion_status=="completed") %>% group_by(city) %>%
+  summarise(mean_se(happiness))
+c=cbind(c,c2)
+plotc<-
+  c%>%
+  ggplot(aes(x=city,y=y,ymin=ymin,ymax=ymax,fill=c2)) +
+  geom_bar(stat="identity",width = 0.3) +
+  geom_errorbar(width=0.2) +
+  ylab("happiness")
+plot_grid(plots,plotc,labels=c("A","B"),align = "h")
+
+```
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5a, include=FALSE}
+model6<-glm(completion_status~accountability+selfmot+age,data = couchto5k,family = "binomial")
+model7<-glm(completion_status~selfmot,data = couchto5k,family = "binomial")
+summary(model6)
+summary(model7)
+```
+According to the nature of the variables, we need to build a generalized linear model to test the probability of dropping out. By analyzing the survey data, we first think that the subjects’ age, accountability and selfmot may predict completion status.Because older subjects may have difficulty completing the entire project due to physical problems, and subjects with higher selfmot and accountability scores are less likely to abandon the project halfway.So we use age, selfmot and accountability as independent variables to build model 6. The results showed that only selfmot could significantly affect completion status (β=-0.206, t=-3.09, p<.01).So we deleted the other two variables and established model 7(β=-0.210,t=-3.15,p<.01).In the end, we think that model 7 can predict the probability of dropping out very well.
+
+
+## Question 5b
+The results of Model 7 showed that the subject's self-motivation level had a significant relationship with whether to drop out halfway (β=-0.210, t=-3.15, p<.01), indicating that as the subject’s self-motivation score increases, the probability of a participant’s abandoning the project decreases. Please see the figure below for details. Therefore, we can predict that individuals with high self-motivation scores are more likely to complete the project finally. Of course, in the actual situation, our model still has many shortcomings, which cannot fully explain the reason why the subjects abandon the project. We believe that in the future, more exploration of factors affecting completion status are needed to improve the current model.
+
+
+
+## Question 5c
+
+```{r q5c}
+couchto5k<- 
+  couchto5k %>%
+  mutate(
+    predprobs = predict(model7, newdata = couchto5k , type = "response")
+  )
+ggplot(data = couchto5k, aes(x = selfmot, y = predprobs)) +
+  geom_line()+
+  scale_y_continuous(limits = c(0, 1))+
+  labs(y="predicted probability of abandon the project")
+
+```
+
+
+
+
+
+
+
+
+
+

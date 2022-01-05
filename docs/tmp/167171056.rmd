@@ -1,0 +1,543 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+params:
+  examnumber: B200665
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits = 3)
+# load any other packages that you require here:
+library(tidyverse)
+library(RColorBrewer)
+library(Rmisc)
+library(sjPlot)
+library(Hmisc)
+library(knitr)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0: data cleaning & prepare
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+## 0.1 discrete data
+```{r cleaning: discrete}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+
+# save a copy of the original data.
+original_data <- couchto5k
+
+# check discrete data:
+
+# 1 [season]:
+kable(table(couchto5k$season), caption = "original data of `season`")
+# we find some typos: 'autunm', so change it to 'autumn'
+couchto5k[which(couchto5k$season == 'autunm'), "season"] = 'autumn' 
+
+# 2 [city]
+kable(table(couchto5k$city), caption = "original data of `city`")
+```
+- From above we know we should process the typos in `season`.
+
+## 0.2 continuous data
+```{r cleaning: continuous}
+# check continuous data:
+# 1. [age]
+boxplot(couchto5k$age, main = 'Figure 1. boxplot of age [original]', ylab = 'age')
+age_check <- boxplot.stats(couchto5k$age)
+
+# 2. [health]
+boxplot(couchto5k$health, main = 'Figure 2. boxplot of health [original]', ylab = 'health')
+health_check <- boxplot.stats(couchto5k$health)
+
+# 3. [accountability]
+boxplot(couchto5k$accountability, main = 'Figure 3. boxplot of accountability [original]', ylab = 'accountability')
+accountability_check <- boxplot.stats(couchto5k$accountability)
+
+# remove outliers & keep others valid:
+couchto5k <- subset(x = couchto5k, 
+                    !(age %in% age_check$out)
+                    & !(health %in% health_check$out)
+                    & !(accountability %in% accountability_check$out)
+                    & accountability >= 5 & accountability <= 35
+                    & selfmot >= 5 & selfmot <= 35
+                    & health >= 0 & health <= 100
+                    & happiness >= 0 & happiness <= 100
+                    & week_stopped >= 0 & week_stopped <= 9)
+
+# 4. season & happiness
+h_in_autumn <- subset(couchto5k, couchto5k$season == 'autumn')
+boxplot(h_in_autumn$happiness, main = 'Figure 4. boxplot of happiness in autumn [original]', ylab = 'happiness', xlab = 'autumn')
+h_season_check <- boxplot.stats(h_in_autumn$happiness)
+del_index = which(couchto5k$happiness == h_season_check$out
+                  & couchto5k$season == 'autumn')
+couchto5k <- couchto5k[-del_index, ]
+# check again the outliers is removed:
+h_in_autumn <- subset(couchto5k, couchto5k$season == 'autumn')
+# boxplot(h_in_autumn$happiness)
+
+# summary(couchto5k)
+```
+
+
+- Check and get outliers by boxplot.stats(): 
+
+1. outliers in `age`: [`r age_check$out`];
+2. outliers in `health`: [`r health_check$out`];
+3. outliers in `accountability`: [`r accountability_check$out`];
+4. outliers in `happiness` in `autumn`: [`r h_season_check$out`];
+
+## 0.3: data description
+1. continuous data:
+`age`, `selfmot`, `accountability`, `health`, `happiness`;
+
+2. discrete data:
+`season`, `city`, `week_stopped`;
+
+3. we plot those data after cleaned:
+```{r descriptives}
+boxplot(couchto5k$age, main = 'Figure 5. boxplot of age [cleaned]', ylab = 'age')
+boxplot(couchto5k$accountability, main = 'Figure 6. boxplot of accountability [cleaned]', ylab = 'accountability')
+boxplot(couchto5k$health, main = 'Figure 7. boxplot ofhealth [cleaned]', ylab = 'health')
+```
+4. an overview of the dataframe `couchto5k`:
+```{r descriptives-cont.}
+kable(head(couchto5k))
+```
+
+# Question 1 
+
+## Question 1a
+> Q: In an earlier nationwide survey, researchers found that `45%` of participants abandoned the programme before the halfway point in week 5, and a further `10%` gave up before the end of the programme. Is the data in the sample you have been given in line with data from the earlier survey? 
+>
+
+-  We create a new column in `coutchto5k`: `quit`, which includes the three categories: `before_wk5`, `after_wk5`, `complete`.
+
+```{r q1a: pie chart}
+# add a new column `quit`:
+couchto5k <-
+  couchto5k %>%
+  mutate(quit = case_when(week_stopped < 5 ~ 'before_wk5',
+                          week_stopped == 9 ~ 'complete',
+                          TRUE ~ 'after_wk5')
+  )
+# dev.new()
+
+# create color group
+myPalette <- brewer.pal(3, "Set2") 
+
+quit_ratio <- count(couchto5k$quit)
+pie(quit_ratio$freq, border = "white", col = myPalette, main = "Figure 8. Pie chart of quit week ratio",
+    with(quit_ratio, (paste(x, " ", round(freq/sum(freq)*100), "%", sep = ""))))
+png(
+  filename = "./checkme.png",
+  type = "cairo", 
+  res = 300, 
+  width = 1600, height = 1600,
+  bg = "transparent"
+)
+
+# while (!is.null(dev.list()))  dev.off()
+# table(couchto5k$quit)
+```
+
+* The task is checking whether the proportion of the corresponding data in the current experiment is consistent with the given proportion.
+
+* This is a chi-square goodness-of-fit test, so we can set:
+
+* Null hypotheses (F0): There is no significant difference between the observed value (experimental data) and the expected value (given data);
+
+* Alternative hypothesis (F1):  The difference between the observed value and the expected value is statistically significant.
+
+  So we execute the Chisq x2 goodness-of-fit test:
+
+  `chisq.test(table(couchto5k$quit), p = c(0.10, 0.45, 0.45))`
+```{r q1a: chisq x2 test}
+# execute chisq x2 test against the given ratio:
+chisq_1a <- chisq.test(table(couchto5k$quit), p = c(0.10, 0.45, 0.45))
+chisq_1a
+```
+
+From the above experiment output, we can get the `p-value` = `r chisq_1a$p.value`, which is larger than the α(=0.05),  so we cannot reject the F0, i.e., we conclude: Our experimental data is inline with the given data. 
+
+## Question 1b
+
+> Q: Using the same three categories (stopped before week 5, stopped after week 5, completed), examine whether the patterns of attrition rates differ by city.
+>
+
+- The task aims to find whether the `city` varibale effects the patterns of attrition rates. We can find the variables in the task includes the discrete data `city` and `quit`, so we execute the Chisq x2 independence test. 
+- H0: There is no correlation between the `city` and `quit` in the data; they are independent of each other.
+- H1: The categorical variables `city` and `quit` are dependent.
+- We firstly check the column `quit` by `city` with `table()` and `plot()`:
+
+```{r q1b}
+# get the subset of the dataset couchto5k for different city in "Edinburgh" and "Glasgow":
+couchto5k_edi <- subset(couchto5k, couchto5k$city == 'Edinburgh')
+couchto5k_gla <- subset(couchto5k, couchto5k$city == 'Glasgow')
+
+# check them by plot
+kable(table(couchto5k$city, couchto5k$quit))
+plot(table(couchto5k$city, couchto5k$quit), main = "Figure 9. Table chart for city-quit")
+```
+- Then we execute the Chisq independence test:
+
+  `chisq.test(table(couchto5k$city, couchto5k$quit))`
+
+```{r q1b: chisq}
+chisq_1b <- chisq.test(table(couchto5k$city, couchto5k$quit))
+chisq_1b
+```
+
+- From the above test output, we can get the `p-value` = `r chisq_1b$p.value`, which is larger than the α(=0.05), so we cannot reject the H0, we say: discrete variables `city` and `quit` is independent, i.e., patterns of attrition rates are not differ by `city`.
+
+## Question 1c
+> Q: Do the average ages of participants who commenced the programme differ by city?
+>
+
+- This task aims to examine whether the average ages is independent with the discrete data `city`, it's the pattern that examine the independence between the discrete data and the mean of numerical data. So we extract `age` data from coutcto5k regarding the `city` category: `age_edi`, `age_gla`.
+```{r q1c: new_col}
+  age_edi = couchto5k_edi$age
+  age_gla = couchto5k_gla$age
+```
+
+
+- So we can execute the t-test:
+
+- H0: True that the difference in means of age in Edinburgh and Glasgow who join the programme is equal to 0; or say the difference between the two is not statistically significant.
+
+- H1: True that the difference in means of age in Edinburgh and Glasgow who join the programme is not equal to 0; or say the difference between the two is statistically significant.
+
+- But before we start the test, we should check whether the two sub-data is distributed normally and there is homogeneity of variance between each other.
+  - `shapiro.test()`: check the normality;
+  - `qqplot()`: check the variance.
+
+```{r q1c: shapiro_test}
+sp_age <- shapiro.test(couchto5k$age) 
+sp_age
+```
+```{r q1c: qqplot}
+qq_age <- qqplot(age_gla, age_edi)
+```
+
+
+- We can find the `p-value` of shapiro.test() on the `age` data is `r sp_age$p.value`, which is lower than the `a(=0.05)`, so there is statistically significant, we can believe the `age` data is distributed normally. 
+- We can find the for `qqplot()`, the data is basically fitted on the diagonal, so we believe that there is a homogeneous variance between the two.
+- Now we can execute the `t-test()`:
+  `t.test(age_edi, age_gla, paired = FALSE)`
+
+```{r q1c: t_test}
+t_test_1c <- t.test(age_edi, age_gla, paired = FALSE)
+t_test_1c 
+```
+- Then we can get the `p-value` is  `r t_test_1c$p.value`, which is greater than the `α(=0.05)`; so we cannot reject the H0, we can believe: the difference in means of age in Edinburgh and Glasgow who join the programme is equal to 0, i.e., there is not statistically significant for the difference between the two sub-data. Or we can say: the `age` will not be affected by the `city`.
+
+# Question 2
+
+## Question 2a
+> Q: Are participants’ happiness ratings affected by the season they were interviewed in? Describe the way in which season influences happiness outcomes.
+>
+
+- This task aims to check the continuous numerical data `happiness` will be effected by the discrete varibale `season`. So we can use One-way Analysis of Variance, which is a special case of ANOVA, like `*(y ~ A)*`.
+- We firstly create the boxplot to check the `happiness` grouped by the `season`.
+
+```{r q2a: boxplot}
+ggplot(couchto5k, aes(x = season, y = happiness)) + 
+  geom_boxplot() + 
+  ggtitle("Figure 10. Boxplot of happiness-season")
+  
+```
+
+- From the above boxplot we can basically assume at least the season `spring` and `summer` are kindly effect the `happiness` more than the season `winter` and `column`.
+
+- To check the assumption, we now execute the One-way Analysis of Variance by `aov()`:
+
+  `aov(happiness ~ season, data = couchto5k)`
+
+```{r q2a: anova1}
+fit_h1 <- aov(happiness ~ season, data = couchto5k)
+summary(fit_h1)
+```
+- We can know that the `season` does effect the `happiness` as the `Pr` of season lower than the `a(=0.005)`, which means, 
+
+- But from above we can only know the `season` will effect the `happiness`, to explore in detail (i.e., for the second question in this task) we can use the `linear model` by convert discrete variable `season` into factor: `factor(season)`:
+
+```{r q2a: anova2}
+fit_h1 <- lm(happiness ~ factor(season), data = couchto5k)
+summary(fit_h1)
+```
+- From above we then can conclude at `spring` and `summer`, the season will effect the ` happiness` more likely, but at `winter` it has less probability to believe that the `season` will effect the `happiness`, and we cannot believe that at `autumn` the `season` will effect the `happiness`. 
+
+## Question 2b
+> Q: Accounting for any effects you discovered in (2a), is happiness affected by age?
+>
+
+- We use the same way to explore the affection of `age`, but under the circumstance that we believe `season` will effect `happiness`:
+  - (y ~ A + B)
+  - `aov(happiness ~ season + age, data = couchto5k)`
+```{r q2b_1}
+fit_h2_aov <- aov(happiness ~ season + age, data = couchto5k)
+summary(fit_h2_aov)
+```
+
+- But we will also explore in particular, when the season is  at `spring`, because we have the most probability to believe at `spring` the `season` will effect the `happiness`, and, it has the most data volume: 
+  - `aov(happiness ~ age, data = spring_data)`
+
+```{r q2b}
+spring_data <- subset(couchto5k, season == 'spring')
+fit_h2 <- aov(happiness ~ age, data = spring_data)
+summary(fit_h2)
+```
+
+- From both model above, all the `Pr` is greater than the `a(=0.05)`, so we cannot conclude that considering the `season` affection, the `age` will effect `happiness`.
+
+## Question 2c
+
+> Q: The models you have built above explore ‘baseline’ effects; that is, effects that are not of primary interest to the researchers but which might affect the outcome variable of happiness. For use in question 3, pick a specific baseline model and justify why you are using this.
+>
+
+- Because the third question is to explore the `happiness` based on the affection of `health` and early `drop-out`, so the two cannot be included here. Meanwhile, other possible variables should be included. So here we try the variable `accountability` and `selfmot`.
+```{r q2c_1}
+fit_selfmot <- aov(happiness ~ season + selfmot, data = couchto5k)
+summary(fit_selfmot)
+
+fit_accountability <- aov(happiness ~ season + accountability, data = couchto5k)
+summary(fit_accountability)
+```
+- From above, we conclude that the variable `season` and `selfmot` will effect the `happiness`, as their `Pr` are lower that `a(=0.05)`, which is statistically significant to believe they will effect the `happiness`.
+- so we choose: 
+  - `aov(happiness ~ season + selfmot, data = couchto5k)`
+
+
+- But considered at season `spring` it is much statically significant, which may hide our observation on `health`, we turn to transfer the baseline model above to be in the fashion usnder the `spring` data:
+  - aov(happiness ~ selfmot, data = spring_data)
+  - The baseline model is reasonable because by using the `spring_data`, i.e., the `spring` subset of `couthto5k`, our model is stell under the implication of `season`.
+  - And from below, regarding the `Pr` of `selfmot` we can conclude the model is effective to explore the `happiness`, i.e., at the season `spring`, the `selfmot` will affect the `happiness`.
+  - (*Note: we did try that execute the completed model in the Q3.b, but the `season` does hide the effect of `health`.)
+```{r q2c_2}
+fit_h_baseline <- aov(happiness ~ selfmot, data = spring_data)
+summary(fit_h_baseline)
+plot(fit_h_baseline, which = 2)
+```
+
+
+- From the Figure Norm Q-Q, the data is basically fitted on the diagonal, so we believe that the residuals of the data are normal.
+
+```{r cook}
+plot(fit_h_baseline, which = 4)
+```
+
+- From the Figure Cook-Distance, we find the maximum cook's distance is only about 0.13, so we can conclude there is no outliers need to be ruled out.
+
+```{r}
+plot(fit_h_baseline, which = 1)
+```
+
+- The red line has some twists and turns, but it is still within the acceptable range, and we can think that it still meets the linear assumption.
+
+# Question 3
+
+## Question 3a
+
+> Q:  Building on your baseline model, are participants’ happiness ratings affected by whether or not they completed the programme? Describe the way in which programme completion influences happiness outcomes.
+>
+
+- We add a column `completed` to record whether the participants finish the programme.
+- Now we execute check whether the variable `completed` effects the `happiness` by `aov()`:
+  `aov(happiness ~ selfmot + completed, data = spring_data)`
+
+```{r q3a}
+# add a new column to record whether the participants complete the programme.
+couchto5k <-
+  couchto5k %>%
+  mutate(completed = (week_stopped == 9))
+
+# re-extract the spring data.
+spring_data <- subset(couchto5k, season == 'spring')
+
+fit_complete_aov <- aov(happiness ~ selfmot + completed, data = spring_data)
+summary(fit_complete_aov)
+```
+- From above we can find the `Pr` of `completed` is greater that the `a(=0.05)`, so we cannot believe that whether participants `completed` the programme can affect the `happiness`.
+
+
+## Question 3b
+
+> Q:  Building on the analysis in (3a), is happiness additionally affected by the “health metric”?
+>
+
+- To check whether `health` will affect the `happiness`, we chose:
+
+  `aov(happiness ~ selfmot + health, spring_data)` 
+
+```{r q3b-1}
+spring_data <- subset(couchto5k, season == 'spring')
+fit_spring_health_aov <- aov(happiness ~ selfmot + health, spring_data)
+summary(fit_spring_health_aov)
+```
+
+- Additionally, we back to the completed model, we can find since the model is too much affected by the significance of the `season`, it is impossible to see whether `health` may have an impact on `happiness`.
+```{r q3b-2}
+fit_health_aov <- aov(happiness ~ season + selfmot + health, couchto5k)
+summary(fit_health_aov)
+```
+- To sum up, since the `Pr` of health is less than  `α(=0.05)`, we can think that `health` will affect happiness to a certain extent. And this effect is negative, that is, as `health` grows, `happiness` will decrease instead .
+
+## Question 3c
+
+> Q:  It’s been hypothesized that the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier. Building on the model in (3b), can you test this hypothesis?
+>
+
+- This task aims to explore the interaction of `health` and `week_stopped`. 
+- But instead of split the `week_stopped` up, I will directly use it to explore more about the impact of the persistence time on happiness.
+- `lm(happiness ~ 1 + selfmot + (health * week_stopped), data = spring_data)`
+```{r q3c}
+
+health_with_week <- lm(happiness ~ 1 + selfmot + (health * week_stopped), data = spring_data)
+plot_model(health_with_week, type = 'int', main = "Figure 11. Predicted values of happiness.")
+summary(health_with_week)
+
+```
+- From the `linear model`, we can find the all the variable has a significance that possible to affect the `happiness`, and I also plot the interaction effect of `health` and `week_stopped`.
+- From the figure and `linear-model` summary, we can know the value `health:week_stop` illustrates how the slop moves from the red to blue region, i.e., how the implication change regarding the `week_stopped`. 
+- It told us that as the increase of  `week_stopeed`, i.e., the number of weeks of continuous participation in the programme, the effect of `health` on `happiness` changes from negative to positive correlation. 
+- That is,  as the number of weeks of exercise increases, the increase in `health` will begin to lead the increase of `happiness`.
+
+## Question 3d
+
+> Q: What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper.
+
+- Regarding the experiment in `Q2`, we can conclude that the `season` affects the `happiness` statistically significant as its `Pr` is obviously lower than `a(=0.001)`, and the `selfmot` is succeed. Both the two variable is positively correlated with `happiness`.
+- Then during analysing the `Q3`, we hold the `season` in `spring` and come up that the interaction between `health` and `week_stopped` is also effect `happiness`; with the increse of number of weeks of exercise, rising `health` will finally lead to the expand of `happiness`. Althogh we also find that at the start (i.e., in the previous few weeks, `health` has a negative impact on `happiness`.)
+
+# Question 4
+
+> Q: Create a subset of the data, including only those participants who completed the programme. Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project.
+>
+
+- We firstly create a subset of `couchto5k` that only includes the data that completed the programme.
+- Then we use aggregate to observe the mean of `happiness`, and split them by `city` and `season` respectively.
+- After that we grouped the mean data by `city`, so we then plot the data in two sub-plots. 
+- The plot shows how the `happiness` changes among the `season` in the two `city`.
+- We can observe that no matter which `city`, `happiness` changes like this: spring > summer > winter > autumn;
+
+```{r q4}
+completed_users = subset(couchto5k, couchto5k$week_stopped == 9)
+
+mean_happiness <-
+  aggregate(x = completed_users$happiness, 
+            by = list(completed_users$city, completed_users$season), 
+            FUN = mean)
+
+mean_edi_h <- 
+  mean_happiness %>%
+  filter(Group.1 == 'Edinburgh')
+
+mean_gla_h <- 
+  mean_happiness %>%
+  filter(Group.1 == 'Glasgow')
+
+plot_edi_h <- ggplot(data = mean_edi_h, aes(x = Group.2, y = x)) + 
+  geom_bar(stat = 'identity') +
+  scale_x_discrete(name = "season in Edinburgh") + 
+  scale_y_continuous(name = "happiness") +
+  ggtitle("Figure 12. Quit probability by selfmot")
+
+plot_gla_h <- ggplot(data = mean_gla_h, aes(x = Group.2, y = x)) + 
+  geom_bar(stat = 'identity') + 
+  scale_x_discrete(name = "season in Glasgow") +
+  scale_y_continuous(name = "happiness")
+
+multiplot(plot_edi_h, plot_gla_h, cols = 2)
+```
+
+
+# Question 5
+
+## Question 5a
+
+> Q: Build a model that predicts the likelihood of dropping out (at all).
+>
+
+- In this case we build a Generalised Linear Model (GLM). As we need to predicate the binomial value `drop_out`, the model should actually be a logistic model. 
+- As this task aims to predicate `dropping out`, so instead of like the column `completed`, we should label those data with incompliate as 1.
+- Firstly, we add all the possible variable into the model:
+
+```{r q5a-1}
+drop_df <- couchto5k %>% 
+  mutate(drop_out = ifelse(week_stopped == 9, 0, 1))
+
+dropout_glm <- glm(drop_out ~ age + accountability + selfmot + health + happiness + 
+                     factor(season) + factor(city), 
+                   family = binomial, data = drop_df)
+summary(dropout_glm)
+```
+
+
+-  But we only pick up those variables with high `Pr` in ANOVA Chisq test, i.e., truly has high significance to effect the result.
+```{r q5a-2}
+anova(dropout_glm, test = 'Chisq')
+```
+- Now we create a new GLM regarding above analysis:
+
+  `glm(drop_out ~ healt + factor(season), family = binomial, data = drop_df)`
+```{r}
+dropout_glm2 <- glm(drop_out ~ health + factor(season),
+                    family = binomial, data = drop_df)
+summary(dropout_glm2)
+```
+- Then we use ANOVA Chisq test to check the model again
+```{r q5a-3}
+anova(dropout_glm2, test = 'Chisq')
+```
+
+## Question 5b
+
+> Q: Briefly describe the effects in your model as you would in an academic paper.
+
+- Regarding the output of Q5.a, we restate that this is a logit binomial model, which is used to predictae the dropping out.
+- `Null deviance: 159.95` means what the variance we should expect to solve is 159.95, Residual deviance: 109.54 means now we leave 109.54 variance, so the model can explain 50.41 variance.  
+- We examine the model by ANOVA Chisq test, we can find the deviance of `health` is 4.2, the deviance of `season` is 46.2, which means the `season` contributes the most for the model prediction ability.
+- An example to predicate the probability of dropping out:
+```{r q5b}
+test_data <- data.frame(season = 'spring', health = 66)
+predict(dropout_glm2, test_data, type = 'response')
+```
+* which means there is a probability of 77.8% that the participant will drop out early.
+
+## Question 5c
+
+> Q: Draw a graph representing the probability of quitting as a function of how self motivated participants were.
+>
+
+```{r q5c}
+drop_glm3 <- glm(drop_out ~ selfmot, family = binomial, data = drop_df)
+probs <- data.frame(selfmot = drop_df$selfmot, prob = predict(drop_glm3, drop_df, type = 'response'))
+probs %>% ggplot(aes(x = selfmot, y = prob)) +
+  ylab("p(Drop-Out)") +
+  geom_jitter(size = 3, width = 0, height = 0.2, alpha = 0.1) +
+  geom_smooth(method = "glm", method.args = list(family = binomial), formula = y ~ x) +
+  scale_y_continuous(breaks = seq(0,1,by = 0.2)) +
+  ggtitle("Figure 13. Quit probability by selfmot")
+```
+
+
+
+
+
+
+
+
+

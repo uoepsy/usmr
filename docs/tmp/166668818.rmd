@@ -1,0 +1,221 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+params:
+  examnumber: "B197429"
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(pander)
+library(broom)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+couchto5k$missing <- NA
+couchto5k$missing[couchto5k$age>100] <- "crazy age"
+couchto5k$missing[couchto5k$selfmot<5] <- "crazy selfmot"
+couchto5k$missing[couchto5k$week_stopped>9] <- "crazy week_stopped"
+mtab <- table(couchto5k$missing)
+
+couchto5k <- couchto5k %>% filter(is.na(missing))
+total <- count(couchto5k)
+```
+The data were inspected and missing or unlikely values were removed,resulting in `r total`observations for analysis. Table 1 gives a summary of removed data.
+```{r table, results="asis"}
+mtab %>% pander(caption="Table 1: Summary of missing values.")
+```
+
+```{r season}
+miscoded <- sum(couchto5k$season=='autunm')
+couchto5k$season[couchto5k$season=="autunm"] <- 'autumn'
+couchto5k$season <- as.factor(couchto5k$season)
+couchto5k$city <- as.factor(couchto5k$city)
+```
+`r miscoded`season were initially misentered as "autunm", these were recoded as "autumn".
+
+```{r mean }
+age_mean <- mean(couchto5k$age)%>%round(2)
+accountability_mean <- mean(couchto5k$accountability)%>%round(2)
+selfmot_mean <- mean(couchto5k$selfmot)%>%round(2)
+health_mean <- mean(couchto5k$health)%>%round(2)
+happiness_mean <- mean(couchto5k$happiness)%>%round(2)
+week_stopped_mean <- mean(couchto5k$week_stopped)%>%round(2)
+
+```
+
+```{r SD}
+age_sd<-sd(couchto5k$age)%>%round(2)
+accountability_sd <- sd(couchto5k$accountability)%>%round(2)
+selfmot_sd <- sd(couchto5k$selfmot)%>%round(2)
+health_sd <- sd(couchto5k$health)%>%round(2)
+happiness_sd <- sd(couchto5k$happiness)%>%round(2)
+week_stopped_sd <- sd(couchto5k$week_stopped)%>%round(2)
+
+```
+The average of the age and the sd of the age are calculated as`r age_mean`、`r age_sd`，The average of the  accountability and the sd of the accountability are calculated as`r accountability_mean`、`r accountability_sd`,the average of the selfmot and the sd of the selfmot are calculated as`r selfmot_mean`、`r age_sd`,the average of the health and the sd of the health are calculated as`r health_mean`、`r health_sd`,the average of the happiness and the sd of the happiness are calculated as`r happiness_mean`、`r happiness_sd`and the average of the week_stopped and the sd of the week_stopped are calculated as`r week_stopped_mean`、`r week_stopped_sd`.
+```{r percentage}
+per_spring<-sum(couchto5k$season=="spring")/count(couchto5k)*100
+per_autumn<-sum(couchto5k$season=="autumn")/count(couchto5k)*100
+per_winter<-sum(couchto5k$season=="winter")/count(couchto5k)*100
+per_summer<-sum(couchto5k$season=="summer")/count(couchto5k)*100
+per_Edinburgh<-sum(couchto5k$city=="Edinburgh")/count(couchto5k)*100
+per_Glasgow<-sum(couchto5k$city=="Glasgow")/count(couchto5k)*100
+```
+spring accounts for `r per_spring`% of the total season，autumn accounts for `r per_autumn`% of the total season，winter accounts for `r per_winter`% of the total season，summer accounts for `per_summer`% of the total season，edinburgh accounts for `r per_Edinburgh`% of the total city and Glasgow accounts for `r per_Glasgow`% of the total city.
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+
+```
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+couchto5k$week5_stopped <-  NA
+couchto5k$week5_stopped[couchto5k$week_stopped<=4]<-"before week5"
+
+couchto5k$week5_stopped[couchto5k$week_stopped>=5&couchto5k$week_stopped<9]<-"after week5" 
+
+couchto5k$week5_stopped[couchto5k$week_stopped=="9"]<-"completed"
+
+chisq_week5 <- chisq.test(table(couchto5k$week5_stopped),p=c(.45,.10,.45))
+
+
+```
+A chi-square goodness of fit test was calculated comparing the data in the previous survey with the data in the provided sample.significant deviation from the hypothesized values was found.(χ2(`r chisq_week5$parameter`, N = 133) = `r chisq_week5$statistic`, p< .001).
+## Question 1b
+
+```{r q1b}
+chisq_ct<-chisq.test(table(couchto5k$city,couchto5k$week5_stopped))
+```
+A chi-square test of independence was performed to examine the relation between city and attrition rates.The relation between these variables was significant,(χ2(`r chisq_ct$parameter`, N = 133) = `r chisq_week5$statistic`, p = 0.8).
+
+## Question 1c
+
+```{r q1c}
+shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"])
+shapiro.test(couchto5k$age[couchto5k$city=="Glasgow"])
+variance<-with(couchto5k, var.test(age ~ city))
+t_test<-t.test(couchto5k$age~couchto5k$city)
+```
+Shapiro-wilk test was performed and showed that the distribution of age departed significantly from normality both in edinburgh(w=0.9,p<.01) and Glasgow(w=0.9,p<.01),
+results of the independent sample t-tests indicated that there were significated differences between age and city,(t(73)=3,p<.05).
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+mod1<-lm(happiness~1+season,data=couchto5k)
+```
+After doing some model diagnostics ,there are no extreme value.Results of the model indicated that there was a significnat effect between the season and happiness,(F(3,129)=3.59,P< .05,R^2=.077).happiness ratings of participants were affected by the season they were interviewed. There is a significant average difference of 24.96 in happiness of participants interviewed in autumn and participants interviewed in summer estimate (t=2.88,p<.01) while average difference in happiness of participants interviewed in autumn and participants interviewed in spring is 20.81 (t=2.63,p<.01). But no significant difference in happiness of participants interviewed in autumn and participants interviewed in winter (t=.47,p=.64).
+## Question 2b
+
+```{r q2b}
+mod2<-lm(happiness~1+season+age,data=couchto5k)
+```
+After doing some model diagnostics ,there are no extreme value.Results of the model indicated that there was a significant effct between the season,age,and happiness,(F(4,128)=2.79,P< .05,R^2=.051).but age is not a effictive predictor(t=0.67,p=0.506).
+## Question 2c
+
+```{r q2c}
+comp_mod12<-anova(mod1,mod2)
+```
+The first baseline model will be better,Results of the ANOVA indicated that there were not significant differences in mod1 between mod2(F(1,128)=.44,P=.51),and in mod2 age is not a significant predictor(t(128)=0.67,p=.506).
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+couchto5k$completed_program<-NA
+couchto5k$completed_program[couchto5k$week_stopped!="9"]<-0
+couchto5k$completed_program[couchto5k$week_stopped=="9"]<-1
+mod3<-lm(happiness~1+season+completed_program,data=couchto5k)
+
+```
+After doing some model diagnostics ,there are no extreme value.Results of the model indicated that there was a significant effect between the season,completed_program and happiness,(F(4,128)=2.77,P< .05,R^2=.0508).but completed_program is not a effictive predictor(t(128)=0.59,p=0.55).
+## Question 3b
+
+```{r q3b}
+mod4<-lm(happiness~1+season+completed_program+health,data=couchto5k)
+```
+After doing some model diagnostics ,there are no extreme value.Results of the model indicated that there was not a  significant effect between the season,completed_program and health,(F(5,127)=2.21,P=.057,R^2=.043).
+## Question 3c
+
+```{r q3c}
+mod5<-lm(happiness~1+season+completed_program+health*week_stopped,data=couchto5k)
+
+```
+Interaction in the model can accept this hypothesis,(t(125)=4.71,p<.01).the happiness of participants who got further along the programme more affected by the health metric than that of those who stopped earlier.
+## Question 3d
+
+
+# Question 4
+
+```{r q4}
+show<-couchto5k[couchto5k$week_stopped=="9",]
+ggplot(data=show,aes(x=season,y=happiness,fill=city))+ geom_bar(stat="identity")+labs(x ="season",y ="happiness",title = "different happiness from different city and season ")
+```
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+couchto5k$pro_drop<-NA
+couchto5k$pro_drop[couchto5k$completed_program=="0"]<-0
+couchto5k$pro_drop[couchto5k$completed_program=="1"]<-1
+mod6<-glm(pro_drop~1+accountability+selfmot,data=couchto5k,family = "binomial")
+chisq_mod6<-anova(mod6,test="Chisq")
+```
+
+## Question 5b
+
+```{r q5b}
+
+```
+Results of the ANOVA indicated that there was not significant differences between accountability and null model(P=.78),however there was a significant differences between selfmot and null model(P<.01) and results of the general linear model indicated that get one more point decreases the log-odds of the likelihood of dropping out by 0.215.
+## Question 5c
+
+```{r q5c}
+ggplot(data=couchto5k,aes(x=selfmot,y=pro_drop)) +
+xlab("Self motivation")+ylab("probablity of quitting") +
+geom_jitter(size=3,width=0,height=.2,alpha=.1) +
+geom_smooth(method="glm",method.args=list(family=binomial)) +
+scale_y_continuous(breaks=seq(0,1,by=.2))
+```
+
+
+
+
+
+
+
+
+
+

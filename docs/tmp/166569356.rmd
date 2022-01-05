@@ -1,0 +1,588 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: "3745033"
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(pander) # used for constructing tables presented in the report 
+library(lsr) # used for standardisation of coefficients in linear models
+library(sjPlot) # used for creating model tables for presentation in report
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+Data was obtained from https://uoepsy.github.io/data/usmr_2122_data.R on `r nrow(couchto5k)` participants in the Couchto5k running program. This data described a number of measures:  
+- participant age;  
+- an 'accountability' score on a scale of 5 to 35 , the sum of five questions, each scored 1-7, self-scored by participants;  
+- a self-motivation score, the sum of 5 questions, each scored 1-7, self-scored by participants;  
+- a health score, from 0 to 100, based on physiological tests at the end of the program;  
+- a happiness score, from 0 to 100, self-reported by participants at the end of the program;  
+- the season in which the participants was interviewed;  
+- the city in which the participant lived;  
+- the week in which the participant stopped participating in the program (with week 9 here indicating completion).
+
+
+```{r disallowed values check}
+ ### The code in this chunk was used in checking for impossible values in each of the variables
+illegal_age <- couchto5k$age[couchto5k$age > 100]
+illegal_accountability <- couchto5k$accountability[couchto5k$accountability > 35 | couchto5k$accountability < 5]
+illegal_selfmot <- couchto5k$selfmot[couchto5k$selfmot > 35 | couchto5k$selfmot < 5]
+illegal_health <- couchto5k$health[couchto5k$health > 100 | couchto5k$health < 1]
+illegal_happiness <- couchto5k$happiness[couchto5k$happiness > 100 | couchto5k$happiness < 1]
+seasons <- c("spring", "summer", "autumn", "winter")
+illegal_seasons <- couchto5k$season[! couchto5k$season %in% seasons] 
+cities <- c("Edinburgh", "Glasgow")
+illegal_cities <- couchto5k$city[! couchto5k$city %in% cities] 
+illegal_week_stopped <- couchto5k$week_stopped[couchto5k$week_stopped < 1 | couchto5k$week_stopped > 9]
+```
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+
+# this code chunk sets up a 'missing' column in the dataframe which will be used to note 'impossible' values, which can subsequently be removed
+couchto5k$missing <- NA    # setting up an NA column for the df
+couchto5k$missing[couchto5k$age > 100] <- "impossible age"
+couchto5k$missing[couchto5k$selfmot < 5] <- "impossible selfmot value"
+couchto5k$missing[couchto5k$week_stopped > 9] <- "impossible week_stopped value"
+```
+
+```{r fix misspellings, factor categroical variables}
+couchto5k[couchto5k$season == "autunm", "season"] <- "autumn" # fixes a number of misspelled season variables
+couchto5k$city <- factor(couchto5k$city, levels = c("Edinburgh", "Glasgow")) # factorises city variable
+couchto5k$season <- factor(couchto5k$season, levels = c("spring", "summer", "autumn", "winter")) # factorises season variable
+```
+
+### Notes on 'Data Cleaning'
+
+Several of the season variables were found to be misspelled ("autunm" vs "autumn"). These were corrected, and the rows containing them were retained.
+
+```{r missing values table}
+# this code chunk creates a table of the impossible values to be presented in the report, as well as finding how many rows are left after the impossible values were removed
+
+mtab <- table(couchto5k$missing)
+couchto5k <- couchto5k %>% filter(is.na(missing))
+total <- count(couchto5k)
+```
+
+The data were inspected and missing or unlikely values were removed, resulting in `r total` observations for analysis. Table 1 gives a summary of the data removed.
+
+```{r table, results='asis'}
+mtab %>% pander(caption="Table 1: Summary of Missing Values") 
+```
+
+## Variable Descriptions
+
+### Continuous Variables: Means, Standard Deviations and Density Plots
+
+The following is an exploration of the data obtained: their type (continuous, categorical, etc.), and their distributions.
+
+```{r descriptives happiness}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+happiness_summary <- couchto5k %>%
+  summarise(
+    mean_happiness = mean(happiness),
+    SD_happiness = sd(happiness)
+  )
+
+ggplot(data = couchto5k, aes(x = happiness)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +  
+  labs(x = "Happiness Score", 
+       y = "Probability density") +
+   ggtitle("Figure 1: Happiness Density Plot") +
+   theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+Figure 1 shows the distribution for happiness. This distribution (happiness) is relatively 'flat' with roughly equal density across the range of values (0-100). Mean happiness = `r happiness_summary[1]`, SD happiness = `r happiness_summary[2]`.
+
+```{r}
+hist(couchto5k$happiness, main = "Figure 2: Happiness Histogram", xlab = "Happiness Score")
+```
+
+Figure 2 shows a histogram for happiness. This reveals that a large number of participants received either 0 or 100 for the happiness score (`r length(illegal_happiness)` total). If these participants had been removed, the distribution would actually have been somewhat 'normal' i.e. bell-shaped. I've decided to keep these figures in, as to remove them would significantly reduce the data available. The 0 and 100 scored participants are somewhat evenly distributed: they stop the distribution from being 'normal', but they appear in roughly similar amounts so it seems that they won't hugely skew the figures/models in either direction.  
+
+```{r descriptives age}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+age_summary <- couchto5k %>%
+  summarise(
+    mean_happiness = mean(age),
+    SD_happiness = sd(age)
+  )
+
+ggplot(data = couchto5k, aes(x = age)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +  
+  labs(x = "Age", 
+       y = "Probability density") +
+      ggtitle("Figure 3: Age Density Plot") +
+      theme(plot.title = element_text(hjust = 0.5))
+```
+
+Figure 3 shows the distribution for age. This distribution seems broadly normal (but somewhat 'flat'), with most of the density around the mean, and less density at the edges of the range. There are two 'shoulders' in the distribution, with more participants around 24, and around 55, than would be expected with a truly normal distribution, and a somewhat 'flat' plateau around the centre of the distribution. Mean age = `r age_summary[1]`, SD age = `r age_summary[2]`.
+
+```{r descriptives accountability}
+accountability_summary <- couchto5k %>%
+  summarise(
+    mean_happiness = mean(accountability),
+    SD_happiness = sd(accountability)
+  )
+
+ggplot(data = couchto5k, aes(x = accountability)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +  
+  labs(x = "Accountability Score", 
+       y = "Probability density")+
+       ggtitle("Figure 4: Accountability Density Plot") +
+       theme(plot.title = element_text(hjust = 0.5))
+```
+
+Figure 4 shows the distribution for happiness. This distribution (accountability) is much more normal, with a slight skew towards the right of the distribution, with more participants scoring around 25 than would be expected with a truly normal distribution. Mean accountability = `r accountability_summary[1]`, SD accountability = `r accountability_summary[2]`.
+
+```{r descriptives selfmot}
+selfmot_summary <- couchto5k %>%
+  summarise(
+    mean_happiness = mean(selfmot),
+    SD_happiness = sd(selfmot)
+  )
+
+ggplot(data = couchto5k, aes(x = selfmot)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +  
+  labs(x = "Selfmot Score", 
+       y = "Probability density") +
+       ggtitle("Figure 5: Self Motivation Density Plot") +
+       theme(plot.title = element_text(hjust = 0.5))
+```
+
+Figure 5 shows the distribution for selfmot (self-motivation). This distribution is relatively normal, 'bell-shaped', with most of the density around the mean, and a very slight skew to the left of the distribution. Mean selfmot = `r selfmot_summary[1]`, SD selfmot = `r selfmot_summary[2]`.
+
+```{r descriptives health}
+health_summary <- couchto5k %>%
+  summarise(
+    mean_happiness = mean(health),
+    SD_happiness = sd(health)
+  )
+
+ggplot(data = couchto5k, aes(x = health)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +  
+  labs(x = "Health Score", 
+       y = "Probability density") +
+      ggtitle("Figure 6: Health Density Plot") +
+      theme(plot.title = element_text(hjust = 0.5))
+```
+
+Figure 6 shows the distribution for health. This distribution, again, looks relatively normal, with a very slight skew towards the right of the distribution, i.e. values above the mean (> 57). Mean health = `r health_summary[1]`, SD health = `r health_summary[2]`.
+
+## Categorical Variables: Frequencies
+
+```{r descriptives season}
+season_tab <- table(couchto5k$season)
+season_tab %>% pander(caption="Table 2: Summary of Season Frequencies") 
+season_prop_tab <- prop.table(table(couchto5k$season))
+```
+
+Table 2 shows the frequencies for the variable 'season'. The majority of participants were interviewed in spring (`r season_prop_tab[1]*(100)`% of participants), with summer next most common (`r season_prop_tab[2]*(100)`% of participants), and autumn and winter with far fewer (`r season_prop_tab[3]*(100)`% and `r season_prop_tab[4]*(100)`% of participants, respectively).
+
+```{r descriptives city}
+city_tab <- table(couchto5k$city)
+city_tab %>% pander(caption="Table 3: Summary of City Frequencies") 
+city_prop_tab <- prop.table(table(couchto5k$city))
+```
+
+Table 3 shows the frequencies for the variable 'city'. The majority of participants; `r city_tab[1]`, `r city_prop_tab[1]*(100)`%; were from Edinburgh, with `r city_tab[2]`, `r city_prop_tab[2]*(100)`%, from Glasgow.
+
+
+The final variable in the data is 'Week-Stopped', this a discrete numerical variable, from 1 to 9. 
+
+```{r}
+barplot(table(couchto5k$week_stopped), 
+        main="Figure 7: Freqeuncy of Week-Stopped Variable, Couchto5K data",
+        xlab = "Week Stopped",
+        ylab = "Frequency")
+```
+
+Figure 6 shows a barplot of the frequencies for Week-Stopped from week 1 to 9. It is clear that most participants completed the program, with most who dropped-out doing so in week 2.
+
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+couchto5k <- couchto5k %>%
+        mutate(stopped_before_week_5 = week_stopped < 5,
+               stopped_after_week_5 = week_stopped >= 5 & week_stopped <= 8,
+               completed = week_stopped == 9
+               )
+
+stopped_before_week_5_prop_table <- prop.table(table(couchto5k$stopped_before_week_5))
+
+stopped_after_week_5_prop_table <- prop.table(table(couchto5k$stopped_after_week_5))
+```
+
+The proportions in this dataset don't match exactly what was expected from the earlier nationwide survey: `r stopped_before_week_5_prop_table[2]*100`% (so fewer than the expected 45%) of participants in this sample stopped before week 5, and `r stopped_after_week_5_prop_table[2]*100`% (so slightly more than the expected 10%) of participants in this sample stopped after week 5, but before completing the program.
+
+### Chi-Squared Goodness-of-Fit Test: 
+ 
+```{r}
+couchto5k <- couchto5k %>%
+             mutate(stopped_group = ifelse(week_stopped < 5, "before_5",
+                                    ifelse(week_stopped >= 5 & week_stopped <= 8, "before_9", "completed")))
+
+week_stopped_chi_squared_test <- chisq.test(table(couchto5k$stopped_group), p = c(.45, .1, .45))
+```
+ 
+A chi-squared goodness-of-fit test was conducted in order to ascertain whether, in the data provided, the proportion of participants who stopped in each period (up to week 5, from week 5 to week 8, completed) is in line with the expected data drawn from the nationwide survey ($\alpha = .05$). The results showed a chi-squared value of `r week_stopped_chi_squared_test$statistic`, with `r week_stopped_chi_squared_test$parameter` degrees of freedom, p = `r week_stopped_chi_squared_test$p.value`. The null hypothesis (that there is no significant difference between the two groups) can therefore be accepted, and it can be asserted that the proportions for participants who stopped in each period are in line with those from the earlier nationwide survey.
+
+
+## Question 1b
+
+```{r q1b}
+couchto5k_edinburgh <- couchto5k %>%
+                      filter(city == "Edinburgh")
+
+edinburgh_before_week_5_prop_table <- prop.table(table(couchto5k_edinburgh$stopped_before_week_5))
+
+edinburgh_after_week_5_prop_table <-
+prop.table(table(couchto5k_edinburgh$stopped_after_week_5))
+
+couchto5k_glasgow <- couchto5k %>%
+                      filter(city == "Glasgow")
+
+glasgow_before_week_5_prop_table <- prop.table(table(couchto5k_glasgow$stopped_before_week_5))
+
+glasgow_after_week_5_prop_table <-
+prop.table(table(couchto5k_glasgow$stopped_after_week_5))
+```
+
+In my data: Glasgow participants dropped-out more before week 5: `r glasgow_before_week_5_prop_table[2]*100`% Glasgow, `r edinburgh_before_week_5_prop_table[2]*100`% Edinburgh (`r stopped_before_week_5_prop_table[2]*100`% overall).
+
+Also, slightly more Glasgow participants dropped out after week 5 (but before completing the program): `r glasgow_after_week_5_prop_table[2]*100`% Glasgow, `r edinburgh_after_week_5_prop_table[2]*100`% Edinburgh
+ (`r stopped_after_week_5_prop_table[2]*100`% overall).
+ 
+ 
+### Frequencies and Mosaic Plot of Drop-Out Period by City 
+
+```{r}
+city_stopped_group_tab <- table(couchto5k$city, couchto5k$stopped_group)
+city_stopped_group_tab %>% pander(caption="Table 4: Stopped Group by City Frequencies") 
+```
+
+```{r}
+plot(table(couchto5k$city, couchto5k$stopped_group), main = "Figure 8: Mosaic Plot of Stopping Period by City")
+```
+
+Figure 8 is a mosaic plot of the stopping period, by city of residence of participants.
+
+### Chi-Squared Test of Independence
+ 
+```{r, include = FALSE}
+stopped_group_by_city_chi_squared_TOI <- chisq.test(table(couchto5k$city, couchto5k$stopped_group))
+
+stopped_group_by_city_chi_squared_TOI
+```
+
+A chi-squared test of independence was conducted to determine whether the proportions of participants in each stopping period differed significantly ($\alpha = .05$) by their city of residence (Edinburgh vs Glasgow). The chi-squared value was `r stopped_group_by_city_chi_squared_TOI$statistic`, with `r stopped_group_by_city_chi_squared_TOI$parameter` degrees of freedom, and p = `r stopped_group_by_city_chi_squared_TOI$p.value`. It can therefore be concluded that there is no significant difference between the proportions of participants stopping in each period between the two groups.
+
+ 
+## Question 1c
+
+```{r q1c}
+edinburgh_glasgow_t_test <- with(couchto5k, t.test(age ~ city, alternative = "greater"))
+```
+
+A two-sample t-test was conducted to established whether a significant difference ($\alpha = .05$) existed between the ages of Edinburgh-based and Glasgow-based participants. 
+
+The t-test revealed that the mean age of the Edinburgh group (Mean = `r mean(couchto5k_edinburgh$age)`, SD = `r sd(couchto5k_edinburgh$age)`) was greater than the mean age of the Glasgow group (Mean = `r mean(couchto5k_glasgow$age)`, SD = `r sd(couchto5k_glasgow$age)`). This result was statistically significant (t(`r nrow(couchto5k)-1`)= `r edinburgh_glasgow_t_test$statistic %>% round(2)`, p = `r edinburgh_glasgow_t_test$p.value`). 
+
+# Question 2
+
+## Question 2a
+
+A linear model was fitted to ascertain whether a significant effect of season of interview on happiness scores could be ascertained. 
+
+```{r q2a, message = FALSE}
+happiness_season_model <- lm(happiness ~ season, data = couchto5k)
+tab_model(happiness_season_model)
+```
+
+```{r}
+plot(happiness_season_model)
+```
+
+### Notes on happiness_season_model assumption checks:
+
+- The 'residuals vs fitted' plot shows a very straight horizontal line, which suggests that the mean of the residuals is close to zero across the fitted values (check passed).
+- The QQ plot is the most concerning of the four graphs. Here the we see the influence of the 0 and 100 happiness scores (the horizontal lines at the top and bottom) on what would otherwise be a fairly normal distribution (following the diagonal).
+- The scale location plot is somewhat skewed (away from a horizontal line). Here the we see three highly influential outliers: datapoints 2, 20, and 104.
+- The residuals vs leverage plot is actually less concerning (more horizontal). The influential outliers 2, 20 and 104 can again be observed, however.
+
+These findings indicate that the influential outliers 2, 20, and 104 should be removed from the data, and the model should be run again.
+
+The happiness_season_model was rerun with these influential outliers (row 2, 20 and 104) removed, and the results presented reflect this new dataset.
+
+
+```{r, message = FALSE}
+couchto5k <- couchto5k[-c(2, 20,104),] # removes the influential outliers
+happiness_season_model <- lm(happiness ~ season, data = couchto5k) # reruns the model
+tab_model(happiness_season_model)
+```
+
+A linear regression model was fit to investigate any significant effects ($\alpha = .05$) of the season in which participants were interviewed on their happiness score. This model shows that a significant effect of season is only apparent for participants interviewed in Autumn: Autumn estimate =  `r happiness_season_model$coefficients[3]` happiness points (below the score for those interviewed in Spring), p = `r summary(happiness_season_model)$coefficients[ , 4][3]`. The other seasons show no apparent significant effect: Summer estimate = `r happiness_season_model$coefficients[2]` happiness points, but p = `r summary(happiness_season_model)$coefficients[ , 4][2]`; Winter estimate = `r happiness_season_model$coefficients[4]` happiness points, p = `r summary(happiness_season_model)$coefficients[ , 4][4]`.
+
+
+## Question 2b
+
+```{r q2b, message = FALSE}
+happiness_season_age_model <- lm(happiness ~ season + age, data = couchto5k)
+```
+
+A linear regression model (happiness ~ season + age) produced suggests that no significant effect ($\alpha = .05$) on happiness rating can be associated with the age of the participant (`r happiness_season_age_model$coefficients[5]` change in happiness score associated with 1 year change in age, but p = `r summary(happiness_season_age_model)$coefficients[ , 4][5]`).
+
+### Incremental F-test (ANOVA) 
+
+```{r}
+null_happiness_model <- lm(happiness~1, data = couchto5k)
+happiness_models_anova <- anova(null_happiness_model, happiness_season_model, happiness_season_age_model)
+happiness_models_anova
+```
+
+In this Analysis of Variance (ANOVA) we see a significant f-score (`r happiness_models_anova[2, 5]`, p = `r happiness_models_anova[2, 6]`) for 'season' being added as a predictor. Adding 'age', however, does not improve the f-score significantly, i.e. improve the model's predictive power (f-score = `r happiness_models_anova[3, 5]`, but p = `r happiness_models_anova[3, 6]`). It is therefore concluded that age is not good predictor of happiness scores, and should be excluded from the baseline model.
+
+
+## Question 2c
+
+Baseline Model: happiness ~ season
+
+```{r q2c, message=FALSE}
+happiness_season_model <- lm(happiness ~ season, data = couchto5k) # 'baseline model'
+tab_model(happiness_season_model)
+```
+
+
+Baseline Model: The model which takes into account the season in which participants were interviewed will form the baseline here, since it seems that, in this model, for participants interviewed in Autumn (but not other seasons) the season is a significant predictor of happiness scores. Since age does not seem to be a significant predictor of happiness, it has not been included in the baseline model 
+
+# Question 3
+
+## Question 3a
+
+A linear model was built to investigate the effect of completion of the program on happiness score (building upon the baseline model created for Question 3): 
+
+```{r q3a , message=FALSE}
+happiness_completion_model_1 <- lm(happiness ~ season + completed, data = couchto5k)
+tab_model(happiness_completion_model_1)
+```
+
+This model (happiness_completion_model_1) suggests that simply completing the program does not increase happiness score. Happiness estimate = `r happiness_completion_model_1$coefficients[5]`, but p = `r summary(happiness_completion_model_1)$coefficients[ , 4][5]`, so this effect is not statistically significant.
+
+
+## Question 3b
+
+A further linear model was produced to investigate the additive effect of the health metric as a predictor of happiness score:
+
+```{r q3b, message = FALSE}
+happiness_season_completion_health_additive_model <- lm(happiness ~ season + completed + health, data = couchto5k)
+tab_model(happiness_season_completion_health_additive_model)
+```
+
+No, health does not seem to be a significant predictor of happiness (estimate = `r happiness_season_completion_health_additive_model$coefficients[6]`, but p = `r summary(happiness_season_completion_health_additive_model)$coefficients[ , 4][6]`). Again, we see only a significant effect for season: Autumn (estimate now = `r happiness_season_completion_health_additive_model$coefficients[3]`, p = `r summary(happiness_season_completion_health_additive_model)$coefficients[ , 4][3]`), and now also a borderline significant effect for Winter: (estimate now = `r happiness_season_completion_health_additive_model$coefficients[4]`, p = `r summary(happiness_season_completion_health_additive_model)$coefficients[ , 4][4]`).  
+
+
+## Question 3c
+
+```{r q3c}
+happiness_season_completion_health_interaction_model <- lm(happiness ~ season + completed * health, data = couchto5k)
+```
+
+
+```{r}
+plot(happiness_season_completion_health_interaction_model)
+```
+
+### Notes on happiness_season_model assumption checks:
+
+- The 'residuals vs fitted' plot shows a mostly horizontal line, indicating that that the mean of the residuals is close to zero across the fitted values (check passed), although there are four influential outliers to keep in mind: 45, 11, 101.
+- The QQ plot is a fairly normal distribution (following the diagonal), again with 45, 11, and 101 flagged as influential outliers.
+- The scale location plot is the most concerning here, with 45, 11 and 101 again indicated.
+- The residuals vs leverage plot seems mostly OK (horizontal line), with 3, 11 and 101 indicated.
+
+These notes indicate that I should remove the influential outliers 45, 11, 101.
+
+The happiness_season_model was rerun with these influential outliers (row 4, 11, 101) removed, and the results presented reflect this new dataset/model.
+
+happiness_season_model:
+
+```{r, message = FALSE}
+couchto5k <- couchto5k[-c(45, 11, 101),]
+happiness_season_completion_health_interaction_model <- lm(happiness ~ season + completed * health, data = couchto5k)
+tab_model(happiness_season_completion_health_interaction_model)
+```
+
+The models produced here demonstrate that, in isolation (additive effects), only the effect of season of interview seems to be a significant predictor of happiness scores.
+
+When a linear model is built which takes into account the interaction of completing the course and health scores, however, we find that the season of interview (autumn, winter), completing the program, health score (all additive effects) and the interaction of completing the program and health scores are all significant predictors of happiness scores (details in 3.d. answer).
+
+
+## Question 3d
+
+The linear model produced (happiness_season_completion_health_interaction_model) shows that when we take into account the interaction of completing the program and health scores, we find significant ($\alpha = .05$) effects for: season = Autumn (estimate = `r happiness_season_completion_health_interaction_model$coefficients[3]` fewer happiness points associated with being interviewed in Autumn (vs Spring), p = `r summary(happiness_season_completion_health_interaction_model)$coefficients[ , 4][3]`), and season = Winter (estimate = `r happiness_season_completion_health_interaction_model$coefficients[4]` fewer happiness points associated with being interviwed in Winter (vs Spring), p = `r summary(happiness_season_completion_health_interaction_model)$coefficients[ , 4][4]`).
+
+Surprisingly, completing the course is associated with a large and statistically significant drop in happiness score (estimate = `r happiness_season_completion_health_interaction_model$coefficients[5]` fewer happiness points associated with completing the program, p = `r summary(happiness_season_completion_health_interaction_model)$coefficients[ , 4][5]`), as is health score (estimate = `r happiness_season_completion_health_interaction_model$coefficients[6]` fewer happiness points associated with each health point, p = `r summary(happiness_season_completion_health_interaction_model)$coefficients[ , 4][6]`).
+
+The interaction of completing the course and health score leads to a small increase in happiness score, however: estimate = `r happiness_season_completion_health_interaction_model$coefficients[7]` more happiness points associated with completing the program and with each health point, p = `r summary(happiness_season_completion_health_interaction_model)$coefficients[ , 4][7]`. 
+
+
+# Question 4
+
+```{r q4}
+completed_subset <- couchto5k %>%           
+                        filter(completed == TRUE) # creates a subset of data with only participants who completed the program 
+```
+
+```{r}
+happiness_season_var <- completed_subset %>% group_by(season) %>%
+               summarise(mean_se(happiness))
+
+happiness_season_var %>% ggplot(aes(x = season, y=y, ymin=ymin, ymax=ymax, fill = season)) +
+                           geom_bar(stat = "identity") +
+                          geom_errorbar(width=.2) +
+                          xlab("Season") +
+                          ylab("Mean Happiness Score") +
+                          ggtitle("Figure 8: Happiness by Season (Course Completed)") +
+                          theme(plot.title = element_text(hjust = 0.5))
+```
+
+Figure 8 is a plot of mean happiness for participants who completed the course, by season. Height of bars indicates the mean happiness score, black whiskers indicate the SE.
+
+```{r}
+ggplot(data=completed_subset, aes(x = season, y = happiness, na.rm = TRUE, fill=season)) +
+geom_boxplot() +
+xlab("City") +
+ylab("Happiness Score") +
+ggtitle("Figure 9: Boxplot of Happiness by Season (Completed Course)") +
+theme(plot.title = element_text(hjust = 0.5))
+```
+
+Figure 9 is a boxplot of happiness scores for participants who completed the course, by season. The top and bottom of each box represents the third and first quartile of that group, respectively, the bold bar in the centre of the box is the median, and the ends of the whiskers show the minimum and maximum value for that group.
+
+```{r}
+happiness_city_var <- completed_subset %>% group_by(city) %>%
+               summarise(mean_se(happiness))
+
+happiness_city_var %>% ggplot(aes(x = city, y=y, ymin=ymin, ymax=ymax, fill = city)) +
+                          geom_bar(stat = "identity") +
+                          geom_errorbar(width=.2) +
+                          xlab("City") +
+                          ylab("Happiness") +
+                          ggtitle("Figure 10: Happiness by City (Course Completed)") +
+                          theme(plot.title = element_text(hjust = 0.5))
+```
+
+Figure 10 is a plot of mean happiness for participants who completed the course, by city. Height of bars indicates the mean happiness score, black whiskers indicate the SE.
+
+```{r}
+ggplot(data=completed_subset, aes(x = city, y = happiness, na.rm = TRUE, fill= city)) +
+geom_boxplot() +
+xlab("City") +
+ylab("Happiness Score") +
+ggtitle("Figure 11: Boxplot of Happiness by Season (Completed Course)") +
+theme(plot.title = element_text(hjust = 0.5))
+```
+
+Figure 9 is a boxplot of happiness scores for participants who completed the course, by city.
+
+
+# Question 5
+
+## Question 5a
+
+Rationale for model chosen: A generalized linear model (glm) has been chosen here, since the outcome variable, 'drop-out', is binary (dropped-out is either TRUE/1 or FALSE/0).
+
+```{r q5a, include = FALSE}
+couchto5k <- couchto5k %>%
+        mutate(dropped_out = ifelse(completed == TRUE, 0, 1)) # creates a binary 'dropped_out' variable upon which to build the model
+
+drop_out_glm_1 <- glm(dropped_out~1, family= binomial, data = couchto5k) # this is the 'null model' which can be used as a baseline to assess predictive effects of other variables on drop-out. 
+summary(drop_out_glm_1)                                                   
+```
+
+```{r}
+drop_out_glm_2 <- glm(dropped_out~selfmot, family=binomial, data=couchto5k)
+anova(drop_out_glm_2)
+```
+
+An Analysis of Variance (ANOVA) was run to look at the predictive power of selfmot on happiness as part of a glm model. Here by adding selfmot as a predictor (to the null model) we see the deviance increase, and the residual deviance decrease,  which indicates that selfmot is a good predictor of the odds of drop-out.
+
+
+```{r}
+drop_out_glm_3 <- glm(dropped_out~selfmot, family=binomial, data=couchto5k)
+summary(drop_out_glm_3)
+```
+
+## Question 5b
+
+After investigating the possible significant effects ($\alpha = .05$) of several predictors (accountability, age, health, selfmot) on the odds of drop-out, it was found that only self-motivation was a significant predictor of drop-out: estimate = `r drop_out_glm_3$coefficients[2]` decrease in the odds of drop-out with a one-point increase in selfmot score, p = `r summary(drop_out_glm_3)$coefficients[ , 4][2]`.
+
+
+## Question 5c
+
+```{r Graph 1, include=FALSE}
+Question_5_c_plot <- couchto5k %>% ggplot(aes(x=selfmot,y=dropped_out)) +
+              ylab("p(dropped-out)") +
+              xlab("Self Motivation Score") +
+              geom_jitter(size=2,width=0,height=.1,alpha=.5) +
+              geom_smooth(method="glm",method.args=list(family=binomial)) +
+              scale_y_continuous(breaks = seq(0,1,b=.1)) +
+              ggtitle("Figure 12: p(dropped-out) vs selfmot score") +
+              scale_x_continuous(breaks = seq(5,35,b=2)) +
+              theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r, message=FALSE}
+Question_5_c_plot
+```
+
+Figure 12 shows the probability of drop-out as a function of self-motivation score. The fall in the probability of drop-out as selfmot score increases is clearly discernible (the downward gradient of the blue line).
+
+```{r q5c Graph 2}
+couchto5k <- couchto5k %>%
+           mutate(bin=cut_interval(selfmot, 10))
+          dat <- couchto5k %>% group_by(bin) %>%
+            summarise(prop=mean(dropped_out))
+          dat %>% ggplot(aes(x=bin,y=prop)) +
+            xlab("Selfmot Score Bin") + ylab("Proportion Dropped Out") +
+            geom_point(size=3) +
+            scale_x_discrete(label=1:10) +
+            ggtitle("Figure 13: Proportion Drop-Out vs Self-Motivation Score") +
+            theme(plot.title = element_text(hjust = 0.5))
+```
+
+Figure 13 shows the proportion of drop-outs by Self-Motivation score, which has been divided into 10 'bins', each containing a tenth of the range of self-motivation scores (i.e. 35/10). This also shows (implicitly) the general decrease in probability of quitting with the rising self-motivation score. None of the participants in the highest selfmot group dropped-out, whilst all of the participants in the lowest self-mot group did.
+
+

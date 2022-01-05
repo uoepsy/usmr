@@ -1,0 +1,626 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B189269
+always_allow_html: yes
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(pander)
+library(broom)
+library(sjPlot)
+library(patchwork)
+library(ggiraphExtra)
+library(devtools)
+library(psycho)
+library(psych)
+library(dplyr)
+library(tables)
+library(AICcmodavg)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+couchto5k$missing <- NA
+couchto5k$missing[couchto5k$age>100] <- "illogical age"
+couchto5k$missing[couchto5k$selfmot<5] <- "illogical self-mot score"
+couchto5k$missing[couchto5k$week_stopped>9] <- "more than 9 weeks"
+mtab <- table(couchto5k$missing)
+
+couchto5k <- couchto5k %>% filter(is.na(missing))
+total <- count(couchto5k)
+
+```
+Data was obtained from https://uoepsy.github.io/data/usmr_2122_data.R: a dataset containing information on 138 participants, including age, city, season interviewed, week of ending program. Four additional measures were assessed: accountability (summed score: 5-35), self-motivation (summed score: 5-35), health (multi-test measure: 0-100), and happiness (1-100).
+
+
+```{r table, results="asis"}
+mtab %>% pander(caption="Table 1: Summary of missing values.")
+```
+
+```{r season}
+#fixing of miscoding of 'autumn'
+miscoded <- sum(couchto5k$season=='autunm')
+couchto5k$season[couchto5k$season=="autunm"] <- 'autumn'
+#setting season as factor
+couchto5k$season <- as.factor(couchto5k$season)
+
+```
+
+All participant data was complete (no missing values), however not all scores were within possible ranges and were therefore removed, resulting in `r total` observations for analysis. Table 1 provides a summary of removed data. Additionally, `r miscoded` season entries were misentered as “autunm”. These were recoded as “autumn”.
+
+```{r city}
+#setting city as factor
+couchto5k$city <- as.factor(couchto5k$city)
+```
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+
+#table of distribution
+sct <- xtabs(~ season + city, data = couchto5k)
+sct <- addmargins(sct)
+sct %>% pander(caption="Table 2: Summary of distribution.")
+
+#tables of descriptives
+des_tab <- describe(couchto5k[ , c('age', 'accountability', 'selfmot', 'health', 'happiness')], fast=TRUE)
+des_tab %>% pander(caption="Table 3: Summary of descriptive statistics.")
+
+##correlation table between variables
+# select variables for correlating
+corvars <- c("age","accountability", "selfmot", "health", "happiness")
+newdata <- couchto5k[corvars]
+tab_corr(newdata, triangle = "lower", digits = 2)
+
+
+##Distribution by city
+city_p <- ggplot(couchto5k) + geom_bar(aes(city))
+ 
+##Distribution by season
+season_p <- ggplot(couchto5k) + geom_bar(aes(season))
+ 
+##Distribution of Weeks stopped
+week_p <- ggplot(couchto5k) + geom_bar(aes(week_stopped))
+ 
+##exploring data
+#happiness density
+happy_p <- ggplot(data = couchto5k, aes(x = happiness)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Happiness", 
+       y = "Probability density")
+#week stopped density
+stop_p <- ggplot(data = couchto5k, aes(x = week_stopped)) +
+  geom_density() +
+  geom_boxplot(width = 1/100) +
+  labs(x = "Week stopped", 
+       y = "Probability density")
+#health density
+health_p <- ggplot(data = couchto5k, aes(x = health)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Health", 
+       y = "Probability density")
+#self motivation
+selfmot_p <- ggplot(data = couchto5k, aes(x = selfmot)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Self Motivation", 
+       y = "Probability density")
+#accountability
+account_p <- ggplot(data = couchto5k, aes(x = accountability)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Accountability", 
+       y = "Probability density")
+#age
+age_p <- ggplot(data = couchto5k, aes(x = age)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Age", 
+       y = "Probability density")
+
+#setup of page with patchwork
+#distribution
+patchwork_dist <- (city_p + season_p)
+patchwork_dist + plot_annotation(title = 'Population Distbribution')
+
+#density
+patchwork_dens <- (stop_p | account_p | selfmot_p) /
+      (happy_p | health_p | age_p)
+patchwork_dens + plot_annotation(
+  title = 'Density and Boxplots'
+)
+
+
+                  
+```
+A summary of distribution by city and season is provided in Table 2 and visually in Figure 1. As can be seen, less people from Glasgow participated in the program. Also, spring seemed to be the season preferred for participation. For a summary of descriptive statistics see Table 3.
+
+Bivariate correlations show a strong negative relationship between age and health scores; a weak positive relationship between accountability and health, and a small positive correlation between self-motivation and happiness (see Table 4).
+
+Figure 2 displays the population distribution and density, and the average and spread of the variables. As can be seen, the distribution of participants stopping does not appear normally distributed. 
+
+
+
+
+# Question 1 
+
+## Question 1a
+
+To assess whether the current data is in line with an earlier nationwide survey where researchers found that 45% of participants abandoned the program before the halfway point in week 5, and a further 10% gave up before the end of the program, a a $\chi2$ Goodness of Fit test will be utilized. Effects will be considered statistically significant at $\alpha$=0.05. 
+
+```{r q1a}
+##create stopping variable with three levels- before 5wks (45%), after 5wks(10%), 9wks(rest of percentage), then compare each with previous data with a  χ2 goodness of fit test
+
+#creating categories for stopping
+couchto5k$compare <- NA
+couchto5k$compare[couchto5k$week_stopped<5] <- "less than 5"
+couchto5k$compare[couchto5k$week_stopped>=5] <- "before end"
+couchto5k$compare[couchto5k$week_stopped==9] <- "end"
+couchto5k$compare <- factor(couchto5k$compare, ordered = T, levels =    c("less than 5", "before end", "end"))
+
+#chisq table
+counts_compare <- table(couchto5k$compare)
+#chisq test
+stop_chi <- chisq.test(counts_compare, p = c(.45,.1,.45))
+stop_chi_p <- barplot(prop.table(counts_compare)*100)
+
+```
+
+To assess whether the current data is in line with an earlier nationwide survey where researchers found that 45% of participants abandoned the program before the halfway point in week 5, and a further 10% gave up before the end of the program, the current study’s proportion of attrition were examined (see Figure 3). The proportions suggest similarity between the previous survey and the current study.
+A $\chi2$ Goodness of Fit test was utilized to assess whether these effects are statistically significant (α=0.05).
+No statistical difference was found between the studies ($\chi2$(2) = `r stop_chi$statistic %>% round(2)`, p = `r stop_chi$p.value %>% round(2)`). Therefore, the proportions of leaving the program are in line with the previous study.
+
+
+
+
+## Question 1b
+Using the same three categories (stopped before week 5, stopped after week 5, completed), examine whether the patterns of attrition rates differ by city.
+
+
+```{r q1b}
+#attrition proportions- chisq test of independence
+counts_compare_city <- table(couchto5k$compare, couchto5k$city)
+counts_chi <- chisq.test(counts_compare_city)
+
+#chisq test produces error
+#check to see if assumptions are met--> find that 
+results_bycity <- chisq.test(counts_compare_city)
+#check to see if at least 20% expected frequencies are more than 5 (https://www.sheffield.ac.uk/polopoly_fs/1.885177!/file/93_ChiSquare.pdf)
+chi_assump_check <- results_bycity$expected
+#frequency of Glasgow-before end is less than 5, therefore (because small sample) need to use fisher.test
+attrition_f <- fisher.test(counts_compare_city)
+
+##plots of comparisons by city
+barplot(prop.table(counts_compare_city)*100, legend = TRUE, main="Attrition Proportion by City")
+#plot(counts_compare_city, main="Attrition Proportion by City")
+
+```
+
+The similarity in attrition proportions between cities can be seen in the Figure 4. To examine whether the patterns of attrition rates in the current study differ by city, a $\chi2$2 Test of Independence was conducted. No statistical difference was found between the studies ($\chi2$(2) = `r counts_chi$statistic %>% round(2)`, p = `r counts_chi$p.value %>% round(2)`).
+
+However, because of the small sample size the necessary assumptions were not met. Therefore, a Fisher’s Exact Test for Count Data was conducted. No statistical difference was found between the studies (p = `r attrition_f$p.value %>% round(2)`). Therefore, the attrition rates in each city is not significantly different.
+
+
+
+## Question 1c
+Do the average ages of participants who commenced the programme differ by city?
+
+Visualizations (Figure 4) were utilized to get a sense of the distribution of age between cities. 
+```{r q1c}
+##look for differences in mean
+Bara_g <- ggplot(data = couchto5k, aes(x = city, y = age)) +
+  geom_boxplot()
+
+##check for assumptions
+#Edinburgh by age
+Edi_assump_check <- shapiro.test(couchto5k$age[couchto5k$city=="Edinburgh"])
+##sig- may not be normal due to sample size
+
+#Glasgow by age
+Glas_assump_check <- shapiro.test(couchto5k$age[couchto5k$city=="Glasgow"])
+##sig- may not be normal due to sample size
+
+# F test to compare two variances
+a_c_Ftest <- with(couchto5k, var.test(age ~ city))
+##non-significant
+
+##density plot
+Densa_g <- ggplot(data = couchto5k) +
+  aes(x = age, color = city, fill = city) +
+  geom_density(alpha = 0.25) # add transparency
+
+patchwork_a_g <- (Bara_g | Densa_g)
+patchwork_a_g + plot_annotation(title = 'Population Age by City',
+                                subtitle = 'Figures describing the distribution and average age of the population by city.')
+
+##t-test for age of commencement by city
+age_city <- t.test(x = couchto5k$age[couchto5k$city=="Edinburgh"], y = couchto5k$age[couchto5k$city=="Glasgow"])
+
+
+```
+The graph on the left neatly shows means and distributions of age by city. Because the age distribution in Glasgow appears wider, and because the Shapiro-Wilk test for normal distribution was insignifcant for both cities, a density plot is shown on the right. This graph shows that while age in Edinburgh is in the direction of normality, age appears binomial in Glasgow. However, this is probably due to the small sample size.
+
+To determine if the average age of participants who commenced the programme was significantly different between cities ($\alpha = .05$) a two-sided Independent Samples t-test was conducted.
+
+Participants from Edinburgh were slightly older (Mean = `r mean(couchto5k$age[couchto5k$city=="Edinburgh"]) %>% round(2)`, SD = `r sd(couchto5k$age[couchto5k$city=="Edinburgh"]) %>% round(2)`) than participants from Glasgow (Mean = `r mean(couchto5k$age[couchto5k$city=="Glasgow"]) %>% round(2)`, SD = `r sd(couchto5k$age[couchto5k$city=="Glasgow"]) %>% round(2)`). However, this difference was not statistically significant (t(40) = `= 1, p = 0.30, two-tailed, two-tailed). Therefore, the average ages of participants who commenced the program do not differ by city.
+
+
+
+
+
+# Question 2
+
+## Question 2a
+Are participants’ happiness ratings affected by the season they were interviewed in? Describe the way in which season influences happiness outcomes.
+
+To assess whether participants' happiness ratings were affected by the season in which they were interviewed a regression model with season as the categorical predictor of happiness was fit. No statistical difference was found in happiness ratings. Therefore, participants' happiness ratings were not affected by the season in which they were interviewed.
+```{r q2a}
+
+##releveling the seasons
+contrasts(couchto5k$season)
+couchto5k <- couchto5k %>% 
+  mutate(season = season %>%
+           fct_relevel("winter"))
+
+# Box plot by group with jitter
+q2a_plot <- ggplot(couchto5k, aes(x = season, y = happiness, colour = season)) +   geom_boxplot(outlier.shape = NA) +
+  geom_jitter()
+
+## Bar plot happiness by season
+#happiness means, min-max table by season
+Q2_a <- couchto5k %>% group_by(season) %>%
+  summarise(mean_se(happiness))
+#barplot
+hap_seas_bar <- Q2_a %>% 
+  ggplot(aes(x=season,y=y,
+                  ymin=ymin,ymax=ymax)) +
+  geom_bar(stat="identity") +
+  geom_errorbar(width=.2) +
+  ylab("happinenss")
+
+
+#model
+mod_2a <- lm(happiness ~ season, data=couchto5k)
+summary(mod_2a)
+anova(mod_2a)
+tab_model(mod_2a)
+
+
+#table of mean happiness and difference from winter
+seas_tab <- couchto5k %>% group_by(season) %>%
+  summarise(
+    mean_hap = mean(happiness)
+  ) %>%
+  mutate(diff_from_winter = mean_hap - mean_hap[1])
+
+seas_tab %>% pander(caption="Table 5: Differences in mean happiness by season.")
+
+
+
+
+patchwork_2a <- (hap_seas_bar | q2a_plot)
+patchwork_2a + plot_annotation(title = 'Happiness by Season',
+                                subtitle = 'Figures describing the distribution and average happiness of the population by season')
+
+
+
+##influence measures
+influence_check2a <- summary(influence.measures(mod_2a))
+plot(mod_2a, which= 1:4)
+```
+
+Upon exploration of differences in happiness scores by season (Figure 6), there appeared to be a difference between winter and the rest of the months. The graph on the left indicates that there may be a difference in happiness scores between seasons, but the graph on the right suggests this may be due to distribution.
+
+To assess whether these differences were significant, a simple linear regression model with season as the categorical predictor of happiness was fit. The fitted regression model was: Happiness = 33.67+13.25(autumn)+16.06 (spring)+(15.59). The overall regression was not statistically significant (R2 = 0.02, F(3, 129) = 1.07, p =0.36). It was found that seasons could not significantly predict happiness ratings (autumn: β = 13.25, p =0.27; spring: β = 16.06, p=0.08, summer: β = 15.59, p=0.12). Therefore, participants’ happiness ratings were not significantly affected by the season in which they were interviewed. Model assumptions are relatively well met (Figure 7). 
+
+ `
+
+## Question 2b
+Accounting for any effects you discovered in (2a), is happiness affected by age?
+
+Season was not found to affect happiness, meaning that the best model to explain happiness was the mean of participant happiness. Therefore, happiness can be removed as a predictor from the baseline model. 
+```{r q2b}
+
+#model
+mod_2b <- lm(happiness ~ age, data=couchto5k)
+summary(mod_2b)
+anova(mod_2b)
+
+#table of model estimates
+tab_model(mod_2b)
+
+#graph of model
+plot_model(mod_2b, type = "pred",  terms=c("age"), show.data=TRUE)
+
+##influence measures
+infl_mod_2b <- summary(influence.measures(mod_2b))
+plot(mod_2b, which= 1:4)
+
+```
+
+Season was not found to affect happiness, meaning that the best model to explain happiness was the mean of participant happiness. Therefore, happiness can be removed as a predictor from the baseline model.
+To assess whether participants’ happiness ratings were affected by age a regression model with age as the predictor of happiness was fit. The fitted regression model was: Happiness = 42.97+0.13(age). The overall regression was not statistically significant (R2 < 0.01, F(1, 131) = 0.39, p =0.53). It was found that age could not significantly predict happiness ratings (β = 0.13, p =0.39). Therefore, participants’ happiness ratings were not significantly affected by their age. This is also evident in the visual display of the model (Figure 8), where the regression line barely shifts from the mean. Model assumptions are relatively well met (Figure 8).
+
+
+
+## Question 2c
+The models you have built above explore ‘baseline’ effects; that is, effects that are not of primary interest to the researchers but which might affect the outcome variable of happiness. For use in question 3, pick a specific baseline model and justify why you are using this.
+
+The baseline model that best describes the data is the mean of participant happiness. Neither season nor age could significantly explain the model better. Therefore, the mean remains the best predictor of happiness.
+```{r q2c}
+
+mod_2c <- lm(happiness ~ season * age, data=couchto5k)
+summary(mod_2c)
+anova(mod_2c)
+#table of model estimates
+tab_model(mod_2c)
+
+#graph of model
+plot_model(mod_2c, type = "pred",  terms=c("age","season"), show.data=TRUE)
+
+#check for influence
+infl_mod_2c <- summary(influence.measures(mod_2b))
+plot(mod_2c, which= 1:4)
+```
+As a result of these preliminary analyses finding that happiness cannot be significantly predicted by either season or age, the baseline model that best describes the data is the mean of participant happiness. To ensure that there are no interaction effects, a regression model was fitted:
+Happiness = β0+β1(season)+β2(age)+β3(season:age).
+Full regression results including 95% Confidence Intervals are shown in Table 5. The interaction between season and age in predicting happiness is visually presented in Figure10. The F-test for model utility was insignificant (F(7,125)=0.98, p=0.45), and the model explained approximately 5.2% of the variability in happiness scores. Model assumptions are relatively well met (Figure 11),
+Therefore, neither season, nor age, nor their interaction could significantly explain the model better than the average happiness score. Therefore, the mean remains the best predictor of happiness.
+
+
+# Question 3
+
+## Question 3a
+Building on your baseline model, are participants’ happiness ratings affected by whether or not they completed the programme? Describe the way in which programme completion influences happiness outcomes.
+```{r q3a}
+
+##exploring data
+# jitterplot of happiness by week
+ggplot(couchto5k, aes(x = week_stopped, y = happiness)) + 
+    geom_jitter(height=0, width=.05)
+
+
+##mutate data to create new binary variable- completed or not completed
+couchto5k <- 
+  couchto5k %>%
+    mutate(
+      completed = ifelse(week_stopped == 9, "Yes", "No")
+    )
+#set completed variable as factor
+couchto5k$completed <- as.factor(couchto5k$completed)
+
+##binary
+mod_3a <- lm(happiness ~ completed, data=couchto5k)
+summary(mod_3a)
+anova(mod_3a)
+tab_model(mod_3a)
+
+#plot of happiness by completed variable
+ggplot(couchto5k, aes(x = completed, y = happiness, colour = completed)) +   geom_boxplot() +
+  geom_jitter() 
+
+##influence
+plot(mod_3a, which=1:4)
+infl_stat3a <- summary(influence.measures(mod_3a))
+
+```
+To understand whether participants’ happiness ratings were affected by completing the program, a measure of program completion needed to be made. Therefore, week of leaving/completion was recoded into two categories: completed (left at week 9), not completed (left before week 9). 
+To assess whether participants’ happiness ratings were affected by completing the program, a regression model with completion as the predictor of happiness was fit. The fitted regression model was: Happiness = 45.65+4.17(completed). The overall regression was not statistically significant (R2 < 0.01, F(1, 131) = 0.85, p =0.36). It was found that completion could not significantly predict happiness ratings (β = 4.17, p =0.36). Therefore, participants’ happiness ratings were not significantly affected by completing the program. This is also evident in the visual display of the model (Figure 12), where the regression line barely shifts from the mean. Model assumptions are relatively well met (Figure 13).
+
+
+
+## Question 3b
+Building on the analysis in (3a), is happiness additionally affected by the “health metric”?
+```{r q3b}
+
+##binary
+mod_3b <- lm(happiness ~ completed + health, data=couchto5k)
+#summary(mod_3b)
+#anova(mod_3b)
+#tab_model(mod_3b)
+##scaled to make the intercept statistically meaningful
+mod_3b1 <- lm(happiness ~ completed + scale(health), data=couchto5k)
+summary(mod_3b1)
+anova(mod_3b1)
+tab_model(mod_3b1)
+
+#graph presentation of model
+ggPredict(mod_3b,colorAsFactor = TRUE,interactive=TRUE)
+
+
+##influence
+plot(mod_3b1, which=1:4)
+infl_stat3b1 <- summary(influence.measures(mod_3b1))
+
+
+```
+Building on the previous analysis, to assess whether participants’ happiness scores were affected by their measure of health, a regression model with completion and health as the predictors of happiness was fit. The fitted regression model was: Happiness = 30.81+4.25(completed)+0.26(health). Measures of health were scaled to make the intercept statistically meaningful. The overall regression was not statistically significant (R2 = 0.01, F(2, 130) = 0.97, p =0.38). It was found that health could not significantly predict happiness ratings (β = 2.66, p =0.30), nor could program completion (β = 4.25, p =0.41). Therefore, participants’ happiness ratings were not significantly affected by their measures of health or program completion. This is also evident in the visual display of the model (Figure 14), where the regression line barely shifts from the mean. Model assumptions are relatively well met (Figure 15).
+
+
+
+## Question 3c
+
+```{r q3c}
+##binary
+mod_3c <- lm(happiness ~ completed * health, data=couchto5k)
+#summary(mod_3c)
+#anova(mod_3c)
+#tab_model(mod_3c)
+## scaled to make intercept statistically meaningful
+mod_3c1 <- lm(happiness ~ completed * scale(health), data=couchto5k)
+summary(mod_3c1)
+anova(mod_3c1)
+tab_model(mod_3c1)
+
+
+ggPredict(mod_3c,colorAsFactor = TRUE,se = TRUE, interactive=TRUE)
+
+##influence
+plot(mod_3c1, which=1:4)
+infl_stat3c <- summary(influence.measures(mod_3c1))
+
+
+```
+It has been hypothesized that the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the program might be more affected by the health metric than that of those who stopped earlier. Building on the previous model, a multiple linear regression was fitted to test if program completion and health scores (scaled) significantly predicted happiness scores. The fitted regression model was: Happiness = β0+β1(completed)+β2(health)+β3(completed:health).
+The regression results including 95% Confidence Intervals are shown in Table 6. The interaction between program completion and health scores is visually presented in Figure 16. The F-test for model utility was significant (F(3,129)= 7.29, p<0.01), and the model explained approximately 14.5% of the variability in happiness scores. Model assumptions are relatively well met (Figure 17).
+Therefore, the hypothesis that the effects of good health are amplified by the feeling of acting healthily appears to be correct.
+
+
+
+## Question 3d
+
+What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper.
+
+These results show that for those who do not complete the program and have average scores of health and happiness, the estimated happiness rate is 44.86 (SE = 3.32, p<0.01). Results did not show a significant conditional association between happiness scores and program completion (β = 4.46 , SE = 4.78, p=0.35), suggesting that there was only marginal improvement in happiness scores between those who completed and those who did not complete the program. However, a significant conditional association was evident between happiness and health (β = -9.67, SE = 3.67, p <.01), suggesting that for those with an average health score, scores on happiness change by -9.67 for every 1 standard deviation increase in health. Importantly, the association between happiness and health scores was found to be dependent upon program completion (β= 21.48, SE = 4.85, p <.01). This interaction is visually presented in Figure 16. From these results, it appears that those who are in low health and complete the program have lower happiness scores than those with high health that complete the program. The opposite is true for those who do not complete the program; having lower health and not completing the program was associated with greater feelings of happiness than for those of higher health scores who did not complete the program.
+The results presented here indicate that happiness depends on both health and program completion.
+
+
+# Question 4
+Create a subset of the data, including only those participants who completed the programme. Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project.
+```{r q4}
+# subsetting data
+new_c25k <- subset(couchto5k, completed == "Yes",
+select=c(happiness, season, city)) 
+
+##shows counts of participants
+#ggplot(new_c25k) +
+#  geom_bar(aes(x = season, fill = city), position = "dodge")
+##graph of avg happiness depending on season and city--> far less participants in glasgow
+ggplot(new_c25k) +
+  aes(x = season, y = happiness, fill = season) + # add color to boxes with fill
+  geom_boxplot(varwidth = TRUE) + # vary boxes width according to n obs.
+  geom_jitter(alpha = 0.25, width = 0.2) + # adds random noise and limit its width
+  facet_wrap(~city) + # divide into 2 panels
+  theme(legend.position = "none") # remove legend
+
+
+```
+
+
+# Question 5
+
+## Question 5a
+Build a model that predicts the likelihood of dropping out (at all).
+
+```{r q5a}
+
+##create value for dropping out--> 1-did drop out, 0-didn't drop out
+couchto5k <- 
+  couchto5k %>%
+    mutate(
+      dropped_out = ifelse(week_stopped < 9, 1, 0)
+    )
+#set dropped_out as factor
+as.factor(couchto5k$dropped_out)
+
+
+## Using the backward elimination stepwise approach to build the model
+# predicting dropping out by age + accountability + selfmot  + health*happiness
+mod.a <- glm(dropped_out ~ age + accountability + selfmot  + health*happiness, data=couchto5k, family = "binomial")
+summary(mod.a)
+## accountability found to have the highest p-value (0.2471)- so removed from next step
+
+# predicting dropping out by age + selfmot + health*happiness
+mod.b <- glm(dropped_out ~ age + selfmot + health*happiness, data=couchto5k, family = "binomial")
+summary(mod.b)
+## health found to have the highest p-value (0.1425)- so removed from next step
+
+# predicting dropping out by age + selfmot  + happiness + health:happiness
+mod.c <- glm(dropped_out ~ age + selfmot  + happiness + health:happiness, data=couchto5k, family = "binomial")
+summary(mod.c)
+anova(mod.c, test= "Chisq")
+## no other variable with p-value<0.05- no more removed--> final model: mod.c
+
+
+## Stepwise- forward model
+full_drop_model <- glm(dropped_out ~ age + accountability + selfmot  + health*happiness, data = couchto5k, family = "binomial")
+step(full_drop_model)
+## forward model:glm(dropped_out ~ age + selfmot + health*happiness, data = couchto5k, family = "binomial")
+for_drop_mod <- glm(dropped_out ~ age + selfmot + health*happiness, data = couchto5k, family = "binomial")
+summary(for_drop_mod)
+anova (for_drop_mod, test="Chisq")
+
+#compare the models from the two directions
+models <- list(mod.c, for_drop_mod)
+model.names <- c('mod.c', 'for_drop_mod')
+aictab(cand.set = models, modnames = model.names)
+
+## best fit model: for_drop_mod
+```
+
+To build a model that predicts the likelihood of dropping out (at all), stepwise model selection was used to ascertain the best predictive model. AIC model selection was applied to distinguish among a set of possible models describing the relationship between age, accountability, self-motivation, health, and happiness. The best-fit model, carrying 51% of the cumulative model weight, included every parameter except accountability, and included an interaction effect between health and happiness. This interaction was deemed plausible given the previous analyses. 
+The final model was: $\ln(p1/p)=b0+b1*x1+b2*x2+b3*x3+b4*x4+b5*x3*x4+e$
+where: x1=age, x2=self-motivation, x3=health, x4=happiness
+
+To statistically evaluate each parameter in the model, a $\chi2$ test was utilized. Age ($\chi2$(1)=2.28, p= 0.13) and happiness ($\chi2$(1)=0.17, p= 0.68) were both insignificant, while self-motivation ($\chi2$(1)=14.16, p<0.01), health ($\chi2$(1)=6.47, p=0.01) and the interaction between health and happiness ($\chi2$(1)=12.52, p<0.01) were significant.
+
+
+## Question 5b
+Briefly describe the effects in your model as you would in an academic paper.
+
+```{r q5b}
+## the best fit model was found to be: for_drop_mod
+summary(for_drop_mod)
+anova (for_drop_mod, test="Chisq")
+tab_model(for_drop_mod)
+
+#Compute 95% confidence intervals for the log-odds coefficients using confint()
+#to revert the estimates back to odds and odds-rations--> wrap in exp()
+exp(confint(for_drop_mod))
+exp(coef(for_drop_mod))
+
+```
+
+The results of the multiple logistic regression are provided in Table 7. These results indicated that, all else being equal, participants higher in age, self-motivation, happiness, and health and happiness are less likely to drop out of the program.
+
+The higher the age, the lower the odds of dropping out. For example, for every year older someone is, the odds of dropping out decreases by 0.96. For every higher score in self-motivation and happiness, the odds of dropping out decreases by 1.08 and 1.17, respectively. When health and happiness interact, the odds of dropping out decreases by 1.00, but the direction of this effect is unclear. However, given the results in Section 3, it seems plausible that if health and happiness are both low there is a greater chance of dropping out than when health and happiness are high. But when health is low and happiness is high, there may be a greater chance of dropping out.
+
+## Question 5c
+Draw a graph representing the probability of quitting as a function of how self motivated participants were.
+
+```{r q5c}
+#graph representing the probability of quitting as a function of how self motivated participants were
+couchto5k %>% ggplot(aes(x=selfmot,y=dropped_out)) +
+  ylab("p(dropped_out)") +
+  geom_jitter(size=3,width=0,height=.1,alpha=.1) +
+  geom_smooth(method="glm",method.args=list(family=binomial)) +
+  scale_y_continuous(breaks=seq(0,1,by=.2))
+
+```
+Figure 19. The graph visually represents the probability of dropping out as a function of how self-motivated participants were. The figure show that there is greater probability of quitting when self-motivation is lower than when it is higher.
+
+
+
+
+
+
+
+
+

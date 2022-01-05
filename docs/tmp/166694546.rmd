@@ -1,0 +1,784 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B112234
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(lsr)
+library(psych)
+library(pander)
+library(broom)
+library(car)
+library(sjPlot)
+library(jtools)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+## Data cleaning 
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+
+#Check all the data to ensure everything is within the correct range 
+summary(couchto5k) #we have some strange looking values that need to sort 
+
+#first, we are going to create a new column in the data called 'missing' so we can track issues in the data that we need to address 
+couchto5k$missing <- NA
+
+#age has some unlikely values (e.g., maximum of 140)
+couchto5k$missing[couchto5k$age > 100] <- "unlikely age" #unlikely anyone over 100 is going to be participating
+couchto5k$age[couchto5k$age > 99] <- NA #recode the unlikely age variables to NA
+
+#accountability should have a minimum of 5 (1*5), and a maximum of 35 (7*5), so that variable looks good
+
+#selfmot should have a minimum of 5 and a maximum of 35, the maximum is 22 which is fine, but we have a -99 so a missing value that we need to address
+couchto5k[couchto5k == -99] <- NA
+summary(couchto5k) #rerun the summary function to check our recoding worked
+couchto5k$missing[is.na(couchto5k$selfmot)] <- "no selfmot score given" #track missing values from self motivation variable
+
+
+#health should range between 0 and 100, which it does 
+#happiness should range between 0 and 100, which it does
+
+#season should be a factor and has 4 levels - need to recode it from a character to a factor and need to fix the misspelling of autumn in the data
+couchto5k$missing[couchto5k$season == "autunm"] <- "miscoded season" #add the explanation to our missing data file so we can report this later 
+couchto5k$season[couchto5k$season == "autunm"] <- "autumn"
+couchto5k$season <- factor(couchto5k$season, levels = c("spring", "summer", "autumn", "winter")) #ordered here for visualisation 
+
+#city should be a factor and has 2 levels - need to recode it from a character to a factor
+couchto5k$city <- factor(couchto5k$city)
+
+#week stopped should range up to 9, maximum is 14 so got some removing to do
+couchto5k$missing[couchto5k$week_stopped > 9] <- "week stopped not accurate"
+couchto5k$week_stopped[couchto5k$week_stopped > 9] <- NA
+
+#Next, we are going to remove any participants who are clear outliers in any of the variables using a cut-off of 3 standard deviations from the mean 
+#create a function to evaluate values more than 3SD above the mean for each variable
+outliers <- function(obs, x = 3){
+  abs(obs - mean(obs, na.rm=TRUE)) > (x * sd(obs, na.rm=TRUE))
+}
+couchto5k$missing[outliers(couchto5k$age)] <- "outlier age" 
+couchto5k$missing[outliers(couchto5k$accountability)] <- "outlier accountability"
+couchto5k$missing[outliers(couchto5k$selfmot)] <- "outlier selfmot"
+couchto5k$missing[outliers(couchto5k$health)] <- "outlier health"
+couchto5k$missing[outliers(couchto5k$happiness)] <- "outlier happiness"
+
+missing_table <- table(couchto5k$missing) 
+print(missing_table)
+
+```
+The data was evaluated and cleaned. All data coded -99 was recoded to NA. `r sum(couchto5k$missing == "unlikely age", na.rm = T)` participants contained unlikely ages which were recoded to NA and retained in the data. `r sum(couchto5k$missing == "week stopped not accurate", na.rm = T)` participant had an inaccurate record of which week they stopped (greater than 9 weeks) and were recoded as NA and retained in the data. Where no self motivation score was given (n = `r sum(couchto5k$missing == "no selfmot score given", na.rm = T)`) participants were retained in the analysis as their other data can be used. Finally, `r sum(couchto5k$missing == "miscoded season", na.rm = T)` data points were coded as 'autunm' instead of 'autumn'. These were recoded to correct the spelling. The final sample size was `r length(couchto5k$accountability)`. 
+
+## Descriptive statistics
+
+Age, accountability, self motivation, health, and happiness were all measured on continuous scales. Accountability was measured using 5 items on a Likert scale from 1-7 with responses then summed, where low scores indicate low measures of accountability. Self motivation was measured using 5 items on a Likert scale from 1-7 with responses then summed, where low scores indicate low measures of self motivation. Health and happiness were measured on continuous scales from 0 to 100. Table 1 provides the descriptive statistics for these continuous variables.
+
+```{r descriptive for continuous table, include = FALSE, warning = F, message = F}
+describe(couchto5k$age)
+describe(couchto5k$accountability)
+describe(couchto5k$selfmot)
+describe(couchto5k$health)
+describe(couchto5k$happiness)
+cor.test(couchto5k$age, couchto5k$accountability)
+cor.test(couchto5k$age, couchto5k$selfmot)
+cor.test(couchto5k$age, couchto5k$health)
+cor.test(couchto5k$age, couchto5k$happiness)
+cor.test(couchto5k$accountability, couchto5k$selfmot)
+cor.test(couchto5k$accountability, couchto5k$health)
+cor.test(couchto5k$accountability, couchto5k$happiness)
+cor.test(couchto5k$selfmot, couchto5k$health)
+cor.test(couchto5k$selfmot, couchto5k$happiness)
+cor.test(couchto5k$health, couchto5k$happiness)
+#create a table in word with the descriptive statistics for the continuous variables
+#create a table in word with the correlations between the continuous variables
+```
+
+
+The season participants were interviewed in was recorded. `r sum(couchto5k$season == "spring")` participants were interviewed in spring, `r sum(couchto5k$season == "summer")` participants were interviewed in summer, `r sum(couchto5k$season == "autumn")` participants were interviewed in autumn, and `r sum(couchto5k$season == "winter")` were interviewed in winter. 
+
+The city participants were recruited in was recorded. `r sum(couchto5k$city == "Edinburgh")` participants were recruited from Edinburgh, and `r sum(couchto5k$city == "Glasgow")` participants were recruited from Glasgow. 
+
+Finally, the week of the programme that participants stopped in was recorded. `r sum(couchto5k$week_stopped == 1, na.rm = TRUE)` participants stopped in week one, `r sum(couchto5k$week_stopped == 2, na.rm = TRUE)` participants stopped in week two, `r sum(couchto5k$week_stopped == 3, na.rm = TRUE)` participants stopped in week three, `r sum(couchto5k$week_stopped == 4, na.rm = TRUE)` participants stopped in week 4, `r sum(couchto5k$week_stopped == 5, na.rm = TRUE)` participants stopped in week 5, `r sum(couchto5k$week_stopped == 6, na.rm = TRUE)` participants stopped in week 6, `r sum(couchto5k$week_stopped == 7, na.rm = TRUE)` participants stopped in week 7, `r sum(couchto5k$week_stopped == 8, na.rm = TRUE)` participants stopped in week 8, and `r sum(couchto5k$week_stopped == 9, na.rm = TRUE)` completed the programme. 
+
+All analysis in this report will be interpreted with $\alpha = `r .05`$ unless otherwise stated. 
+
+# Question 1 
+
+## Question 1a
+
+In an earlier nationwide survey, researchers found that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme. A Chi Square Goodness of Fit Test was used to evaluate whether the current data follows the same patterns as the prior data, with a null hypothesis that there is no significant difference between the observed values in this data and the expected values from the percentages from the previous data, and an alternative hypothesis that there will be a significant difference between the observed values in this data and the expected values from the percentages from the previous data.
+
+```{r q1a recoding, include = FALSE}
+#Create a new variable with 3 groups, one with those who abandoned the programme prior to week 5, one with those who dropped out between week 5 and the final week, and then finally those who completed the programme 
+couchto5k$grouped <- couchto5k$week_stopped
+couchto5k$grouped[couchto5k$grouped == 1] <- "Before five"
+couchto5k$grouped[couchto5k$grouped == 2] <- "Before five"
+couchto5k$grouped[couchto5k$grouped == 3] <- "Before five"
+couchto5k$grouped[couchto5k$grouped == 4] <- "Before five"
+couchto5k$grouped[couchto5k$grouped == 5] <- "After five"
+couchto5k$grouped[couchto5k$grouped == 6] <- "After five"
+couchto5k$grouped[couchto5k$grouped == 7] <- "After five"
+couchto5k$grouped[couchto5k$grouped == 8] <- "After five"
+couchto5k$grouped[couchto5k$grouped == 9] <- "Complete"
+couchto5k$grouped <- factor(couchto5k$grouped, ordered = TRUE, levels = c("Before five", "After five", "Complete"))
+table(couchto5k$grouped)
+```
+
+The week the participants stopped the programme was grouped into three categories - participants who dropped out before week five (n = `r sum(couchto5k$grouped == "Before five", na.rm = T)`), participants who dropped out during/after week five (n = `r sum(couchto5k$grouped == "After five", na.rm = T)`), and participants who completed the programme (n = `r sum(couchto5k$grouped == "Complete", na.rm = T)`). 
+
+```{r q1a continued including the test, include = FALSE}
+#compare our observed values to the expected values
+table(couchto5k$grouped)
+expected <- c((length(couchto5k$grouped) * .45), (length(couchto5k$grouped) * .1),(length(couchto5k$grouped) * .45))
+print(expected)
+
+#create a data frame of the expected values and observed values 
+chi_square <- data.frame(c("Before five", "After five", "Complete"))
+chi_square$expected <- expected
+chi_square$observed <- c(sum(couchto5k$grouped == "Before five", na.rm = T), sum(couchto5k$grouped == "After five", na.rm = T), sum(couchto5k$grouped == "Complete", na.rm = T))
+colnames(chi_square) <- c("category", "expected", "observed")
+chi_square_table <- table(chi_square)
+
+#use a chi-square comparison to evaluate whether the data matches the nationwide survey results, and set the probabilities from the prior research
+chi_results <- chisq.test(table(couchto5k$grouped), p = c(.45, .1, .45))
+```
+
+The Chi Square Goodness of Fit test found no significant difference between the observed and expected values, $$\chi^2 (`r chi_results$parameter`, `r length(couchto5k$grouped)`)= `r chi_results$statistic`, p = `r chi_results$p.value`$$. The observed and expected values can be seen in Table 3. Thus, we fail to reject the null hypothesis, and conclude that the data in the sample is not in line with the data from the earlier survey.
+
+```{r table of expected compared to observed values, message = F}
+pander(chi_square, caption = "Table 3: Expected and Observed Values of Participants Dropout")
+```
+
+## Question 1b
+
+To evaluate whether the patterns of attrition rates, using the same dropout categories as question 1a, vary by city, a Chi Square Test of Independence was conducted, with the null hypothesis that patterns of attrition rate do not vary by city, and the alternative hypothesis that attribution rates do vary by city.
+
+The expected and observed values per dropout category and city can be seen in Table 4 and Table 5. 
+
+```{r q1b chi-square test, include = FALSE, warning = FALSE}
+#create the expected values
+t <- table(couchto5k$grouped, couchto5k$city)
+expected_b <- rowSums(t) %o% colSums(t) / sum(t)
+
+#Chi-square test
+chi2_results <- chisq.test(table(couchto5k$grouped, couchto5k$city))
+```
+
+
+```{r q1b table expected, warning = F, message = F}
+pander(expected_b, caption = "Table 4: Expected Values")
+```
+```{r q1b table observed, warning = F, message = F}
+observed_table <- table(couchto5k$grouped, couchto5k$city)
+pander(observed_table, caption = "Table 5: Observed Values")
+```
+The Chi Square Test of Independence found no significant difference in attrition rates between cities, $$\chi^2 (`r chi2_results$parameter`, `r length(couchto5k$grouped)`) = `r chi2_results$statistic`, p = `r chi2_results$p.value`$$. Thus, we reject the null hypothesis, and conclude that attrition rates do not differ by city. 
+
+It is important to note, however, that the expected value of participants in Glasgow dropping out after week five is below the recommended minimum of 5 for this analysis. Therefore, these results should be cautiously interpreted, and this analysis should be replicated in future with larger samples.
+
+## Question 1c
+
+To evaluate whether the average age of participants who commenced the programme differ by city, a two-tailed t-test was conducted, with a null hypothesis that age does not differ significantly between cities, and an alternative hypothesis that age does differ significantly between cities.  Figure 1 demonstrates the different distributions of age across the two cities. 
+
+```{r q1c plot, fig.cap= "Figure 1: Boxplot of Participant Age by City", warning = F, message = F}
+ggplot(couchto5k, aes (x = age, y = city)) + 
+  geom_boxplot(fill = "lightgrey") + 
+  xlab("Age") + 
+  ylab("City") + 
+  theme_apa()
+```
+Assumption checks were conducted. Age was normally distributed for Glasgow participants, but not normally distributed for Edinburgh participants. However, as t-tests are relatively robust against non-normality, the t-test was conducted but this assumption violation should be acknowledged when interpreting the results. The variance between the two groups was evaluated, where the variances were adequately equal, p > .05. 
+
+```{r q1c assumption checks, include = FALSE}
+#Check the assumptions
+#normality of the variables 
+shapiro.test(couchto5k$age[couchto5k$city== "Edinburgh"])
+hist(couchto5k$age[couchto5k$city== "Edinburgh"])
+shapiro.test(couchto5k$age[couchto5k$city== "Glasgow"])
+hist(couchto5k$age[couchto5k$city== "Glasgow"])
+#equal variance between the groups
+with(couchto5k, var.test(age ~ city))
+```
+
+```{r q1c t-test and subsetting data for markdown write up, include = FALSE}
+#Run the t-test
+ttest_results <- t.test(age ~ city, data = couchto5k)
+
+#subset the data into the two cities 
+edinburgh <- subset(couchto5k, couchto5k$city == "Edinburgh")
+glasgow <- subset(couchto5k, couchto5k$city == "Glasgow")
+```
+
+There was a significant difference in mean age between Edinburgh and Glasgow, t(`r ttest_results$parameter`) = `r ttest_results$statistic`, p = `r ttest_results$p.value`. Participants from Edinburgh had a higher mean age of `r mean(edinburgh$age, na.rm = TRUE)` (sd = `r sd(edinburgh$age, na.rm = TRUE)`) compared to participants from Glasgow (mean age = `r mean(glasgow$age, na.rm = TRUE)`, sd = `r sd(glasgow$age, na.rm = TRUE)`). Thus, we reject the null hypothesis. 
+
+# Question 2
+
+## Question 2a
+
+To evaluate the ways in which season influences happiness outcomes, a simple regression model was fit with season as a categorical predictor and happiness as a continuous outcome variable. Happiness scores were not standardised, and thus are interpreted as changes on the 0-100 scale measured in the original survey. 
+
+Figure 2 visualises happiness ratings by the season that participants were interviewed in. 
+
+```{r q2a visualisation, fig.cap = "Figure 2: Boxplot of Happiness Rating by Season Interviewed"}
+ggplot(couchto5k, aes(x = season, y = happiness)) + 
+  geom_boxplot(fill = "lightgrey") + 
+  xlab("Season") + 
+  ylab("Happiness") + 
+  theme_apa()
+```
+
+Spring was automatically set as the baseline for the analysis to compare the other seasons ratings of happiness to. 
+
+The following regression model was evaluated:
+$Happiness = \beta_0 + \beta_1(Summer) + \beta_2(Autumn) + \beta_3(Winter) + \epsilon$
+
+We considered the hypothesis test that the beta coefficients are equal to zero, where: 
+$H_0: \beta_1, \beta_2, and \beta_3 = 0$
+$H_1: \beta_1, \beta_2, or \beta_3 \neq 0$
+
+
+To evaluate the significant difference in means between summer and autumn, summer and winter, and then autumn and winter, the baseline of the model was changed to summer, and then to autumn for these comparisons. Due to the use of multiple analysis, a Bonferroni adjusted alpha of $\alpha = `r .05/3`$ will be used for significance for this analysis. 
+
+```{r q2a set the contrasts and create the linear model, include = FALSE}
+#create the linear model
+model1 <- lm(happiness ~ 1 + season, data = couchto5k)
+summary(model1)
+lmd_1 <- tidy(model1)
+
+#check the assumptions
+plot(model1) #visualise everything
+#statistically 
+#homoscedasticity 
+ncv1 <- ncvTest(model1)
+#independence of errors
+dwt1 <- durbinWatsonTest(model1)
+#normality of residuals
+shap1 <- shapiro.test(model1$residuals)
+#plot cooks distances
+plot(model1, which = 4)
+```
+
+The assumptions of the model (normally distributed residuals, homogeneity of variance, and independence of errors), were inspected. The residuals were not normally distributed, both statistically (W = `r shap1$statistic` , p = `r shap1$p.value`) and visually. This suggests more predictors are required in the model. Indeed, only `r summary(model1)$r.squared * 100`% of the variance is accounted for in this model. The assumptions of homoscedasticity ($$\chi^2$$ (`r ncv1$Df`) = `r ncv1$ChiSquare`, p = `r ncv1$p`) and independence of errors (DW = `r dwt1$dw`, p = `r dwt1$p`) held. Using a plot of Cook's distance, no influential outliers of concern appeared in the model (no values were above 0.5).  
+
+There was a significant difference in mean happiness between spring and winter, $\beta = `r lmd_1$estimate[4]`, t(`r model1$df.residual`) = `r lmd_1$statistic[4]`, p = `r lmd_1$p.value[4]`$. Participants who took part in winter had `r lmd_1$estimate[4]` happiness rating compared to participants who took part in the spring.
+
+There was no significant difference in mean happiness between spring and summer, $\beta = `r lmd_1$estimate[2]`, t(`r model1$df.residual`) = `r lmd_1$statistic[2]`$, p < 1. There was also no significant difference in mean happiness between spring and autumn, $\beta =`r lmd_1$estimate[3]` , t(`r model1$df.residual`) = `r lmd_1$statistic[3]`$, p < 1. These results can also be seen in Table 6. 
+
+```{r q2a regression table, warning = F, message = F}
+pander(model1, caption = "Table 6: Regression Table of Season on Happiness (with Spring as Baseline)")
+```
+
+```{r q2a spring as baseline confidence intervals, warning = F, message = F}
+pander(confint(model1), caption = "Table 6x: Confidence Intervals with Spring as Baseline") #add to table above when knitted to word
+```
+
+```{r q2a switch the constrasts to summer, include = FALSE}
+contrasts(couchto5k$season) <- contr.treatment(4, base = 2) #change the baseline to summer
+contrasts(couchto5k$season) #check this worked
+
+#rerun the model 
+model1a <- lm(happiness ~ 1 + season, data = couchto5k)
+summary(model1a)
+lmd_1a <- tidy(model1a)
+```
+
+When changing the baseline of the model to summer, the following regression equation was evaluated:
+$Happiness = \beta_0 + \beta_1(Spring) + \beta_2(Autumn) + \beta_3(Winter) + \epsilon$
+
+There was no significance difference in mean happiness between summer and autumn, $\beta = `r lmd_1a$estimate[3]`, t(`r model1a$df.residual`) = `r lmd_1a$statistic[3]`$, p < 1. There was also no significant difference in mean happiness between summer and winter, $\beta = `r lmd_1a$estimate[4]`, t(`r model1a$df.residual`) = `r lmd_1a$statistic[4]`$, p < 1. These results can be seen in Table 7. 
+
+```{r q2a regression table 2, warning = F, message = F}
+pander(model1a, caption = "Table 7: Regression Table of Season on Happiness (with Summer as Baseline)")
+```
+
+```{r q2a regression table 2 confidence intervals}
+pander(confint(model1a), caption = "Table 76x: Confidence Intervals with Summer as Baseline") #add to table above when knitted to word
+```
+
+
+
+```{r q2a switch the constrasts to autumn, include = FALSE}
+contrasts(couchto5k$season) <- contr.treatment(4, base = 3) #change the baseline to autumn
+contrasts(couchto5k$season) #check this worked
+
+#rerun the model 
+model1b <- lm(happiness ~ 1 + season, data = couchto5k)
+summary(model1b)
+lmd_1b <- tidy(model1b)
+```
+When changing the baseline of the model to autumn, the following regression equation was evaluated:
+$Happiness = \beta_0 + \beta_1(Spring) + \beta_2(Summer) + \beta_3(Winter) + \epsilon$
+
+There was no significant difference in mean happiness between autumn and winter, $\beta = `r lmd_1b$estimate[4]`, t(`r model1b$df.residual`) = `r lmd_1b$statistic[4]`$, p < 1. These results can be seen in Table 8. 
+
+```{r q2a regression table 3, message = F, warning = F}
+pander(model1b, caption = "Table 8: Regression Table of Season on Happiness (with Autumn as Baseline)")
+```
+
+```{r q2a regression table 3 confidence intervals, message = F, warning = F}
+pander(confint(model1b), caption = "Table 8x: Confidence Intervals with Autumn as Baseline") #add to table above when knitted to word
+```
+
+
+```{r q2a subset the seasons to get the means in a format I can report in markdown, include = FALSE}
+spring <- subset(couchto5k, couchto5k$season == "spring")
+summer <- subset(couchto5k, couchto5k$season == "summer")
+autumn <- subset(couchto5k, couchto5k$season == "autumn")
+winter <- subset(couchto5k, couchto5k$season == "winter")
+```
+In summary, happiness ratings were only significantly different between spring (mean = `r mean(spring$happiness)`, sd = `r sd(spring$happiness)`) and winter (mean = `r mean(winter$happiness)` , sd = `r sd(winter$happiness)`). Thus we reject the null hypothesis. 
+When interpreting these results, it is important to note the uneven samples between groups, for example there were only `r length(autumn$happiness)` participants interviewed in autumn and `r length(winter$happiness)` in winter compared to `r length(spring$happiness)` participants interviewed in spring and `r length(summer$happiness)` in summer. Future research with greater samples in autumn and winter should be conducted. 
+
+## Question 2b
+
+To evaluate whether happiness is affected by age, the age variable will be added to the model from the previous question. The baseline for season is set back to spring for the remaining analysis.
+The age variable has been mean centred for ease of interpretation (where the intercept is where age represents mean age (`r mean(couchto5k$age, na.rm = TRUE)`) rather than when age is 0, and where the season is spring). 
+
+The following regression model was evaluated:
+$Happiness = \beta_0 + \beta_1(Summer) + \beta_2(Autumn) + \beta_3(Winter) + \beta_4(Age) + \epsilon$
+
+We considered the hypothesis test that the age beta coefficient is equal to zero, where: 
+$H_0: \beta_4 = 0$
+$H_1: \beta_4 \neq 0$
+ 
+```{r q2b, include = FALSE}
+#reset the baseline for season
+contrasts(couchto5k$season) <- contr.treatment(4, base = 1) #change the baseline to summer
+contrasts(couchto5k$season) #check this worked
+
+#mean centre age
+couchto5k$centred_age <- couchto5k$age - mean(couchto5k$age, na.rm = TRUE)
+
+#check the linearity of the relationship between age and happiness
+ggplot(couchto5k, aes(x = centred_age, y = happiness)) + 
+  geom_point() #this does not look particularly linear, so do not anticipate a significant association in the model 
+
+#create the model 
+model2 <- lm(happiness ~ 1 + season + centred_age, data = couchto5k) 
+summary(model2)
+lmd_2 <- tidy(model2)
+
+#check the assumptions
+plot(model2) #visualise everything
+#statistically 
+#homoscedasticity 
+ncv2 <- ncvTest(model2)
+#independence of errors
+dwt2 <- durbinWatsonTest(model2)
+#normality of residuals
+shap2 <- shapiro.test(model2$residuals)
+#plot cooks distances
+plot(model2, which = 4)
+
+#compare the model
+av <- tidy(anova(model2))
+```
+The assumptions of the model were checked (linearity of association, normally distributed residuals, homogeneity of variance, and independence of errors). 
+The relationship between age and happiness can be seen in Figure 3. This association does not have a clear linear association, but has no clear non-linear pattern. The assumption of linearity is questionable, and so we expect no significant linear association in the model.   
+```{r figure 3: relationship between age and happiness visualisation, warning = F, message = F, fig.cap = "Figure 3: Visualisation of Age and Happiness Variables"}
+ggplot(couchto5k, aes(x = centred_age, y = happiness)) + 
+  geom_point() + 
+  theme_apa() + 
+  xlab("Age(mean centred)") + 
+  ylab("Happiness (0 - 100)")
+```
+The residuals were not normally distributed, both statistically (W = `r shap2$statistic` , p = `r shap2$p.value`) and visually. This continues to suggest that more predictors are required in the model. The assumptions of homoscedasticity ($$\chi^2$$ (`r ncv2$Df`) = `r ncv2$ChiSquare`, p = `r ncv2$p`) and independence of errors (DW = `r dwt2$dw`, p = `r dwt2$p`) held. No influential outliers of concern appeared in the model (no Cook’s distance values were above 0.5).
+
+Age does not improve the model further over the prior model including only season, F(1,`r av$df[3]`) = `r av$statistic[2]`, p < .1. 
+Thus, after controlling for the influence of season on happiness, age does not significantly affect happiness, $\beta = `r lmd_2$estimate[5]`, t(`r model2$df.residual`) = `r lmd_2$statistic[5]`$, p < 1. The results can be seen in Table 9. Thus, we fail to reject the null hypothesis. 
+
+```{r q2b regression table, warning = F, message = F}
+pander(model2, caption = "Table 9: Regression Table of Season and Age on Happiness")
+```
+
+```{r q2b confidence interval table, warning = F, message = F}
+pander(confint(model2), caption = "Table 9x: Confidence Intervals for Regression Table") #add to table above when knitted to word
+```
+
+## Question 2c
+
+To set a baseline model of effects that are not of primary interest to the researchers, but might affect happiness, first the previous analyses should be considered. Season was significantly associated with happiness, and with therefore be included in the baseline model. Age, however, did not significantly improve the model over a model with just season, and was not significantly associated with happiness, and therefore will not be included in the baseline model as to prevent over fitting the model. 
+
+Within the analysis in question 3, completion of the programme and health are variables of interest. However, the variables of city the participants were in, accountability, and self motivation may contribute to happiness but are not accounted for. They were therefore considered in the baseline model. 
+
+```{r q2c, include = FALSE}
+#Add city
+baseline1 <- lm(happiness ~ season + city, data = couchto5k)
+ba1 <- tidy(anova(baseline1)) #city does not significantly improve the model over a model with season
+
+#Add accountability
+#check whether the association is linear
+ggplot(couchto5k, aes(x = accountability, y = happiness)) + 
+  geom_point() #doesn't look linear, so do not anticipate a significant association in the model 
+baseline2 <- lm(happiness ~ season + accountability, data = couchto5k)
+ba2 <- tidy(anova(baseline2)) #accountability does not significantly improve the model over a model with season
+
+#Add self motivation 
+ggplot(couchto5k, aes(x = selfmot, y = happiness)) + 
+  geom_point() #this relationship looks linear 
+baseline3 <- lm(happiness ~ season + selfmot, data = couchto5k)
+ba3 <- tidy(anova(baseline3)) #self motivation does significantly improve the model over a model with just season
+```
+
+Adding city did not improve the model over one with only season, F(1, `r ba1$df[3]`) = `r ba1$statistic[2]`, p < 1.
+Adding accountability did not improve the model over one with only season, F(1, `r ba2$df[3]`) = `r ba2$statistic[2]`, p < 1.
+Adding self motivation did significantly improve the model over one with just season, F(1, `r ba3$df[3]`) = `r ba3$statistic[2]`, p = `r ba3$p.value[2]`. 
+
+```{r q2c baseline model, include = FALSE}
+#standardise self motivation 
+couchto5k$selfmotstandard <- as.numeric(scale(couchto5k$selfmot))
+baseline <- lm(happiness ~ season + selfmotstandard, data = couchto5k)
+summary(baseline)
+bline <- tidy(baseline)
+
+#check the assumptions of the baseline model 
+#check the assumptions
+plot(baseline) #visualise everything
+#statistically 
+#homoscedasticity 
+ncvb <- ncvTest(baseline)
+#independence of errors
+dwtb <- durbinWatsonTest(baseline)
+#normality of residuals
+shapb <- shapiro.test(baseline$residuals)
+#plot cooks distances
+plot(baseline, which = 4)
+```
+
+```{r q2c linearity figure, message = F, warning = F, fig.cap = "Figure 4: Scatterplot of self motivation (standardised) and happiness (0-100)"}
+ggplot(couchto5k, aes(x = selfmot, y = happiness)) + 
+  geom_point() + 
+  theme_apa() + 
+  xlab("Self Motivation (standardised)") + 
+  ylab("Happiness (0 - 100)")
+```
+
+To improve the ability to interpret the model, self motivation was then standardised. 
+Indeed, when the season is spring, a one standard deviation increase in self motivation increased participant happiness by `r bline$estimate[5]`, $\beta = `r bline$estimate[5]`, t(`r baseline$df.residual`) = `r bline$statistic[5]`, p = `r bline$p.value[5]`$. The regression output of the baseline model can be seen in Table 10.
+
+```{r q2c regression table, warning = F, message = F}
+pander(baseline, caption = "Table 10: Regression Table of Baseline Model")
+```
+
+```{r q2c regression table confidence intervals, warning = F, message = F}
+pander(confint(baseline), caption = "Table 10x: Confidence Intervals for Baseline Model") #add these to table above when knitted to word
+```
+
+This model accounts for `r summary(lm(happiness ~ season + selfmot, data = couchto5k))$r.squared * 100`% of the variance. The assumptions were checked. The association between self motivation and happiness appeared linear. The residuals were not normally distributed, both statistically (W = `r shapb$statistic` , p = `r shapb$p.value`) and visually. This continues to suggest that more predictors are required in the model, which is expected given this is a baseline model. The assumptions of homoscedasticity ($$\chi^2$$ (`r ncvb$Df`) = `r ncvb$ChiSquare`, p = `r ncvb$p`) and independence of errors (DW = `r dwtb$dw`, p = `r dwtb$p`) held. No influential outliers of concern appeared in the model (no Cook’s distance values were above 0.5).
+
+
+
+# Question 3
+
+## Question 3a
+
+```{r q3a create the binary variable, include = FALSE}
+#Create a binary variable of whether participants completed the programme
+couchto5k<- couchto5k %>%
+   mutate(completed = ifelse(week_stopped < 9, "no", "yes"))
+couchto5k$completed <- factor(couchto5k$completed)
+table(couchto5k$completed) #check that this worked 
+
+#creating subsets with yes and no to report in markdown
+no <- subset(couchto5k, couchto5k$completed == "no")
+yes <- subset(couchto5k, couchto5k$completed == "yes")
+
+```
+
+To evaluate, building upon the baseline model, whether participants happiness ratings are affected by whether or not they completed the programme, a binary variable was created with those who either did or did not complete the programme. `r length(no$completed)` participants did not complete the programme, and `r length(yes$completed)` completed the programme. 
+
+The following regression model was evaluated:
+$Happiness = \beta_0 + \beta_1(Summer) + \beta_2(Autumn) + \beta_3(Winter) + \beta_4(Selfmotivation) + \beta_5(Programme completed) + \epsilon$
+
+We considered the hypothesis test that the completed the programme beta coefficient is equal to zero, where: 
+$H_0: \beta_5 = 0$
+$H_1: \beta_5 \neq 0$
+
+```{r q3a build the model, include = FALSE}
+#Build upon the baseline model to include whether they completed the programme 
+model3a <- lm(happiness ~ season + selfmotstandard + completed, data = couchto5k)
+summary(model3a)
+mod3lm <- tidy(model3a)
+mod3a <- tidy(anova(model3a))
+```
+Adding whether completing the programme affected happiness ratings did not significantly improve the model over the baseline, F(1, `r mod3a$df[4]`) = `r mod3a$statistic[3]`, p < 1. After controlling for season and self motivation, completing the programme did not significantly affect happiness ratings, $\beta = `r mod3lm$estimate[6]`, t(`r model3a$df.residual`) = `r mod3lm$statistic[6]`$, p < 1. The regression table for this model can be seen in Table 11. Thus, we fail to reject the null hypothesis.   
+
+```{r q3a regression table, message = F, warning = F}
+pander(model3a, caption = "Table 11: Regression Table of Baseline Model and Whether Participants Completed the Programme on Happiness")
+```
+
+```{r q3a regression table confidence intervals, warning = F, message = F}
+pander(confint(model3a), caption = "Table 11x: Confidence Intervals for Regression Table") #add to the table above when knitted into word 
+```
+
+## Question 3b
+
+Building upon the prior analysis, to evaluate whether happiness if affected by the health metric, the health variable has been standardised (for ease of interpretation) and then added to the prior model. Although the addition of whether participants completed the programme did not significantly improve the model over the baseline, the completed variable has been retained in the model due to the research questions later in this report. 
+
+The following regression model was evaluated:
+$Happiness = \beta_0 + \beta_1(Summer) + \beta_2(Autumn) + \beta_3(Winter) + \beta_4(Selfmotivation) + \beta_5(Programme completed) + \beta_6(Health) + \epsilon$
+
+We considered the hypothesis test that the health beta coefficient is equal to zero, where: 
+$H_0: \beta_6 = 0$
+$H_1: \beta_6 \neq 0$
+
+```{r q3b, include = FALSE}
+#Standardise the health metric 
+couchto5k$healthstandard <- as.numeric(scale(couchto5k$health))
+
+#check whether the association is linear
+ggplot(couchto5k, aes(x = healthstandard, y = happiness)) + 
+  geom_point() #doesn't look like a clear linear association, but no clear other association, so do not anticipate a significant association in the model 
+
+#Add the health metric into the equation 
+model3b <-  lm(happiness ~ season + selfmotstandard + completed + healthstandard, data = couchto5k)
+summary(model3b)
+mod3blm <- tidy(model3b)
+mod3b <- tidy(anova(model3b))
+```
+
+Adding health to the model did not significantly improve the model, F(1, `r mod3b$df[5]`) = `r mod3b$statistic[4]`, p < 1. After controlling for season, self motivation, and whether participants completed the programme, there was no significant effect of health on happiness ratings, $\beta = `r mod3blm$estimate[7]`, t(`r model3b$df.residual`) = `r mod3blm$statistic[7]`$, p < 1. The regression table for this model can be seen in Table 12. Thus, we fail to reject the null hypothesis. 
+```{r q3b regression table, warning = F, message = F}
+pander(model3b, caption = "Table 12: Regression Table of Baseline Model, Whether Participants Completed the Programme, and Health on Happiness")
+```
+
+```{r q3b confidence intervals, warning = F, message = F}
+pander(confint(model3b), caption = "Table 12x: Confidence Intervals for Regression Table") #add to table above when knitted into word
+```
+
+## Question 3c
+It has been hypothesised by researchers that the effects of good health can be amplified by feelings of acting healthily, such as participants getting further along in the programme. This was tested by adding the interaction term between the completed variable (whether participant completed the programme) and the health standard variable. 
+
+The following regression model was evaluated:
+$Happiness = \beta_0 + \beta_1(Summer) + \beta_2(Autumn) + \beta_3(Winter) + \beta_4(Selfmotivation) + \beta_5(Programme completed) + \beta_6(Health) + \beta_7(Health * Completed programme) + \epsilon$
+
+We considered the hypothesis test that the interaction beta coefficient is equal to zero, where: 
+$H_0: \beta_7 = 0$
+$H_1: \beta_7 \neq 0$
+
+```{r q3c, include = FALSE} 
+model3c <-  lm(happiness ~ season + selfmotstandard + completed + healthstandard + healthstandard*completed, data = couchto5k)
+summary(model3c)
+mod3clm <- tidy(model3c)
+mod3c <- tidy(anova(model3c))
+```
+
+Adding the interaction term significantly improved the model, F(1, `r mod3c$df[6]`) = `r mod3c$statistic[5]`, p = `r mod3c$p.value[5]`. Indeed, health and whether participants completed the programme significantly interacted to predict happiness, $\beta = `r mod3clm$estimate[8]`, t(`r model3c$df.residual`) = `r mod3clm$statistic[8]`$, p = `r mod3clm$p.value[8]`. The regression table can be seen in Table 13. Thus, we reject the null hypothesis and find support for the researchers hypothesis. 
+```{r q3c regression table, warning = F, message = F}
+pander(model3c, caption = "Table 13: Regression Table of Baseline Model, Whether Participants Completed the Programme, Health, and the Health*Completed Interaction on Happiness")
+```
+
+```{r q3c confidence intervals, warning = F, message = F}
+pander(confint(model3c), caption = "Table 13x: Confidence Intervals for Regression Table") #add to table above when knitted into word
+```
+
+As can be seen in Figure 4, those who completed the programme reported increasing happiness as reported health increased, whereas those who did not complete the programme reported decreasing happiness as reported health increased. Therefore, the act of being healthy (completing the programme) does generally amplify the effects of good health, but only when reported health is greater than -1SD from the mean health score. 
+
+```{r q3c interaction plot, fig.cap= "Figure 4: Interaction Plot Between Health (standardised) and Completing the Programme"}
+#plot the interaction 
+plot_model(model3c, type = "pred", terms = c("healthstandard", "completed"), show.data = TRUE, legend.title = "Completed the programme", axis.title = c("Health (standardised)", "Happiness (0 - 100)"))
+```
+
+```{r q3c assumptions, include = FALSE}
+#check the assumptions
+plot(model3c) #visualise everything
+#statistically 
+#homoscedasticity 
+ncv3c <- ncvTest(model3c)
+#independence of errors
+dwt3c <- durbinWatsonTest(model3c)
+#normality of residuals
+shap3c <- shapiro.test(model3c$residuals)
+#plot cooks distances
+plot(model3c, which = 4)
+```
+The assumptions were checked. The residuals were not normally distributed, both statistically (W = `r shap3c$statistic` , p = `r shap3c$p.value`) and visually. This continues to suggest that more predictors are required in the model. The assumptions of homoscedasticity ($$\chi^2$$ (`r ncv3c$Df`) = `r ncv3c$ChiSquare`, p = `r ncv3c$p`) and independence of errors (DW = `r dwt3c$dw`, p = `r dwt3c$p`) held. Using a plot of Cook's distance, no influential outliers of concern appeared in the model (no values were above 0.5). 
+
+## Question 3d
+```{r q3d, include = FALSE}
+#What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper.
+summary(model3c)
+```
+
+A multiple regression model was used to evaluate the factors associated with happiness, including measures of season, self motivation, whether participants completed the programme, and participants reported health. A significant regression model was found, F(`r summary(model3c)$fstatistic[2]`, `r summary(model3c)$fstatistic[3]`) = `r summary(model3c)$fstatistic[1]`, p < .001.
+
+In the final model (see Table 13), the results demonstrate that season significantly predicts happiness, where participants in autumn and winter reported significantly lower happiness ratings than participants in spring (when controlling for all other variables in the model). 
+The results also demonstrate that self motivation significantly predicts happiness (when controlling all other variables), where increased self motivation increases reported happiness. 
+Health also significantly predicted happiness (when controlling for all other variables), where an increase in reported health was associated with reduced happiness. A significant interaction was found between whether participants completed the programme and their reported health. Indeed, as seen previously in Figure 4, participants who did not complete the programme had a negative effect of health on happiness, whereas participants who did complete the programme had a positive effect of health on happiness. This explains the unexpected negative association between health and happiness (where we would expect increased health to increase happiness). 
+
+However, this model only accounts for `r summary(lm(happiness ~ season + selfmotstandard + completed + healthstandard + healthstandard*completed, data = couchto5k))$r.squared * 100`% of the variance, and thus future research should evaluate other potential predictors of happiness to improve this model further. 
+
+# Question 4
+```{r q4 subset the data, include = FALSE}
+couchto5k_completed <- data.frame(subset(couchto5k, couchto5k$completed == "yes"))
+```
+
+Figure 5 demonstrates a boxplot of participants who completed the programme (n = `r length(yes$completed)`), splitting them by which city they were in and which season they were in to compare their happiness ratings. 
+```{r q4, fig.cap = "Figure 5: Average Happiness Ratings by Season and City of Participants who Completed the Programme", warning = F, messsage = F}
+ggplot(couchto5k_completed, aes(x = season, y = happiness, fill = city)) + 
+  geom_boxplot() + 
+  theme_apa() +
+  labs(x = "Season", y = "Happiness (0 - 100)") + 
+  scale_fill_brewer(palette = "Pastel1")
+```
+
+# Question 5
+
+## Question 5a
+```{r q5a, include = FALSE, warning = FALSE}
+#Edit the completed the programme column to be coded as 0 and 1 rather than yes and no 
+couchto5k<- couchto5k %>%
+   mutate(completed = ifelse(week_stopped < 9, 1, 0)) #where 1 dropping out and 0 is completing the programme
+
+#Drop any rows with missing data (as we cannot do the data comparisons here between models as they will not be nested)
+couchto5k <- couchto5k %>%
+  drop_na(age)
+couchto5k <- couchto5k %>%
+  drop_na(selfmot)
+
+#Build a model that predicts the likelihood of dropping out (at all).
+
+#Create a null model
+drop_null <- glm(completed ~ 1, family = "binomial", data = couchto5k)
+summary(drop_null)
+
+#Create a model with one predictor (happiness)
+drop_one <- glm(completed ~ 1 + happiness, family = "binomial", data = couchto5k)
+summary(drop_one)
+anova(drop_null, drop_one, test = "Chisq")
+one <- tidy(anova(drop_null, drop_one, test = "Chisq"))
+
+#Create a model with another predictor (accountability)
+drop_two <- glm(completed ~ 1 + accountability, family = "binomial", data = couchto5k)
+summary(drop_two)
+anova(drop_null, drop_two, test = "Chisq")
+two <- tidy(anova(drop_null, drop_two, test = "Chisq"))
+
+#Create a model with another predictor (self motivation)
+drop_three <- glm(completed ~ 1 + selfmot, family = "binomial", data = couchto5k)
+summary(drop_three)
+anova(drop_null, drop_three, test = "Chisq")
+three <- tidy(anova(drop_null, drop_three, test = "Chisq"))
+
+#Create a model adding another predictor to the prior model (age)
+drop_four <- glm(completed ~ 1 + selfmot + age, family = "binomial", data = couchto5k)
+summary(drop_four)
+anova(drop_three, drop_four, test = "Chisq")
+four <- tidy(anova(drop_three, drop_four, test = "Chisq"))
+
+#Create a model adding another predictor to model 3 (season)
+drop_five <- glm(completed ~ 1 + selfmot + season, family = "binomial", data = couchto5k)
+summary(drop_five)
+anova(drop_three, drop_five, test = "Chisq")
+five <- tidy(anova(drop_three, drop_five, test = "Chisq"))
+
+#Create a model adding another predictor to model five (city)
+drop_six <- glm(completed ~ 1 + selfmot + season + city, family = "binomial", data = couchto5k)
+summary(drop_six)
+anova(drop_five, drop_six, test = "Chisq")
+six <- tidy(anova(drop_five, drop_six, test = "Chisq"))
+
+#Create a model adding another predictor to model five (health)
+drop_seven <- glm(completed ~ 1 + selfmot + season + health, family = "binomial", data = couchto5k)
+summary(drop_seven)
+anova(drop_five, drop_seven, test = "Chisq")
+seven <- tidy(anova(drop_five, drop_seven, test = "Chisq"))
+
+#Create the final model with standardised predictors for interpretation purposes 
+dropout_model <- glm(completed ~ selfmotstandard + season + healthstandard, data = couchto5k, family = "binomial")
+summary(dropout_model)
+anova(dropout_model, test = "Chisq")
+
+#convert into odds ratio rather than log odds for interpretation purposes 
+odds <- exp(dropout_model$coefficients)
+confint_odds <- exp(confint(dropout_model))
+
+#evaluate how accurately this model predicts dropping out of the programme 
+guess <- predict(dropout_model)
+guess <- ifelse(guess >0, 1, 0)
+hits <- sum(guess == couchto5k$completed, na.rm = TRUE)
+accuracy <- hits/length(couchto5k$completed)
+
+```
+
+To predict the likelihood of participants dropping out of the programme (at all) (a binary outcome variable), a logistic regression model was used. All rows with missing data were removed from this analysis to allow nested model comparisons for building the logistic regression model. A sample of `r length(couchto5k$accountability)` was used for this analysis. 
+
+A null model with no predictors was created, with predictors then incrementally added and compared to evaluate whether they significantly improved the model. This was to avoid overfitting the model. Happiness did not significantly improve the model over a null model as it did not significantly decrease model deviance (`r one$Deviance[2]`) p = `r one$p.value[2]`. Accountability did not significantly improve the model over a null model (difference in deviance = `r two$Deviance[2]`) p = `r two$p.value[2]`. Self motivation did significantly improve the model over the null model (difference in deviance = `r three$Deviance[2]`), p = `r three$p.value[2]`, and was therefore retained in the model. Adding age to the model did not significantly improve the model over the model with self motivation (difference in deviance = `r four$Deviance[2]`), p = `r four$p.value[2]`. Adding season to the model significantly improved the model over a model with self motivation (difference in deviance = `r five$Deviance[2]`), p = `r five$p.value[2]`. Adding city did not then significantly improve the model (difference in deviance = `r six$Deviance[2]`), p = `r six$p.value[2]`. Finally, adding health significantly improved the model (difference in deviance = `r seven$Deviance[2]`), p = `r seven$p.value[2]`. 
+
+Thus, the final model predicts the likelihood of dropping out using self motivation, season, and health as predictors. 
+
+The following regression model was evaluated:
+$Droppedout = \beta_0 + \beta_1(Selfmotivation) + \beta_2(Summer) + \beta_3(Autumn) + \beta_4(Winter) + \beta_5(Health) + \epsilon$
+
+We considered the hypothesis test that any beta coefficient is equal to zero, where: 
+$H_0: \beta_1, \beta_2, \beta_3, \beta_4, and \beta_5 = 0$
+$H_1: \beta_1, \beta_2, \beta_3, \beta_4, or \beta_5 \neq 0$
+
+Model results (in log odds) can be seen in Table 14. Table 15 gives the coefficients as odds ratios as opposed to log odds for interpretation purposes. 
+
+```{r q5 model table, message = F, warning = F}
+pander(dropout_model, caption = "Table 14: Logistic Regression Table (Log Odds)")
+```
+```{r q5 confidence intervals, warning = F, message = F}
+pander(confint(dropout_model), caption = "Table 14: 95% Confidence Intervals (Log Odds)")
+```
+
+```{r odds table 1, warning = F, message = F}
+pander(odds, caption = "Table 15: Odds Ratios of Logistic Regression")
+```
+
+```{r odds table 2, warning = F, message = F}
+pander(confint_odds, caption = "Table 15: 95% Confidence Intervals in Odds Ratios")
+```
+
+## Question 5b
+
+The season participants were interviewed in, self motivation, and reported health significantly predicted participants likelihood of dropping out. 
+Indeed, holding self motivation and health at their mean, and compared to participants in spring, the odds of participants dropping out in summer decreases by `r odds[3]` (95% CI [`r confint_odds[3,1]`, `r confint_odds[3,2]`]), the odds of participants dropping out in autumn decreases by `r odds[4]` (95% CI [`r confint_odds[4,1]`, `r confint_odds[4,2]`]), and the odds of participants dropping out in winter decreases by `r odds[5]` (95% CI [`r confint_odds[5,1]`, `r confint_odds[5,2]`]). 
+Holding health at the mean, and holding season as spring, a one standard deviation increase in self motivation reduced the odds of participants dropping out by `r odds[2]` (95% CI [`r confint_odds[2,1]`, `r confint_odds[2,2]`]). 
+Finally, holding self motivation at the mean and holding season as spring, a one standard deviation increase in health reduced the odds of participants dropping out by `r odds[6]` (95% CI [`r confint_odds[6,1]`, `r confint_odds[6,2]`]). Thus, we reject the null hypothesis. 
+However, there are clearly variables missing from the data that assist in predicting likelihood of dropping out, as this model can only accurately predict `r accuracy*100`% of the observations. 
+
+## Question 5c
+
+Figure 6 represents the probability of quitting as a function of how self motivated participants were. 
+
+```{r q5c plot, warning = FALSE, message = FALSE, fig.cap = "Figure 6: Probability of Quitting as a Function of Participants Self Motivation"}
+ggplot(couchto5k, aes(x = selfmot, y = completed)) + 
+  geom_jitter(size = 3, width = 0, height = .2, alpha = .1) + 
+  geom_smooth(method = "glm", method.args = list(family = binomial)) + 
+  scale_y_continuous(breaks = seq(0, 1, by = .2)) +
+  ylab("p(quitting)") + 
+  xlab("self motivation") +
+  xlim(c(7, 22)) + #the range of values we have for self motivation
+  theme_apa()
+```
+
+
+
+
+
+
+
+
+

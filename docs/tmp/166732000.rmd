@@ -1,0 +1,503 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B169089
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(car)
+library(patchwork)
+library(knitr)
+library(sjPlot)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+Hello and welcome to my USMR final project. We're going to have a time.
+
+The first order of business is cleaning up our data. Using both our data dictionary (to determine the valid range for the various measures like *accountability* and *self-motivation*) and common sense, we can identify impossible values in the data. Histograms can help us quickly identify outliers for values such as *age*:
+
+```{r cleanup_age_hist}
+
+hist(as.numeric(couchto5k$age))
+
+```
+
+We have two values in *age* that are over 100. Checking our dataset, there are no other values over 60. It seems reasonable to conclude that both the >100 values are bogus (no disrespect to any centenarian couchto5k-ers). We don't necessarily want to throw away ALL the data for those participants, though, so we're just going to NA any *age* values over 60 using *mutate()* and *ifelse()*.
+
+```{r cleanup_age}
+
+couchto5k <-
+  couchto5k %>%
+  mutate(
+    age = as.numeric(age),
+    age = ifelse(age>60, NA, as.numeric(age))
+  )
+summary(couchto5k$age)
+
+```
+
+We know from the Data Dictionary what the valid ranges should be for *accountability* (5-35), *selfmot* (5-35), *health* (0-100), and *happiness* (0-100), as well as *week_stopped* (1-9). We can actually just glance at our data summary to tell whether our mins and maxes are within parameters:
+
+```{r cleanup_summary}
+summary(couchto5k)
+```
+
+*Accountability* looks fine, but *selfmot* has a min of -99, so let's clean it up by removing any values under the valid min (5; again, changing them to NA):
+
+```{r cleanup_selfmot}
+
+couchto5k <-
+  couchto5k %>%
+  mutate(
+    selfmot = as.numeric(selfmot),
+    selfmot = ifelse(selfmot<5, NA, as.numeric(selfmot))
+  )
+summary(couchto5k$selfmot)
+
+```
+
+And do the same to *week_stopped* for values over 9:
+
+```{r cleanup_weekstopped}
+couchto5k$week_stopped <- ifelse (couchto5k$week_stopped>9, NA, couchto5k$week_stopped)
+summary(couchto5k$week_stopped)
+```
+
+For our character-based variables, let's view their summaries as factors to see what values we have:
+
+```{r cleanup_summary_season}
+summary(as.factor(couchto5k$season))
+summary(as.factor(couchto5k$city))
+
+```
+
+The data for *city* look fine, but for *season* we have 4 typos of "autumn" as "autu**nm**" (understandable; it sure has been an autunm for me, too). We can fix that by just reassigning the value "autumn" to values of *couchto5k$season* that are currently "autunm":
+
+```{r cleanup_season_typo}
+couchto5k$season[couchto5k$season == "autunm"] <- "autumn"
+summary(as.factor(couchto5k$season))
+```
+
+Looks good now, so we'll use factor() to change both *season* and *city* to factors using their current values (and order the levels of *city* as *spring, summer, autumn, winter* while we're at it):
+
+```{r cleanup_factorise_char, include = FALSE}
+
+couchto5k$city <- factor(couchto5k$city)
+couchto5k$season <- factor(
+  couchto5k$season, ordered = TRUE,
+  levels = c("spring","summer","autumn","winter")
+  )
+summary(couchto5k$city)
+summary(couchto5k$season)
+
+```
+
+```{r cleanup_finalsummary}
+summary(couchto5k)
+```
+
+Our data look much cleaner now, so let's move on to analysing them!
+
+# Question 1: General checks
+
+## Question 1a: Survey comparison
+
+*"In an earlier nationwide survey, researchers found that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme."*
+
+To compare this to our data, we need a variable that indicates whether each participant quit early (before week 5), quit late (week 5 or later), or finished (week 9).
+
+I'm not gonna get any points for elegance here. What I'm going to do is basically duplicate the *week_stopped* variable as *result*, then change the values conditionally to get them into 3 groups. Values < 5 become *quit_early*, values from 5 to 8 become *quit_late*, and a value of 9 becomes *finished*. Then I'm going to modify *result* to be a factor with ordered levels *quit_early, quit_late* and *finished*.
+
+```{r q1a_ilovemess}
+couchto5k <- couchto5k %>%
+  mutate(
+    result = week_stopped
+  )
+
+couchto5k$result[couchto5k$result < 5] <- "quit_early"
+couchto5k$result[couchto5k$result >= 5 & couchto5k$result < 9] <- "quit_late"
+couchto5k$result[couchto5k$result == 9] <- "finished"
+couchto5k$result <- factor(couchto5k$result, ordered = TRUE, levels = c("quit_early","quit_late","finished"))
+summary(couchto5k$result)
+
+```
+
+I am excited to find out how I should've done this instead.
+
+At any rate, we can use prop.table to see these values as proportions:
+
+```{r q1a_proptable}
+prop.table(table(couchto5k$result))
+```
+
+More importantly, we can now run a Chi-squared test comparing the values in this factor to the proportions from the national survey: 0.45 quit early, 0.1 quit late, and, by process of elimination, another 0.45 finished.
+
+```{r q1a_chi}
+
+chisq.test(table(couchto5k$result), p = c(.45,.1,.45))
+
+```
+
+We can conclude from the chi-squared test that the differences between our values and the national survey values are statistically significant, *X*² (2, *N* = `r nrow(couchto5k)`) = 16, *p* < .001.
+
+## Question 1b: Attrition rates by city
+
+To compare attrition rates between Edinburgh and Glasgow recruits using this same ordered factor, let's first visualise the data in a table:
+
+```{r q1b_table}
+table(couchto5k$city, couchto5k$result)
+```
+
+And then maybe a plot for those of us who work better with pictures:
+
+```{r q1b_plot}
+plot(table(couchto5k$city, couchto5k$result))
+```
+
+It certainly looks like Glasgow has a more equal distribution, but we also have a lot more Edinburgh recruits, so let's do a test to be sure. We'll use the table we made to do a Chi-squared test:
+
+```{r q1b_chi}
+
+chisq.test(table(couchto5k$city, couchto5k$result))
+
+```
+
+We can't reject the null hypothesis, *X*² (2, *N* = `r nrow(couchto5k)`) = 3, *p* = .02. No significant difference here in attrition rates between Glasgow and Edinburgh.
+
+
+## Question 1c: Ages by city
+
+A quick and straightforward way to compar the average ages between cities is a scatterplot.
+
+```{r q1c_plot, warning=FALSE}
+ggplot(couchto5k, aes(x = city, y = age)) + 
+  geom_jitter(height=0, width=.1)
+
+```
+
+In general, it looks like ages are more evenly distributed in the Edinburgh group, while Glasgow's participants skew younger.
+
+If we fit the data to a generalised linear model, we can visualise the linear relationship between age and city, and estimate the odds that a participant was recruited in, let's say, Glasgow based on their age.
+
+```{r q1c_glm, warning=FALSE}
+couchto5k <- couchto5k %>%
+  mutate(
+    isGla = ifelse(couchto5k$city=="Glasgow", 1, 0)
+  )
+
+cityage_glm <- 
+  glm(isGla ~ age, data = couchto5k, family="binomial")
+summary(cityage_glm)
+
+ggplot(couchto5k, aes(x=age, y=isGla))+
+  geom_point()+
+  geom_smooth(method="lm")
+
+```
+```{r}
+exp(coef(cityage_glm))
+```
+
+We can see a moderate inverse relationship between age and likelihood of belonging to the Glasgow group. The coefficients of the model tell us that a theoretical Couch-to-5k participant of age 0 (who was quite literally Born to Run) has about 1.8:1 odds of being in the Glasgow group, and for every year increase in age, the odds of Glaswegian affiliation decrease by about 0.96.
+
+# Question 2: Happiness
+
+## Question 2a: Seasons and happiness
+
+```{r q2a_plot}
+ggplot(couchto5k, aes(x = season, y = happiness)) + 
+  geom_boxplot()
+
+summary(couchto5k$season)
+```
+
+```{r q2a_happyseason_table}
+
+happyseason_table <- 
+  group_by(couchto5k, season) %>%
+  summarise(
+    count = n(),
+    mean = mean(happiness, na.rm = TRUE),
+    sd = sd(happiness, na.rm = TRUE)
+  )
+
+happyseason_table
+
+```
+We have quite a few more interviews taking place in spring and summer than in autumn and winter. Still, autumn has noticeably lower happiness scores. 
+
+```{r q2a_happyseason_lm}
+
+happyseason_lm <-
+  lm(happiness ~ 1 + season, data=couchto5k)
+
+anova(happyseason_lm)
+
+```
+
+```{r q2a_happyseason_tukey}
+TukeyHSD(aov(happyseason_lm))
+```
+
+This analysis indicates that there's a significant variance in happiness by season *F*(3,118) = 5.08, *p* = .002. A Tukey HSD indicates that the variance primarily occurs between autumn and spring (*p* = .002, 95% C.I. = -66.04, -10.99) and autumn and summer (*p* = 0.006, 95% C.I. = -35.1, -62.58).
+
+## Question 2b: Happiness and age
+
+```{r q2b_plot, warning=FALSE}
+ggplot(couchto5k, aes(x = age, y = happiness)) + 
+  geom_jitter(height=0, width=.1)
+```
+Now, a quick look at the data for happiness in age doesn't indicate any sort of meaningful correlation. Just for giggles, let's do a correlation test:
+
+```{r q2b_happyage_cortest}
+cor.test(couchto5k$happiness, couchto5k$age)
+```
+
+We can't reject the null hypothesis that there's no correlation here; *r*(118) = 0.137, *p* = 0.1
+
+## Question 2c: Choosing a baseline model
+
+Because I did see a significant effect of season on happiness, there's an argument to be made for taking it into consideration when exploring how other variables influence happiness.
+
+However. 
+
+I think it's worth remembering here what these variables represent. "Season" was the season in which the participants were interviewed. I'm not 100% clear on whether this was Week 0, when they started the program, or the week they finished (either dropping out or finishing).
+
+And this is important to understanding what the data actually mean! Week 0 was when they took the survey measuring accountability and self-motivation, and their ending week was when they provided the happiness and health data. Either could be when "season" was measured. I could argue it must've been the latter since there was a significant effect of season on happiness; but we only see that in two comparisons of autumn with other seasons. And I'm not comfortable making that assumption anyway based on results of my analysis, when it's going to also influence my analysis. That seems like the kind of thing that might create a singularity, and while I'm at the end of finals and pretty ambivalent on the universe being destroyed, I shall choose restraint.
+
+The "season" interaction is interesting, but I don't have enough information to determine that it *means* anything. I'm not sure I *could* have enough information to feel good about asserting that season had anything to do with the other variables on practical terms. And I like to err on the side of not evoking the dreaded Problem of Multiple Comparisons that may lead me, will-o'-the-wisp-like, into the Marshes of Misinterpretation.
+
+So I'm basically going to note the interaction but *not* incorporate it into the other analyses going forward. I just don't feel good about it and I don't want it to confound the other data that I can make more sense of.
+
+Onward!
+
+# Question 3: Happiness and health
+
+## Question 3a: Program completion
+
+Participants' self-reported happiness was measured when they stopped the program, whether they quit early or finished.
+
+Since what we're interested in is simply whether the participant finished the program or not, we just want a binary variable, so we'll add that to the table using mutate with an if-else testing whether *week_stopped* = 9. (I don't want to just modify *result* in case I want to use it somehow later.)
+
+```{r q3a_didfinish}
+
+couchto5k <- couchto5k %>%
+  mutate(
+    didfinish = ifelse(week_stopped == 9, TRUE, FALSE)
+  )
+
+```
+
+```{r q3a_didfinish_summmary}
+summary(couchto5k$didfinish)
+```
+
+For convenience, I'm going to put them in a new table called *happycomp* and use na.omit() to remove the line with the NA value.
+
+```{r q3a_happycomp}
+happycomp <- couchto5k[,c("happiness", "didfinish")]
+happycomp <- na.omit(happycomp)
+summary(happycomp)
+```
+
+Let's see how the data are distributed:
+
+```{r q3a_plot}
+
+ggplot(happycomp, aes(x = didfinish, y = happiness)) + 
+  geom_jitter(height=0, width=.1)
+
+```
+It honestly doesn't look like finishing the program and happiness are correlated, but let's do a quick correlational test:
+
+```{r q3a_cortest}
+cor.test(happycomp$happiness, as.numeric(happycomp$didfinish))
+```
+
+We definitely can't reject the null that there's no correlation; *r*(119) = .04, *p* = 0.6.
+
+## Question 3b: Happiness and health
+
+Happiness and health were both recorded when the participant stopped (either quit or finished) the program; *happiness* was a self-report measure, while *health* was based on physiological tests. Happily, neither have NA values I need to worry about.
+
+```{r q3b_happyhealth_plot}
+
+ggplot(couchto5k, aes(x = health, y = happiness)) + 
+  geom_jitter(height=0, width=.1)
+
+```
+
+
+It almost looks like there *might* be a smidge of a correlation here, so let's run our friend the cor.test:
+
+```{r q3b_happyhealth_cortest}
+
+cor.test(couchto5k$health, couchto5k$happiness)
+
+```
+
+Nope (to a statistically meaningful degree of confidence); *r*(120) = -.05, *p* = 0.5.
+
+## Question 3c: Health, happiness, and progress
+
+For this evaluation, I want a variable sort of like *result*, but split more evenly; I want to group people whose last week was 1-3, 4-6, and 7-9.
+
+For my own sanity, I'm going to copy this data into a new table and omit the NA rows.
+
+```{r q3c_newtable}
+hhp <- couchto5k[,c("happiness", "health", "week_stopped")] %>%
+  mutate(
+    resultgroups = week_stopped
+  )
+
+hhp$resultgroups[hhp$resultgroups < 4] <- "early"
+hhp$resultgroups[hhp$resultgroups >= 4 & hhp$resultgroups <= 6] <- "mid"
+hhp$resultgroups[hhp$resultgroups > 6 & hhp$resultgroups <= 9] <- "late"
+hhp$resultgroups <- factor(hhp$resultgroups, ordered = TRUE, levels = c("early","mid","late"))
+hhp <- na.omit(hhp)
+
+summary(hhp$resultgroups)
+```
+
+
+```{r q3c_threegroups}
+
+ggplot(data = hhp, aes(x = health, y = happiness, col = resultgroups)) + 
+  geom_point() + 
+  facet_wrap(~resultgroups, scales="free_x") +
+  theme(legend.position = "none") # remove the legend
+```
+It looks like there COULD be a stronger effect of health on happiness in people who made it to the final third of the program. But we also have a lot more data points in that group, so it's hard to determine visually. 
+
+Before fitting the data to a linear model, let's adjust the *week_stopped* variable so that 0 represents stopping in the first week, since it's impossible to stop on week 0. Both *health* and *happiness* have valid 0 minimum scores and don't need to be adjusted in this way. Then fit the linear model using the full, adjusted *week_stopped* variable.
+
+```{r q3c_adjust_weekstopped}
+hhp$week_stopped <- hhp$week_stopped - 1
+```
+
+
+```{r q3c_hhp_lm}
+
+hhp_lm <- 
+  lm(happiness ~ 1 + health*week_stopped, data = hhp)
+summary(hhp_lm)
+
+```
+
+This regression was significant; *R²* = 0.075, *F*(3,117) = 4.26, *p* = .007.
+
+It indicates a change of -2.198 in *happiness* for every increase of 1 in *health* for someone who quit in week 1 (*p* = .001). For every additional week a participant made it through the program, the change in *health* score is adjusted by 0.37 (*p* < .001).
+
+But what does that mean?
+
+```{r q3c_plotmodel}
+plot_model(hhp_lm, type = "pred", terms = c("health", "week_stopped [1,6,9]"))
+```
+
+It seems as though health is still negatively correlated with happiness, but that this effect is less severe centered around 6 weeks of participation in the programme.
+
+## Question 3d: The meaning of happiness
+
+
+Based on our analyses, it's difficult to assert a meaningful correlation between happiness and any of the other variables. Counter-intuitively, it seems to be slightly negatively correlated with success on the programme, though the fact that over 60% of the participants sampled (74 of 121, with one NA removed) reached the final third of the program makes it more difficult to get a good idea of how happiness was related to the other participants' experience. 
+
+
+# Question 4: A nice graph for the funders
+
+```{r q4_winners}
+
+winners <- couchto5k[couchto5k$week_stopped == "9", ]
+winners <- na.omit(winners)
+
+```
+
+```{r q4_winners_groups}
+
+winners_season <- 
+  group_by(winners, season) %>%
+  summarise(
+    count = n(),
+    mean = mean(happiness, na.rm = TRUE),
+    sd = sd(happiness, na.rm = TRUE)
+  )
+
+```
+
+```{r q4_boxplot_season}
+ggplot(data = winners, aes(x = season, y = happiness)) +
+  geom_boxplot()
+```
+
+```{r q4_boxplot_city}
+ggplot(data = winners, aes(x = city, y = happiness)) +
+  geom_boxplot()
+```
+
+# Question 5: Predictors of drop-out
+
+## Question 5a: A model of the likelihood of dropping out
+
+```{r q5a}
+
+couch2 <- na.omit(couchto5k)
+
+dropout <- 
+  lm(didfinish ~ 1 + age + accountability + selfmot + health + happiness + as.numeric(season) + city, data = couch2)
+
+summary(dropout)
+
+
+```
+
+This is a multiple-regression linear model incorporating all of the variables tracked by our study. Our model explains 33.5% of the variance in likelihood of finishing the programme (adjusted *R*² = 0.335, *F*(7,109) = 9.46, *p* < .001).
+
+## Question 5b
+
+This model indicates three variables with potential significance in predicting likelihood of finishing the programme: age (*p* = 0.03), health (*p* = 0.002), and season (*p* < 0.001). However, as previously discussed, it is difficult to determine what the effect of season actually means; we do not know when this variable was recorded, making it more difficult to interpret its relationship to the other variables. The other significant variables indicate only a slight effect on outcome when holding other variables constant. Further study and a larger sample size might yield information that could be interpreted in a more meaningful way; for example, it would be useful to understand whether the apparent correlation between health and outcome is causal and in which direction.
+
+## Question 5c: Self-motivation and programme success
+
+```{r q5c}
+
+couch2 <- couch2 %>%
+  mutate (
+    didquit = ifelse(week_stopped == 9, FALSE, TRUE)
+  )
+
+ggplot(couch2, aes(x=selfmot, y=as.numeric(didquit)))+
+  geom_point()+
+  geom_smooth(method="lm")
+
+```
+
+This graph indicates some negative correlation between self-motivation and likelihood of quitting the programme. However, our overall explanatory model did not find this effect to be significant when evaluated alongside the other variables.
+
+It's things like this that unsettle me greatly, because self-motivation doesn't even ping the radar in my overall model, but that graph by itself would make me think it has a meaningful relationship to outcome. I'm not sure how much of this is the overall treachery of statistics and what any isolated piece of data can seem to mean, and how much is just Me Doing It Wrong. I feel as though the more I learn about statistics, the more I fear them. Thank you for the course and I will definitely work harder at Multivariate (or, depending on how this project went, possibly Univariate, take two).
+
+Live long and prosper.
+
+
+
+
+
+

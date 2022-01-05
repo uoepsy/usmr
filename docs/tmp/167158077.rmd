@@ -1,0 +1,765 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: "B199958"
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+The data dictionary set boundaries for the data features, shown in the table below:
+
+|Feature name   |Content   |Value range   |
+|---|---|---|
+|age   |age in years   |0-100   |
+|accountability   |psychometric measure of accountability   |5-35   |
+|selfmot   |psychometric measure of self-motivation   |5-35   |
+|health   |multi-test health measure   |0-100   |
+|happiness   |simple happiness scale   |0-100   |
+|season   |season of the year participants were interviewed in   |spring, summer, autumn, winter   |
+|city   |ity participant was recruited in   |Edinburgh, Glasgow   |
+|week_stopped   |week of programme participant stopped in   |1-9   |
+
+Through observation, there are some rows where "autumn" were misspelled as "autunm". And we fixed the typos during data pre-processing. Also, we set rules that the age of participants should be less than 100 years old then filtered the dataset by this rule.
+
+```{r cleaning, include = FALSE}
+couchto5k$season <- ifelse(couchto5k$season == "autunm", "autumn", couchto5k$season)
+
+# Neither output nor code from this chunk will be shown in the compiled document.
+couchto5k <- couchto5k %>%
+  filter(
+    accountability %in% (5:35),
+    selfmot %in% (5:35),
+    health %in% (0:100),
+    happiness %in% (0:100),
+    age %in% (0:100),
+    season %in% c("spring", "summer", "winter", "autumn"),
+    city %in% c("Edinburgh", "Glasgow"),
+    week_stopped %in% (1:9)
+  )
+```
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+
+```
+
+# Question 1 
+
+## Question 1a
+
+>In an earlier nationwide survey, researchers found that 45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme. Is the data in the sample you have been given in line with data from the earlier survey? Once you have created a suitable variable to map to the information in the question, you should be able to answer this using a simple statistical test.
+
+The first step is to categorize the data with function *cut*. The data is divided into three groups:
+
+1. bef5: participants who gave up before week 5
+
+2. aft5: participants who gave up before week 9, after week 4
+
+3. comp: participants who completed the programme
+
+
+```{r q1a.1}
+quit <- cut(
+  couchto5k$week_stopped,
+  breaks = c(0,4,8,9),
+  labels = c("bef5", "aft5", "comp"),
+  include.lowest = FALSE
+) %>% table()
+
+df <- data.frame(quit)
+ggplot(data=df, aes(x=., y=Freq)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=Freq), vjust=1.6, color="white", size=3.5)+
+  theme_minimal()+
+  labs(x="Groups of programme process", y = "Number of participants")+
+  ggtitle("Number of participants in different programme process groups") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+In this problem we use the $\chi^2$ goodness of fit test to compare the distribution of weeks when participants stopped to an expected distribution (or probability). The proposed distribution for *(bef5, aft5, comp)* is *(0.45, 0.1, 0.45)*.
+
+Null hypothesis (H0): There is no significant difference between the observed and the expected value.
+
+```{r q1a.2}
+a <- chisq.test(quit, p = c(0.45,0.1,0.45))
+p <- round(a$p.value, 1)
+print(a)
+```
+The p-value of the $\chi^2$ test is `r toString(p)`, which is much bigger than the significance level $\alpha = 0.05$. The H0 is rejected, and we conclude that the data is not distributed like previous survey with a p-value = `r toString(p)`.
+
+## Question 1b
+
+>Using the same three categories (stopped before week 5, stopped after week 5, completed), examine whether the patterns of attrition rates differ by city.
+
+In this problem, the data is divided into three groups, then sorted by *city*. Below is the barplot to show the number of participants of different categories.
+
+```{r q1b.1}
+quit_city <- couchto5k %>% 
+  group_by(city) %>% 
+  summarise(
+    quit_group = cut(week_stopped, 
+                     breaks = c(0,4,8,9), 
+                     labels = c("bef5", "aft5", "comp"), 
+                     include.lowest = FALSE)
+    ) %>% table()
+df <- data.frame(quit_city)
+
+ggplot(data=df, aes(x=quit_group, y=Freq, fill=city)) +
+  geom_bar(stat="identity",position='dodge') +
+  geom_text(aes(label=Freq), vjust=1.6, color="black", position = position_dodge(0.9), size=3.5)+
+  scale_fill_brewer(palette="Paired")+
+  theme_minimal()+
+  labs(x = "Groups of programme process", y = "Number of participants") +
+  ggtitle("Number of participants in different programme process groups in two cities") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Below is an illustration of the percentage of different attrition rates in the two cities.
+
+```{r q1b.2}
+plot(quit_city,
+     main = "Percentage of attrition rates in two cities",
+     xlab = "City",
+     ylab = "Percentage of different groups"
+     )
+```
+
+First, we use the $\chi^2$ test of independence to analyze the frequency table, and evaluates whether there is a significant association between the categories (*quit_group*) of the two variables (*city*). 
+
+Null hypothesis (H0): the patterns of attrition rates and the city are independent.
+
+```{r q1b.3}
+chisq.test(quit_city)
+```
+However, the test outputs an warning as one number in one of the categories is small (5). We could try different attrition rates settings, or use Fisher's exact test to solve the problem.
+
+```{r q1b.4}
+a <- fisher.test(quit_city, alternative="two.sided")
+a
+```
+
+The p_value in the Fisher's test is `r toString(round(a$p.value, 2))`, equal to the significance level $\alpha = 0.05$ hence we reject the hypothesis that the patterns of attrition rates and the city are independent. 
+
+## Question 1c
+
+>Do the average ages of participants who commenced the programme differ by city?
+
+First group the data by city, then use a boxplot to present differences in the average age.
+
+```{r q1c.1}
+mean_age <- couchto5k %>% group_by(city) %>% summarise(age = age)
+ggplot(data = mean_age, aes(x = city, y = age)) +
+  geom_boxplot() +
+  labs(x = "City", y = "Age") +
+  ggtitle("Age distribution in two cities") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+We use the unpaired two-samples t-test to compare the mean age of participants from the two cities (independent groups). This test is performed under two conditions:
+
+1. The two groups of samples are normally distributed. Use Shapiro-Wilk test to test.
+
+2. The variances of the two groups are equal. Use F-test to check.
+
+Null hypothesis (H0): the mean of group $A(m_A)$ is equal to the mean of group $B(m_B)$.
+
+```{r q1c.2}
+# Check assumptions
+s1 <- shapiro.test(mean_age$age[mean_age$city=="Edinburgh"])
+s2 <- shapiro.test(mean_age$age[mean_age$city=="Glasgow"])
+f <- with(mean_age, var.test(age ~ city))
+f
+```
+The p-value of F-test is p = `r toString(round(f$p.value, 1))` which is greater than the significance level $\alpha = 0.05$. In conclusion, there is no significant difference between the two variances.
+
+The p-value of Shapiro-Wilk test in *Glasgow* data is p = `r toString(round(s2$p.value, 2))` which is greater than the significance level $\alpha = 0.05$. We can accept the normality.
+
+The p-value of Shapiro-Wilk test in *Edinburgh* data is p = `r toString(round(s1$p.value, 3))` which is smaller than the significance level $\alpha = 0.05$. This suggests the data is significantly different from a normal distribution. However, when I plot the density curve, the data looks fairly normal distributed, so I can proceed with the t.test.
+
+```{r q1c.3}
+plot(density(mean_age$age[mean_age$city=="Edinburgh"]),
+     main = "Density curve of age in Edinburgh",
+     xlab = "Age",
+     ylab = "Density"
+     )
+```
+
+Conduct the t-test.
+
+```{r q1c.4}
+# conduct test
+t <- with(mean_age, t.test(age ~ city, alternative = "two.sided"))
+t
+```
+
+The p_value of the t-test is `r toString(round(t$p.value, 2))`, bigger than the significance level $\alpha = 0.05$ hence we accept the H0, the mean age of participants in the two cities are the same.
+
+# Question 2
+
+## Question 2a
+
+>Are participants’ happiness ratings affected by the season they were interviewed in? Describe the way in which season influences happiness outcomes.
+
+Below is a boxplot to show the happiness distribution of participants in different seasons.
+
+```{r q2a.1}
+happ_season <- select(couchto5k, c("season", "happiness"))
+happ_season$season <- factor(happ_season$season)
+happ_season$season <- fct_relevel(happ_season$season, "spring", "summer", "autumn", "winter")
+
+# Plot box plot
+ggplot(happ_season, aes(x = season, y = happiness, color=season)) +
+  geom_boxplot() +
+  labs(x = "Season", y = "Happiness") +
+  ggtitle("Happiness distribution in different seasons") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+In this problem Iweuse an one-way analysis of variance (ANOVA) test to compare means among 4 groups of data (*season*). ANOVA test can be applied only when:
+
+1. The observations are obtained independently and randomly from the population
+2. The data of each factor level are normally distributed
+3. These normal populations have a common variance. (Levene’s test)
+
+Null hypothesis (H0): the mean of the groups are the same, happiness isn't influenced by season.
+
+```{r q2a.2}
+shapiro.test(happ_season$happiness[happ_season$season=="spring"])
+shapiro.test(happ_season$happiness[happ_season$season=="summer"])
+shapiro.test(happ_season$happiness[happ_season$season=="autumn"])
+shapiro.test(happ_season$happiness[happ_season$season=="winter"])
+# Levene's test with one independent variable
+library(car)
+l <- leveneTest(happiness ~ season, data = happ_season)
+l
+```
+
+The p-value of Levene’s test is p = `r toString(round(l[1,3], 3))` which is greater than the significance level $\alpha = 0.05$. In conclusion, there is no significant difference between the four variances.
+
+The p-values of *autumn* and *winter* suggest normality. We plot the data for *spring* and *summer*, and accept the normality for these two groups of data.
+
+```{r q2a.3}
+par(mfrow = c(1, 2))
+plot(density(happ_season$happiness[happ_season$season=="spring"]), 
+     main = "Density curve of happiness spring",
+     xlab = "Happiness",
+     ylab = "Density"
+     )
+plot(density(happ_season$happiness[happ_season$season=="summer"]), 
+     main = "Density curve of happiness summer",
+     xlab = "Happiness",
+     ylab = "Density"
+     )
+```
+
+```{r q2a.6}
+# Conduct ANOVA test
+model <- aov(happiness ~ season, data = happ_season)
+summary(model)
+```
+
+Conduct the test. The p_value of the aov test is 0.23, bigger than the significance level $\alpha = 0.05$ hence we accept the H0, happiness isn't influenced by season.
+
+```{r q2a.4}
+par(mfrow = c(2, 2))
+plot(model)
+```
+
+However, we observed from the qq-plot that data point 33, 66, 74 do not fit in the normality distribution, and from the first and third plot these points are detected as outliers. They can severely affect normality and homogeneity of variance, so we excluded them from the data (Not the database, just data for this test) to meet testing assumptions.
+
+```{r q2a.5}
+happ_season <- happ_season[-c(33, 66, 74),]
+# Conduct ANOVA test
+model <- aov(happiness ~ season, data = happ_season)
+summary(model)
+```
+
+Conduct the test. The p_value of the aov test is 0.046, smaller than the significance level $\alpha = 0.05$ hence we reject the H0, happiness is influenced by season. Summer is the time when people are most happy, followed by spring. In autumn and winter, people tend to be equally less happy than other times.
+
+## Question 2b
+
+>Accounting for any effects you discovered in (2a), is happiness affected by age?
+
+The previous question proved that happiness is influenced by season, so we need to take season into consideration when analyzing the influence of age to happiness. A simply way is to only use data in one season, for example *spring*. Here is a scatter plot representing the relationship between happiness and age in *spring* data. 
+
+```{r q2b.1}
+happ_age <- couchto5k[couchto5k$season=="spring",]
+happ_age <- select(happ_age, c("age", "happiness"))
+
+ggplot(happ_age, aes(x=age, y=happiness)) + 
+  geom_point()+
+  geom_smooth(method=lm)+
+  labs(x = "Age", y = "Happiness") +
+  ggtitle("Participant happiness and age") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+I use a correlation test to evaluate the association between the two variables, *age* and *happiness*. The test include these test assumptions:
+
+1. The covariation should be linear.
+
+2. The variables all follow a normal distribution. (Shapiro test)
+
+Null hypothesis (H0): The correlation between *age* and *happiness* is 0.
+
+```{r q2b.2}
+shapiro.test(happ_age$age)
+shapiro.test(happ_age$happiness)
+par(mfrow = c(1, 2))
+plot(density(happ_age$happiness),
+     main = "Density curve of happiness",
+     xlab = "Happiness",
+     ylab = "Density"
+     )
+plot(density(happ_age$age),
+     main = "Density curve of age",
+     xlab = "Age",
+     ylab = "Density"
+     )
+
+par(mfrow = c(1, 1))
+qqplot(happ_age$happiness, 
+       happ_age$age,
+       main = "Q-Q plot of age and happiness",
+       xlab = "Happiness",
+       ylab = "Age"
+       )
+```
+
+From the previous scatter plot, we observed a linear relationship of the covariation between the two variables. 
+
+Both p-value of the Shapiro-Wilk test suggest neither of the variables follow a normal distribution. However when I plot their density curves, the curves show a normal distribution. The ggplot also suggest a normality of the data.
+
+Conduct the correlation test.
+
+```{r q2b.3}
+# Conduct correlation test
+corr <- cor.test(happ_age$happiness, happ_age$age)
+corr
+```
+
+The p-value of the test is smaller than the significance level $\alpha = 0.05$ hence we reject the H0, and conclude that there is strong evidence suggesting correlation coefficient is different to 0. As a matter of fact, the correlation coefficient is 0.354, indicating a moderate association between the two variables *age* and *happiness*. An older age may lead to the increase of happiness.
+
+## Question 2c
+
+>The models you have built above explore ‘baseline’ effects; that is, effects that are not of primary interest to the researchers but which might affect the outcome variable of happiness. For use in question 3, pick a specific baseline model and justify why you are using this.
+
+In previous question we observed the influence of age and season on happiness, however those aren't the primary interest to us. The baseline linear models for future experiments should take these variables into consideration. We conduct different baseline lm models and observe their performance.
+
+There are four assumptions associated with a linear regression model:
+
+1. Linearity: The relationship between X and the mean of Y is linear.
+
+2. Homoscedasticity: The variance of residual is the same for any value of X.
+
+3. Independence: Observations are independent of each other. Age certainly isn't related to season.
+
+4. Normality: For any fixed value of X, Y is normally distributed. *happiness* has been confirmed to be normally distributed in the last question.
+
+To check these assumptions, we fit the data into a lm model and observed several plots. The first plot depicts residuals versus fitted values and it checks the assumption of linearity and homoscedasticity. Residuals spread equally around the y = 0 line, suggesting homoscedasticity. However, residual *33*, *13* and *105* stand far away from 0, which could cause problems to linearity. This could also be observed in the qq-plot.
+
+The fourth plot is of "Cook's distance", suggesting the influence of each observation on the regression coefficients. It can be observed that *33*, *6* and *91* have major influence on the model. *33* is an influential outlier. *13* and *105* hold relatively big influence to the model (both around 0.025). These points are discarded in preprocessing.
+
+```{r q2c.1}
+
+model <- lm(happiness ~ season + age, data = couchto5k)
+par(mfrow=c(2,2))
+plot(model, which=1:4)
+
+filtered <- couchto5k[-c(13, 33, 105),]
+```
+Fig Diagnostic Plots for happiness
+
+I fit the data into three lm models:
+
+1. happiness ~ season model
+
+2. happiness ~ age model
+
+3. happiness ~ season + age model
+
+The p-value of model 1 is the lowest, and model 3 is better than model 2. This suggests that age might not be a good indicator for happiness.
+
+```{r q2c.2}
+
+model1 <- lm(happiness ~ season, data = filtered)
+summary(model1)
+model2 <- lm(happiness ~ age, data = filtered)
+summary(model2)
+model3 <- lm(happiness ~ season + age, data = filtered)
+summary(model3)
+
+```
+
+We further test this with anova function. 
+
+Null hypothesis: Adding predictor(s) don't bring significant improvement.
+
+The p-value when performing anova test between model1 and model3 is 0.21; and 0.074 when performing the test between model2 and model3. This proves that age doesn't lead to a significant improvement while season does. Among model1 and model2 we accept model1. Among model2 and model3 we accept model 2. So we should accept model1 as the baseline.
+
+```{r q2c.3}
+anova(model1, model3)
+anova(model2, model3)
+```
+
+# Question 3
+
+## Question 3a
+
+>Building on your baseline model, are participants’ happiness ratings affected by whether or not they completed the programme? Describe the way in which programme completion influences happiness outcomes.
+
+
+```{r q3a.1}
+comp <- couchto5k %>%
+  mutate(
+    completed = ifelse(week_stopped == 9, 1, 0)
+  )
+
+t <- table(comp$completed)
+```
+
+In this problem, we set a new Boolean variable *completed* to indicate if participants completed the programme. The baseline model is "happiness ~ season", we add a new variable *completed* to the model. `r toString(t[2])` participants completed while `r toString(t[1])` quit.
+
+Check the four assumptions associated with a linear regression model like in problem 2c. We delete three outliers *6*, *33* and *111* which all have significant influence to the model.
+
+```{r q3a.2}
+
+model <- lm(happiness ~ season + completed, data = comp)
+par(mfrow=c(2,2))
+plot(model, which=1:4)
+
+filtered <- comp[-c(6, 33, 111),]
+```
+
+We set two models:
+
+1. happiness ~ season model
+
+2. happiness ~ season + completed model
+
+Hypothesis H0: Significant relationship between X and Y is 0.
+
+The p-value in model2 is $p = 0.01$ smaller than the significance level $\alpha = 0.05$ hence we conclude that there is a significant relationship between *season*, *completed* and *happiness*. Also, the anova test suggests that *completed* improves the baseline's significance.
+
+Checking the coefficients of model2, *completed* is marked with star (significantly associated to *happiness*). It has a positive influence on happiness, on average participants who completed the programme is 20.74 "happier" than those who didn't. The smoothed line in the scatter plot shows an increasing relationship between *completed* and *happiness*.
+
+```{r q3a.3}
+model1 <- lm(happiness ~ season, data = filtered)
+model2 <- lm(happiness ~ season + completed, data = filtered)
+summary(model2)
+anova(model1, model2)
+
+ggplot(filtered, aes(x = completed, y = happiness)) +
+  geom_point() +
+  stat_smooth() +
+  labs(x = "Completed", y = "Happiness") +
+  ggtitle("Happiness under different programme completion status") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+
+## Question 3b
+
+>Building on the analysis in (3a), is happiness additionally affected by the “health metric”?
+
+To analyse the influence of *health*, we set the model in problem 3a as baseline and add *health* as a new variable.
+
+We set two models:
+
+1. happiness ~ season + completed model
+
+2. happiness ~ season + completed + health model
+
+Check the four assumptions associated with a linear regression model like in problem 2c. We delete two outliers *6*, *33* which have significant influence to the model.
+
+The p-value in model2 is $p = 0.03$ smaller than the significance level $\alpha = 0.05$ hence we conclude that there is a significant relationship between *season*, *completed*, *health*, and *happiness*. However, the p-value of the anova test is $p = 0.36$ larger than the significance level $\alpha = 0.05$  suggests that *health* doesn't improve the baseline's significance. With the current baseline, happiness isn't additionally affected by the “health metric". When we plot the scatter plot between *health* and *happiness*, we don't see a linear relation.
+
+```{r q3b.1}
+model <- lm(happiness ~ season + completed + health, data = comp)
+par(mfrow=c(2,2))
+plot(model, which=1:4)
+
+filtered <- comp[-c(6, 33),]
+
+model1 <- lm(happiness ~ season + completed, data = filtered)
+model2 <- lm(happiness ~ season + completed + health, data = filtered)
+summary(model2)
+anova(model1, model2)
+
+ggplot(filtered, aes(x = health, y = happiness)) +
+  geom_point() +
+  stat_smooth() +
+  labs(x = "Health", y = "Happiness") +
+  ggtitle("Relationship between health and happiness") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+## Question 3c
+
+> It’s been hypothesised that the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier. Building on the model in (3b), can you test this hypothesis?
+
+Based on the value of *week_stopped*, we cut the data into four groups and observe the relationship between *health* and *happiness*. We try to balance the amount of data in each group by setting the groups as follow:
+
+1. bef3: participants who gave up before week 3
+
+2. bef5: participants who gave up before week 5, after week 2
+
+3. bef9: participants who gave up before week 9, after week 4
+
+4. comp: participants who completed the programme 
+
+The relationship between *health* and *happiness* appears to be different between these groups. For those who completed the programme or those who gave up very early, the relationship seems stronger, while for those who gave up between week 3 to week 8 there is almost no discernible relationship. The relationship of happiness ~ health differs across the values of *week_stopped*.
+
+This problem's analysis is based on the model in problem 3b: $happiness ~ season + week_stopped + health$. In order to test the association between *week_stopped* and *health*, we add an interaction between the variables.
+
+$happiness ~ season + health*week\_stopped$
+
+```{r q3c.1}
+cut <-
+  couchto5k %>%
+  mutate(
+    group = cut(week_stopped, 
+                breaks = c(0,2, 4,8,9),
+                labels = c("bef3", "bef5", "bef9", "comp"), 
+                include.lowest = FALSE)
+  )
+ggplot(data = cut, aes(x = health, y = happiness, col = group)) + 
+  geom_point() + 
+  facet_wrap(~group, scales="free_x") +
+  theme(legend.position = "none") +
+  ggtitle("Health and happiness under different stop groups")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+model <- lm(happiness ~ season + health*week_stopped, data = couchto5k)
+summary(model)
+```
+
+We use sjPlot to plot the interaction betweem week_stopped and health. The function plot_model() will choose two values of *week_stopped* at which to plot the effect of *health* on *happiness*. It chooses the minimum (1) and the maximum (9). The plot shows that participants who completed the programme, or quit in later weeks will be more happy when they're more healthy. Participants who gave up early, the healthier they are the less happy they are. The influence of health towards happiness is stronger in the latter group (The slope of the red line is steeper).
+
+```{r q3c.2}
+library(sjPlot)
+
+plot_model(model, 
+           type = "pred", 
+           terms = c("health", "week_stopped [1, 2, 3, 4, 5, 6, 7, 8, 9]")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggtitle("Predicted happiness under differnt health values and stop week")
+
+```
+
+## Question 3d
+
+>What can we conclude about the various causes of happiness in our data? Write a brief description of the effects in the model, such as you might find in an academic paper.
+
+We discover that happiness is affected by *season*, *age*, *health* and their progress in the programme.
+
+Participants tend to be more happy during summer and spring. Older participants are generally more happy than young people. And people who completed the programme have slightly greater happiness compared to those who quit. The influence of *health* on *happiness* is closely related to people's programme process rate. We discover that participants who completed the programme, or quit in later weeks will be more happy when they have better health. Participants who gave up early, the healthier they are the less happy they are. The influence of programme progress on the relationship of *health* and *happiness* is stronger in participants who gave up early.
+
+When modeling the variables in a linear model, we analysed that *age* doesn't improve the significance of the model, and we choose to discard this variable. Also, because the influence of *health* is affected by *week_stopped*, we need to add an intervention term *health:week_stopped* to the model. The baseline is:
+
+$lm(happiness ~ season + health + week_stopped + health*week\_stopped, data = couchto5k)$
+
+The p_value of the model is lower than the significance level $\alpha = 0.05$, and all of the variables coefficients have low p-value. Hence, we conclude that the variables have correlation with happiness, and the model is a good fit. For the baseline model, the formula to predict happiness is:
+
+$happiness = 209 + 18*season:spring + 19*season:summer + 4*season:winter -3*health - 27*week_stopped + 0.5*(health*week_stopped)$
+
+```{r q3d}
+model <- lm(happiness ~ season + health*week_stopped, data = couchto5k)
+summary(model)
+```
+# Question 4
+
+>Create a subset of the data, including only those participants who completed the programme. Create a plot of the average happiness ratings grouped by season and city, that can be used in a presentation to the funders of the project.
+
+```{r q4}
+comp <- couchto5k[couchto5k$week_stopped==9,]
+comp <- comp %>% group_by(city, season) %>% summarise(
+  happ = round(mean(happiness), digits = 2)
+)
+
+comp$season <- factor(comp$season)
+comp$season <- fct_relevel(comp$season, "spring", "summer", "autumn")
+
+ggplot(comp, aes(x=season,y=happ,fill=city)) +
+  geom_bar(stat="identity",position='dodge') +
+  geom_text(aes(label=happ), vjust=1.6, color="black", position = position_dodge(0.9), size=3.5)+
+  scale_fill_brewer(palette="Paired")+
+  theme_minimal() +
+  labs(x = "Season", y = "Happiness") +
+  ggtitle("Happiness ratings grouped by season and city") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+# Question 5
+
+## Question 5a
+
+>Build a model that predicts the likelihood of dropping out (at all).
+
+The model outputs a probability of finishing the programme. If the probability is larger than 0.5, it outputs a boolean value TRUE, otherwise FALSE. For predicting a categorical outcome we use GLM instead of a standard linear regression. We use binomial model because we're predicting the probability between 2 possible outcomes.
+
+Possible predictors to predict the likelihood of dropping out are *age*, *accountability*, *selfmot*, *health*, *happiness*, *season*, *city*. However, we need to test if some of they are independent. 
+
+In the correlation matrix, there is a strong negative linear association between health and age (-0.71). Since the younger a person is, the better that person's health (observed in the scatter plot). We could drop the *health* variable. 
+
+In the correlation matrix, the correlation coefficients suggest there are weak associations in *happiness* & *accountability*， *happiness* & *selfmot* and *accountability* & *age*. From previous analysis, *happiness* is also related to *season*. So we could drop the *happiness* variable because it has association with most of the variables. However, we should add an iteraction term for *accountability* & *age*.
+
+As for the *season* variable, we plot a boxplot and observed a clear difference in attrition rates at different seasons. Also, the fisher's test suggests there is an association between the variables.
+
+```{r q5a.1}
+comp <- couchto5k %>%
+  mutate(
+    completed = week_stopped == 9
+  )
+
+comp%>% 
+  select(age, accountability, selfmot, health, happiness) %>%
+  cor()
+
+par(mfrow=c(1,2))
+tmp <- select(comp, c("age", "health"))
+ggplot(tmp, aes(x=age, y=health)) + 
+  geom_point()+
+  geom_smooth(method=lm) +
+  labs(x = "Age", y = "Health") +
+  ggtitle("Relationship between age and health") +
+  theme(plot.title = element_text(hjust = 0.5))
+tmp <- select(comp, c("season", "completed")) %>%
+  group_by(season) %>%
+  table()
+plot(tmp,
+  main = "Completion rate grouped by season",
+  xlab = "Season",
+  ylab = "Completion"
+  )
+fisher.test(tmp)
+```
+
+We use t-test and aov test to analyse if we need interaction terms for other pairs of variables (between numeric and categorical), the result is shown in the matrix below. For obvious variable independence, such as *age* and *season*, we don't need a test. ("FALSE" suggests variables independence, "TRUE" suggests relation)
+
+|   |season   |city   |
+|---|---|---|
+|age   |FALSE   |FALSE   |
+|accountability   |FALSE   |FALSE   |
+|selfmot   |FALSE   |FALSE   |
+
+```{r q5a.2}
+summary(aov(accountability ~ season, data = comp))
+t.test(accountability ~ city, data = comp)
+
+summary(aov(selfmot ~ season, data = comp))
+t.test(selfmot ~ city, data = comp)
+```
+
+All of the predictors are *age*, *accountability*, *selfmot*, *season*, *city* and *accountability:age*.
+
+We perform anova tests in order to select the best combination of variables. Model0 contain all of the variables.We test a set of models, including models removing all-but-one predictor and models removing removes all-but-two predictors. The predictors removed are insignificant ones with high p-value. We don't want to remove too many variables as it tends to over fit. Then we choose the best model with highest AIC value (smaller AIC means better fit). 
+
+The result shows that the 2nd and 5th predictor could be removed. The model is $glm(completed ~ age + selfmot + season, family = binomial) $.
+
+```{r q5a.3}
+model0 <- glm(completed ~ selfmot + season + city + accountability*age, data = comp, family = binomial)
+model1 <- glm(completed ~ accountability + selfmot + season + city, data = comp, family = binomial)
+model2 <- glm(completed ~ age + selfmot + season + city, data = comp, family = binomial)
+model5 <- glm(completed ~ selfmot + season + accountability*age, data = comp, family = binomial)
+model6 <- glm(completed ~ age + accountability + selfmot + season + city, data = comp, family = binomial)
+
+model12 <- glm(completed ~ selfmot + season + city, data = comp, family = binomial)
+model15 <- glm(completed ~ selfmot + season + accountability*age, data = comp, family = binomial)
+model25 <- glm(completed ~ age + selfmot + season, data = comp, family = binomial) 
+model56 <- glm(completed ~ age + accountability + selfmot + season, data = comp, family = binomial)
+
+sprintf("Model with all predictors AIC: %f", summary(model0)["aic"])
+sprintf("Model removed 1st predictor AIC: %f", summary(model1)["aic"])
+sprintf("Model removed 2nd predictor AIC: %f", summary(model2)["aic"])
+sprintf("Model removed 5th predictor AIC: %f", summary(model5)["aic"])
+sprintf("Model removed 6th predictor AIC: %f", summary(model6)["aic"])
+sprintf("Model removed 1st & 2nd predictor AIC: %f", summary(model12)["aic"])
+sprintf("Model removed 1st & 5th predictor AIC: %f", summary(model15)["aic"])
+sprintf("Model removed 2nd & 5th predictor AIC: %f", summary(model25)["aic"])
+sprintf("Model removed 5th & 6th predictor AIC: %f", summary(model56)["aic"])
+```
+
+
+## Question 5b
+
+>Briefly describe the effects in your model as you would in an academic paper.
+
+The possible predictors for predicting drop out probability are *age*, *accountability*, *selfmot*, *season*, and *city*. After experimentation, we selected a combination of predictors and use the model $glm(completed ~ age + selfmot + season, family = binomial)$ as baseline.
+
+We first randomly select 75% of the dataset as training data, the model is then evaluated on the rest of the dataset. The accuracy of the model is 0.87. Drop out is predicted with the following formula. If the probability is lower than 0.5 the participant is likely to quit.
+
+$Prob =  -5.3717 + 0.0358*age + 0.3308*selfmot - 3.1036*seasonspring + 1.4985*seasonsummer - 0.222*seasonwinter$
+                                  
+The results show that *season* is the most influential factor, *selfmot* is also quite influential, while *age* is less important. Based on the positive and negative values of coefficients, participants are more likely to quit in spring and winter. They're more likely to finish the programme if they have higer self motivation. Also, older participants have a higher chance of finishing it.
+
+```{r q5b}
+comp <- couchto5k %>%
+  mutate(
+    completed = week_stopped == 9
+  )
+
+smp_size <- floor(0.75 * nrow(comp))
+set.seed(123)
+train_ind <- sample(seq_len(nrow(comp)), size = smp_size)
+train <- comp[train_ind, ]
+test <- comp[-train_ind, ]
+
+model <- glm(completed ~ age + selfmot + season, data = comp, family = binomial)
+
+# Make predictions
+probabilities <- model %>% predict(test, type = "response")
+predicted <- ifelse(probabilities > 0.5, TRUE, FALSE)
+# Model accuracy
+sprintf("Model accuracy is %f", mean(predicted == test$completed))
+
+sprintf("Model coefficients")
+model$coefficients
+summary(model)
+```
+
+## Question 5c
+
+>Draw a graph representing the probability of quitting as a function of how self motivated participants were.
+
+For the model fitted on multiple linear regression, we plot with *selfmot* as x and the probability of dropping out as y. Then we add an automatic glm regression line to the plot, which is the blue line in the graph. Then we add a black line to the graph with the negative of coefficient for *selfmot* as slope. The intercept of the black line is set to 4.5 (random number). Both lines suggest that the more motivated a participant is, the more likely the participant is not going to quit. The lines have different slope because the blue line doesn't take into consideration of the influence of other variables when predicting quitting while the black line does. And the variable season:spring has more influence on the model than self motivation. 
+
+```{r q5c}
+predicted <- data.frame(probability = 1 - predict(model, comp, type="response"), selfmot=comp$selfmot)
+ggplot(data = comp, aes(x = selfmot, y = 1 - completed))+
+  geom_jitter(color='blue', height = .05, alpha=.1) +
+  geom_abline(intercept=4.5, slope= -model$coefficients["selfmot"]) +
+  geom_smooth(method = "glm", method.args = list(family=binomial), formula = y~x) +
+  labs(x = "Selfmot", y = "Probability of quitting") +
+  ggtitle("Probability of quitting under different Selfmot values") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+

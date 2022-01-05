@@ -1,0 +1,299 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+params:
+  examnumber: B094034
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+library(tidyverse)
+library(psych)
+library(sjPlot)
+library(car)
+library(patchwork)
+library(jtools)
+library(interactions)
+library(stargazer)
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+# make impossible values NA 
+couchto5k$age[couchto5k$age>70]<-NA
+couchto5k$selfmot[couchto5k$selfmot==-99]<-NA
+couchto5k$week_stopped[couchto5k$week_stopped==12] <-NA
+
+# change city and season into factors, relevel season
+couchto5k$city <- as.factor(couchto5k$city)
+couchto5k$season <- as.factor(couchto5k$season)
+couchto5k$season<-recode(couchto5k$season, "c('autumn', 'autunm')='autumn'")
+couchto5k$season<-fct_relevel(couchto5k$season, c("spring", "summer", "autumn", "winter"))
+
+# cut week_stopped into 3 levels 
+couchto5k<-couchto5k %>% 
+  mutate( 
+    week_stopped_factor=cut(week_stopped, breaks=c(0,5,8.5,9), labels=c("before week 5", "after week 5", "completed"))
+  )
+
+# mean center and scale happiness and health 
+couchto5k <- couchto5k %>% 
+  mutate(
+    health_centered=scale(health, scale=FALSE),
+    happiness_centered=scale(happiness, scale=FALSE)
+  )
+
+```
+Data was collected from two cities (Glasgow and Edinburgh) across the course of a year from 137 participants who were signed up for the NHS-sponsored Couch to 5K programme. Participants completed a questionnaire measuring accountability and self-motivation at Week 0, which was followed by a questionnaire measuring self-reported happiness and a ‘health’ measure once they either completed the programme in Week 9, or when they dropped out of the programme in Weeks 1-8. 
+
+The variables measured include age, accountability, self motivation, health, happiness, the season of the year participants were interviewed in, the city the participant was recruited in, and the week of the programme that the participant stopped in. Accountability and self motivation were each measured by 5 questions on a 7-point Likert scale, while health and happiness were scored from 0-100. 
+
+Preliminary inspection of the data revealed a number of impossible values in the variables ‘age’, ‘self motivation’, and ‘week stopped’. These were converted to NA for analysis so that data was not lost by removing the entirety of the participants’ data. The variables ‘city’ and ‘season’ were converted to factors to enable meaningful analysis, which revealed that ‘season’ had a five levels, one of which was a misspelling of another level (“autunm” vs “autumn”), and the data in this level of the factor was integrated into the “autumn” level. The variables ‘health’ and ‘happiness’ were also mean-centered to enable more meaningful analysis.  
+
+The present research is interested in the psychological factors that make people continue on the programme, and in the effects of taking the programme on health and wellbeing. The variables measured in this research are plotted below. 
+
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+# plot of age 
+p.age<-ggplot(data=couchto5k, aes(x=age))+geom_histogram(binwidth = 1)+scale_x_continuous(name="Age", limits=c(15, 60))+scale_y_continuous(name="Number of Participants", limits=c(0, 10))
+
+# plot of accountability
+p.accountability<-ggplot(data=couchto5k, aes(x=accountability))+geom_histogram(binwidth = 1) + scale_x_continuous(name="Accountability", limits=c(5, 32)) + scale_y_continuous(name="Frequency", limits=c(0, 15))
+
+# plot of self motivation
+p.selfmot<-ggplot(data=couchto5k, aes(x=selfmot))+geom_histogram(binwidth = 1) + scale_x_continuous(name="Self Motivation", limits=c(5, 25)) + scale_y_continuous(name="Frequency", limits=c(0, 25)) 
+
+# plot of health scores
+p.health<-ggplot(data=couchto5k, aes(x=health))+geom_histogram(binwidth = 1) + scale_x_continuous(name="Health", limits=c(0, 100)) + scale_y_continuous(name="Frequency", limits=c(0,25))
+
+# plot of happiness 
+p.happiness<-ggplot(data=couchto5k, aes(x=happiness))+geom_histogram(binwidth = 1) + scale_x_continuous(name="Happiness", limits=c(0, 100)) + scale_y_continuous(name="Frequency", limits=c(0, 10))
+
+# plot of season
+p.season<-ggplot(data=couchto5k, aes(x=season))+geom_bar(binwidth = 1)+ scale_x_discrete(name="Season") + scale_y_discrete(name="Frequency")
+
+# plot of city
+p.city<-ggplot(data=couchto5k, aes(x=city))+geom_bar(binwidth = 1)+ scale_x_discrete(name="City") + scale_y_discrete(name="Frequency")
+
+# plot of week stopped  
+p.week_stopped<-ggplot(data=couchto5k, aes(x=week_stopped))+geom_bar(binwidth = 1)+scale_x_discrete(name="Week Stopped", limits=factor(c(1:9))) + scale_y_discrete(name="Frequency")
+
+p.age+p.accountability+p.selfmot+p.health+p.happiness 
+
+p.season+p.city+p.week_stopped 
+
+```
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+chi1a<-chisq.test(table(couchto5k$week_stopped_factor), p=c(.45, .1, .45))
+```
+Previous data found that 45% of participants dropped out of the programme before halfway (Week 5), 10% dropped out before the end of the programme (Weeks 5-8), and 45% completed the programme. In order to test whether the present data is in line with the previous data described here, a new variable was created in which the ‘week stopped’ data was split into a factor with three levels: ‘before week 5’, ‘after week 5’, and ‘completed’ to indicate the stage at which participants dropped out of the programme, or if they completed the programme. 
+
+A chi-square goodness of fit test was carried out using this new variable to investigate whether the present data is in line with previous findings on participation in the Couch to 5K programme in terms of attrition rates. The results of this test show that the present data was not in line with the previous data $X^2$(`r chi1a$parameter`, *N*=137)=`r chi1a$statistic`, *p*=`r chi1a$p.value`.
+
+
+## Question 1b
+
+```{r q1b}
+chi1b<-chisq.test(couchto5k$city, couchto5k$week_stopped_factor)
+#assumptions?
+```
+A chi-square test of independence was carried out using the same ‘week stopped’ variable as in the previous question to investigate whether patterns of attrition rates differ by city. The results of the test show that attrition rates did not differ by city  $X^2$(`r chi1b$parameter`, *N*=137)=`r chi1b$statistic`, *p*=`r chi1b$p.value`.
+
+## Question 1c
+
+```{r q1c}
+t.test1c<-with(couchto5k, t.test(age~city))
+
+# assumptions
+var.1c<-var.test(couchto5k$age[couchto5k$city=="Edinburgh"], couchto5k$age[couchto5k$city=="Glasgow"], na.rm=TRUE)
+```
+An F test was used to compare the variances of the 'Edinburgh' and 'Glasgow' groups, which suggested that the variances of the two groups were equal, therefore the data was suitable for use in an independent samples t-test (*F*(`r var.1c$parameter[1]`, `r var.1c$parameter[2]`)=`r var.1c$statistic`, *p*=`r var.1c$p.value`. The independent samples t test was then carried out to investigate whether the average ages of participants who commenced the programme differed by city. The results of this test showed that the average age of participants did not differ whether recruited from Edinburgh (*M*=`r mean(couchto5k$age[couchto5k$city=="Edinburgh"], na.rm=TRUE)`, *SD*=`r sd(couchto5k$age[couchto5k$city=="Edinburgh"], na.rm=TRUE)`) or Glasgow, (*M*=`r mean(couchto5k$age[couchto5k$city=="Glasgow"], na.rm=TRUE)`, *SD*=`r sd(couchto5k$age[couchto5k$city=="Glasgow"], na.rm=TRUE)`), *t*(`r t.test1c$parameter`)=`r t.test1c$statistic`, *p*=`r t.test1c$p.value`. 
+
+
+# Question 2
+
+## Question 2a
+The data was initially investigated to check that it met the assumptions for a linear model. Figure 1 below show that the data does meet the assumptions of the linear model, therefore a simple linear regression was carried out to investigate whether participants’ happiness ratings are affected by the season they were interviewed in. 
+
+```{r q2a}
+mod2a<-lm(happiness_centered~season, data=couchto5k, subset=couchto5k$age[-c(14,99)])
+mod2asummary<-summary(mod2a)
+par(mfrow = c(2, 2))
+plot(mod2a, main = "Figure 1", )
+```
+
+
+This regression was performed on a subset of the data to account for NA values in the age variable to enable better comparison with the second potential baseline model. Happiness was mean-centered to enable more meaningful interpretation of the coefficients, and spring was used as the baseline season. Results from this regression indicate that season does significantly affect participants’ happiness ratings. Participants interviewed in autumn and winter have significantly lower happiness levels than those interviewed in spring (*$R^2$*=`r mod2asummary$r.squared`, *F*(`r mod2asummary$fstatistic[2]`, `r mod2asummary$fstatistic[3]`)=`r mod2asummary$fstatistic[1]`, *p*=.1.4e-1) (*$R^2$*=`r mod2asummary$r.squared`, *F*(`r mod2asummary$fstatistic[2]`, `r mod2asummary$fstatistic[3]`)=`r mod2asummary$fstatistic[1]`, *p*=.2.0e-11) such that participants interviewed in autumn on average have happiness scores `r abs(mod2a$coefficients[3])` points lower than the mean of those interviewed in spring, and participants interviewed in winter on average have have happiness scores `r abs(mod2a$coefficients[4])` points lower than the mean of those interviewed in spring. Participants interviewed in summer did not have significantly different happiness scores to those interviewed in spring. The results from this regression can be seen in Table 1.
+
+```{r q2a table, results='asis'}
+stargazer::stargazer(mod2a, header=FALSE, type='latex', title="Regression Results", dep.var.labels = "Happiness (Mean Centered)", covariate.labels = c("Summer", "Autumn", "Winter"))
+```
+
+
+
+## Question 2b
+The data was inspected to check that it met the assumptions for a linear model. Figure 2 below show that the data does meet the assumptions of the linear model, therefore a multiple regression was carried out to investigate whether happiness scores are affected by age while accounting for the season participants were interviewed in. Happiness scores mean-centered.
+
+```{r q2b}
+mod2b<-lm(happiness_centered~season+age, data=couchto5k, subset=couchto5k$age[-c(14,99)]) 
+mod2bsummary<-summary(mod2b)
+par(mfrow = c(2, 2))
+plot(mod2a, main="Figure 2")
+```
+
+
+The results from this regression (Table 2) indicate that age does not significantly predict happiness scores when accounting for season (*$R^2$*=`r mod2bsummary$r.squared`, *F*(`r mod2bsummary$fstatistic[2]`, `r mod2bsummary$fstatistic[3]`)=`r mod2bsummary$fstatistic[1]`, *p*=.729). 
+
+```{r q2b table, results='asis'}
+stargazer::stargazer(mod2b, header=FALSE, type='latex', dep.var.labels = "Happiness (Mean Centered)", covariate.labels = c("Summer", "Autumn", "Winter", "Age"))
+```
+
+
+## Question 2c
+```{r q2c}
+anova2c<-anova(mod2a, mod2b)
+```
+The model with season as the sole predictor accounted for 43.6% of the variance, while the model with season and age as predictors accounted for 43.2% of the variance. To determine which of these baseline models would be used in further analysis, an ANOVA was run to investigate whether the addition of 'age' significantly improved the model fit. Addition of age did not significantly improve model fit (*F*(`r anova2c$Res.Df[2]`,`r anova2c$Df[2]`)=`r anova2c$F[2]`, *p*=.729), therefore the happiness~season baseline model will be used to avoid including too many predictors in future models. 
+
+
+# Question 3
+
+## Question 3a
+To investigate whether participants' happiness rating are affected by whether or not they completed the programme, a new binary variable was created ('completed') which was coded as 1=completed, 0=not completed to indicate whether participants completed the programme or not. The baseline for this variable was 0=not completed. Assumption checks were then carried out on this data, as can be seen in Figure 3 below. As the data meets all assumptions, a multiple regression was carried out to investigate the effect of completing the programme on participants' happiness ratings.
+
+```{r q3a}
+couchto5k<-couchto5k %>% 
+  mutate(
+    completed=as.factor(ifelse(week_stopped==9, yes=1, no=0))
+  )
+mod3a<-lm(happiness_centered~season+completed, data=couchto5k)
+mod3asummary<-summary(mod3a)
+par(mfrow = c(2, 2))
+plot(mod3a, main="Figure 3")
+```
+
+
+The results of this multiple regression (Table 3) suggest that completion of the programme did not significantly affect participants' happiness ratings (*$R^2$*=`r mod3asummary$r.squared`, *F*(`r mod3asummary$fstatistic[2]`, `r mod3asummary$fstatistic[3]`)=`r mod3asummary$fstatistic[1]`, *p*=.364). 
+
+```{r q3a table, results='asis'}
+stargazer::stargazer(mod3a, header=FALSE, type='latex', dep.var.labels = "Happiness (Mean Centered)", covariate.labels = c("Summer", "Autumn", "Winter", "Completed (1=Yes)"))
+```
+
+
+## Question 3b
+Assumption checks can be seen in Figure 4 below. As the data meets all assumptions, a multiple regression was carried out to investigate whether participants' happiness ratings were additionally affected by the 'health' variable. This regression used the model from (3a) with the addition of the mean-centered 'health' as a predictor. 
+
+```{r q3b}
+mod3b<-lm(happiness_centered~season+completed+health_centered, data=couchto5k)
+mod3bsummary<-summary(mod3b)
+par(mfrow = c(2, 2))
+plot(mod3b, main="Figure 4")
+```
+
+
+The results of this multiple regression (Table 4) suggest that 'health' did not additionally affect participants' happiness ratings (*$R^2$*=`r mod3bsummary$r.squared`, *F*(`r mod3bsummary$fstatistic[2]`, `r mod3bsummary$fstatistic[3]`)=`r mod3bsummary$fstatistic[1]`, *p*=.819) when accounting for season and whether participants completed the programme. 
+
+```{r q3b table, results='asis'}
+stargazer::stargazer(mod3b, header=FALSE, type='latex', dep.var.labels = "Happiness (Mean Centered)", covariate.labels = c("Summer", "Autumn", "Winter", "Completed (1=Yes)", "Health (Mean Centered)"))
+```
+
+
+## Question 3c
+Assumption checks revealed an influential outlier (Cook's Distance >.5) so this observation was removed for analysis. All other assumptions were met (Figure 5). To investigate whether participants who got further along the programme were more affected by the health metric than those who stopped earlier, a multiple regression model was carried out which accounted for season, health, and the stage at which the participants stopped the programme, and which included an interaction between the 'health' and 'week stopped' variables (Table 5). The 3-level factor 'week stopped' variable from (1a) was used instead of the original variable for ease of interpretation, with participants who stopped the programme before week 5 as the baseline.
+
+```{r q3c}
+mod3c<-lm(happiness_centered~season+week_stopped_factor+health_centered+health_centered:week_stopped_factor, data=subset(couchto5k, health_centered>-20))
+mod3csummary<-summary(mod3c)
+par(mfrow = c(2, 2))
+plot(mod3c, main="Figure 5")
+```
+
+
+The results of this regression show a significant decrease in average happiness scores for the seasons 'autumn' and 'winter', consistent with previous results (*$R^2$*=`r mod3csummary$r.squared`, *F*(`r mod3csummary$fstatistic[2]`, `r mod3csummary$fstatistic[3]`)=`r mod3csummary$fstatistic[1]`, *p*<.001) (*$R^2$*=`r mod3csummary$r.squared`, *F*(`r mod3csummary$fstatistic[2]`, `r mod3csummary$fstatistic[3]`)=`r mod3csummary$fstatistic[1]`, *p*=.002), such that participants interviewed in autumn on average have happiness scores `r abs(mod3c$coefficients[3])` points lower than the mean of those interviewed in spring, and participants interviewed in winter on average have have happiness scores `r abs(mod3c$coefficients[4])` points lower than the mean of those interviewed in spring. There is also a significant effect of health, which is not consistent with previous results (*$R^2$*=`r mod3csummary$r.squared`, *F*(`r mod3csummary$fstatistic[2]`, `r mod3csummary$fstatistic[3]`)=`r mod3csummary$fstatistic[1]`, *p*=.003).
+
+The interaction between the 'health' and 'week stopped' variables was not significant for participants who stopped the programme after week 5 (*$R^2$*=`r mod3csummary$r.squared`, *F*(`r mod3csummary$fstatistic[2]`, `r mod3csummary$fstatistic[3]`)=`r mod3csummary$fstatistic[1]`, *p*=.808), but was significant for participants who completed the programme (*$R^2$*=`r mod3csummary$r.squared`, *F*(`r mod3csummary$fstatistic[2]`, `r mod3csummary$fstatistic[3]`)=`r mod3csummary$fstatistic[1]`, *p*=.001). This indicates that the relationship between participants' happiness and health was significantly moderated by completion of the programme. A plot of the interaction can be seen below (Figure 6).
+ 
+
+```{r q3c plots, results='asis'}
+stargazer::stargazer(mod3c, header=FALSE, type='latex', dep.var.labels = "Happiness (Mean Centered)", covariate.labels = c("Summer", "Autumn", "Winter", "Stopped After Week 5", "Completed", "Health (Mean Centered)", "Stopped After Week 5:Health (Mean Centered)", "Completed:Health (Mean Centered)"))
+
+interact_plot(mod3c, pred=health_centered, modx=week_stopped_factor, partial.residuals=TRUE, centered = "none", x.label = "Health (Mean Centered)", y.label="Happiness (Mean Centered)", main.title = "Figure 6 - Happiness and Health Moderated by Week Stopped", legend.main = "Week Stopped")
+```
+
+
+## Question 3d
+We can conclude from this data that, consistent with previous results, there is a significant main effect of season such that participants interviewed in autumn and winter have significantly lower mean-centered happiness scores than participants interviewed in spring (*$R^2$*=`r mod3csummary$r.squared`, *F*(`r mod3csummary$fstatistic[2]`, `r mod3csummary$fstatistic[3]`)=`r mod3csummary$fstatistic[1]`, *p*<.001) (*$R^2$*=`r mod3csummary$r.squared`, *F*(`r mod3csummary$fstatistic[2]`, `r mod3csummary$fstatistic[3]`)=`r mod3csummary$fstatistic[1]`, *p*=.002). There is also a significant main effect of mean-centered health on happiness (*$R^2$*=`r mod3csummary$r.squared`, *F*(`r mod3csummary$fstatistic[2]`, `r mod3csummary$fstatistic[3]`)=`r mod3csummary$fstatistic[1]`, *p*=.003), however this effect was only significant in model (3c) which used the 3-level factor 'week stopped' variable rather than the binary 'week stopped' variable, therefore it is unclear whether this is a true effect. The interaction between mean centered health and week stopped was significant for the 'completed' group but not for the 'stopped after week 5' group (*$R^2$*=`r mod3csummary$r.squared`, *F*(`r mod3csummary$fstatistic[2]`, `r mod3csummary$fstatistic[3]`)=`r mod3csummary$fstatistic[1]`, *p*=.001), (*$R^2$*=`r mod3csummary$r.squared`, *F*(`r mod3csummary$fstatistic[2]`, `r mod3csummary$fstatistic[3]`)=`r mod3csummary$fstatistic[1]`, *p*=.808), indicating that it is completion of the programme which causes the interaction between health and happiness. 
+
+Overall, these findings suggest that happiness in this data is caused primarily by season, with health as a secondary cause which is moderated by completion of the Couch to 5K programme. 
+
+
+# Question 4
+Figure 7 below was created to show the average happiness ratings grouped by season and city. 
+
+```{r q4}
+completed5k <-subset(couchto5k, week_stopped_factor=="completed")
+ggplot(data=completed5k, aes(x=season, y=happiness, color=city))+geom_boxplot()+theme_apa()+ggtitle("Figure 7: Happiness by Season and City")
+```
+
+
+# Question 5
+
+## Question 5a
+```{r q5a}
+couchto5k <- couchto5k %>% 
+  mutate(
+    age_centered=scale(age, scale=FALSE),
+    accountability_centered=scale(accountability, scale=FALSE),
+    selfmot_centered=scale(selfmot, scale=FALSE)
+  )
+
+mod5a<-glm(completed~age_centered+accountability_centered+selfmot_centered+health_centered+happiness_centered+season+city, data=couchto5k, family="binomial")
+
+mod5asummary<-summary(mod5a)
+prob_dropout<-(exp(mod5asummary$coefficients[1]))/(1+(exp(mod5asummary$coefficients[1])))
+```
+A model was built to predict the likelihood of participants dropping out of the Couch to 5K programme. A new variable 'dropped out' was created for this model, consisting of two levels: 'dropped out' and 'completed'. The reference level for the model was 'completed'. Age, accountability, and self motivation were mean-centered to allow more meaningful interpretation of the model coefficients. The model indicates that the probability of dropping out for the average participant was `r prob_dropout*100`%. 
+
+## Question 5b
+Whether or not participants dropped out (binary 0 vs 1) is modelled using logistic regression, accounting for all other measured variables (mean centered: age, accountability, self motivation, health, happiness; categorical: season, city) (Table 6). The reference levels for this regression included 'dropped out' (vs 'completed'), 'spring' (vs all other seasons), and 'Edinburgh' (vs Glasgow). The results of this logistic regression suggest that the overall probability of dropping out for an individual of average age, accountability, self motivation, health, and happiness who was interviewed in spring in Edinburgh is 10% (OR=0.11, 95%CI [0.03, 0.29]).
+
+```{r q5b, results='asis'}
+stargazer::stargazer(mod3c, header=FALSE, type='latex', dep.var.labels = "Dropped Out", covariate.labels = c("Age", "Accountability", "Self Motivation", "Health", "Happiness", "Summer", "Autumn", "Winter", "City (Glasgow)"))
+```
+
+
+## Question 5c
+The following plot was created to visualise the probability of participants dropping out as a function of self motivation (Figure 8). 
+
+```{r q5c}
+couchto5k<-couchto5k %>% 
+  mutate(
+    dropped_out = factor(ifelse(week_stopped<9, "dropped out", "completed"))
+  )
+mod5c<-glm(dropped_out~selfmot, data=couchto5k, family="binomial")
+plot_model(mod5c, type="pred", axis.title=c("Self Motivation", "Predicted Probability of Dropping Out"), title = "Figure 8: Probability of Dropping Out as a Function of Self Motivation")
+```

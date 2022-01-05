@@ -1,0 +1,318 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+params:
+  examnumber: B197946
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(pander)
+library(broom)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document.
+seasons<-c('summer','spring','autumn','winter')
+cities<-c('Edinburgh','Glasgow')
+season_errors<-count(couchto5k[couchto5k$season == 'autunm',])
+couchto5k<-couchto5k %>% mutate(
+  season = ifelse(season == 'autunm','autumn',season)
+)
+couchto5k_res<-couchto5k
+couchto5k_res$missing<-NA
+couchto5k_res$missing[couchto5k_res$accountability < 0 | couchto5k_res$accountability > 35]<-"Invalid accountability"
+couchto5k_res$missing[couchto5k_res$selfmot < 0 | couchto5k_res$selfmot > 35]<-"Invalid self-motivation"
+couchto5k_res$missing[couchto5k_res$health < 0 | couchto5k_res$health > 100]<-"Invalid health"
+couchto5k_res$missing[couchto5k_res$happiness < 0 | couchto5k_res$happiness > 100]<-"Invalid happiness"
+couchto5k_res$missing[!couchto5k_res$season %in% seasons]<-"Invalid season"
+couchto5k_res$missing[!couchto5k_res$city %in% cities]<-"Invalid city"
+couchto5k_res$missing[couchto5k_res$week_stopped < 0 | couchto5k_res$week_stopped > 9]<-"Invalid week stopped"
+couchto5k_res$missing[couchto5k_res$age < 0 | couchto5k_res$age > 100]<-"Invalid age"
+cities<-c('Edinburgh','Glasgow')
+couchto5k<-na.omit(couchto5k)
+couchto5k<-couchto5k %>%
+  filter(accountability >= 0 & accountability <= 35) %>%
+  filter(selfmot >= 0 & selfmot <= 35) %>%
+  filter(health >= 0 & health <= 100) %>%
+  filter(happiness >= 0 & happiness <= 100) %>%
+  filter(season %in% seasons) %>%
+  filter(city %in% cities) %>%
+  filter(week_stopped >= 0 & week_stopped <=9) %>%
+  filter(age >= 0 & age <= 100)
+total_data<-count(couchto5k)
+Features<-c("Accountability", "Self-motivation","Health","Happiness","Season","City","Week Stopped","Age")
+Description<-c("Participant's self reported accountability","Participant's self reported sefl-motivation","Participant's self reported health","Participant's self reported health","Season the participant was interviewed in","City the participant was in","Week the participant stopped","Age of the participant")
+Ranges<-c("0-35","0-35","0-100","0-100","Summer, Winter, Fall, or Spring", "Edinburgh or Glasgow","1-9","0-100")
+data_desc<-tibble(Features,Description,Ranges)
+missing<-table(couchto5k_res$missing)
+
+```
+# Research Question
+It is, in general, believed that physical health and happiness are positively correlated. Fitness programs around the world attempt to capitalise on this, including the NHS's "Couch to 5k" program that challenges participants to increase physical fitness over the course of nine weeks, though participants are allowed to quit at any time. This fact alone yields some interesting questions, what factors cause participants to quit the program early? What sort of effects does this program have on happiness?  
+
+# Data (Question 0)
+
+## Cleaning the Data
+The data comes from an NHS program called "Couch to 5k," where participants undertook increasingly difficult fitness tasks for nine weeks. The table below shows a breakdown of the features of the data are shown in the table below.
+
+```{r table, results="asis"}
+data_desc %>% pander(caption="Table 1: Summary of data")
+```
+Data points where any of the values were missing or out of the ranges shown in table 1 were removed from the data set. This resulted in a data set of `r total_data` data points. The table below shows the reasons data was removed from the analysis.
+
+```{r table_missing, results="asis"}
+missing %>% pander(caption="Table 2: Summary of missing values")
+
+```
+`r season_errors` values were miscoded as "autunm," which were corrected back to "autumn."
+
+## Statistics on data
+
+The table below shows some statistics on the numeric data.
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+numeric_data<-tidy(subset(couchto5k,select=-c(pptID,season,city)))
+numeric_data %>% pander(caption="Table 3: Descriptive values of data")
+```
+Note that some happiness values are zero which are valid happiness values and therefore were not remove. The ranges of each feature are shown in table 1.
+
+
+
+```{r q1a}
+get_week_stopped<-function(data){
+  c(nrow(data[data$week_stopped < 5,]),
+         nrow(data[data$week_stopped >= 5 & 
+                            data$week_stopped < 9,]),
+         nrow(data[data$week_stopped == 9,]))
+}
+test<-c(45,10,45)
+check<-get_week_stopped(couchto5k)
+# p should be >= 0.05
+result<-chisq.test(tibble(test,check))
+```
+# Checking Distributions of Data (Question 1)
+## (1a)
+It is known that `r test[1]`% of dropped out before the halfway point (week 5) of similar programs nationwide, `r test[2]`% dropped out after the halfway point and `r test[3]`% of participants completed the program. Ideally, the distribution in the data discussed in this paper should be similar to the known distribution. A $\chi^2$ test shows a $\chi^2$ value of `r result$statistic` and a p-value of `r result$p.value`. $p \geq 0.05$, which implies that these distributions are not statistically significantly different enough to be considered different, and therefore most likely come from the same distribution. 
+
+
+```{r q1b}
+by_city<-split(couchto5k,couchto5k$city)
+ed_data<-get_week_stopped(by_city$Edinburgh)
+glas_data<-get_week_stopped(by_city$Glasgow)
+ed_v_glas<-chisq.test(tibble(ed_data,glas_data))
+```
+## (1b)
+Because the data is also split by city, it would be wise to check if the distribution matches between the two cities. A $\chi^2$ test can shows a $\chi^2$ value of `r ed_v_glas$statistic` and a p-value of `r ed_v_glas$p.value`. $p \geq 0.05$ which implies that these distributions are not statistically significantly different, and therefore most likely come from the same distribution.
+
+```{r q1c}
+age_by_city<-t.test(x=by_city$Edinburgh$age,y=by_city$Glasgow$age)
+```
+## (1c)
+It is also informative to check whether the ages differ significantly by city. This can be done with a t-test. The test shows a t-value of `r age_by_city$statistic` with a p-value of `r age_by_city$p.value`. This result is statistically significant, implying that the average ages between these two cities is different. Edinburgh had an average age of `r age_by_city$estimate[1]` and Glasgow had an average age of `r age_by_city$estimate[2]`.
+
+# Baseline Model (Question 2)
+
+## Effects of Season on Happiness (2a)
+
+```{r q2a}
+mod<-lm(scale(happiness) ~ season, data=couchto5k)
+a_mod<-anova(mod)
+```
+To test the effects of the season on happiness, a linear model was constructed with each season as a binary predictor variable, which could either be true or false. In this model, the value of happiness has been scaled such that it now represents the number of standard deviations away from the total mean happiness. The results from the model are shown in a table below.
+
+```{r table_season}
+tidy(summary(mod)) %>% pander(caption="Table 4: Linear model of Happiness predicted by Season")
+```
+The results show that no individual season has a statistically significant coefficient. An ANOVA analysis on this data shows that the F-statistic for season is `r a_mod$'F value'[1]` with a p-value of `r a_mod$'Pr(>F)'[1]`, which implies that adding season to this model increases its predictive power by a statistically significant amount. The coefficients in table 4 show that winter had the lowest average happiness with autumn as a close second. Spring had the highest mean happiness and, along with summer, were the only two seasons to have a mean happiness above the total mean. Though no season had effects that were statistically significant, coefficients of all seasons were left in the model because the aforementioned ANOVA analysis shows that adding season as a variable did improve the model to a statistically significant degree.
+
+## Effects of Age on Happiness (2b)
+
+```{r q2b}
+mod_age<-update(mod,.~.+scale(age) + season:scale(age))
+a_age<-anova(mod_age)
+mod<-update(mod,.~. + season:scale(age))
+```
+To show the affects of age on happiness, while still accounting for the affect by season, the first test to do is to add both age and its interactions with seasons to see if this improves the model. Note that age has been scaled in a similar manner to happiness. The ANOVA table of this analysis is shown below.
+
+```{r anova_age}
+tidy(a_age) %>% pander(caption="Table 5: ANOVA for season and age model (previously determined effects not shown)")
+```
+The table above shows that, though age alone does not increase the effectiveness of the model ($p > 0.05$), the interaction between season and age does. Thus, it is desirable to add this effect to the model. The table below shows the new model, with only the interaction of age and season shown.
+
+```{r age_mod}
+tidy(summary(mod)) %>% pander(caption="Table 6: Results of linear model of season and the interaction of season and age")
+```
+The table above shows that participants interviewed in the spring got progressively happier the older they were, and this result is statistically significant ($p \leq 0.05$). The opposite is true in the summer, older participants in the summer were less happy than younger participants. Autumn shows a similar trend to spring in that older participants were happier. In the winter, younger participants tended to be happier than older ones, though the result for winter, autumn, and spring was not statistically significant. These effects can be visualized in the graph below.
+
+```{r}
+couchto5k %>% ggplot(aes(x=age,y=happiness)) + geom_point() + facet_wrap(~season) + geom_smooth(method='lm') + ggtitle("Happiness vs. Age by Season")
+```
+
+
+## Choosing a Baseline (2c)
+The baseline model chosen for the remainder of this paper is a linear model that predicts happiness using season and the interaction between season and age. Both of these predictors increase the effectiveness of the model to a statistically significant degree. It is therefore important to account for effects that these features might have when attempting to understand the effects of predictors that have been further added to the model. Additionally, age is not used as a predictor because it did not have statistically significant effects on the model. Including age may add additional noise, which is undesirable when testing the effects of specific predictors further on in this report.
+
+# Happiness and Health (Question 3)
+
+## The Effect of Program Completion on Happiness (3a)
+
+```{r q3a}
+couchto5k<-couchto5k %>% mutate(
+  completed = week_stopped==9
+)
+mod_c<-update(mod,.~.*completed)
+a_comp<-anova(mod_c)
+mod<-(update(mod,.~. + completed))
+fit_a<-summary(mod)
+```
+To test the effect of program completion on happiness, the model can be update to include the effects of completion and the effects of the interaction between completion and every other variable within the model. The ANOVA analysis of the model is shown below.
+
+```{r}
+tidy(a_comp) %>% pander(caption="Table 7: ANOVA For the affects of program completion on the model (previously discussed predictors not shown)")
+```
+The table above shows that program completion does increase the effectiveness of the model to a statistically significant degree. Program completion, as a predictor had a coefficient of `r fit_a$coefficients[5,1]`, an error of `r fit_a$coefficients[5,2]`, a t-value of `r fit_a$coefficients[5,3]`, and a p-value of `r fit_a$coefficients[5,4]`. Because $p > 0.05$, we cannot conclude that program completion has a statistically significant effect, however, the coefficient implies that participants who completed the program were happier. Despite the lack of a significant effect on happiness, this variable will be kept in further models, because it increased the effectiveness of the model to a statistically significant degree.
+
+## The Effect of Health on Happiness (3b)
+
+```{r q3b}
+mod_health<-update(mod,.~.*scale(health))
+a_health<-anova(mod_health)
+mod<-update(mod,.~. + season:scale(health) + completed:scale(health))
+fit<-summary(mod)
+```
+The ANOVA analysis for the model after adding health and its interactions with the rest of the variables is shown below.
+
+```{r}
+tidy(a_health) %>% pander(caption="Table 8: ANOVA for the effects of happiness (previously discussed predictors not shown)")
+```
+The table above shows that health's interaction with season and its interaction with program completion increase the effectiveness of the model to a statistically significant degree. These predictors have the coefficients shown below.
+
+```{r}
+tidy(summary(mod)) %>% pander(caption="Table 8: Predictors for the model (previously discussed predictors not shown)")
+```
+
+As shown above, for participants who completed the program, the healthier they felt they were, the happier they ended up. Additionally, participants during spring and winter became less happy the healthier they felt, though this result was not statistically significant in the winter. Participants in autumn and summer, however, were happier the healthier they felt, though neither of those results were statistically significant. Because these additional predictors made the model more effective, to a statistically significant degree, they will be included in the model for the remainder of the analysis. Below is a graph visualizing the effect of health on happiness.
+
+```{r}
+couchto5k<-couchto5k %>% mutate(
+  completed = completed == 1
+)
+couchto5k %>% ggplot(aes(x = health,y=happiness,color=completed)) + geom_point() + facet_wrap(~season) + geom_smooth(method='lm') + ggtitle("Happiness vs. Health by season")
+```
+
+
+
+## Interaction Between Health and Time in the Program (3c)
+
+```{r q3c}
+mod_stop<-update(mod,.~. + scale(health):week_stopped - completed - completed:scale(health))
+fit_stop<-summary(mod_stop)
+a_stop<-anova(mod_stop)
+```
+
+To test the hypothesis participants who stayed in the program for longer may be more affected by the health metric, an interaction between the health metric and the week a participant stopped was added to the model. However, the week a participant stopped is correlated with program completion, in fact program completion is directly determined by the week a person stopped. Because of this, any predictor within this model that involves program completion has been removed from this analysis. The ANOVA analysis of the model shows that the aforementioned interaction has an F-value of `r a_stop$'F value'[4]`, and a p-value of `r a_stop$'Pr(>F)'[4]`, which shows that this value improves the model to a statistically significant degree. Additionally this predictor had a coefficient of `r fit_stop$coefficients[13,1]`, an error of `r fit_stop$coefficients[13,2]`, a t-value of `r fit_stop$coefficients[13,3]`, and a p-value of `r fit_stop$coefficients[13,4]`, which implies that the interaction between health and the week a participant stopped does significantly affect happiness. Because the coefficient is positive, the hypothesis is confirmed that participants who stayed in the program longer were indeed more affected by the health metric.
+
+## Effects on Happiness (3d)
+
+Using the model that includes program completion, but does not include the interaction between the health metric and the week a person stopped (for reasons outlined above), season, program completion, the interaction of age and season, the interaction of health and season, and the interaction between health and program completion all had significant effects on the effectiveness of the model, as shown below.
+
+```{r}
+tidy(anova(mod)) %>% pander(caption="Table 9: ANOVA analysis for the final model") 
+```
+
+Additionally, this model had an $R^2$ value of `r fit$r.squared`, an adjusted $R^2$ value of `r fit$adj.r.squared`, and an F-statistic of `r fit$fstatistic[1]`, which had a p-value of `r pf(fit$fstatistic[1],fit$fstatistic[2],fit$fstatistic[3],lower.tail=FALSE)`. In general, participants were overall less happy in the autumn and winter than in the spring and summer, however, across all seasons, older participants were generally happier than younger participants, though the degree to which this was true varied by season. Overall, participants who completed the program were happier than those who did not, and healthier participants who completed the program reported being happier than less healthy participants who completed the program. In autumn and summer healthier participants felt happier than less healthy ones, however, the opposite is true for participants in spring and winter. The coefficients for the model as a whole are shown below.
+
+```{r}
+tidy(fit) %>% pander(caption="Table 10: Coefficients for the final model")
+```
+
+No influential data points were found in the data, as shown in the graph below. 
+
+```{r}
+mod%>%plot(which=4)
+```
+
+The model also meets the assumptions of a linear model well enough to be considered valid. The residuals are approximately normally distributed and the variance appears to be homogenous across all values, as shown in figures _ and _.
+
+```{r}
+mod%>%plot(which=3)
+```
+
+```{r}
+mod%>%plot(which=2)
+```
+
+
+# Visualizing Happiness by Season and City (Question 4)
+
+```{r q4}
+couchto5k[couchto5k$completed == TRUE,] %>% ggplot(aes(y=happiness,x=season,fill=season)) + geom_bar(stat='summary', fun='mean') + scale_fill_manual(values=c("coral4","springgreen4","orchid3","darkslategray3")) +  facet_wrap(~city) + scale_x_discrete(labels=NULL,breaks=NULL) + xlab("") + ggtitle("Average Happiness by City and Season")
+```
+
+
+# Predicting Drop-outs (Question 5)
+
+## Model Description and Effects (5a and 5b)
+
+```{r q5a}
+couchto5k <- couchto5k %>% mutate(
+  completed = ifelse(completed,1,0)
+)
+glm_mod<-glm(completed ~ (I(season=='spring') + scale(selfmot) + scale(health)), family=binomial, data=couchto5k)
+glm_anova<-anova(glm_mod, test="Chisq")
+```
+
+Using a generalized linear model, and considering all variables, it was found that participants being interviewed in the spring, self-motivation, and health had significant effects on the model, as determined by a $\chi^2$ test.
+
+```{r q5b}
+tidy(glm_anova)%>%pander(caption="Table 11: ANOVA analysis on the generalized linear model")
+```
+
+Participants were less likely to complete the program in the spring than in other seasons. Better health and better self-motivation both increase the likelihood that a participant will complete the program. Note that the effect of health was not shown to be statistically significant, however, because health improved the model to a statistically significant degree, it remained as a predictor.
+
+```{r}
+summary(glm_mod) %>% pander(caption="Table 12: Predictors for likelihood of program completion")
+```
+
+Note that program completion was coded as 1, while dropping out was coded as 0.
+
+## Probability of Completion by Self-Motivation (5c)
+
+```{r q5c}
+couchto5k<-couchto5k %>% mutate(
+  completed = ifelse(completed,1,0)
+)
+couchto5k %>% ggplot(aes(selfmot,completed)) + geom_smooth(method='glm',method.args=list(family=binomial)) + geom_jitter(width=0,height=0.2,size=3,alpha=0.3) + ylab("Probability of program completion") + xlab("Self-motivation") + ggtitle("Probability of Program Completion vs Self-motivation")
+```
+
+
+
+
+
+
+
+
+
+
+

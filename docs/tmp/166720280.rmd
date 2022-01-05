@@ -1,0 +1,418 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B200848
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(sjPlot)
+library(knitr)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r, message=FALSE}
+
+summary(couchto5k) %>% kable()
+
+```
+
+A summarized table of the Couch to 5K data provided has been shown above. A quick study of numbers reveal the following:
+
+- The maximum recorded age is `r max(couchto5k$age)` years. This can be attributed to a data collection error, if not this value is perhaps an outlier (IQR + 3 x Standard Deviation =  `r IQR(couchto5k$age)+3*sd(couchto5k$age)` which is significantly lesser than `r max(couchto5k$age)`, therefore `r max(couchto5k$age)` is an outlier).
+
+- The minimum value recorded for the paramter **selfmot** = `r min(couchto5k$selfmot)`, an impossible value (selfmot represents *psychometric measure of self-motivation (Sum of 5 questions, each scored 1-7)*).
+
+- No. of distinct values of **season** recorded: `r levels(as.factor(couchto5k$season))`
+
+- Lastly, the maximum recorded value for **week_stopped** is `r max(couchto5k$week_stopped)`, another impossible value (Program only runs for 9 weeks).
+
+
+
+```{r cleaning, include=TRUE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+
+couchto5k <- na.omit(couchto5k %>% mutate(age = ifelse(age<(IQR(age)+3*sd(age)),age,NA), season = ifelse(season=="autunm","autumn",season), week_stopped = ifelse(week_stopped>9,NA,week_stopped))) %>% mutate(selfmot = ifelse(selfmot<0,NA,selfmot))
+
+
+```
+
+
+*Data Cleaning: All observations with age > IQR(age) + 3xStandard Deviation have been removed. Typos have been corrected for the season column. Since most of the analysis is based on the "week_stopped" column, impossible values have been removed. For the "selfmot" column impossible values have been converted to NA.*
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+
+par(mfrow=c(2,3))
+boxplot(couchto5k$age,main="AGE")
+boxplot(couchto5k$accountability, main="Accountability")
+boxplot(couchto5k$selfmot, main="Selfmot")
+boxplot(couchto5k$health, main="Health")
+boxplot(couchto5k$happiness, main="Happiness")
+plot(table(couchto5k$week_stopped),main = "Count vs Week no.", ylab = "No. of quits", xlab = "Week no.")
+
+
+data.frame(Variables = c("age","accountability","selfmot","health","happiness"), Mean = unlist(lapply(list(couchto5k$age,couchto5k$accountability,couchto5k$selfmot,couchto5k$health,couchto5k$happiness), mean, na.rm=T)),S.D. = unlist(lapply(list(couchto5k$age,couchto5k$accountability,couchto5k$selfmot,couchto5k$health,couchto5k$happiness), sd, na.rm=T)) ) %>% kable()
+
+
+```
+
+Analysing the plots: 
+
+- The only boxplots which show outliers are ones for **Accountability** and **Selfmot**. A decision has been made to not remove these for the remainder of the analysis, however, a comparison will be presented at the end of the report for the different analysis with and without the outliers.
+
+- The boxplots for **age** and **happiness** show that these variables have a very high variance and this is also confirmed by the values in Table [----]. 
+
+- Lastly, it's observed that the **week_stopped** variable is heavily skewed with most participants
+continuing till week 9. In addition, week 1 to week 4 seems like a period where a lot of partcipants start to leave.
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a, message=FALSE}
+
+couchto5k <- couchto5k %>% mutate(
+  
+  split_5_bins = cut(week_stopped,breaks = c(0,5,8,9))
+)
+
+
+CSGOF<- chisq.test(table(couchto5k$split_5_bins),c(.45,.10,1-(.45+.10)))
+
+
+```
+
+To confirm the hypotheses that **"45% of participants abandoned the programme before the halfway point in week 5, and a further 10% gave up before the end of the programme"**:- 
+
+- First, the observations have been put into the following categories: `r levels(couchto5k$split_5_bins)` depicting exiting in weeks 1 to 5, exiting in weeks 5 to 8 and completing the program respectively.
+
+- Then, a Chi-Squared Goodness of Fit test has been performed on the variable storing the above mentioned categories. 
+
+Obtained p value for the test: `r CSGOF$p.value`. We're considering the usual value of alpha i.e., alpha = 0.05 and hence, given the p-value obtained **it can be confirmed that the data conforms with the statistics from the previous survey.**
+
+
+## Question 1b
+
+```{r q1b, message=FALSE}
+
+table(couchto5k$split_5_bins,couchto5k$city) %>% kable()
+
+CSTOI <- chisq.test(table(couchto5k$split_5_bins,couchto5k$city))
+
+```
+
+Examining whether the patterns of attrition rates differ by city:-
+
+To test the following null hypothesis: **"Being a participant in a different city does not give info about tendency to quit the program or continue on."** a Chi-Squared Test of independence has been performed using Table [---]. The obtained p-value was `r CSTOI$p.value` (chi-squared value: `r CSTOI$statistic`) which is fairly high than alpha (0.05) and hence, the null hypothesis is accepted as the truer one. 
+
+
+
+## Question 1c
+
+```{r q1c, message=FALSE}
+
+
+par(mfrow=c(1,2))
+plot(density(couchto5k$age), xlab = "AGE", main= "Density Plot (AGE)")
+qqnorm(couchto5k$age, main = "Normal Q-Q Plot (AGE)")
+
+TT <- t.test(couchto5k$age~couchto5k$city)
+
+
+```
+
+Examining the following (alternative) hypothesis: The true difference in average age between participants from Edinburgh and Glasgow is not equal to 0. 
+
+A two-sample t-test is required to test the mentioned hypothesis. Prior to that, the data has to be checked for normality. Figure [--] shows the density plots and the Q-Q plot for the variable "age". The Q-Q plot seems to give a better indication of normality than the density plot and it can be concluded that the variable is fairly normally distributed with not too concerning deviations. 
+
+The p-value obtained from the t-test was `r TT$p.value` (t-statistic: `r TT$statistic`) giving a pretty strong indication that the alternative hypothesis is false and should be rejected. The mean age of the "Edinburgh" group was `r  TT$estimate["mean in group Edinburgh"]` and of the "Glasgow" group was `r  TT$estimate["mean in group Glasgow"]`.
+
+
+# Question 2
+
+## Question 2a
+
+```{r q2a, message=FALSE}
+ggplot(data = couchto5k,aes(x=season,y=happiness))+
+ geom_boxplot()
+
+###---------------###
+
+# summer is the reference level
+couchto5k$season <- factor(couchto5k$season,levels = c("summer","autumn","winter","spring"))
+
+hap_mod_s <- lm(happiness~season,data=couchto5k)
+
+# autumn is the reference level
+couchto5k$season <- factor(couchto5k$season,levels = c("autumn","winter","spring","summer"))
+
+hap_mod_a <- lm(happiness~season,data=couchto5k)
+
+# spring is the reference level
+couchto5k$season <- factor(couchto5k$season,levels = c("spring","summer","autumn","winter"))
+
+hap_mod_spr<- lm(happiness~season,data=couchto5k)
+
+#winter is the reference level 
+couchto5k$season <- factor(couchto5k$season,levels = c("winter","spring","summer","autumn"))
+
+hap_mod_w <- lm(happiness~season,data=couchto5k)
+
+
+#comparing various ref levels
+summary(hap_mod_s)$coefficients %>% kable(digits = c(3,3,3,99))
+summary(hap_mod_a)$coefficients %>% kable(digits = c(3,3,3,99))
+summary(hap_mod_spr)$coefficients %>% kable(digits = c(3,3,3,99))
+summary(hap_mod_w)$coefficients %>% kable(digits = c(3,3,3,99))
+
+hap_mod <- hap_mod_w
+
+par(mfrow=c(2,2))
+plot(hap_mod,which=1)
+plot(hap_mod,which=2)
+plot(hap_mod,which=3)
+plot(hap_mod,which=4)
+
+```
+
+The box plots in Figure [---] show how happiness value is spread for the different seasons.
+
+Different choices of level representation lead to difference in significance of the coefficients of change from the reference season to another season. It was observed that when "Winter" is chosen as the reference season, the no. of coefficients (of change) which were significant were 2 (change to "Spring" and to "Summer"). Considering this fact, the analysis below has been done with "Winter" as the reference level unless mentioned otherwise (see Question 5).
+
+Once we've settled on "Winter" as the reference level, we observe that the season variable helps explain `r 100*summary(hap_mod)$r.squared`% of the variance in the data (multiple r-squared value: `r summary(hap_mod)$r.squared`) and the F-statistic (`r summary(hap_mod)$fstatistic["value"]`) is significant, telling us that it's better to have season as a predictor than not to have it. 
+
+The coefficients tell us that:
+
+- The average happiness score of a person participating in the campaign in Winter is 26.10
+- changing participation from winter to spring adds 27.35 points to the winter score.
+- changing participation from winter to summer adds 30.90 points to the winter score.
+- changing participation from winter to summer adds 12.55 points to the winter score (insignificant, p-value of t-statistic = 0.211).
+
+Plots in Fig[---], check assumptions for the residuals:
+
+- Residuals vs Fitted values graph show that the mean of the residuals is strongly 0 throughout, comnfirming linearity.
+- The Normal Q-Q plot shows some deviation from normality at the extreme values but for the most part confirm the assumption of normality.
+- The scale-location plot depicts that there is no systematic variation in distribution of the residuals through the fitted values
+- Cook's distance plot doesn't seem to point at any significant outliers in the data. 
+
+## Question 2b
+
+```{r q2b, message=FALSE}
+
+hap_mod_w_age <- lm(happiness~season+I(age-mean(age)),data=couchto5k)
+
+summary(hap_mod_w_age)$coefficients %>% kable(digits = c(99,99,99,99)) 
+
+```
+
+Further addition of age as a predictor in the linear model: It is observed that for a participant (participating in any of the seasons) being an year older leads to decrease in happiness score by `r abs(summary(hap_mod_w_age)$coefficients["I(age - mean(age))","Estimate"])`, however the p-value for the t-test: `r abs(summary(hap_mod_w_age)$coefficients["I(age - mean(age))","Pr(>|t|)"])` depicts the insignificance of the "age" variable as a predictor. Furthermore, the adjusted r-squared value of the model has gone down from `r summary(hap_mod_w)$adj.r.squared` in the previous model to `r summary(hap_mod_w_age)$adj.r.squared` in the model with additional predictor "age" signalling the problem with adding age to the model. It is hence, safe to conclude that **happiness is not affected by age in this set of observations.**
+
+
+## Question 2c
+
+```{r q2c, message=FALSE}
+
+hap_mod_szn_selfmot <- lm(happiness~season+scale(selfmot),data=couchto5k)
+
+anova(hap_mod_szn_selfmot) %>% kable()
+
+hap_mod_selfmot_szn <- lm(happiness~scale(selfmot)+season,data=couchto5k)
+
+
+anova(hap_mod_selfmot_szn) %>% kable()
+
+# par(mfrow=c(2,2))
+# plot(hap_mod_selfmot_szn,which=1)
+# plot(hap_mod_selfmot_szn,which=2)
+# plot(hap_mod_selfmot_szn,which=3)
+# plot(hap_mod_selfmot_szn,which=4)
+
+```
+
+The baseline model chosen has selfmot (z-normalized) and seasons as predictors of happiness. To support the choice to add selfmot into the model, following reasons are given: Addition of the selfmot predictor has allowed for the explanation of `r 100*summary(hap_mod_selfmot_szn)$r.squared`% of the variance in the data (more than that observed previously: `r 100*summary(hap_mod)$r.squared`% ), the F-statistic to be higher (now: `r summary(hap_mod_selfmot_szn)$fstatistic["value"]`, previously: `r summary(hap_mod)$fstatistic["value"]`). 
+
+Table[--] and Table[--] show ANOVAs for the model with season followed by selfmot as predictors and vice-versa respectively. As observed, in the latter case the F value for the selfmot predictor is higher than in the former case (`r anova(hap_mod_selfmot_szn)["scale(selfmot)","F value"]` vs `r anova(hap_mod_szn_selfmot)["scale(selfmot)","F value"]`) and since a psychological variable explaining more variance (even though very slightly) would be preferred, the latter is chosen as the model to build upon moving forward.
+
+Lastly, it should be mentioned that while checking the assumptions for the residuals, no concerning deviation was seen, and hence, it is safe to proceed with this baseline.
+
+*Inference from the baseline now: The intercept coefficient is: `r summary(hap_mod_selfmot_szn)$coefficients["(Intercept)","Estimate"]` which represents the average happiness score of a person participating in winters and with no deviation from mean in the selfmot score. Also, for participants in any of the season, a change of one standard deviation from the mean in the selfmot score results in an increase of 11.16 points in the happiness score.* 
+
+# Question 3
+
+## Question 3a
+
+```{r q3a, message=FALSE}
+
+couchto5k <- couchto5k %>% mutate(prgcompleted = as.factor(ifelse(week_stopped == 9,"Yes","No")))
+
+#contrasts(couchto5k$prgcompleted)
+
+hap_mod <- lm(happiness~prgcompleted+scale(selfmot)+season,data=couchto5k)
+
+#summary(hap_mod)
+
+summary(hap_mod)$coefficients %>% kable(digits = 5)
+
+hap_mod <- lm(happiness~scale(selfmot)+season+prgcompleted,data=couchto5k)
+
+```
+
+As is seen in the model summary of the coefficients in Table[---], a person not completing the program in winter and with 0 standard deviations from mean selfmot score has a happiness score of `r summary(hap_mod)$coefficients["(Intercept)","Estimate"]`. Moving from not completed to having completed the program has an effect, but an insignificant one (p-value: `r summary(hap_mod)$coefficients["prgcompletedYes","Pr(>|t|)"]`), of increasing the happiness score by about `r summary(hap_mod)$coefficients["prgcompletedYes","Estimate"]` (this increase applies for all seasons while keeping change in slefmot score constant)
+
+Moving forward, the effects on happiness of whether or not the program was completed have been included. Although insignificant, they don't result in a heavy negative effect to the adjusted r squared value, rather a minuscule increase is seen. It should be mentioned however the order of insertion of the predictors has been switched to have significant predictors prior to insignificant ones i.e., `happiness ~ scale(selfmot)+season+prgcompleted` where `prgcompleted` has two levels `Yes` and `No` depicting completion and non-completion respectively.
+
+NOTE: Residuals conform to the assumptions.
+
+## Question 3b
+
+```{r q3b, message=FALSE}
+
+hap_mod <- lm(happiness~+scale(selfmot)+season+I(health-mean(health))+prgcompleted,data=couchto5k)
+
+anova(hap_mod)["F value"] %>% kable()
+
+```
+
+Before proceeding it was noted that the variables "health" and "selfmot" had a low correlation of `r with(na.omit(couchto5k),cor(health,selfmot))`. Change by a single unit of health score has an effect of decreasing happiness score by `r abs(summary(hap_mod)$coefficients["I(health - mean(health))","Estimate"])` (insignificant as seen from the p value: `r summary(hap_mod)$coefficients["I(health - mean(health))","Pr(>|t|)"]`). The intercept now represents the happiness score of a person with mean health and no deviation from mean in selfmot score, quitting the race in winter (equals: `r summary(hap_mod)$coefficients["(Intercept)","Estimate"]`)
+
+## Question 3c
+
+```{r q3c, message=FALSE}
+
+hap_mod <- lm(happiness~scale(selfmot)+season+I(health-mean(health))+I(health-mean(health)):prgcompleted+prgcompleted,data=couchto5k)
+
+summary(hap_mod)$coefficients %>% kable(digits = 5)
+
+```
+
+Testing the following Hypothesis : **"the effects of good health are amplified by the feeling of acting healthily, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier."**
+
+Since we are building up on the model, "getting further along" in the program has been approximated by "completing" the program and "stopped earlier" by "didn't complete". Hence, this analysis will give a general idea instead of a concrete proof for the hypothesis stated.
+
+The model coefficient summary does in fact confirm the hypothesis. For a person not acting healthy (i.e. not completing the program), a unit change of health decreases the happiness score by `r abs(summary(hap_mod)$coefficients["I(health - mean(health))","Estimate"])` points whereas for a person acting healthily, a unit change in health score increases the happiness score by `r abs(summary(hap_mod)$coefficients["I(health - mean(health)):prgcompletedYes","Estimate"])` points.
+
+NOTE: Residuals conform to the assumptions.
+
+## Question 3d
+
+
+```{r figure_Q3d, message=FALSE}
+
+par(mfrow=c(2,2))
+plot_model(hap_mod,type = "pred", terms = c("health","selfmot[5,15.2,24]","prgcompleted","season[winter]"), ci.lvl = NA) + labs(title = "Predicted values of Happiness (winter)") + ylim(0,100)
+plot_model(hap_mod,type = "pred", terms = c("health","selfmot[5,15.2,24]","prgcompleted","season[spring]"), ci.lvl = NA) + labs(title = "Predicted values of Happiness (spring)")  + ylim(0,100)
+plot_model(hap_mod,type = "pred", terms = c("health","selfmot[5,15.2,24]","prgcompleted","season[summer]"), ci.lvl = NA) + labs(title = "Predicted values of Happiness (sunmer)")  + ylim(0,100)
+plot_model(hap_mod,type = "pred", terms = c("health","selfmot[5,15.2,24]","prgcompleted","season[autumn]"), ci.lvl = NA) + labs(title = "Predicted values of Happiness (autumn)")  + ylim(0,100)
+
+```
+
+
+Figure[--] shows effects of the various predictors on the happiness score. The plots have been categorized for seasons which have further sub-categories of "Yes" depicting program completion and "No" depicting "dropping out". The regression lines shown on each plot represent variation with change in selfmot score (MIN: `r with(na.omit(couchto5k),min(selfmot))`, MEAN: `r with(na.omit(couchto5k),mean(selfmot))`, MAX: `r with(na.omit(couchto5k),max(selfmot))`). The health variable has been mean-centered, therefore, the 0 val on x axis represents mean health score(`r with(na.omit(couchto5k),mean(health))`).
+
+To summarize, for participants completing the program the effect of increasing health score is seen to correspond with increase in happiness score. In contrast, for participants dropping out, increasing health score is seen to correspond with decreasing happiness score. It is also observed that Happiness score for a person with a higher selfmot score is higher. Finally, on average the happiness score for a participant participating in spring is the highest and for a participant participating in winter is the lowest.
+ 
+
+# Question 4
+
+```{r q4}
+
+couchto5kcompleted <- couchto5k %>% filter(prgcompleted=="Yes")
+
+ggplot(data=couchto5kcompleted,aes(x=season,y=happiness))+
+  stat_summary_bin(geom="bar",fun="mean")+
+  facet_wrap(vars(city),labeller = label_both)+
+  labs(x="Season",y="Happiness score (0-100)",
+       title = "Average, categorized by seasons and cities ")+
+  scale_y_continuous(breaks=seq(0,100,10),limits = c(0,100))+
+  theme_bw()
+
+```
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+
+couchto5k$prgcompleted <- factor(couchto5k$prgcompleted,levels = c("Yes","No"))
+
+# contrasts(couchto5k$prgcompleted)
+
+couchto5k$season <- factor(couchto5k$season,levels = c("spring","summer","autumn","winter"))
+
+
+#baseline
+quitting_mod <- glm(prgcompleted~I(age-mean(age))+season,data=couchto5k,family = "binomial")
+summary(quitting_mod)$coefficients %>% kable(digits = c(10,10,10,10))
+
+#actual
+quitting_mod <- glm(prgcompleted~selfmot+accountability+age+season,data=couchto5k,family = "binomial")
+
+summary(quitting_mod)
+
+anova(quitting_mod) %>% kable()
+
+#plot_model(quitting_mod, type = "pred", terms = c("age","season"))
+
+```
+NOTE: The contrast levels for seasons have been changed so as to have "Spring" as the reference (chosen because change (model coefficients) from "Spring" to the other seasons was more significant)
+
+To predict the likelihood of dropping out (at all): The baseline considered, includes age and season as predictors. The effects of the predictors have been summarized in Table[--]. The odds of a person with mean age (`r with(na.omit(couchto5k),mean(age))`) dropping out in Spring are `r exp(coefficients(quitting_mod))["(Intercept)"]`, with increase in age by a year the odds of quitting go down by a factor of `r exp(coefficients(quitting_mod)["I(age - mean(age))"])`. Changing participation from spring to summer has an effect of decreasing the odds of quitting by `r exp(coefficients(quitting_mod)["seasonsummer"])` ,from spring to autumn by `r exp(coefficients(quitting_mod)["seasonautumn"])` and from spring to winter by `r exp(coefficients(quitting_mod)["seasonwinter"])`.
+
+To build upon the baseline, the psychometric variables of interest to the researchers have been added. So, the predicted variable "prgcompleted" is not predicted by selfmot + accountability + age + season. The order was chosen as the effect of selfmot is much more significant (p-value: `r summary(quitting_mod)$coefficients["selfmot","Pr(>|z|)"]`) than that of accountability, with increase by a point of selfmot corresponding to a decrease in odds of quitting by a factor `r exp(coefficients(quitting_mod)["selfmot"])` of . In fact, the effect of accountability is insignificant towards predicting dropping out(p-value: `r summary(quitting_mod)$coefficients["accountability","Pr(>|z|)"]`). 
+
+Table[--] shows the result of ANOVA and helps us check "importance" of the predictors in the model. We see that selfmot has a likelihood of `r anova(quitting_mod)["selfmot","Deviance"]` over the null model (hence, improving over it). It is observed that the "season" variable has a likelihood of `r anova(quitting_mod)["season","Deviance"]` over the model including selfmot, accountability and age as predictors (making it the most important predictor in the model). Overal residual of the model is seen to be `r anova(quitting_mod)["season","Resid. Dev"]`. 
+
+
+## Question 5b
+
+```{r q5b}
+
+plot_model(quitting_mod, type = "pred", terms = c("selfmot","age","season"))
+
+```
+
+Figure[--] summarizes the effects of the various predictors on probability of dropping out. The three curves correspond mean age - S.D.(`r with(na.omit(couchto5k),mean(age)-sd(age))`), mean age(`r with(na.omit(couchto5k),mean(age))`) and mean age + S.D.(`r with(na.omit(couchto5k),mean(age)+sd(age))`) To put briefly, increasing selfmot score corresponds to decrease in probability of dropping out, decrease in participant age corresponds to increase in probability of dropping out and overall high probabiliy of dropping out is seen in the spring season and lowest is seen in autumn.
+
+## Question 5c
+
+```{r q5c}
+
+quitting_mod <- glm(prgcompleted~selfmot,data=couchto5k,family = "binomial")
+
+plot_model(quitting_mod, type = "pred",
+           terms=c("selfmot"))
+
+```
+
+
+
+
+
+
+
+
+
+

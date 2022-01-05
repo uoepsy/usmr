@@ -1,0 +1,317 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+params:
+  examnumber: B195629
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(kableExtra)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+couchto5k <-
+  couchto5k %>%
+    mutate(
+      age = ifelse(age>=100, age-100, age),
+      selfmot = ifelse(selfmot==-99, NA, selfmot),
+      season = ifelse(season=="autunm", "autumn", season),
+      week_stopped = ifelse(week_stopped==12, NA, week_stopped)
+    )
+
+```
+The dataset is mock data of 139 individuals who participated in the Couch to 5K programme.
+
+age is a numerical value, between 18 and 60. Two values were over 125 making them likely impossible as the oldest independently verified person was Jeanna Calment who lived to 122 (also no other values were over 60). This suggested a mistyped 1 at the start of the value, so I adjusted their age by minusing 100. In the below probability density and box plot (Plot 1), we can see that the values are quite evenly distributed between 18 and 60, with the median age being 39.  
+
+accountability is the sum of 5 scores between 1-7. There appeared to be no impossible values in the data. In the below probability density and box plot (Plot 2) we can see a normal distribution.  
+
+selfmot is the sum of 5 scores between 1-7. Two data points were impossible, being -99, so I set them to NA. In the below probability density and box plot (Plot 3) we can see a normal distribution.  
+
+health is a numerical value between 0-100. There appeared to be no impossible values. In the below probability density and box plot (Plot 4) we can see a normal distribution.   
+
+happiness is a numerical value between 0-100. There appeared to be no impossible values. In the below probability density and box plot (Plot 5) we can see there is quite an even distribution, but a lot of values are 0 or 100.
+
+season contains 4 options, 'spring', 'summer', 'autumn' and 'winter'. A few values were misspelled as 'autunm' so I changed them to 'autumn'. 60% of the values are 'spring', 26% are 'summer', 9% are 'winter' and 5% are 'autumn'.  
+
+city is a binary option between 'Edinburgh' and 'Glasgow'. There appeared to be no impossible values. Of the 139 values 90 are 'Edinburgh' and 49 'Glasgow'.  
+
+week_stopped is a numerical value between 1-9, signifying when the participant stopped the programme. There was an impossible value of 12 which I set to NA as the value could mean to be 1, 2 or 9 and I was unable to tell which.
+
+```{r descriptives}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# the output from this code will be shown. 
+ggplot(data=couchto5k, aes(x=age)) +
+  geom_density() +
+  geom_boxplot(width=1/300) +
+  labs(title="Plot 1: Probability density of age",
+       x="Age",
+       y="Probability density")
+
+ggplot(data=couchto5k, aes(x=accountability)) +
+  geom_density() +
+  geom_boxplot(width=1/300) +
+  labs(title="Plot 2: Probability density of accountability",
+       x="Accountability",
+       y="Probability density")
+
+ggplot(data=couchto5k, aes(x=selfmot)) +
+  geom_density() +
+  geom_boxplot(width=1/300) +
+  labs(title="Plot 3: Probability density of self motivation",
+       x="Self Motivation",
+       y="Probability density")
+
+ggplot(data=couchto5k, aes(x=health)) +
+  geom_density() +
+  geom_boxplot(width=1/300) +
+  labs(title="Plot 4: Probability density of health",
+       x="Health",
+       y="Probability density")
+
+ggplot(data=couchto5k, aes(x=happiness)) +
+  geom_density() +
+  geom_boxplot(width=1/300) +
+  labs(title="Plot 5: Probability density of happiness",
+       x="Happiness",
+       y="Probability density")
+
+```
+
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+couchto5k <-
+  couchto5k %>%
+    mutate(
+      abandoned_week5 = ifelse(week_stopped<5, 1, 0),
+      abandoned_after_5 = ifelse(week_stopped<9 & week_stopped>4, 1, 0),
+      completed = ifelse(week_stopped==9, 1, 0)
+    )
+
+week5 <- sum(couchto5k$abandoned_week5, na.rm=TRUE)
+end <- sum(couchto5k$abandoned_after_5, na.rm=TRUE)
+completed <- sum(couchto5k$completed, na.rm=TRUE)
+
+finish_count <- c(week5, end, completed)
+q1a_chi <- chisq.test(finish_count, p=c(0.45,0.1,0.45))
+```
+
+In this dataset `r signif((week5/138)*100, 2)`% of participants gave up before week 5 and `r signif((end/138)*100, 2)`% more gave up before the end. This is very similar to the previous study in which 45% gave up before week 5 and 10% more gave up before the end. Performing a chisq test on these values gives us a p_value of `r q1a_chi$p.value` meaning we can reject the null hypothesis that these values occurred by chance.
+
+
+## Question 1b
+
+```{r q1b}
+edin_5 <- couchto5k$city == "Edinburgh" & couchto5k$abandoned_week5 == 1
+glas_5 <- couchto5k$city == "Glasgow" & couchto5k$abandoned_week5 == 1
+edin_end <- couchto5k$city == "Edinburgh" & couchto5k$abandoned_after_5 == 1
+glas_end <- couchto5k$city == "Glasgow" & couchto5k$abandoned_after_5 == 1
+```
+
+In Edinburgh `r signif((length(edin_5[edin_5==TRUE])/sum(couchto5k$city=="Edinburgh"))*100, 2)`% of those participants gave up before week 5 and a further `r signif((length(edin_end[edin_end==TRUE])/sum(couchto5k$city=="Edinburgh"))*100, 2)`% gave up before the end.  
+In Glasgow `r signif((length(glas_5[glas_5==TRUE])/sum(couchto5k$city=="Glasgow"))*100, 2)`% of those participants gave up before week 5 and a further `r signif((length(glas_end[glas_end==TRUE])/sum(couchto5k$city=="Glasgow"))*100, 2)`% gave up before the end.  
+As we can see, less people in Edinburgh gave up before week 5 but more asfterwards, and for Glasgow this was reversed. Proportionally someone in Edinburgh who made it to week 5 is more than twice as likely to quit after that point than someone in Glasgow.
+
+## Question 1c
+
+```{r q1c}
+edin_age <- couchto5k$age[couchto5k$city=="Edinburgh"]
+glas_age <- couchto5k$age[couchto5k$city=="Glasgow"]
+```
+The average age of participants in Edinburgh was `r mean(edin_age)` and in Glasgow was `r mean(glas_age)`.  
+
+
+# Question 2
+
+## Question 2a
+
+```{r q2a}
+couchto5k <-
+  couchto5k %>%
+    mutate(
+      season = as.factor(season)
+    ) 
+
+model2a <- lm(happiness ~ season, data = couchto5k)
+coef2a <- summary(model2a)$coefficients
+```
+
+By producing a linear model of happiness in relation to season, we can see that season does have an effect on happiness. Those who started in Spring or Summer reported a higher happiness score, than those in Autumn and Winter. Summer were happiest averaging `r coef2a[1]+coef2a[3]`, followed by Spring averaging `r coef2a[1]+coef2a[2]`, then Autumn averaging `r coef2a[1]` and finally Winter averaging `r coef2a[1]+coef2a[4]`. As the p-value is less than 0.05 we can reject the null hypothesis that season has no effect. If we look at Cook's distance of the model, there are four values which are slight outliers, but looking at the data this is only because they have a very high or very low happiness, which is natural and so no adjustment is needed.
+
+$happiness=b_0+b_1(season)+ϵ$
+
+## Question 2b
+
+```{r q2b}
+model2ba <- lm(happiness ~ season + age, data = couchto5k)
+model2bb <- lm(happiness ~ season * age, data = couchto5k)
+```
+
+By producing a new linear model of happiness in relation to season and age, it appears that age effects happiness. If we only add in age to the model, we get a p-value of over 0.05 and so we can not dismiss the null hypothesis that age does not effect happiness in relation to season. However, if we test further we can see that age and happiness do interact, so creating the model with that results in a p-value of less than 0.05 so we can dismiss the null hypothesis. Age has a very uneven effect on happiness with its interaction with season. For Spring each year of age increases happiness, while the other three seasons all see decreases in happiness as age increases.
+
+$happiness=b_0+b_1(season)+b_2(age)+b_3(season*age)+ϵ$
+
+## Question 2c
+
+```{r q2c}
+anova(model2a,model2bb,test="Chisq")
+baseline <- lm(happiness ~ season*age, data = couchto5k)
+baseline_sum <- summary(baseline)
+```
+
+By performing an anova on the model from 2a and 2b, we can see that adding age into the model helps account for some of the effect and as the p-value is lower than 0.05 we can reject the null hypothesis. For the baseline model I will use happiness in relation to season and its interaction with age.
+
+$happiness=b_0+b_1(season)+b_2(age)+b_3(season*age)+ϵ$
+
+Using this as the baseline model accounts for 10.6% of the variance (adjusted $R^2$=0.106, $F$(7,131)=3.34, $p$=0.002)
+(adjusted $R^2$=`r baseline_sum$adj.r.squared`, $F$ (`r round(baseline_sum$fstatistic[2],0)`,`r round(baseline_sum$fstatistic[3],0)`)=`r round(baseline_sum$fstatistic[1],2)`, $p$=0.002)
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+model3a <- lm(happiness ~ season * age + completed, data=couchto5k)
+
+ggplot(couchto5k, aes(x=happiness, y=completed))+
+  geom_point()+
+  labs(title="Plot 6: Relationship between happiness and completion of the programme") +
+  geom_smooth(method="lm")
+```
+
+$happiness=b_0+b_1(season)+b_2(age)+b_3(season*age)+b_4(completed)+ϵ$
+
+Adding whether the participant completed the programme to the model makes it account for 10.7% of the variance (adjusted $R^2$=0.107, $F$(8,129)=3.06, $p$=0.003). This effect is very small, only accounting for another 0.1% of the variance. See Plot 6 for a visual depection of the realtionship of happiness and the completion of the programme.
+
+## Question 3b
+
+```{r q3b}
+model3b <- lm(happiness ~ 1 + season* age + completed + health, data=couchto5k)
+```
+
+If we update the model to include the effect of health, we can see that health has a very small negative effect on happiness. For each point a participant marked up their health, their happiness decreased by 0.00115. As the scale of happiness is 0-100, the largest effect would be a happiness of 100 resulting in a decrease to happiness of 0.115, and as happiness is integer values we can see this effect is negligible. This is also confirmed by the adjusted R-squared which decreases when health is added to the model, meaning it accounts for less effect in the model. 
+
+$happiness=b_0+b_1(season)+b_2(age)+b_3(season*age)+b_4(completed)+b_5(health)+ϵ$
+
+## Question 3c
+
+```{r q3c}
+model3c <- lm(happiness ~ 1 + season* age + completed + health*factor(week_stopped), data=couchto5k)
+```
+
+By updating the model to analyse the interaction of how health effects happiness depending when the participant stopped, we can see that the hypothesised effect that those who got further in the programme had a higher effect on health is somewhat true. The health of those who stopped in week 1, 2, 4 and 5 had a negative effect on their happiness. And those who stopped in week 3, 6, 8 and 9 had a positive effect. Week 7 produced NA results. 
+
+$happiness=b_0+b_1(season)+b_2(age)+b_3(season*age)+b_4(completed)+b_5(health)+b_6(factor)+b_7(health*factor)+ϵ$
+
+## Question 3d
+The modelling shows that the interaction of season, age, completing the programme, health and the week they dropout, all effect the participants recorded happiness. However they only account for a total of 32.4% of the variance in the data, (adjusted $R^2$=0.324, $F$(23,114)=3.86, $p$<0.001). There are effects we are unable to account for which may also effect a participants happiness, and so I do not think this would be a good means to judge the success of the programme. 
+
+# Question 4
+
+```{r q4}
+completed_couch <- subset(couchto5k, completed==1)
+completed_couch <-
+  completed_couch %>%
+    mutate(
+      city_season = city
+    )
+
+ggplot(completed_couch, aes(x=city, y=happiness, fill=factor(season, levels=c("spring", "summer", "autumn", "winter"))))+
+  geom_bar(position="dodge", stat="summary", fun="mean") +
+  labs(fill = "Season")
+```
+
+
+# Question 5
+
+## Question 5a
+
+```{r q5a}
+couchto5k <- 
+  couchto5k %>%
+    mutate(
+      dropout = ifelse(completed==1, 0, 1)
+    )
+model5a <- glm(dropout ~ age + accountability + selfmot + health + happiness + season, data=couchto5k, family="binomial")
+```
+
+$dropout=b_0+b_1(age)+b_2(accountability)+b_3(self motivation)+b_4(health)+b_5(happiness)+b_6(season)+ϵ$
+
+## Question 5b
+
+```{r q5b}
+season_table <- table(couchto5k$season, couchto5k$completed)
+season_table %>%
+  kable(col.names=c("not completed", "completed"), caption = "Table 1: Completion of the programme by season") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+plot(model5a, which=1)
+```
+
+As we can see in the plot of model fitted values against residuals, it produces a straight line, indicating that the model is well fitted.
+
+Season is one of the largest predictors in the model, by itself it can account for 51.9% of the variance. The reason for this is obvious if we consider Table 1, in which we can see that Spring has a huge dropout rate when compared to the other seasons. However by itself season is not enough as someone who drops out is not necessarily participating in Spring, and as Autumn has no dropouts, it does not mean someone who completes the course is automatically participating in Autumn.  
+
+After season the second best predictor is self motivation, which for each point in increase, it decreases the log-odds of dropping out by 0.49. The weakest predictor in the model is happiness, in which for each point of increase, it increases the log-odds of dropping out by 0.01, a negligible amount. 
+
+## Question 5c
+
+```{r q5c}
+model5c <- glm(dropout ~ selfmot, data = couchto5k, family="binomial")
+
+couchto5k <- 
+  couchto5k %>%
+    mutate(
+      dropout_selfmot_prob = predict(model5c, newdata=couchto5k, type="response")
+    )
+
+couchto5k %>%
+  ggplot(aes(x=selfmot, y=dropout_selfmot_prob)) +
+  geom_line() +
+  ylim(0, 1) + 
+  xlim(5, 25) +
+  labs(y="predicted probability of dropping out", x="Self Motivation")
+
+couchto5k %>% ggplot(aes(x=selfmot,y=dropout)) +
+  labs(y="predicted probability of dropping out", x="Self Motivation") + 
+  #geom_jitter(size=3,width=0,height=.2,alpha=.1) +
+  geom_smooth(method="glm",method.args=list(family=binomial)) +
+  scale_y_continuous(breaks=seq(0,1,by=.2))
+
+```
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,468 @@
+---
+title: "USMR 2021-2022 Coursework"
+author: "`r params$examnumber`"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+params:
+  examnumber: B197758
+---
+
+<!-- We have provided a template below with headings/sub-headings for each question/sub-question. This is just a template. Feel free to add or delete code-chunks if desired.  -->
+<!-- Beneath here is some code which will set everything up for you.  Anything that is needed to run your code should be explicitly set up below -->
+
+```{r setup, include=FALSE}
+# this line will mean that when you compile/knit your document, 
+# the code will not show, but the output (e.g., plots) will!
+knitr::opts_chunk$set(echo = FALSE)
+# this line means all numeric output gets rounded to 3 dp
+options(digits=3)
+# load any other packages that you require here:
+library(tidyverse)
+library(sjPlot)
+# This will read in your own personal data:
+source("https://uoepsy.github.io/data/usmr_2122_data.R")
+```
+
+# Question 0
+<!-- If you have run the R code above this point (you can do this now by pressing Ctrl-Shift-Alt-P, or running the chunk above) then your data will be in a dataframe called `couchto5k`. -->
+
+```{r cleaning, include = FALSE}
+# Neither output nor code from this chunk will be shown in the compiled document. 
+# Check out summary of the data to see waht we're dealing with
+unfiltered_data_summary<-summary(couchto5k)
+# Create dummy column to record bad data
+couchto5k$baddata <- NA
+# Plot the distribution of ages and remove outliers (in this case, people over 100)
+couchto5k$baddata[couchto5k$age>100] <- "impossible age"
+# Remove health and happiness values under 0 or over 100. These are impossible values
+couchto5k$baddata[couchto5k$happiness>100] <- "happiness too big"
+couchto5k$baddata[couchto5k$happiness<0] <- "happiness too small"
+couchto5k$baddata[couchto5k$health >100] <- "health too big"
+couchto5k$baddata[couchto5k$health<0] <- "health too small"
+# Remove any weeks above 9 (there was only 9 weeks in the program)
+couchto5k$baddata[couchto5k$week_stopped>9] <- "week too big"
+couchto5k$baddata[couchto5k$week_stopped<0] <- "week too small"
+# Remove any values below 5 or over 35 for selfmot and accountability
+couchto5k$baddata[couchto5k$selfmot<5] <- "selfmot too small"
+couchto5k$baddata[couchto5k$selfmot>35] <- "selfmot too big"
+couchto5k$baddata[couchto5k$accountability<5] <- "accountability too small"
+couchto5k$baddata[couchto5k$accountability>35] <- "accountability too big"
+# Check city and season data - make sure they are all spelled right, and save them as factors
+couchto5k$city <- couchto5k$city %>% as.factor()
+season_misspell <- couchto5k$season[couchto5k$season == 'autunm']
+# Correct for misspelled season and save as factor
+couchto5k$season[couchto5k$season == "autunm"] <- "autumn"
+couchto5k$season <- couchto5k$season %>% as.factor()
+# Filter out all the bad data
+unfiltered_couchto5k <-couchto5k
+couchto5k <- couchto5k %>% filter(is.na(couchto5k$baddata))
+
+```
+
+```{r descriptives, include=FALSE}
+# Code will not be shown from this chunk (because we set echo = FALSE in the very first chunk)
+# Create the variables that you will reference in your text
+bad_data_count <- count(unfiltered_couchto5k) - count(couchto5k)
+bad_data_table <- table(unfiltered_couchto5k$baddata)
+count_good_data <- count(couchto5k)
+count_season_misspell <- length(season_misspell)
+# Make a table with the summary of the data after its been cleaned.
+data_summary<-summary(couchto5k)
+
+```
+
+To begin, the data was normalized and cleaned. Specifically, this included removing impossible values for each variable in the data and correcting any data errors. The number of data elements removed are summarized in Table 1.
+
+Table 1. Summary of data removed due to impossible values.
+`r knitr::kable(head(bad_data_table))`
+
+As shown in Table 1, ## participants were excluded as their self-motivation score was impossibly low (self-motivation must be a score between ## and ##), ## participant was excluded due to their reported week ending the program being later than the program actually ran for, and ## participants were excluded due to what was deemed to be an impossible age. That is, only ages between 18 and 100 years were accepted. After removing the data with impossible values, we were left with the data of ## participants of the Couch to 5k program.
+
+# Question 1 
+
+## Question 1a
+
+```{r q1a}
+# Separate data into 3 categories according to week number: before 5 weeks, after 5 weeks but before 9 and at 9 weeks (i.e. completed)
+couchto5k <-couchto5k %>% mutate(week_group = ifelse(week_stopped<5,'less',
+                                                     ifelse(week_stopped==9,'completed','more')))
+# Create distribution with the information from the question.
+expected <- c(0.45,0.45,0.10)
+# Use a CHI SQUARED Goodness of Fit
+chi_goodfit_results<-chisq.test(table(couchto5k$week_group), p = expected)
+
+```
+
+To determine whether the current study's sample was representative of the population in the nationwide survey in terms of the attrition rates, a Chi-Squared Goodness of Fit Test was used. This test compared the observed percentages of the population that dropped out of the program before week 5, at or after week 5, and did not dropout at all to the expected percentages given the nationwide survey described in Question 1a.
+
+To do this, the data was divided into three categories as described above, and a contingency table with counts of partcipants in each group was compared to the proportions from the nationwide survey. The contingency table used for the Chi-Squared test is given in Table 2.
+
+Table 2. Contingency table of attrition rates in Edinburgh and Glasgow.
+`r knitr::kable(head(table(couchto5k$week_group)))`
+
+The results of the Chi-Squared test are given in Table 3.
+
+Table 3. Results of Chi-Squared test comparing Glasgow & Edinburgh data to Nationwide Survey.
+
+
+As seen in Table 3, the Chi-Squared test yields a p-value of ##, indicating that the results observed in the present study's sample do not differ significantly in their attrition rates from the expected results from the nationwide survey.
+
+## Question 1b
+
+```{r q1b, warning = FALSE}
+# Make subgroups for each city
+Glasgowdata <- couchto5k[couchto5k$city=='Glasgow',]
+Edinburghdata <- couchto5k[couchto5k$city=='Edinburgh',]
+# Compare week_group variable for each city using Chi-Squared Test of Independence (i.e., does city affect when the participants stopped?)
+chi_ind_results<-chisq.test(table(couchto5k$city,couchto5k$week_group))
+```
+To determine if the attrition rates, using the same categories described in part 1a, differ by city, a Chi-Squared Test of Independence was used. In this case, the data was grouped by city and a contingency table of the three categories was made for each city. The Chi-Squared test was used as it tells us whether two sets of counts of categorical data differ from one another. The results of the Chi-Squared test are summarized in Table 4.
+
+Table 4. Results of Chi-Squared test comparing Edinburgh and Glasgow attrition rates.
+
+
+From the p-value in Table 4 (p>0.05), we can conclude that the attrition rates of participants are independent of the city in which the participant lived.
+
+## Question 1c
+
+```{r q1c}
+# Use t-test to check
+# Check/state assumptions
+#1. Data is random sample of two populations and is representative of each population
+#2. Data from both populations is normally distrited?
+plot(density(Edinburghdata$age))
+plot(density(Glasgowdata$age))
+# PLOT density functions of each
+# Let's do a shapiro-wilkes test to be sure
+shapiroedinburgh <- shapiro.test(Edinburghdata$age)
+shapiroglasgow <- shapiro.test(Glasgowdata$age) 
+#3. homogeneity of variance
+variancetest <- with(couchto5k, var.test(age~city))
+#t-test model
+summarymodel <- summary(lm(data=couchto5k,formula = age ~ city))
+shapiroresiduals <- shapiro.test(summarymodel$residuals)
+# No t-test as assumptions not met
+```
+
+To determine if the average ages of participants were significantly different by city, an independent samples t-test should be used. A independent samples t-test can tell us whether continuous measurements (such as age) differ between two samples or populations. In this case, the samples are those participants from Glasgow and those from Edinburgh. To perform a t-test, we must make several assumptions regarding the residuals of the data:
+
+1. The sample data from each population is representative of the population.
+2. The distribution of the difference between the two samples is normally distributed.
+3. The variable of interest has equal varaince between samples.
+
+As it is not feasible to collect data from the entire population, Assumption 1 cannot be checked, and we will instead assume it to be true for the analysis. In a paired samples t-test, we can test the second assumption by checking that the distribution of the data within each subgroup is normal, as this is identical to testing the residuals (or the difference) between the two samples. To demonstrate this, here I test the distribution of the residuals both ways. First, looking at the distributions of each population graphically (Figures 1 and 2), we can see that while the Glasgow data seems to be normally distributed, the Edinburgh data may be a bit more on the fence. That is, the curve is no longer bell-shaped, and is instead much wider and flatter, suggesting this data has more of a uniform distribution than a normal one.
+
+
+Figure 1. Distribution of ages in Glasgow population.
+
+
+Figure 2. Distribution of ages in Edinburgh population.
+
+To investigate this closer, we can perform a Shapiro-Wilkes test of normality on the data. This test give us a numerical result which can give us more information on whether or not the distribution of the data of each population is significantly different from a normal distribution. The results of the Shaipro-Wilkes tests on the ages of the Glasgow participants and on the ages of the Edinburgh participants are reported in Tables 5 and 6 below.
+
+Table 5. Results from Shapiro-Wilkes test on the Glasgow ages.
+
+Table 6. Results from Shapiro-Wilkes test on the Edinburgh ages.
+
+
+From Table 6, we can see that the distribution of Edinburgh ages are significantly different from a normal distribution (p###). This method of testing Assumption 2 can be contrasted with the method which treats a t-test as a special type of linear model, and subsequently tests the normality of the residuals. The equation of such a model would be defined as by Equation (1) and summarized in Table 7.
+
+$$(1) age = b0 + b1(city)$$
+Table 7. Summary of linear model described by the equation in (1)
+
+
+From here, we can access only the residuals and perform a Shapiro-Wilkes test of normality as above. The results of this test are given in Table 8.
+
+Table 8. Results from a Shapiro-Wilkes test on the residuals of the model described by equation (1)
+
+
+Here, we can see that the results of testing the normality of the residuals also shows that the data does not meet the normality assumption.
+
+Finally, the Assumption 3 can be tested through a simple variance test in R. The results of this test are given in Table ##, where we see that the variances of each of the two groups are not significantly different from one another (p=0.3). Thus, this data does indeed meet the criteria of Assumption 3.
+
+Table 9. Results of a variance test comparing the variances of the Edinburgh and Glasgow ages.
+
+
+Given that Assumption 2 was not met, a t-test is not an appropriate test for this data. Instead, given that Assumption 3 still holds, we may use a Wilcoxon Signed Rank Test, however, such a test and its interpretation is beyond the scope of this report.
+
+# Question 2
+
+To begin, the following assumptions necessary for a linear model were checked:
+1. Linearity of the relationship.
+2. Residuals are normally distributed.
+3. Homogeneity of variance for residuals.
+4. Independence for residuals.
+5. No overly influential observations
+
+To check these assumptions, plots of the model described in 2a were used are are given below.
+
+```{r}
+happy_seasonmodel <- lm(happiness~1+season,data=couchto5k)
+happy_seasonsummary <- summary(happy_seasonmodel)
+plot(happy_seasonmodel)
+plot(density(happy_seasonmodel$residuals))
+```
+
+figure 3,4,5,6,7,8DESCRIBE HERE
+
+## Question 2a
+
+```{r q2a}
+#Create lm with happiness as DP, and season as IV
+happy_seasonmodel <- lm(happiness~1+season,data=couchto5k)
+happy_seasonsummary <- summary(happy_seasonmodel)
+#Check assumptions of model
+#1. Linearity of Relationship
+#2. Residuals normally distributed
+#3. Homogeneity of variance for residuals
+#4. Independece for residuals
+#5. No overly influential observations
+```
+To test if participants' happiness ratings were affected by the season in which they were interviewed, a linear model was built. The equation of this model is given in Equation (2).
+
+$$(2) happiness = b0 + b1(season)$$
+A summary of this model is given in Table 10.
+
+Table 10. Summary of model described by Equation 2.
+
+In Table 10, the intercept represents the mean happiness rating of participants in Autumn, as Autumn is the first factor in alphabetical order. Thus the mean happiness rating of those who completed the program in Autumn was ##, but this mean was increased by ## for those who completed the program in Spring, by ## for those who completed in Summer, and by ## for those who completed in Winter.
+
+From the p-values in the summary table, we can see that the increase in happiness is significant for those who completed in Spring (p=###), and for those who completed in Summer (p=###), as compared to the baseline of Autumn, however the small increase in happiness rating of ## in the case of those who completed the program during the Winter was not found to be statistically significant (p###).
+
+
+## Question 2b
+
+```{r q2b}
+# Add age as a predictor after season
+happy_agemodel <- lm(formula=happiness~1+season+age,data=couchto5k)
+happy_agesummary <- summary(happy_agemodel)
+```
+Building further on the baseline model from Question 2a, age was added as a second predictor to happiness, resulting in a model with the equation given in Equation (3).
+
+$$(3)happiness = b0 + b1(season) + b2(age)$$
+
+The summary of the model built with this equation is given in Table 11.
+
+Table 11. Summary of model given by Equation 3.
+
+From Table 11, we can see that for every 1 year increase in age, the mean happiness rating increases by ##, however, this does not seem to be statistically significant as the p-value is only ###. To compare the model in 2a and 2b directly, the anova function in R was used and its results are given in Table 12.
+
+Table 12. Result from anova comparing models in Equations (2) and (3).
+
+From the comparison of the two models, the p-value of ## tells us that the two models are not significantly different from one another. Thus, it seems that once the season in which one participated is taken into account, their age does not improve the model more.
+
+## Question 2c
+
+```{r q2c}
+# I guess I will use whichever model is shown to affect signifcantly the happiness 
+# use anova to compare models
+baselinecomparison <- anova(happy_seasonmodel,happy_agemodel)
+# Model with only season it is!
+```
+To determine which model should be used as the baseline model, I compared the two models using the anova() function in R. The results of this test are given in Table 12 in section 2b. Table 12 shows that adding the factor of age does not significantly improve the model (p???). This means that adding "age" as a factor in the model is not contributing to explaining the variance in the model, and can therefore be left out of the model. That is, age does not seem to affect the happiness ratings of participants.
+
+# Question 3
+
+## Question 3a
+
+```{r q3a}
+# Make binary variable of completed versus not completed (0,1)
+couchto5k<-couchto5k %>% mutate(did.complete = 1*(week_stopped == 9))
+# regular lm
+happy_season_completemodel <- lm(data=couchto5k,formula = happiness ~ 1+season + did.complete)
+happy_season_completesummary <- summary(happy_season_completemodel)
+happymodelcomparison1 <- anova(happy_seasonmodel,happy_season_completemodel)
+```
+The first factor of interest to be added to the model was that of whether or not the happiness ratings were affected by if the participant completed the program. To begin, a binary category was created within the data frame to represent those who completed the program (stopped at Week 9), and all others (stopped before Week 9). In this case, those who did complete the program were represented as 1 in the did.complete column of the data frame and those who did not complete were represented as a 0 in this column.
+
+Thus, the new equation of the model once did.complete was added is given in Equation (4).
+
+$$(4)happiness = b0 + b1(season)+b2(did.complete)$$
+
+The summary of the output of this model is given in Table 13.
+
+Table 13. Summary of model given by Equation (4).
+
+Looking at the did.complete row in Table 13, we can see that those who did complete the program showed a mean increase in their happiness rating of ####9.38 when holding the season constant. This result, however, does not seem to be statistically significant given the p-value of ## in this row. 
+
+Let us compare the two models directly by once again using the anova function in R, whose output is given in Table 14.
+
+Table 14. Comparison of models given by equations (2) and (4)
+
+According to the p-value obtained from the anova() in Table 14, it does not seem that the model including did.complete is significantly different from that which did not include it (p####). Thus, moving forward, did.complete will not be included in any further steps as it does not improve the model.
+
+
+## Question 3b
+
+```{r q3b}
+# add health metric to current model
+happy_season_healthmodel<- lm(data=couchto5k,formula = happiness ~ 1+season+health)
+happy_season_healthsummary <- summary(happy_season_healthmodel)
+happymodelcomparison2 <- anova(happy_seasonmodel,happy_season_healthmodel)
+```
+The next factor to be added to the model was that of health. Given that the factor "did.complete" did not significantly improve the model, it was not included at this step. Thus, the new equation of the model being tested at this step is given in Equation (5).
+
+$$(5) happiness = b0 + b1(season)+ b2(health) $$
+
+The summary of the model described by Equation (5) is given in Table 15.
+
+Table 15. Summary of model described by Equation (5).
+
+As can be seen in Table 15, for every increase in 1 health metric, the happiness, holding all other factors constant, the mean happiness score of participants increased by ####. From comparing this model with the baseline model through an anova (see Table 16), it again appears that adding health as a factor in the model did not significantly improve the model from teh baseline. Thus, once again, this factor is left out in further analysis.
+
+Table 16. Comparison of models given by equations (2) and (5).
+
+
+## Question 3c
+
+```{r q3c}
+# First, need to rescale the numeric variables
+couchto5k <- couchto5k %>% mutate(scaled_happiness = scale(happiness),scaled_health = scale(health),scaled_week = scale(week_stopped))
+## add an interaction between length in program (as a continuous variable) and health metric!
+happy_season_interactionmodel <- lm(data=couchto5k,formula=scaled_happiness~1+season+scaled_health*scaled_week)
+happy_season_interactionsummary <- summary(happy_season_interactionmodel)
+# Compare models directly
+
+```
+Before adding the interaction between health and week stopped, all numerical variables were scaled. That is, in previous steps metrics such as "health", "happiness" and "age" are all metrics with a maximum of 100, and were therefore considered to be of a similar scale. In this case, however, the variable "week_stopped" is on a  scale from 1-9 and is therefore difficult to compare the the other variables as a raw score. The model at this stage can be described by the equation given in Equation 6 and is summarized in Table 17.
+
+$$(6)happiness = b0 + b1(season) + b2(health*week\_stopped)$$
+
+Table 17. Summary of model described by Equation (6).
+
+Table 17 shows that there is indeed a significant interaction between the the health metric and the week stopped in that as both the the health and week increase by one standard deviation, the happiness metric increases by ### standard deviations from the mean. From comparing this model to one with only season as a predictor, the model including this interaction was found to significantly improve the model, as can be seen by the result of an anova given in Table 18.
+
+Table 18. Comparison of the models given by equations (2) and (6).
+
+
+
+## Question 3d
+
+At each step throughout the model, most factors did not seem to affect the model in its ability to predict the happiness of participants. The effect of season in which the participant was interviewed was found to contribute significantly to the model, as well as an interaction between the health metric and the week in which the participant stopped the program.
+
+As for the hypothesis in Question 3c, it does indeed seem that the happiness of the participant is more affected by the health metric as the week_stopped predictor increases.
+
+Thus, the final model predicting happiness in participants is given in Equation 6, which includes the baseline effect of season as well as an interaction between health and week_stopped.
+
+
+# Question 4
+
+```{r q4}
+# make a gorgeous plot!!
+# Make subset of data including only people who completed the program
+complete_program <- couchto5k %>% filter(did.complete=="1") 
+# Make plot showing average happiness ratings groups by city
+ggplot(data=complete_program,aes(x=city,y=happiness))+
+  geom_boxplot()
+#Plot showing avg happiness by season
+ggplot(data=complete_program,aes(x=season,y=happiness))+
+  geom_boxplot()
+```
+
+
+Figure 9. Average happiness rating of those who completed the program, grouped by city.
+
+Figure 9 shows that the average happiness rating for those that completed the program in Glasgow is ##, while the average happiness for those completing the program in Edinburgh is ##.
+
+Figure 10. Average happiness rating of those who completed the program, grouped by season.
+
+Figure 10 shows that the average happiness ratings for participants that completed the program in autumn, spring, summer and winter are ## ## ## ## respectively.
+
+# Question 5
+
+To build the model predicting likelihood of dropping out at all, I chose to use a Generalized Linear Model as this can take into account the fact that we only have a binary choice for our dependent variable.
+
+## Question 5a
+
+```{r q5a}
+#Create null model
+dropoutmodel_null <- glm(family = binomial, data = couchto5k, formula = did.complete ~1)
+# Start by adding self-motivation (seems likely this would affect dropout)
+dropoutmodel1 <- glm(family=binomial,data=couchto5k,formula = did.complete ~ 1+selfmot)
+dropoutmodelsummary1 <-summary(dropoutmodel1)
+dropoutmodelcomparison1 <- anova(dropoutmodel1,test="Chisq") # no sig effect
+# Check health
+dropoutmodel2 <- glm(family=binomial,data=couchto5k,formula = did.complete ~ 1+health)
+dropoutmodelsummary2 <-summary(dropoutmodel2)
+dropoutmodelcomparison2 <- anova(dropoutmodel2,test="Chisq")
+# Check accountability
+dropoutmodel3 <- glm(family=binomial,data=couchto5k,formula = did.complete ~ 1+accountability)
+dropoutmodelsummary3 <-summary(dropoutmodel3)
+dropoutmodelcomparison3 <- anova(dropoutmodel3,test="Chisq")
+# Check season
+dropoutmodel4 <- glm(family=binomial,data=couchto5k,formula = did.complete ~ 1+season)
+dropoutmodelsummary4 <-summary(dropoutmodel4)
+dropoutmodelcomparison4 <- anova(dropoutmodel4,test="Chisq")
+# Check happiness
+dropoutmodel5 <- glm(family=binomial,data=couchto5k,formula = did.complete ~ 1+season+happiness)
+dropoutmodelsummary5 <-summary(dropoutmodel5)
+dropoutmodelcomparison5 <- anova(dropoutmodel5,test="Chisq")
+# Check age 
+dropoutmodel6 <- glm(family=binomial,data=couchto5k,formula = did.complete ~ 1+season+age)
+dropoutmodelsummary6 <-summary(dropoutmodel6)
+dropoutmodelcomparison6 <- anova(dropoutmodel6,test="Chisq")
+
+```
+To build a model predicting dropout likelihood, I began by adding factors which seemed probable to contribute to this. The first of which was self-motivation, which did not have a significant impact on the model (see Table 19, p=###), and thus, was not included in subsequent tests.
+
+Table 19. Model of dropout including self-motivation as a predictor.
+
+The next factor added was health as someone of low health seemed less likely to be able to complete the program. Once again, however, health did not contribute significantly to the model as shown by the p-value of ## in Table 20.
+
+Table 20. Model of dropout including health as a predictor.
+
+
+Following this, accountability was added to the model. Again, no significant effect was found, as can be seen by the p-value of ## in Table 21.
+
+Table 21. Model of dropout including accountability as a predictor.
+
+Next, season was checked as a potential predictor of dropout. As shown in Table 21, it was found that those who completed the program in spring has a significantly lower probability of dropping out than those who completed in autumn. 
+
+The next factor added to the model was happiness, which once again did not contribute to predicitng the probability of dropping out (Table 22, p=##).
+
+Table 22. Model of dropout including happiness as a predictor.
+
+Finally, age was added as the last possible predictor in the model. As shown in Table 23, age did indeed affect the probability of participants dropping out in that as the age of the participant increased, their probability of dropping out also increased (p###).
+
+Table 23. Model of dropout including age as a predictor.
+
+## Question 5b
+
+```{r q5b}
+# describe, maybe access some variables you use in ur description here
+```
+From the analysis in 5a, it can be seen that the only significant predictors of dropout in the model were found to be season and age. Surprisingly, no effects were found for self-motivation, accountability, health, or happiness.
+
+Season was found to contribute the most to the model in that those who participated in spring were much less likely to dropout than those who participated in autumn. The seasons of summer and winter, however, did not have a significant effect on these probabilities. In terms of age, as the age increased of the participant, the more likely they were to dropout.
+
+## Question 5c
+
+```{r q5c}
+## add predicted probabilities
+selfmotrange <- tibble(selfmot = 5:35)
+selfmotrange <- 
+  selfmotrange %>%
+  mutate(
+    predprobs = predict(dropoutmodel1, newdata = selfmotrange, type = "response")
+  )
+#draw graph with prob on y axis and self-motivation on x for all self-mot from 5 to 35 -use predict?
+ggplot(data = selfmotrange, aes(x = selfmot, y = predprobs)) +
+  geom_line()+
+  labs(y="predicted probability of dropping out",
+       x="self-motivation")
+```
+Figure 11. Predicted probability of dropping out of the Couchto5k program as a function of self-motivation.
+
+Figure 11 shows the predicted probability of a participant dropping out of the program as a function of their self-motivation score. Self-motivation only ranges from 5 to 35 as that is the range of possible self-motivation scores. As can be seen in Figure 11, as self motivation increases, the probability of dropping out also increases - a very surprising result!
+
+
+
+
+
+
+
+
+
