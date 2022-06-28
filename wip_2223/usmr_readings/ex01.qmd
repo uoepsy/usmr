@@ -1,0 +1,280 @@
+---
+title: "Week 1 exercises"
+reference-location: margin
+citation-location: margin
+---
+
+```{r setup, include=FALSE}
+source('assets/setup.R')
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+```
+
+# First things
+
+The very first things to do are to open RStudio and get a blank script ready for writing your code.
+
+:::column-margin
+Our recommendation is that you have an R project for this course, and use a new script for each week of work. See [the tip about "R projects" in Chapter 1](01_R.html#_The_Four_RStudio_Panes){target="_blank"}.  
+:::
+
+# Pet Data
+
+:::frame
+We're going to play with some data on a sample of licensed pets from the city of Seattle, USA. It can be downloaded (or read directly into R) from [TODO LINK](). It contains information on the license ID, year of issue, as well as the species, breeds and weights of each pet. You can find a data dictionary in @tab-petdict
+```{r}
+#| label: tab-petdict
+#| tbl-cap: "Seattle Pets: Data dictionary"
+#| echo: false
+library(tidyverse)
+petdata <- read.csv("../../../data/seattlepets.csv")
+petdata <- petdata %>% filter(!is.na(animals_name), !is.na(weight_kg), !is.na(zip_code))
+petdata$animals_name[petdata$species=="Goat"]<-c("Billy the Kid","Vincent Van Goat")
+petdata<-petdata[-607,]
+petdata<-petdata[-1320,]
+petdata <- petdata %>% 
+  mutate(
+    weight_kg = round(weight_kg, 2), 
+    secondary_breed = ifelse(is.na(secondary_breed), "Unknown",secondary_breed),
+    license_number=paste0("LN",license_number),
+    license_year = as.numeric(lubridate::year(lubridate::mdy(license_issue_date)))
+  ) %>% select(-zip_code, -license_issue_date) %>%
+  relocate(license_year)
+
+dict = tibble(
+  Variable = names(petdata),
+  Description = c("Year in which license was issued",
+                  "Unique license ID number",
+                  "Full name of pet",
+                  "Species of pet",
+                  "Primary breed of pet",
+                  "Secondary breed of pet",
+                  "Weight in kilograms"
+                  )
+)
+knitr::kable(dict)
+```
+:::
+
+:::qq
+__Q1__ Write a line of code that reads in the data to your R session. Then examine the dimensions of the dataset, and take a look at the first few lines lines.
+:::
+:::column-margin
+__Hints:__ You'll need the `read.csv()` function. Remember to assign it a name to store it in your environment. See [where we discuss reading in data from a URL in Chapter 2](02_data.html#Basic_Data_Wrangling){target="_blank"}. You'll then want to play with functions like `dim()` and `head()`.  
+:::
+:::bs100
+:::
+
+:::qq
+__Q2__ What are the names of the 47th and the 200th animals in the dataset?  
+:::
+:::column-margin
+__Hints:__ You'll probably want to make use of the square brackets `data[rows, columns]`.
+:::
+
+
+:::qq
+__Q3:__ Subset the data to only the data for the dogs, and store this object as another named object in your environment. Subset the data to only the data for the cats, and store this object as another named object in your environment.   
+:::
+:::column-margin
+__Hints:__ You'll want to think about how we access data via asking for those entries that meet a specific _condition_ (see [Chapter 2: Basic Data Wrangling](02_data.html#Accessing_by_a_condition){target="_blank"})  
+:::
+
+:::qq
+__Q4:__ Find the name and weight of the heaviest cat, and of the lightest dog.  
+:::
+:::column-margin
+__Hints:__ You could do this using the original data you read in from question 1, or use the subsets you created in question 3. You'll again want to supply a condition within square brackets. That condition may well have something to do with being equal to the `min()` or the `max()` of some variable.  
+:::
+:::bs200
+:::
+
+
+
+
+:::qq
+__Q5:__ Does the data contain _only_ dogs and cats?  
+:::
+:::column-margin
+__Hints:__ Given what you did in question 3, you might be able to answer this by just looking at your environment.  
+:::
+:::bs75
+:::
+
+
+:::qq
+__Q6:__ Extract the entries of the dataset for which the species is neither "Dog" nor "Cat"? What are the names and species of these animals? 
+:::
+:::column-margin
+__Hints:__ This is a slightly complex one. The section of [Chapter 2 on more complex conditions](02_data.html#More_complex_conditions){target="_blank"} might help you here.  
+:::
+
+
+:::qq
+__Q7:__ Create a new variable in the data, which contains the weights of all the animals, but rounded to the nearest kg. 
+:::
+:::column-margin
+__Hints__: Try looking up the help documentation for the function `round()`. Try playing with it in the console, e.g. `round(c(3.5, 4.257, 1.1111))`. You may find [Chapter 2: Adding/Changing a variable](02_data.html#AddingChanging_a_variable){target="_blank"} helpful.  
+:::
+:::bs100
+:::
+
+
+
+:::qq
+
+__Q8:__ Try giving the dataset to the function `summary()`. You'll get out some information on each of the variables. It is likely that you'll get more useful information for the variables containing information on the animal's weights than for those containing their names, breeds etc because these variables are vectors of "characters". We'll start to look more about different types of data next week.  
+
+:::
+
+
+
+# Simulating Dice
+
+:::qq
+__Q1:__ Copy the code from the lecture which creates a custom function called `dice()` (copied below). Be sure to *run* the code (highlight it all with your cursor, and hit "run" in the top right, or press Ctrl/Cmd+Enter).  
+```{r}
+dice <- function(num = 1) {
+  sum(sample(1:6, num, replace=TRUE))
+}
+```
+
+:::
+
+<div style="border-radius: 5px; padding: 20px 20px 10px 20px; margin-top: 20px; margin-bottom: 20px; border: 1px solid #333333 !important;">
+**What did that code do?**
+
+In a sense, this code does *nothing*:  It won't give you any output when you run it.  What it is actually doing, though, is defining a *function* called `dice()`.  If you look at your *environment* panel (top right), you'll see `dice` appear when you run the code.
+  
+To produce some output, we have to *call* the function `dice()` (by writing it into code:  `dice(4)`, for example).  `dice()` wants to be supplied with some information (in the *argument* `num`).  If no information is supplied, num will take a *default value* of `1`.  (So writing `dice()` is equivalent to writing `dice(1)`).
+
+What does `dice()` do with `num`?  It calls another function, `sample()`, with *3* arguments.  We didn't write `sample()`:  it's a function that's "supplied with" R.  To find out more about what `sample()` does:
+
+* click inside the brackets just after `sample()` in your R script;
+
+* press `TAB` (`⇥`), then `F1`
+
+* you should see some help appear in the bottom right-hand panel of RStudio.
+
+You will find that "`sample()` takes a sample ... from the elements of `x` ..."  If you compare the code in RStudio to the code under "Usage" you'll see that where the help has `x`, we have `1:6`.  So what does `1:6` mean?  One way to find out is to open the **console** in RStudio (bottom left) and just type stuff in.  What happens when you type `1:6`?  What about `2:17`?  (What about `6:1`?)
+
+The console is the place to "try stuff out" (don't worry, you can't break it). 
+Watch the video below and then try it out yourself:
+
+TODO redo with script not rmd
+<center><video width="320" height="240" controls>
+  <source src="images/dice.mp4" type="video/mp4">
+</video></center>
+
+What you will discover is that `1:6` creates a *vector* (list of similar things, in this case numbers) of the numbers 1-6.
+The next bit of the `sample()` function is `size`. In the `dice()` function, the `num` passes down to the `size` of the `sample()`: Looking through the help, `size` is the number of items to choose.  So `sample(1:6, 1)` would choose one number from the numbers 1-6 at random; `sample(1:6, 3)` would choose 3, and so on.  The last argument, `replace=TRUE`, tells `sample()` what to do with a number once it's been picked:  Does it go 'back into the bag' to be picked again (`TRUE`) or not? (`FALSE`)?  
+
+Around the outside is `sum()` which simply sums the numbers on however many (`num`) dice you "rolled".  
+
+Putting it all together, our `dice()` function "throws a die `num` times" by `sample()`ing from the numbers 1-6 `num` times, `replace`ing each number when it's been picked, and sums the numbers of all the dice.  
+
+</div>
+
+:::qq
+__Q2:__ Look up the function `replicate()`. We can use it to do something in R lots of times! For instance, `replicate(20, 1+1)` will evaluate `1+1` twenty times. Use `replicate()` to simulate 100 rolls of a single dice, and store the results in an object in your environment. Give it an easily identifiable name.  
+:::
+:::column-margin
+__Hints:__ A single dice means `num = 1`   
+:::
+
+:::qq
+__Q3:__ Create a barplot showing the frequency with which each number was landed on in the 100 rolls.
+:::
+:::column-margin
+__Hints:__ the functions `table()` and `barplot()` were used to do this in the lecture.  
+:::
+
+```{r eval=F,echo=F}
+roll100 <- replicate(100, dice(1))
+# We can get the frequency table using table()
+table(roll100)
+# Which we can then pass to the barplot() function:
+barplot(table(roll100))
+```
+
+:::qq
+__Q4:__ Do the same for 1,000 rolls, and then for 10,000. What do you notice?   
+:::
+
+```{r eval=F,echo=F}
+d <- replicate(1000, dice(1))
+barplot(table(d))
+
+d <- replicate(10000, dice(1))
+barplot(table(d))
+
+# The more rolls we do of the dice, the flatter the graph becomes. This is because there is an equal probability of the die landing on any of the responses - there is a uniform probability.  
+```
+
+:::qq
+__Q5:__ Copy the code below into your script and run it. It creates a new function called `wdice()` which simulates the rolling of `num` dice which are slightly weighted. Roll a single weighted die 100 times and plot the frequency distribution. Do the same for 1,000 and 10,000 rolls of a single die. Does a pattern emerge? At how many rolls?  
+```{r}
+wdice <- function(num = 1){
+    sum(sample(1:6, num, replace=TRUE, prob = c(0.15,0.15,0.15,0.15,0.15,0.25)))
+}
+```
+:::
+
+```{r echo=F,eval=F}
+# Your plots will look slightly different to these, because all of our dice are random!  
+set.seed(564)
+wd <- replicate(100, wdice(1))
+barplot(table(wd))
+
+wd <- replicate(1000, wdice(1))
+barplot(table(wd))
+
+wd <- replicate(10000, wdice(1))
+barplot(table(wd))
+
+# The die is clearly weighted towards landing on 6. 
+# However, 100 rolls is not enough to reliably observe this. In our 100 rolls above, it landed on 2 quite a bit too! The pattern becomes clearer after 1000 rolls.  
+```
+
+:::qq
+__Q6:__ Remember, `wdice()` and `dice()` are really just relying on different functions, like `sample()`. Try playing around with `sample()` in the console again - what does the `prob = c(....)` bit do?   
+:::
+
+:::qq
+__Q7:__ Let's try to modify the `wdice()` function. Edit the code for `wdice()` so that 50% of the time it lands on number 6.  
+:::
+:::column-margin
+__Hints:__ To test out your modified function, you will need to re-run the code which defines the function. When we use `wdice()` we use the function which is in our environment. If we want to edit the function, we need to overwrite (or "replace"/"reassign") the object in our environment. We need to be careful to remember that the probability of different outcomes should sum to 1 (i.e., it's not possible to "50% of the time land on 6" as well as "70% of the time land on 5"!). 
+:::
+:::bs150
+:::
+
+```{r eval=F, echo=F}
+wdice <- function(num = 1){
+    sum(sample(1:6, num, replace=TRUE, prob = c(0.1,0.1,0.1,0.1,0.1,0.5)))
+}
+```
+
+:::qq
+__Q8:__ Can you observe the weighting in your new die (the one which 50% of the time lands on number 6) in only 100 rolls?  
+:::
+
+  
+:::qq
+__Q9:__ Conceptually, what can we learn from this toy example?    
+:::
+
+```{r echo=F, eval=F}
+wd <- replicate(100, wdice(1))
+barplot(table(wd))
+# The bigger the effect, the smaller the sample required to observe it. 
+```
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
+
+
+
+
+
+
+
