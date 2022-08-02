@@ -1,0 +1,240 @@
+---
+title: "Sums of Squares"
+bibliography: references.bib
+biblio-style: apalike
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+
+```{r setup, include=FALSE}
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+```
+
+
+:::lo
+
+```{r echo=F}
+set.seed(93)
+tibble(
+    x1 = rnorm(100),
+    x2 =rnorm(100),
+    y = 2*x1 - 1*x2 + rnorm(100,0,4)
+) -> df
+m <- lm(y~x1+x2,df)
+```
+
+__Another venn diagram way of thinking about sums of squares__  
+
+
+In the lecture we saw some venn diagrams, where each circle was variance explained by each predictor.  
+It may also help to think of it in a slightly different visualisation. In Figure \@ref(fig:ssvenn) we see the model $y = b_0 + b_1(x1) + b_2(x2) + \varepsilon$ where the outcome variable, $y$ included as a circle too. The "variance explained" by each predictor is the _overlap_ between each predictor and the outcome variable.  
+Having multiple predictors introduces the likely scenario that our predictors ($x1$ and $x2$) may be to some extent correlated. That is, knowing something about $x1$ will tell us something about $x2$, and vice versa. But this means that we have some joint overlap ($F$ in the \@ref(fig:ssvenn)) which is variance explained in the outcome variable that is __not unique__ to either predictor. We don't want to double count this, we need to decide to which variable we want to attribute this explained variance.  
+
+In Figure \@ref(fig:ssvenn):
+ 
+- the total variance in $y$ is represented by the combination of areas $A + D + E + F$.  
+- the covariance between $x1$ and $y$ is $D + F$
+- the covariance between $x2$ and $y$ is $E + F$   
+- the variance in $y$ uniquely explained by $x1$ is $D$
+- the variance in $y$ uniquely explained by $x2$ is $E$
+- the variance in $y$ explained by $x1$ and $x2$ that is not unique to either predictor is $F$. 
+
+
+```{r ssvenn, echo=FALSE, fig.cap="Venn Diagram of variables in multiple regression model, with areas represents variance/shared variance", out.height = "300px", out.width="250px"}
+knitr::include_graphics("images/ss/ss0.png")
+```
+Types of Sums of Squares largely comes down to how we attribute the area $F$. Type 1 Sums of Squares attributes it to whichever of $x1$ and $x2$ is _first_ entered into the model. Type 3 Sums of Squares attributes it to neither. Let's look at these in more depth. 
+
+:::
+
+# Type 1 Sums of Squares  
+
+:::frame 
+
+
+<div style="display:inline-block;max-width:40%;vertical-align:top">
+When we calculate Type 1 sums of squares, _and $x1$ is entered into our model first_, then we are looking at:
+
+- the effect of $x1$ as $D + F$  
+- the effect of $x2$ as $E$   
+
+We get these from functions like `anova()` which test the relative size of these areas to the area of A (after scaling each of these by how much information - the _degrees of freedom_ - are used to create each - this is the __mean squares__ bit).  
+</div><div style="display:inline-block;max-width:40%;vertical-align:top">
+```{r ssvenn1, echo=FALSE, out.height = "250px", out.width="175px"}
+knitr::include_graphics("images/ss/ss1.png")
+```
+</div>
+
+
+```{r eval=F}
+model <- lm(y~x1+x2,data=df)
+anova(model)
+```
+```{r echo=F}
+options(knitr.kable.NA = '')
+m <- lm(y~x1+x2,df)
+tab1 <- anova(m)
+tab1[,2:4] <- round(tab1[,2:4],3)
+tab1[,5] <- ifelse(tab1[,5]<.001, "<.001", round(tab1[,5],3))
+tab1$`Areas in Diagram` <- c("(D + F) vs A", "E vs A","A")
+knitr::kable(tab1) %>% kableExtra::column_spec(7,bold=T) %>% kableExtra::kable_styling(full_width = T)
+```
+
+`r optbegin("Why are these different for lm(y~x1+x2) and lm(y~x1)?", olabel=F,toggle=params$TOGGLE)`  
+Consider three models: 
+```{r}
+m0 <- lm(y ~ 1, data = df)
+m1 <- lm(y ~ 1 + x1, data = df)
+m2 <- lm(y ~ 1 + x1 + x2, data = df)
+```
+Because we think of Type 1 sums of squares as "incremental", then it is tempting to want these following to have the same results regarding the effect of $x1$: 
+```{r}
+anova(m1)
+anova(m2)
+```
+Notice, however, that it is not. This is because the area marked A is now bigger, because the variance which was being explained by $x2$ (the grey area below) is, in this model, simply just more "residual variance".  
+```{r echo=FALSE, out.height = "300px", out.width="200px"}
+knitr::include_graphics("images/ss/sssimple.png")
+```
+
+```{r echo=F}
+m<-lm(y~x1,data=df)
+tab1 <- anova(m)
+tab1[,2:4] <- round(tab1[,2:4],3)
+tab1[,5] <- ifelse(tab1[,5]<.001, "<.001", round(tab1[,5],3))
+tab1$`Areas in Diagram` <- c("G vs A","A")
+knitr::kable(tab1) %>% kableExtra::column_spec(7,bold=T) %>% kableExtra::kable_styling(full_width = T)
+```
+`r optend()`
+:::
+
+# Type 3 Sums of Squares  
+
+:::frame
+
+<div style="display:inline-block;max-width:40%;vertical-align:top">
+When we calculate Type 3 Sums of Squares, we get:
+
+- the effect of $x1$ = $D$  
+- the effect of $x2$ = $E$   
+
+We get these using functions like `drop1(model)` and the `Anova(model, type = 3)` (capital A) from the __car__ package.  
+</div>
+<div style="display:inline-block;max-width:40%;vertical-align:top">
+```{r ssvenn3, echo=FALSE, out.height = "200px", out.width="150px"}
+knitr::include_graphics("images/ss/ss3.png")
+```
+</div>
+
+```{r}
+model <- lm(y~x1+x2,data=df)
+library(car)
+Anova(model, type = 3)
+```
+And these are _also_ the effects that we see as the _coefficients_ in functions like `summary()`,`coef()` and `coefficients()`, but the estimated coefficients are scaled to be in terms of "change in y for every 1 unit change in x".  
+
+```{r}
+summary(model)
+```
+:::
+
+# Example
+
+## Data
+
+```{r ssssetup, message=F,warning=F}
+library(tidyverse)
+usmrsurv2 <- read_csv("https://uoepsy.github.io/data/usmrsurvey2.csv")
+names(usmrsurv2)
+names(usmrsurv2)[9:14]<-c("E","A","C","ES","I","LOC")
+```
+
+## A model 
+
+Here is a model with two predictors, with the order of the predictors differing between the two models:  
+```{r}
+mymod1 <- lm(LOC ~ ES + optimism, data = usmrsurv2)
+mymod2 <- lm(LOC ~ optimism + ES, data = usmrsurv2)
+```
+
+## Type 1 SS
+
+Type 1 Sums of Squares is the "incremental" or "sequential" sums of squares.  
+If we have a model $Y \sim A + B$, this method tests:  
+
+- the main effect of A
+- the main effect of B after the main effect of A
+- _Interactions (which come in Week 9 of the course) are tested after the main effects_^[So a model $Y \sim A + B + A:B$ will (in addition to the two above) test 1) the main effect of A 2) the main effect of B after the main effect of A and 3) the effect of the interaction A:B *after* the main effects of A and B.]. 
+
+Because this is sequential, the order matters.  
+
+
+We can get the Type 1 SS in R using the function `anova()`.  
+As you will see, the order in which the predictors are entered in the model influences the results.  
+This is because:  
+
+- for `mymod1` (`lm(LOC ~ ES + optimism)`) we are testing the main effect of `ES`, followed by the main effect of `optimism` _after_ accounting for effects of `ES`.  
+- for `mymod2` (`lm(LOC ~ optimism + ES)`) it is the other way around: we test the main effect of `optimism`, followed by the main effect of `ES` _after_ accounting for effects of `optimism`.  
+
+```{r}
+# mymod1 <- lm(LOC ~ ES + optimism, data = usmrsurv2)
+anova(mymod1)
+# mymod2 <- lm(LOC ~ optimism + ES, data = usmrsurv2)
+anova(mymod2)
+```
+
+## Type 3 SS
+
+Type 3 Sums of Squares is the "partial" sums of squares.  
+If we have a model $Y \sim A + B$, this method tests:  
+
+- the main effect of A after the main effect of B
+- the main effect of B after the main effect of A
+
+So the Type 3 will be equivalent to Type 1 _only for the final predictor in the model_. 
+
+One approach is to use the `drop1()` function. We can also get the same using the `Anova()` function (capital __A__) from the __car__ package.  
+```{r}
+# mymod1 <- lm(LOC ~ ES + optimism, data = usmrsurv2)
+drop1(mymod1, test = "F")
+```
+
+Note that these results are the same as the Type 3 for `optimism` in the model `lm(LOC ~ ES + optimism)`, and the Type 3 for `ES` in the model `lm(LOC ~ optimism + ES)`. Take a look back up the page for confirmation of this.  
+  
+Note that Type 3 SS are __invariant to the order of predictors:__
+We get the same when we switch around our predictors:
+```{r}
+# mymod2 <- lm(LOC ~ optimism + ES, data = usmrsurv2)
+drop1(mymod2, test = "F")
+```
+
+## The summary() function  
+
+Remember that we mentioned when we introduced the simple regression model (one predictor), the $t$-statistic for the coefficient test is the square root of the $F$-statistic for the test of the overall reduction in the residual sums of squares?  
+
+This does still hold for the multiple regression model, but it is a little more complicated. For a given coefficient $t$-statistic in a multiple regression model, the associated $F$-statistic is the one corresponding to the reduction in residual sums of squares that is attributable to that predictor only. This, in other words, is the Type 3 $F$-statistic.   
+
+Here are our model coefficients and $t$-statistics:
+```{r}
+# mymod1 <- lm(LOC ~ optimism + ES, data = usmrsurv2)
+summary(mymod1)$coefficients
+```
+
+Here are our Type 3 SS $F$-statistics:
+```{r}
+drop1(mymod1, test = "F")
+```
+
+We can square-root them to get back to the $t$-statistic:  
+```{r}
+sqrt(drop1(mymod1, test = "F")$`F value`)
+```
+
+What this means is that just like the `drop1()` $F$ test for reduction in residual sums of squares uses Type 3 SS, the coefficients produced in `summary()` for a linear model are also _invariant to the order of predictors._  
+
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>

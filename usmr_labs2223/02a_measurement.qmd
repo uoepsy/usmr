@@ -1,0 +1,963 @@
+---
+title: "Measurement & Distributions"
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(xaringanExtra)
+library(tidyverse)
+library(patchwork)
+xaringanExtra::use_panelset()
+```
+
+__Reading time: 23 minutes__  
+
+:::lo
+The best way to learn R is to use it.   
+  
+Try following along with this reading by typing the code into your R script and running them. You will hopefully get the same output as is presented on this page below each bit of code.  
+If you get errors and warnings, don't panic - read them!  
+:::
+
+# Types of Data
+
+
+```{r}
+#| label: fig-typesdata
+#| echo: false
+#| fig-show: 'hold'
+#| fig-align: 'center'
+#| fig-cap: "Artwork by \\@allison_horst"
+knitr::include_graphics("images/ahorst/cdnob.png")
+```
+
+In the dice-rolling example, each roll of the die could take one of a discrete set of responses (1, 2, 3, 4, 5 or 6). A die cannot land on 5.3, or 2.6.  
+
+There are many different things we can measure / record on observational units, and the data we collect will also have different characteristics. Some data will be similar to rolling a die in that values take on **categories**, and others could take any value on a **continuous** scale.  
+
+For example, in the last couple of years during welcome week, we have asked students of the statistics courses in the Psychology department to fill out a little survey. Amongst other things, we capture data on student heights (we asked for answers in cm, and respondents could be precise as they liked) and the colours of they eyes (we gave a set of options to choose from). We distinguish between these different types of data by talking about variables that are __categorical__ (responses take one of a set of defined categories: "blue", "green", and so on..) and those that are __numeric__ (responses are in the form of a number). Within each of these, there also are a few important sub-classes.  
+
+
+<!-- ```{r echo=F, fig.cap="Screenshot of survey data fields", out.width="60%"} -->
+<!-- knitr::include_graphics("images/surveyscreenshot.png") -->
+<!-- ``` -->
+
+<!-- In the following examples, we are going to use some data on 120 participants' IQ scores (measured on the Wechsler Adult Intelligence Scale (WAIS)), their ages, and their scores on 2 other tests.   -->
+<!-- The data are available at https://uoepsy.github.io/data/wechsler.csv   -->
+
+<!-- ```{r} -->
+<!-- wechsler <- read_csv("https://uoepsy.github.io/data/wechsler.csv") -->
+<!-- summary(wechsler) -->
+<!-- ``` -->
+
+This reading walks through the various different types of data we might encounter, and some of the metrics we use to summarise variables of different types. For this walkthrough we have a dataset on some of the most popular internet passwords, their strength, and how long it took for an algorithm to crack it. The data are available online at https://uoepsy.github.io/data/passworddata.csv.  
+  
+:::frame
+__Data: Passwords__
+```{r}
+pwords <- read.csv("https://uoepsy.github.io/data/passworddata.csv")
+```
+  
+| Variable Name | Description            |
+|---------------|--------------------|
+| rank   | Popularity in the database of released passwords |
+| password     | Password |
+| type     | Category of password  |
+| cracked     | Time to crack by online guessing |
+| strength     | Strength = quality of password where 10 is highest, 1 is lowest |
+| strength_cat     | Strength category (weak, medium, strong) |
+
+
+:::
+
+
+## Categorical  
+
+:::statbox
+__Categorical__ variables tell us what group or category each individual belongs to. Each distinct group or category is called a __level__ of the variable.
+
+
+|  __Type__ | __Description__ |  __Example__|
+|:--|:--|:--|
+|  __Nominal (Unordered categorical)__ | A categorical variable with _no_ intrinsic ordering among the levels. | Species: _Dog_, _Cat_, _Parrot_, _Horse_, ... |
+|  __Ordinal (Ordered categorical)__ | A categorical variable which levels possess some kind of order |  Level: _Low_, _Medium_, _High_ |
+|  __Binary categorical__ | A special case of categorical variable with only 2 possible levels |  isDog: _Yes_ or _No_. |
+
+
+If we want to summarise a categorical variable into a single number, then the simplest approach is to use the mode:  
+
++ __Mode:__ The most frequent value (the value that occurs the greatest number of times).  
+
+When we have ordinal variables, there is another option, and that is to use the median: 
+
++ __Median:__ For ordinal variables _only_, this is the value for which 50% of observations are lower and 50% are higher. It is the mid-point of the values when they are rank-ordered. 
+
+When we use the __median__ as our measure of "central tendency" (i.e. the middle of the distribution) and we want to discuss how spread out the spread are around it, then we will want to use _quartiles._ The __Inter-Quartile Range (IQR)__ is obtained by rank-ordering all the data, and finding the points at which 25% (one quarter) and 75% (three quarters) of the data falls below (this makes the median the "2nd quartile").  
+
+:::
+
+In our dataset on passwords, we have various categorical variables, such as the type of password (categories like "animal", "fluffy" etc).  
+
+There are various ways we might want to summarise categorical variables like this. We have already seen the code to do this in our example of the dice simulation - we can simply counting the frequencies in each level:  
+
+```{r}
+table(pwords$type)
+```
+This shows us that the __mode__ (most common) is "name" related passwords.  
+We could also convert these to proportions, by dividing each of these by the total number of observations. 
+For instance, here are the percentages of passwords of each type:  
+```{r}
+table(pwords$type) / sum(table(pwords$type)) * 100
+```
+
+:::rtip
+
+Often, if the entries in a variable are characters (letters), then many functions in R (like `table()`) will treat it the same as if it is a categorical variable. However, this is not always the case, so it is good to tell R specifically that each variable __is__ a categorical variable. There is a special way that we tell R that a variable is categorical - we set it to be a "factor". Note what happens when we make the "type" and "strength_cat"  variables to be a factor:  
+
+```{r}
+pwords$type <- factor(pwords$type)
+pwords$strength_cat <- factor(pwords$strength_cat)
+summary(pwords)
+```
+
+R now recognises that there a set number of possible response options, or "levels", for these variables. We can see what they are using:
+```{r}
+levels(pwords$strength_cat)
+```
+The "strength_cat" variable specifically has an ordering to the levels, so we might be better off also telling R about this ordering. We do this like so:  
+```{r}
+pwords$strength_cat <- factor(pwords$strength_cat, ordered = TRUE, levels = c("weak","medium","strong"))
+```
+:::
+
+Sometimes, we might have a variable that we know is categorical, but we might want to treat it as a set of numbers instead. A very common example in psychological research is Likert data (questions measured on scales such as "Strongly Disagree">>"Disagree">>...>>"Strongly Agree").  
+It is often useful to have these responses as numbers (e.g. 1 = "Strongly Disagree" to 5 = "Strongly Agree"), as this allows us to use certain functions in R more easily. 
+For instance, the `median()` and `IQR()` functions require the data to be numbers.  
+This will not work:
+```{r}
+#| error: true
+median(pwords$strength_cat)
+```
+When we ask R to convert a factor to a numeric variable, it will give turn the first category into 1, the second category to 2, and so on. As R knows that our `strength_cat` variable is the ordered categories "weak">>"medium">>"strong", then `as.numeric(pwords$strength_cat)` will turn these to 1s, 2s, and 3s. 
+```{r}
+median(as.numeric(pwords$strength_cat))
+```
+
+
+## Numeric
+
+:::statbox
+__Numeric__ (or quantitative) variables consist of numbers, and represent a _measurable quantity_. Operations like adding and averaging make sense only for numeric variables.
+
+|  __Type__ | __Description__ |  __Example__|
+|:--|:--|:--|
+|  __Continuous__ | Variables which can take any real number within the specified range of measurement |  Height: _172_, _165.2_, _183_, ... |
+| __Discrete__ |  Variables which can only take integer number values. For instance, a _counts_ can only take positive integer values (0, 1, 2, 3, etc.) | Number_of_siblings: _0_, _1_, _2_, _3_, _4_, ... |
+
+
+One of the most frequently used measures of central tendency for __numeric__ data is the __mean__.  The mean is calculated by summing all of the observations together and then dividing by the total number of obervations ($n$). 
+
+:::sticky
+__Mean:__ $\bar{x}$  
+
+When we have sampled some data, we denote the mean of our sample with the symbol $\bar{x}$ (sometimes referred to as "x bar"). The equation for the mean is:
+
+$$\bar{x} = \frac{\sum\limits_{i = 1}^{n}x_i}{n}$$
+
+
+`r optbegin("Help reading mathematical formulae.", olabel=FALSE)`
+This might be the first mathematical formula you have seen in a while, so let's unpack it.  
+
+The $\sum$ symbol is used to denote a _series of additions_ - a __"summation".__  
+  
+When we include the bits around it: $\sum\limits_{i = 1}^{n}x_i$ we are indicating that we add together all the terms $x_i$ for values of $i$ between $1$ and $n$: 
+$$\sum\limits_{i = 1}^{n}x_i \qquad = \qquad x_1+x_2+x_3+...+x_n$$ 
+
+So in order to calculate the mean, we do the summation (adding together) of all the values from the $1^{st}$ to the $n^{th}$ (where $n$ is the total number of values), and we divide that by $n$. 
+`r optend()`
+<!-- `r optbegin("Optional - Samples and populations.", olabel=FALSE)` -->
+<!-- Statistics is all about drawing inferences from some __sampled__ data about the larger __population__ from which it is sampled.   -->
+
+<!-- A statistic which we calculate from our sample provides us with _an estimate_ of something in the population (for instance, we might take the average age of students at Edinburgh University as an estimate of the age of _all_ students).   -->
+
+<!-- Because of this, statisticians have different notations for when we are talking about populations vs talking about samples:   -->
+
+<!-- |  |  Sample|  Population| -->
+<!-- |--:|--:|--:| -->
+<!-- |  Number of observations |  $n$|  $N$| -->
+<!-- |  Mean |  $\bar{x} = \frac{\sum\limits_{i = 1}^{n}x_i}{n}$ |  $\mu = \frac{\sum\limits_{i = 1}^{N}x_i}{N}$ | -->
+
+<!-- `r optend()` -->
+
+:::
+
+
+If we are using the __mean__ as our as our measure of central tendency, we can think of the spread of the data in terms of the __deviations__ (distances from each value to the mean).
+
+Recall that the mean is denoted by $\bar{x}$. If we use $x_i$ to denote the $i^{th}$ value of $x$, then we can denote deviation for $x_i$ as $x_i - \bar{x}$.  
+The deviations can be visualised by the red lines in @fig-deviations.  
+
+```{r}
+#| label: fig-deviations
+#| echo: false
+#| fig-cap: "Deviations from the mean"
+knitr::include_graphics("images/numeric/deviations.png")
+```
+
+:::sticky
+__The sum of the deviations from the mean, $x_i - \bar x$, is always zero__
+
+$$
+\sum\limits_{i = 1}^{n} (x_i - \bar{x}) = 0
+$$
+
+The mean is like a center of gravity - the sum of the positive deviations (where $x_i > \bar{x}$) is equal to the sum of the negative deviations (where $x_i < \bar{x}$).
+:::
+
+Because deviations around the mean always sum to zero, in order to express how spread out the data are around the mean, we must we consider __squared deviations__.  
+Squaring the deviations makes them all positive. Observations far away from the mean _in either direction_ will have large, positive squared deviations. The average squared deviation is known as the __variance,__ and denoted by $s^2$
+
+:::sticky
+__Variance:__ $s^2$
+
+The variance is calculated as the average of the squared deviations from the mean.  
+
+When we have sampled some data, we denote the mean of our sample with the symbol $\bar{x}$ (sometimes referred to as "x bar"). The equation for the variance is:
+
+$$s^2 = \frac{\sum\limits_{i=1}^{n}(x_i - \bar{x})^2}{n-1}$$
+
+`r optbegin("Optional: Why n minus 1?", olabel=FALSE)`
+The top part of the equation $\sum\limits_{i=1}^{n}(x_i - \bar{x})^2$ can be expressed in $n-1$ terms, so we divide by $n-1$ to get the average.  
+<br>
+__Example:__ If we only have two observations $x_1$ and $x_2$, then we can write out the formula for variance in full quite easily. The top part of the equation would be:
+$$
+\sum\limits_{i=1}^{2}(x_i - \bar{x})^2 \qquad = \qquad (x_1 - \bar{x})^2 + (x_2 - \bar{x})^2
+$$
+
+The mean for only two observations can be expressed as $\bar{x} = \frac{x_1 + x_2}{2}$, so we can substitute this in to the formula above. 
+$$
+(x_1 - \bar{x})^2 + (x_2 - \bar{x})^2 \qquad = \qquad \left(x_1 - \frac{x_1 + x_2}{2}\right)^2 + \left(x_2 - \frac{x_1 + x_2}{2}\right)^2 
+$$
+Which simplifies down to one value:
+$$
+\left(x_1 - \frac{x_1 + x_2}{2}\right)^2 + \left(x_2 - \frac{x_1 + x_2}{2}\right)^2 \qquad = \qquad  \left(\frac{x_1 - x_2}{\sqrt{2}}\right)^2
+$$
+<br>
+So although we have $n=2$ datapoints ($x_1$ and $x_2$), the top part of the equation for the variance has only 1 ($n-1$) units of information. In order to take the average of these bits of information, we divide by $n-1$. 
+`r optend()`
+:::
+
+One difficulty in interpreting __variance__ as a measure of spread is that it is in units of __squared deviations.__  It reflects the typical _squared_ distance from a value to the mean.  
+Conveniently, by taking the square root of the variance, we can translate the measure back into the units of our original variable. This is known as the __standard deviation.__  
+
+:::sticky
+__Standard Deviation:__ $s$
+
+The standard deviation, denoted by $s$, is a rough estimate of the typical distance from a value to the mean.  
+It is the square root of the variance (the typical _squared_ distance from a value to the mean). 
+
+$$
+s = \sqrt{\frac{\sum\limits_{i=1}^{n}(x_i - \bar{x})^2}{n-1}}
+$$
+
+:::  
+
+:::
+
+In the passwords dataset, we only have one continuous variable, and that is the "cracked" variable, which if we recall is the "Time to crack by online guessing".  You might be questioning whether the "strength" variable, which ranges from 1 to 10 is numeric? This depends on whether we think that statements like "a password of strength 10 is twice as strong as a password of strength 5".  
+For now, we'll just look at the "cracked" variable.  
+
+To calculate things like means and standard deviations in R is really easy, because there are functions that do them all for us.  
+For instance, we can do the calculation by summing the _cracked_ variable, and dividing by the number of observations (in our case we have 500 passwords):
+```{r}
+# get the values in the "cracked" variable from the "pwords" dataframe, and
+# sum them all together. Then divide this by 500
+sum(pwords$cracked)/500
+```
+Or, more easily, we can use the `mean()` function:
+```{r}
+mean(pwords$cracked)
+```
+
+We can get R to calculate the variance and standard deviation with the `var()` and `sd()` functions:  
+```{r}
+var(pwords$cracked)
+sd(pwords$cracked)
+```
+and just to prove to ourselves:  
+```{r}
+sd(pwords$cracked)^2 == var(pwords$cracked)
+```
+
+:::rtip
+If a column of our dataset contains only numbers, R will typically just interpret it as a numeric variable. However, we should still be careful; remember what happens if we have just one erroneous entry in there - they can all change to be characters (surrounded by quotation marks):  
+```{r}
+c(1,3,6,"peppapig",3)
+```
+We can force a variable to be numeric by using `as.numeric()`, which will also coerce any non-numbers to be NA (not applicable):
+```{r}
+as.numeric(c(1,3,6,"peppapig",3))
+```
+
+If there is an `NA` in the variable, many functions like `mean()`, `var()` and `sd()` will not compute: 
+```{r}
+x <- c(1, 3, 6, NA, 3)
+mean(x)
+```
+However, we can ask these functions to remove the NAs prior to the computation:
+```{r}
+mean(x, na.rm = TRUE)
+```
+
+:::
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Tidyverse and pipes! 
+
+Before we get started on some visualisations, we're going to briefly introduce some crucial bits of R code. 
+
+We have seen already seen a few examples of code such as: 
+```{r}
+#| eval: false
+# show the dimensions of the data
+dim(somedata)
+# show the frequency table of values in a variable
+table(somedata$somevariable)
+```
+
+And we have seen how we might wrap functions inside functions: 
+```{r}
+#| eval: false
+barplot(table(somedata$somevariable))
+```
+
+This sort of writing (functions inside functions inside functions) involves R evaluating code from the inside out. But a lot of us don't intuitively think that way, and actually find it easier to think in terms of a sequence. The code `barplot(table(somedata$somevariable))` could be read as "take this variable, _then_ make a table of it, _then_ make a barplot of that table". 
+
+We can actually write code that better maps to this way of reading, using a nice little symbol called a "pipe":  
+
+:::lo
+__Piping__
+
+We can write in a different style, however, and this may help to keep code tidy and easily readable - we can write __sequentially__:  
+
+![](images/numeric/pipes.png)
+
+Notice that what we are doing is using a new symbol: `%>%`  
+
+This symbol takes the output of whatever is on it's left-hand side, and uses it as an _input_ for whatever is on the right-hand side.   
+
+The `%>%` symbol gets called a "pipe".  
+:::
+
+Let's see it in action with the passwords dataset we've been using. First we need to load the tidyverse packages, because that is where `%>%` is found.
+```{r}
+library(tidyverse)
+```
+
+We can now write code that instead of requiring reading from the inside-out:
+```{r}
+#| eval: false
+barplot(table(pwords$type))
+```
+can be read from left to right: 
+```{r}
+#| eval: false
+pwords$type %>%
+    table() %>%
+    barplot()
+```
+Both of which do exactly the same thing! They create the plot below:
+```{r}
+#| echo: false
+#| out-width: "40%"
+pwords$type %>%
+    table() %>%
+    barplot()
+```
+
+We're going to use pipes a lot throughout this course, and it pairs really well with a group of functions in the __tidyverse__ packages, which were designed to be used in conjunction with a pipe:
+
+* `select()` extracts columns  
+* `filter()` subsets data based on conditions  
+* `mutate()` adds new variables    
+* `group_by()` group related rows together  
+* `summarise()`/`summarize()` reduces values down to a single summary  
+
+Typically, the __tidyverse__ means that we no longer have to keep telling R in which dataframe to look for the variable. The tidyverse functions are designed to make things is a bit easier. Let's take a look at how.  
+You'll notice that the code has lots of indentations to make it more readable, which RStudio does for you when you press enter!  
+
+:::lo
+__select()__  
+
+We know about using `$` to extract a column from a dataframe. The `select()` function is a little bit like that - it allows us to choose certain columns in a dataframe. It will return all rows.  
+Because we can select multiple columns this way, it doesn't return us a vector (in the way dataframe$variable does), but returns a dataframe:  
+
+
+```{r}
+#| eval: false
+# take the data
+# and select the "variable1" and "variable2" columns
+data %>%
+  select(variable1, variable2)
+```
+
+::: {.panelset}
+::: {.panel}
+#### Tidyverse
+```{r}
+#| eval: false
+pwords %>% select(type, strength)
+```
+
+:::
+::: {.panel}
+#### Base R
+```{r}
+#| eval: false
+pwords[, c("type","strength")]
+```
+:::
+:::
+
+:::
+
+:::lo
+__filter()__ 
+
+The `filter()` function is a bit like the `[]` to choose rows that meet certain conditios - it allows us to _filter_ a dataframe down to those rows which meet a given condition. It will return all columns.  
+
+```{r}
+#| eval: false
+# take the data
+# and filter it to only the rows where the "variable1" column is 
+# equal to "value1". 
+data %>% 
+  filter(variable1 == value1)
+```
+
+
+::: {.panelset}
+::: {.panel}
+#### Tidyverse
+```{r}
+#| eval: false
+pwords %>% 
+    filter(strength_cat == "strong")
+```
+:::
+::: {.panel}
+#### Base R
+```{r}
+#| eval: false
+pwords[pwords$strength_cat == "strong", ]
+```
+:::
+:::
+
+:::  
+
+:::lo
+__mutate()__  
+
+The `mutate()` function is used to add or modify variables to data.  
+```{r}
+#| eval: false
+# take the data
+# %>%
+# mutate it, such that there is a variable called "newvariable", which
+# has the values of a variable called "oldvariable" multiplied by two.
+data %>%
+  mutate(
+    newvariable = oldvariable * 2
+  )
+```
+
+To ensure that our additions/modifications of variables are stored in R's environment (rather than simply printed out), we need to *reassign* the name of our dataframe:
+```{r}
+#| eval: false
+data <- 
+  data %>%
+  mutate(
+    ...
+  )
+```
+__Note:__ Inside functions like `mutate()`, we don't have to keep using the dollar sign `$`, as we have already told it what data to look for variables in.
+
+::: {.panelset}
+::: {.panel}
+#### Tidyverse
+```{r}
+#| eval: false
+pwords <- pwords %>% 
+    mutate(
+        cracked_min = cracked / 60
+    )
+```
+:::
+::: {.panel}
+#### Base R
+```{r}
+#| eval: false
+pwords$cracked_min <- pwords$cracked / 60
+```
+:::
+:::
+
+:::
+
+
+:::lo
+__summarise()__   
+  
+The `summarise()` function is used to reduce variables down to a single summary value.
+```{r}
+#| eval: false
+# take the data %>%
+# summarise() it, such that there is a value called "summary_value", which
+# is the sum() of "variable1" column, and a value called 
+# "summary_value2" which is the mean() of the "variable2" column.
+data %>%
+  summarise(
+    summary_value = sum(variable1),
+    summary_value2 = mean(variable2)
+  )
+```
+  
+
+::: {.panelset}
+::: {.panel}
+#### Tidyverse
+```{r}
+#| eval: false
+pwords %>% 
+    summarise(
+        mean_cracked = mean(cracked),
+        sd_cracked = sd(cracked),
+        nr_strong = sum(strength_cat == "strong")
+    )
+```
+:::
+::: {.panel}
+#### Base R
+To store these all in the same object (like the tidyverse way) we would have to create a `data.frame()` and add these as variables.  
+```{r}
+#| eval: false
+mean(pwords$cracked)
+sd(pwords$cracked)
+sum(pwords$strength_cat == "strong")
+```
+:::
+:::
+
+:::
+
+:::lo
+__group_by()__
+
+The __group_by()__ function is often used as an intermediate step in order to do something. For instance, if we want to summarise a variable by calculating its mean, but we want to do that for several groups, then we first __group_by()__ and _then_ __summarise()__:  
+
+```{r}
+#| eval: false
+# take the data %>% 
+# and, grouped by the levels of the "mygroups" variable,
+# summarise() it so that there is a column called "summary_col", which
+# is the mean of the "variable1" column for each group. 
+data %>%
+    group_by(mygroups) %>%
+    summarise(
+        summary_col = mean(variable1)
+    )
+```
+
+::: {.panelset}
+::: {.panel}
+#### Tidyverse
+```{r}
+#| eval: false
+pwords %>% 
+    group_by(strength_cat) %>%
+    summarise(
+        mean_cracked = mean(cracked)
+    )
+```
+:::
+::: {.panel}
+#### Base R
+This is less easy. There are functions in Base R that can do similar things, but we're not going to teach those here. You could envisage getting all the same values by doing:  
+```{r}
+#| eval: false
+mean(pwords$cracked[pwords$strength_cat == "weak"])
+mean(pwords$cracked[pwords$strength_cat == "medium"])
+mean(pwords$cracked[pwords$strength_cat == "strong"])
+```
+:::
+:::
+
+
+:::
+
+:::rtip
+__Other pipes!__  
+
+The `%>%` pipe came on the scene in around 2014, and has been part of a huge shift since then in the way that many people use R.  
+
+Very recently, some of the functionality of the pipe has been added to the standard R installation (what tends to be referred to as "Base R"). This has come in the form of the Base R pipe: `|>`.  
+  
+<div style="display:inline-block;width:55%;vertical-align:top">
+```{r}
+#| eval: false
+# for %>% we need the tidyverse
+library(tidyverse)
+1:10 %>% mean()
+```
+</div>
+<div style="display:inline-block;width:40%;vertical-align:top;">
+```{r}
+#| eval: false
+# the base R pipe
+1:10 |> mean()
+```
+</div>
+  
+  
+In time, it is possible that usage of `%>%` will tend to be replaced in favour of this new one, and for most purposes they are interchangeable.  
+  
+In this course we continue to use `%>%`  
+
+:::
+
+
+<div class="divider div-transparent div-dot"></div>
+
+
+# ggplot
+
+We're going to now make our first steps into the world of data visualisation, and start learning some methods for presenting plots of distributions of various types of data. R is an incredibly capable language for creating visualisations of almost any kind. It is used by many media companies (e.g., the BBC), and has the capability of producing 3d visualisations, animations, interactive graphs, and more.  
+
+:::frame
+_"By visualizing information, we turn it into a landscape that you can explore with your eyes. A sort of information map. And when you’re lost in information, an information map is kind of useful."_ – [David McCandless](https://informationisbeautiful.net/)
+:::
+
+We are going to use the most popular R package for visualisation: __ggplot2__. This is actually part of the __tidyverse__, so if we have an R script, and we have loaded the __tidyverse__ packages at the start (by using `library(tidyverse)`), then __ggplot2__ will be loaded too).  
+
+Recall our way of plotting frequencies that we have seen so far (we saw this in the dice simulations):  
+```{r}
+barplot(table(pwords$type))
+```
+
+We can also use `ggplot()` to visualise this. The benefit is that we can easily then edit *all* aspects of the visualisation.  
+```{r}
+# create the plot, and give the "mappings"
+ggplot(data = pwords, aes(x = type)) + 
+    # add some shapes
+    geom_bar() +
+    # add some titles, change axes labels etc
+    labs(title = "Password type frequencies", x = "password type") +
+    # edit the scales of the x axis
+    scale_x_discrete(labels = abbreviate)
+```
+
+:::rtip
+__Basic ggplot components__  
+
+Note the key components of the ggplot code. 
+
+*  `data = ` where we provide the name of the dataframe. 
+*  `aes = ` where we provide the _aesthetics_. These are things which we map from the data to the graph. For instance, the x-axis, or if we wanted to colour the columns/bars according to some aspect of the data. 
+
+Then we add (using `+`) some _geometry_. These are the shapes (in our case, the columns/bars), which will be put in the correct place according to what we specified in `aes()`.  
+
+* `+ geom_....` Adds different shapes (e.g., bars) to the plot.  
+
+<br>
+You can find great documentation on ggplot2 at https://www.statsandr.com/blog/graphics-in-r-with-ggplot2/.  
+:::
+
+
+`r optbegin("Optional - Looking ahead to different aes() and geoms, labels.", olabel=FALSE)`
+Use these as reference for when you want to make changes to the plots you create.  
+Additionall, remember that google is your friend - there are endless forums with people asking how to do something in ggplot, and you can just copy and paste bits of code to add to your plots!  
+  
+1. Filling/colouring geoms: 
+```{r}
+#| code-fold: true
+ggplot(data = pwords, aes(x = type, fill = type)) +
+  geom_bar()+
+  labs(title = "Password type frequencies", x = "password type") + 
+  scale_x_discrete(labels = abbreviate)
+```
+2. Change the limits of the axes:
+```{r}
+#| code-fold: true
+ggplot(data = pwords, aes(x = type, fill = type)) +
+  geom_bar()+
+  labs(title = "Password type frequencies", x = "password type") +
+  scale_x_discrete(labels = abbreviate) +
+  ylim(0,250)
+```
+3. Remove (or reposition) the legend:
+```{r}
+#| code-fold: true
+# setting theme(legend.position = "bottom") would put it at the bottom!
+ggplot(data = pwords, aes(x = type, fill = type)) +
+  geom_bar()+
+  labs(title = "Password type frequencies", x = "password type") + 
+  scale_x_discrete(labels = abbreviate) +
+  guides(fill="none")
+```
+4. Changing the theme. Theme-type stuff can also be used to do things such as making axes labels rotate (I always have to google how to do this stuff!)  
+```{r}
+#| code-fold: true
+# there are many predefined themes, including: 
+# theme_bw(), theme_classic(), theme_light()
+ggplot(data = pwords, aes(x = type, fill = type)) +
+  geom_bar()+
+  labs(title = "Password type frequencies", x = "password type") + 
+  guides(fill="none") + 
+  scale_x_discrete(labels = abbreviate) +
+  theme_dark() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+5. Other shapes, x and y:
+```{r}
+#| code-fold: true
+ggplot(data = pwords, aes(x = type, y = strength)) +
+  geom_boxplot()
+
+ggplot(data = pwords, aes(x = type, y = strength)) +
+  geom_violin()
+
+ggplot(data = pwords, aes(x = strength, y = cracked)) + 
+  geom_point()
+```
+```{r}
+#| label: fig-ahorstggplt
+#| echo: false
+#| fig-cap: "Artwork by \\@allison_horst"
+knitr::include_graphics("images/ahorst/ggplot2_masterpiece.png")
+```
+
+`r optend()`
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Visualising Distributions
+
+## Boxplots {-}  
+
+Boxplots provide a useful way of visualising the __interquartile range (IQR).__ You can see what each part of the boxplot represents in Figure @fig-boxplotdesc.  
+
+```{r}
+#| label: fig-boxplotdesc
+#| echo: false
+#| fig-cap: "Anatomy of a boxplot"
+#| out-width: '100%'
+
+set.seed(34875)
+px = rnorm(100,10,10)
+mn=min(px[px>quantile(px, .25)-(1.5*IQR(px))])
+mx=max(px[px<quantile(px, .75)+(1.5*IQR(px))])
+outs_up = px[px>quantile(px, .75)+(1.5*IQR(px))]
+outs_lw = px[px<quantile(px, .25)-(1.5*IQR(px))]
+ggplot(data = NULL, aes(x = px)) +
+  geom_boxplot(col="red")+
+  ylim(-1,1)+xlim(-30,45)+
+  theme_classic()+
+  theme(axis.title = element_blank(), axis.text = element_blank(),
+      axis.ticks = element_blank(), axis.line = element_blank())+
+  
+  # Quartiles
+  annotate("text",x=median(px), y=0.7, label="Q2\n(Median)", vjust=1,hjust=0.5, col="grey70")+
+  annotate("text",x=quantile(px, .25), y=0.6, label="Q1", vjust=1,hjust=1, col="grey70")+
+  annotate("text",x=quantile(px, .75), y=0.6, label="Q3", vjust=1,hjust=0, col="grey70")+
+  geom_segment(aes(x=median(px), xend=median(px), y=0.48, yend=0.38), col="grey70",lty="dashed")+
+  geom_segment(aes(x=quantile(px, .25), xend=quantile(px, .25), y=0.48, yend=0.38), col="grey70",lty="dashed")+
+  geom_segment(aes(x=quantile(px, .75), xend=quantile(px, .75), y=0.48, yend=0.38), col="grey70",lty="dashed")+
+  
+  # Whiskers
+  annotate("text",x=mn, y=-0.2, label="Minimum value in data\nwhich is > Q1 - (1.5 * IQR)", vjust=1,hjust=0.5, col="grey70")+
+  annotate("text",x=mx, y=-0.2, label="Maximum value in data\nwhich is < Q3 + (1.5 * IQR)", vjust=1,hjust=0.5, col="grey70")+
+  geom_segment(aes(x=mn, xend=mn, y=0, yend=-0.2),col="grey70",lty="dashed")+
+  geom_segment(aes(x=mx, xend=mx, y=0, yend=-0.2),col="grey70",lty="dashed")+
+  
+  #IQR
+  geom_segment(aes(x=quantile(px, .25), xend=quantile(px, .25), y=0.78, yend=0.85), col="grey70")+
+  geom_segment(aes(x=quantile(px, .75), xend=quantile(px, .75), y=0.78, yend=0.85), col="grey70")+
+  geom_segment(aes(x=quantile(px, .75), xend=quantile(px, .25), y=0.85, yend=0.85), col="grey70")+
+  annotate("label",x=median(px), y=0.9, label="IQR", vjust=1,hjust=0.5, col="grey70")+
+  
+  # Outliers +
+  geom_segment(aes(x=outs_up, xend=mean(outs_up), y=0, yend=0.27), col="grey70", lty="dashed")+
+  annotate("text",x=mean(outs_up), y=0.5, label="Outliers\nDatapoints > Q3 + (1.5 * IQR)", vjust=1,hjust=0.5, col="grey70")+
+  # Outliers -
+  geom_segment(aes(x=outs_lw, xend=mean(outs_lw), y=0, yend=0.27), col="grey70", lty="dashed")+
+  annotate("text",x=mean(outs_lw), y=0.5, label="Outliers\nDatapoints < Q1 - (1.5 * IQR)", vjust=1,hjust=0.5, col="grey70")+
+  
+  NULL
+  
+rm(mn,mx,outs_lw,outs_up,px)
+```
+
+We can create a boxplot of our age variable using the following code:
+```{r}
+#| fig-height: 3
+# Notice, we put strength on the x axis, making the box plot vertical. 
+# If we had set aes(y = strength) instead, then it would simply be rotated 90 degrees 
+ggplot(data = pwords, aes(x = strength)) +
+  geom_boxplot()
+```
+
+
+## Histograms {-}
+
+Now that we have learned about the different measures of central tendency and of spread, we can look at how these map to how visualisations of numeric variables look.  
+
+We can visualise numeric data using a __histogram__, which shows the frequency of values which fall within _bins_ of an equal width. 
+
+To do this, we're going to use some new data, on 120 participants' IQ scores (measured on the Wechsler Adult Intelligence Scale (WAIS)), their ages, and their scores on 2 other tests. The data are available at https://uoepsy.github.io/data/wechsler.csv  
+```{r}
+wechsler <- read_csv("https://uoepsy.github.io/data/wechsler.csv")
+```
+
+```{r}
+# make a ggplot with the "wechsler" data. 
+# on the x axis put the possible values in the "iq" variable,
+# add a histogram geom (will add bars representing the count 
+# in each bin of the variable on the x-axis)
+ggplot(data = wechsler, aes(x = iq)) + 
+  geom_histogram()
+```
+We can specifiy the width of the bins:
+```{r}
+ggplot(data = wechsler, aes(x = iq)) + 
+  geom_histogram(binwidth = 5)
+```
+
+Let's take a look at the means and standard deviations of participants' scores on the other tests (the _test1_ and _test2_ variables).  
+Note how nicely we can do this with our newfound tidyverse skills!  
+```{r}
+wechsler %>% 
+  summarise(
+    mean_test1 = mean(test1),
+    sd_test1 = sd(test1),
+    mean_test2 = mean(test2),
+    sd_test2 = sd(test2)
+  )
+```
+Tests 1 and 2 have similar means (around 50), but the standard deviation of Test 2 is almost double that of Test 1. We can see this distinction in the visualisation below - the histograms are centered at around the same point (50), but the one for Test 2 is a lot wider than that for Test 1.
+```{r}
+#| echo: false
+ggplot(data = wechsler, aes(x = test1)) + 
+  geom_histogram()+
+  xlim(0,100) +
+ggplot(data = wechsler, aes(x = test2)) + 
+  geom_histogram()+
+  xlim(0,100)
+```
+
+
+
+
+## Density
+
+In addition to grouping numeric data into _bins_ in order to produce a histogram, we can also visualise a __density curve.__  
+
+Because there are infinitely many values that numeric variables could take (e.g., 50, 50.1, 50.01, 5.001, ...), we could group the data into infinitely many bins. This is essentially what we are doing with a density curve.  
+You can think of "density" as a bit similar to the notion of "relative frequency" (or "proportion"), in that for a density curve, the values on the y-axis are scaled so that the total area under the curve is equal to 1. In creating a curve for which the total area underneath is equal to one, we can use the area under the curve in a range of values to indicate the proportion of values in that range.  
+
+```{r}
+ggplot(data = wechsler, aes(x = iq)) + 
+  geom_density()
+```
+
+:::statbox
+__Area under the curve__  
+
+Think about the barplots we have been looking at in the exercises where we simulate dice rolling :  
+```{r}
+# our function to simulate the roll of a die/some dice
+dice <- function(num = 1) {
+  sum(sample(1:6, num, replace=TRUE))
+}
+# simulate 1000 rolls of a single die
+roll1000 <- replicate(1000, dice(1))
+# tabulate and plot:
+table(roll1000) %>%
+  barplot(.,ylab="count")
+```
+To think about questions like "what proportion of 1000 rolls does the die land on 6?", we are simply interested in the count of 6s divided by the count of all rolls:  
+```{r}
+tab1000 <- table(roll1000)
+tab1000
+tab1000[6] / sum(tab1000)
+```
+So Another way of thinking of this is that we are just dividing the count in each category by the total number. Or, 
+Put another way, imagine we divide the area of each bar by the total area. The area now sums to 1, and our question is asking about the ratio of the red area to the total area (grey + red): 
+```{r}
+#| echo: false
+table(roll1000) %>% 
+  # convert to proportions
+  prop.table() %>%
+  barplot(col=c(rep("#bbbbbb",5),"#ff0000"),ylab="count/total")
+```
+
+Nothing really changes with a density curve! If we want to ask what proportion of our distribution of IQ scores is >110, then we are asking about the area under the curve that is to the right of 110:  
+
+```{r}
+#| echo: false
+p <- ggplot(wechsler,aes(x=iq))+
+    geom_density(fill="grey")
+d <- ggplot_build(p)$data[[1]]
+p + geom_area(data = subset(d, x > 110), aes(x=x, y=y), fill="red")
+```
+
+It looks like about a third, maybe a little less. 
+Let's calculate this proportion directly:  
+```{r}
+sum(wechsler$iq>110) / length(wechsler$iq)
+```
+
+It might seem a little odd to think about area under the curve when we are asking about "what _proportion_ of the data is ...?". If we have the data, then we can just calculate the answer (like we did above). 
+However, a lot of statistics is really concerned with the _probability_ of events. When we discuss probability, we move from talking about a specific set of observed data to thinking about a theoretical/mathematical model that defines the way in which data is generated. This where it becomes more useful to think about distributions in a more abstract sense.  
+
+For instance, with a fair six-sided die, we have a probability distribution in which each side is given the probability $\frac{1}{6}$:
+$$
+\begin{gather*}
+P(x) = \begin{cases}
+  \frac{1}{6} & \text{if $x \in \{1,2,3,4,5,6\}$}\\
+  0 & \text{otherwise.}
+  \end{cases}
+\end{gather*}
+$$
+
+```{r}
+#| echo: false
+tibble(response = 1:6, prob = rep(1/6,6)) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(size=3)+
+  geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
+  scale_x_continuous("faces of a die", breaks=1:6)+
+  scale_y_continuous("probability", limits = c(0,1), breaks=map_dbl(1:6,~./6), labels=c(paste0(1:5,"/6"),"1"))+
+  theme_classic()+
+  theme(text = element_text(size = 24))
+```
+
+:::
+
+
+
+
+
+
+
+

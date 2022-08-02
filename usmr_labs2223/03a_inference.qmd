@@ -1,0 +1,299 @@
+---
+title: "Foundations of Inference"
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(xaringanExtra)
+library(tidyverse)
+library(patchwork)
+xaringanExtra::use_panelset()
+```
+
+We use statistics primarily to estimate parameters in a population. Whether we are polling people to make predictions about the proportion of people who will vote for a certain party in the next election, or conducting a medical trial and assessing the change in blood pressure for patients given drug X vs those given a placebo in order tp decide whether to put the drug into circulation in health service. 
+
+We have seen this already last week:
+We _observed_ a sample of peoples' life satisfaction ratings (scale 0-100), and we wanted to use these to make some statement about the wider population.  
+
+A sample estimates is not going to be spot-on. By taking only a subset of people, we introduced sampling variability - we have uncertainty in the accuracy of our estimate. 
+We saw [previously](02b_sampling.html) how to make a __confidence interval__ as a means of capturing this uncertainty, providing a range of plausible values. 
+
+Let's look at this with a different example.
+
+:::frame
+__Stroop Data__ 
+
+The data we are going to use here come from an experiment using one of the best known tasks in psychology, the "Stroop task".  
+
+In our dataset, we have information from 130 participants who completed an online task in which they saw two sets of coloured words. Participants spoke out loud the colour of each word, and timed how long it took to complete each set. In the one set of words, the words _matched_ the colours they were presented in (e.g., word "blue" was coloured blue). In the other set of words, the words _mismatched_ the colours (e.g., the word "blue" was coloured red (see @fig-stroop1). The order of matching/mismatching sets was randomly allocated for each participant. Participants' recorded their times for each set (*matching* and *mismatching*).^[You can try out the experiment at https://faculty.washington.edu/chudler/java/ready.html]      
+
+The data are available at [https://uoepsy.github.io/data/stroop.csv](https://uoepsy.github.io/data/stroop.csv).  
+
+```{r}
+#| label: fig-stroop1
+#| fig-cap: "Stroop Task - Color word interference. Images from https://faculty.washington.edu/chudler/java/ready.html"
+#| echo: false
+knitr::include_graphics("images/numeric/stroop1.png")
+```
+
+:::
+
+First, we read in the data and take a look at it. How many rows, how many columns, and so on.  
+```{r}
+library(tidyverse)
+stroopdata <- read_csv("https://uoepsy.github.io/data/stroop.csv")
+dim(stroopdata)
+names(stroopdata)
+head(stroopdata)
+```
+
+What we are interested in is the differences between the matching and mismatching times. For someone who took 10 seconds for the matching set, and 30 seconds for the mismatching set, we want to record their score as a difference of 20 seconds.   
+
+We can do that easily, storing the new values in a new variable:  
+```{r}
+stroopdata <- 
+  stroopdata %>% 
+  mutate(
+    diff = mismatching - matching
+  )
+```
+And to quickly prove to ourselves that is has worked:  
+```{r}
+head(stroopdata)
+```
+
+And let's get some summary statistics and a visualisation of that distribution too.  
+```{r}
+#| code-fold: true
+# mean(stroopdata$diff) and sd(stroopdata$diff) work just as well
+stroopdata %>% 
+  summarise(
+    meandiff = mean(diff),
+    sddiff = sd(diff)
+  )
+```
+```{r}
+#| fig-height: 3
+#| code-fold: true
+ggplot(stroopdata, aes(x = diff)) +
+  geom_histogram()
+```
+
+What we're really interested in talking about is the average 'mismatching - matching' score for __everybody__, not just our sample of 131. But we only have those 131 people, so we'll have to make do and use their data to provide us with an __estimate__. 
+
+Remember that there are many many different samples of $n=131$ that we _might have_ taken. And if we had taken a different sample, then our mean 'mismatching - matching' score (the `mean(stroopdata$diff)` value) would be different.  
+
+Previously we learned about how the distribution of all possible sample means we _might_ take is known as a __sampling distribution__. We also learned that these tend to be normally distributed (regardless of the underlying population distribution) and so we can use the standard deviation of the sampling distribution (known as the __standard error__) to quantify the variation due to sampling.  
+
+To actually get at the standard error, one of our options is to simulate the act of 'taking many samples of size $n$' by taking lots of samples _with replacement_ from our original sample.  
+
+As our analyses become more advanced, then this will become more complex. In this example, because we are just interested in estimating a single mean value, we can use `replicate` to do calculate the means from 1000 resamples from our original sample. We can then simply calculate the standard deviation of all these means:   
+```{r}
+stroop_bootstrapdist <- 
+  replicate(1000, mean(sample(stroopdata$diff, size = 131, replace = TRUE)))
+
+sd(stroop_bootstrapdist)
+```
+
+Alternatively (and more conventionally), we use a formula of $\frac{\sigma}{\sqrt{n}}$, which we can calculate in R.  
+$\sigma$ is the standard deviation of the population (which we are going to approximate by using $s$, the standard deviation of our sample), and $n$ is the size of our sample.  
+
+```{r}
+stroopdata %>% 
+  summarise(
+    s = sd(diff),
+    n = n(),
+    SE = s/sqrt(n)
+)
+```
+
+Finally, we can use our standard error to construct a range of plausible values for our estimated 'mismatching - matching' score. 
+The range is centered around our __point estimate__ (the mean score in our sample), and we widen it to include X% of the possible means we might also see from a sample of the same size. This is achieved by multiplying the standard error by a value to corresponds our confidence level.  
+
+For a 95% interval^[
+For other intervals, such as a 90% interval, we need to know the point at which 5% is either side of a normal distribution (i.e., giving us the middle 90%). We can do this with `qnorm()` (we introduced this in [the reading on sampling](02b_sampling.html#normal-distributions){target="_blank"}).  
+`qnorm(c(0.05,0.95))` will give us 1.64, which we then put into our construction of the interval: $90\%\, CI = \bar{x} \pm 1.64 \times SE$
+]:
+
+```{r}
+se = sd(stroopdata$diff) / sqrt(nrow(stroopdata))
+c(mean(stroopdata$diff) - (1.96 * se), mean(stroopdata$diff) + (1.96 * se))
+```
+
+
+# Null Hypothesis Significance Testing (NHST)
+
+Let's suppose we are interested in whether there __is__ an effect of the mismatching/matching colour-words. 
+Our objective here has changed slightly: rather than being concerned with parameter estimation, our question is now about making a statement about two competing hypotheses: 
+
+- $H_0 \,\, (\text{The Null Hypothesis}):$ There is no difference between matching and mismatching conditions. 
+- $H_1 \,\, (\text{The Alternative Hypothesis}):$ There is no difference between matching and mismatching conditions. 
+
+If we use $\mu$ to denote the average 'mismatching - matching' score _in the population_, then we can state these as: 
+
+- $H_0: \mu = 0$.  
+- $H_1: \mu \neq 0$.
+
+
+With the confidence interval that we have created above, we can already make a statement about these. Our 95% CI does not contain zero, meaning that we can, with that same level of confidence, reject $H_0$ in favour of $H_1$.  
+
+However, there are instances where it is not feasible for us to create a confidence interval.^[Think about an example where our question is about whether there is a difference in variable $Y$ between groups A, B, C and D. Around what should we construct our interval? Around the difference $\bar{Y}_A - \bar{Y}_B$ (difference between A and B's average scores on $Y$), or $\bar{Y}_A - \bar{Y}_C$, or $\bar{Y}_B - \bar{Y}_D$?] 
+This is where the other primary tool for null hypothesis significance testing comes in, the p-value.  
+
+## p-values
+
+The p-value is a formal way of testing a sample statistic against a null hypothesis.  
+
+To introduce the p-value, instead of thinking first about what we _have_ observed in our sample, we need to think about what we would expect to observe _if our null hypothesis is true._  
+
+With our Stroop Task example, our null hypothesis is that there is no difference between matching and mismatching conditions ($H_0: \mu = 0$).  
+
+Under $H_0$, the average 'mismatching-matching' score in the population is zero, and we would expect most of the samples we _might_ take to have a mean 'mismatching-matching' score of close to this (not _exactly_ 0, but centered around 0). 
+
+We saw earlier that we could express the sampling distribution of means taken from samples of size $n=131$ using the __standard error__. Under $H_0$ we would expect the samples of $n=131$ we _might_ take to have means that follow something like the distribution in @fig-hyp.  
+```{r}
+#| code-fold: true
+stroopdata %>% 
+  summarise(
+    s = sd(diff),
+    n = n(),
+    SE = s/sqrt(n)
+)
+```
+
+```{r}
+#| label: fig-hyp
+#| echo: false
+#| fig-cap: "Sampling distribution for mean of sample size 131, assuming population mean = 0. Observed sample mean shown in red"
+#| fig-width: 6
+#| fig-height: 4
+set.seed(2394)
+samplemeans <- replicate(2000, mean(rnorm(n=131, mean=0, sd=5.015774)))
+
+ggplot(data=tibble(samplemeans),aes(x=samplemeans))+
+  #geom_histogram(alpha=.3)+
+  stat_function(geom="line",fun=~dnorm(.x, mean=0,sd=sd(samplemeans))*270,lwd=1)+
+  geom_vline(aes(xintercept=mean(stroopdata$diff)),lty="dashed",col="tomato1")+
+  labs(x = "mean 'mismatching-matching' score")+
+  scale_y_continuous(NULL, breaks=NULL)+
+  theme_minimal()+
+  annotate("text",x=1.3, y=220, label="What we would expect for the mean\n'mismatching-matching' score from\nsamples of size 131 if the\npopulation mean is 0", col="grey30")+
+  annotate("text",x=1.5, y=100, label="What we observed for the mean\nin our actual sample", col="tomato1")+
+  geom_curve(aes(x=1.3, xend=0.5, y=190, yend=150), col="grey30", size=0.5, curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))+
+  geom_curve(aes(x=1.5, xend=2.35, y=75, yend=30), col="tomato1", size=0.5, curvature = 0.2, arrow = arrow(length = unit(0.03, "npc")))+
+  annotate("text",x=-1.1, y=150, label="0.44\n(standard error)", col="grey30")+
+  geom_curve(aes(x=-0.8, xend=-0.2, y=150, yend=100), col="grey30", size=0.5, curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))+
+  geom_segment(aes(x=0, xend=-0.44, y=95, yend=95), col="grey30", size=0.5)
+```
+
+We can think of this as the sampling distribution of $\bar{x}$, but centered on our null hypothesis (in this case, $\mu = 0$). We call this the 'null distribution'.  
+
+The p-value tells us how likely it is to see values _at least as extreme_ as our observed sample statistic, _if the null is true_.  
+We have seen how we can calculate this already: the `pnorm()` function gives us the area of a distribution to the one side of a given value:  
+```{r}
+#| eval: false
+pnorm(??, mean = 0, sd = 0.44, lower.tail = FALSE)
+```
+
+```{r}
+#| label: fig-pnormstroop
+#| echo: false
+#| fig-cap: "the p-value is the area of the null distribution, as found with pnorm()"
+#| fig-height: 2.5
+new_theme_empty <- theme_bw()
+new_theme_empty$line <- element_blank()
+new_theme_empty$rect <- element_blank()
+new_theme_empty$axis.text.y <- element_blank()
+new_theme_empty$plot.title <- element_blank()
+new_theme_empty$axis.title.y <- element_blank()
+
+df <- tibble(x=c(-2,2))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=0,sd=0.44),size=1) +
+  labs(x = "mean 'mismatching-matching' score")
+ld <- layer_data(g) %>% filter(x>= .8)
+g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,args=list(mean=0,sd=.44),size=1)+
+  scale_x_continuous(breaks=c(0,.8),label=c(0,"??"))+
+  new_theme_empty
+```
+For our Stroop Task example, we observed a sample mean of 
+```{r}
+#| code-fold: true
+mean(stroopdata$diff)
+```
+If the null hypothesis were true, and there was no 'mismatching-matching' difference, then the probability that we would see a sample ($n=131$) with a mean _at least_ that large is:
+```{r}
+# (we calculated that SE = 0.44 above)
+pnorm(2.40, mean = 0, sd = 0.44, lower.tail = FALSE)
+```
+which is R's way of printing `r format(pnorm(2.40, mean = 0, sd = 0.44, lower.tail = FALSE), scientific=F)`.  
+
+There is one last thing, and that the _direction_ of our hypotheses. Recall from earlier that we stated $H_0: \mu = 0$ and $H_1: \mu \neq 0$. This means that we are interested in the probability of getting results this far away from 0 _in either direction._  
+We are interested in both tails:  
+
+```{r}
+2 * pnorm(2.40, mean = 0, sd = 0.44, lower.tail = FALSE)
+```
+
+```{r}
+#| label: fig-pnormstroop2
+#| echo: false
+#| fig-cap: "2*pnorm gives the two tails"
+#| fig-height: 2.5
+df <- tibble(x=c(-2,2))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=0,sd=0.44),size=1) +
+  labs(x = "mean 'mismatching-matching' score")
+ld <- layer_data(g) %>% filter(x>= .8)
+ld2 <- layer_data(g) %>% filter(x<= -.8)
+g = g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,args=list(mean=0,sd=.44),size=1)
+g + geom_area(data=ld2,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,args=list(mean=0,sd=.44),size=1)+
+  scale_x_continuous(breaks=c(-.8,0,.8),label=c("-??",0,"??"))+
+  new_theme_empty
+```
+
+
+
+:::sticky
+__p-value__  
+
+The p-value is the probability^[What we have been seeing is that probabilities in NHST are defined as the relative frequency of an event *over many trials* (as "many" $\to \infty$). This requires assuming some features of the data generating process which guides what the "many trials" would look like (e.g., that there is no effect). The $p$-value is the probability of observing results as or more extreme than the data, *if the data were really generated by a hypothesised chance process*.] that we observe a test statistic at least as extreme as the one we observed, _assuming the null hypothesis $H_0$ to be true_. 
+
+:::
+
+Now that we have our p-value of `r format(2 * pnorm(2.40, mean = 0, sd = 0.44, lower.tail = FALSE), scientific=F)`, we need to use it to make a decision about our hypotheses.  
+
+Typically, we pre-specify the probability level at which we will consider results to be so unlikely to have arisen from the null distribution that we will take them as evidence to reject the null hypothesis. 
+This pre-specified level is commonly referred to as $\alpha$ ("alpha"). Setting $\alpha = 0.05$ means that we will reject $H_0$ when we get a result which is extreme enough to only occur 0.05 (5%) of the time or less if the $H_0$ is true.  
+
+In our case, `r format(2 * pnorm(2.40, mean = 0, sd = 0.44, lower.tail = FALSE), scientific=F)` $< 0.05$, so we reject the null hypothesis that there is no difference in the mismatching/matching conditions of the Stroop Task.  
+
+
+:::statbox
+__The language of NHST__  
+
+There's a lot of convention to how we talk about NHST, but the typical process is as follows: 
+
+1. _Clearly_ specify the null and alternative hypotheses.  
+2. Specify $\alpha$
+3. Calculate statistic
+4. Compute p-value  
+    - If $p<\alpha$, then reject the null hypothesis.
+    - If $p\geq\alpha$, then fail to reject* the null hypothesis. 
+  
+*Note, we don't "accept" the null, we just "fail to reject" it. 
+Think of it like a criminal court - the null hypothesis is "innocent until proven guilty"
+:::
+
+
+

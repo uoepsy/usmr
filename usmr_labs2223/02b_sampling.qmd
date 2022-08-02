@@ -1,0 +1,754 @@
+---
+title: "Curves & Sampling"
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(xaringanExtra)
+library(tidyverse)
+library(patchwork)
+xaringanExtra::use_panelset()
+```
+
+
+# Probability distributions  
+
+We've seen some ways of describing and visualising the distributions of variables that we might observe when we collect data. Such a collection of observations on a single variable is often termed a "sample distribution".    
+
+Another type of distribution that will prove to be very useful is a "probability distribution".  
+
+:::sticky
+A probability distribution is the (mathematical) description of the probabilities of occurrences of observing the different possible outcomes.  
+:::
+
+Note an important jump we are making is that we are moving from talking about distributions that we _observe_, to something more conceptual. Typically, this is because we want to talk more generally about the underlying process which generates the data.  
+
+For example, the function that governs the behaviour of rolling a single die is __uniform__ in that each possible response has an equal probability ($\frac{1}{6}$) of being observed (below left). When we _collect_ data by actually rolling a die 100 times, we will observe a sample distribution (below right).  
+```{r}
+#| echo: false
+set.seed(23)
+par(mfrow=c(1,2))
+barplot(prop.table(table(rep(1:6,e=20))), 
+        main="Probability Distribution",
+        ylab="Probability")
+
+barplot(table(sample(1:6,100,replace=T)), 
+        main="Sample Distribution\n(100 rolls of a die)",
+        ylab="Frequency")
+par(mfrow=c(1,1))
+```
+  
+:::statbox
+
+__Uniformity__
+
+When an equal probability is assigned to each possible response, we have what is known as the __uniform distribution__.  
+For a fair 6-sided die, the probability of the die landing on each side is 1/6, and the probabilities of all the possible responses sum to 1 (because it has to land on *one of* the sides).
+
+```{r}
+#| echo: false
+#| out-width: "40%"
+tibble(response = 1:6, prob = rep(1/6,6)) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(size=3)+
+  geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
+  scale_x_continuous("faces of a die", breaks=1:6)+
+  scale_y_continuous("probability", limits = c(0,1), breaks=map_dbl(1:6,~./6), labels=c(paste0(1:5,"/6"),"1"))+
+  theme_classic()+
+  theme(text = element_text(size = 24))
+```
+
+The dice-rolling example is one involving a categorical distribution - i.e. data which has a discrete set of response options. We don't have to use a 6-sided die - if it follows a uniform probability distribution, and there are $n$ possible responses, then the probability of each response ocurring is $1/n$.  
+
+However, the uniform probability distribution can be relevant for a continuous numeric variable as well (e.g. something which as well as taking the values 4 and 5 can also take 4.1, 4.11, 4.1111111111, 4.764968473 etc.. - they can take *any* real value). We can preserve the idea that probability sums to 1 for this sort of variable by having the probability as $\frac{1}{b-a}$, where $a$ and $b$ are the lower and upper bounds of the response domain. 
+Why? Because this makes the **area** of the distribution equal to 1 (area of a rectangle = width $\times$ height. $(b-a) \times \frac{1}{(b-a)} = \frac{b-a}{b-a} = 1)$. This means we can compute areas of parts of the distribution in order to calculate probabilities! 
+
+```{r}
+#| echo: false
+#| out-width: "40%"
+tibble(response = 1:6, prob = rep(1/6,6)) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(aes(x=2,y=prob), size=3)+
+  geom_point(aes(x=5,y=prob), size=3)+
+  geom_segment(aes(x=2,xend=5,y=prob, yend=prob))+
+  geom_segment(aes(x=2,xend=2,y=0, yend=prob),lty="dotted")+
+  geom_segment(aes(x=5,xend=5,y=0, yend=prob), lty="dotted")+
+  scale_x_continuous("possible response", limits = c(1,6), breaks=c(2,5), labels=c("a","b"))+
+  scale_y_continuous("probability density", limits = c(0,1/5), breaks=1/6, labels="1/(b-a)")+
+  theme_classic()+
+  theme(text = element_text(size = 24))
+```
+
+:::
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Normal distributions
+
+We have actually already been talking about various aspects of one of the most important distributions in statistics, those that we call "normal distributions". Sometimes you will hear it referred to as a "bell curve" due to its resemblance to the shape of a bell. We started to see distributions (@fig-bellsd) which were roughly bell-shaped, and saw how the shape of such distributions depends on parameters such as the mean and variance/standard deviation^[remember that standard deviation is $\sqrt{\text{variance}}$]. 
+```{r}
+#| label: fig-bellsd
+#| fig-cap: Scores on test 2 have a larger standard deviation, as seen in the distribution of test 2 being wider.  
+#| code-fold: true
+wechsler <- read_csv("https://uoepsy.github.io/data/wechsler.csv")
+ggplot(data = wechsler, aes(x = test1)) + 
+  geom_histogram()+
+  xlim(0,100) +
+ggplot(data = wechsler, aes(x = test2)) + 
+  geom_histogram()+
+  xlim(0,100)
+```
+
+
+:::statbox
+__Defining moments__  
+
+The "moments" of a distribution are the metrics that relate to the shape of that distribution. 
+We've already seen the primary two moments that define the shapes of these distributions: the mean and the variance. The mean moves the distribution right or left, and the variance makes the distribution wider or narrower.  
+  
+There are two more, "skewness" and "kurtosis" which tend to be of less focus of investigation (the questions we ask tend to be mainly concerned with means and variances). Skewness is a measure of _asymmetry_ in a distribution. Distributions can be _positively skewed_ or _negatively skewed_, and this influences our measures of central tendency and of spread to different degrees. The kurtosis is a measure of how "pointy" vs "rounded" the shape of a distribution is.  
+
+
+```{r}
+#| echo: false
+tibble(
+  x = seq(0, 200, 1),
+  y = dnorm(x, 100, 15),
+  y2 = dnorm(x,150, 15),
+  y3 = dnorm(x,50,15)
+) %>%
+  ggplot(.,aes(x=x))+
+  geom_ribbon(aes(ymin=0, ymax=y, fill="Mean = 100"), alpha=0.2)+
+  geom_ribbon(aes(ymin=0, ymax=y2, fill="Mean = 150"), alpha=0.2)+
+  geom_ribbon(aes(ymin=0, ymax=y3, fill="Mean = 50"), alpha=0.2)+
+  theme_classic()+
+  scale_y_continuous(NULL, breaks=NULL,)+
+  theme(axis.line.y = element_blank(), axis.text.x = element_blank(), 
+        axis.title.x = element_blank(), legend.position="bottom")+
+  guides(fill=FALSE)+
+  labs(title="The mean defines the location of a distribution") -> plt_loc
+
+tibble(
+  x = seq(0, 200, 1),
+  y = dnorm(x, 100,10),
+  y2 = dnorm(x,100, 15),
+  y3 = dnorm(x,100,5)
+) %>%
+  ggplot(.,aes(x=x))+
+  geom_ribbon(aes(ymin=0, ymax=y, fill="Mean = 100"), alpha=0.3)+
+  geom_ribbon(aes(ymin=0, ymax=y2, fill="Mean = 150"), alpha=0.3)+
+  geom_ribbon(aes(ymin=0, ymax=y3, fill="Mean = 50"), alpha=0.3)+
+  theme_classic()+
+  scale_y_continuous(NULL, breaks=NULL,)+
+  theme(axis.line.y = element_blank(), axis.text.x = element_blank(), 
+        axis.title.x = element_blank(), legend.position="bottom")+
+  guides(fill=FALSE)+
+  xlim(50,150)+
+  labs(title="The variance defines the scale of a distribution") -> plt_scale
+
+library(sn)
+tibble(
+  x = seq(0, 200, 1),
+  y = dnorm(x, 100, 15),
+  y2 = dsn(x, xi = 180, omega=27.5, alpha = -5),
+  y3 = dsn(x, xi = 20, omega=27.5,alpha = 5),
+) %>%
+  ggplot(.,aes(x=x))+
+  geom_ribbon(aes(ymin=0, ymax=y, fill="Symmetric"), alpha=0.2)+
+  geom_ribbon(aes(ymin=0, ymax=y2, fill="Negative Skew"), alpha=0.2)+
+  geom_ribbon(aes(ymin=0, ymax=y3, fill="Positive Skew"), alpha=0.2)+
+  theme_classic()+
+  scale_fill_manual("",breaks=c("Positive Skew","Symmetric","Negative Skew"), values=c("chartreuse3","blue","red"))+
+  scale_y_continuous(NULL, breaks=NULL,)+
+  theme(axis.line.y = element_blank(), axis.text.x = element_blank(), 
+        axis.title.x = element_blank(), legend.position="bottom")+
+  
+  geom_vline(aes(xintercept=100), lty="dashed", col="blue")+
+  annotate("label",x=100, y=0.029, label="Mode", vjust=1,hjust=0.5, col="blue")+
+  annotate("label",x=100, y=0.031, label="Median", vjust=1,hjust=0.5, col="blue")+
+  annotate("label",x=100, y=0.033, label="Mean", vjust=1,hjust=0.5, col="blue")+
+  
+  geom_vline(xintercept=c(155,165,170), lty="dashed", col="red")+
+  annotate("label",x=170, y=0.029, label="Mode", vjust=1,hjust=0.5, col="red")+
+  annotate("label",x=165, y=0.031, label="Median", vjust=1,hjust=0.5, col="red")+
+  annotate("label",x=155, y=0.033, label="Mean", vjust=1,hjust=0.5, col="red")+
+  
+  geom_vline(xintercept=c(45,35,30), lty="dashed", col="chartreuse3")+
+  annotate("label",x=30, y=0.029, label="Mode", vjust=1,hjust=0.5, col="chartreuse3")+
+  annotate("label",x=35, y=0.031, label="Median", vjust=1,hjust=0.5, col="chartreuse3")+
+  annotate("label",x=45, y=0.033, label="Mean", vjust=1,hjust=0.5, col="chartreuse3")+
+  labs(title="Skewness defines the asymmetry of a distribution") + 
+  NULL -> plt_skew
+
+library(PearsonDS)
+tibble(
+  x = seq(0, 200, .1),
+  y = dpearson(x, moments = c(mean=100,variance=15,skewness=0,kurtosis=3)),
+  y2 = dpearson(x, moments = c(mean=100,variance=15,skewness=0,kurtosis=7)),
+  y3 = dpearson(x,moments = c(mean=100,variance=15,skewness=0,kurtosis=2.3))
+) %>%
+  ggplot(.,aes(x=x))+
+  geom_ribbon(aes(ymin=0, ymax=y, fill="100"), alpha=0.3)+
+  geom_ribbon(aes(ymin=0, ymax=y2, fill="150"), alpha=0.3)+
+  geom_ribbon(aes(ymin=0, ymax=y3, fill="50"), alpha=0.3)+
+  theme_classic()+
+  scale_y_continuous(NULL, breaks=NULL,)+
+  theme(axis.line.y = element_blank(), axis.text.x = element_blank(), 
+        axis.title.x = element_blank(), legend.position="bottom")+
+  guides(fill=FALSE)+
+  xlim(80,120)+
+  labs(title="The kurtosis defines the 'pointy-ness' of a distribution") -> plt_kurt
+
+plt_loc / plt_scale
+plt_skew / plt_kurt
+```
+
+:::
+
+
+We can motivate the relevance of normal distributions in various ways. For instance, as was discussed in the lecture, when we take a measurement of something such as the length of a stick, then we always have a bit of imprecision - our measurements will vary a bit. Assuming that our measurement tool is unbiased, we would expect the measurements of the stick to be centered around the true length of the stick.  
+```{r}
+#| label: fig-measurelec
+#| fig-cap: "Snapshots from [lecture slides](../lectures/lecture_2.html#5) on measurement"
+#| echo: false
+knitr::include_graphics("images/hypothesis/measurelec.png")
+```
+
+<!-- Suppose we were measuring 2 different sticks, and we measured each one 50 times. All of the 100 measurements we took might look like they are _not_ normally distributed (@fig-sticks, Left), but once we account for the systematic differences in these observations (e.g. which stick is measured), then we see that we actually have two (roughly) normally distributed samples:  -->
+<!-- ```{r} -->
+<!-- #| label: fig-sticks -->
+<!-- #| fig-cap: "Left: 100 measurements. Right: 100 measurements split by which stick is being measured" -->
+<!-- #| echo: false -->
+<!-- #| fig-height: 2 -->
+<!-- set.seed(410) -->
+<!-- tibble( -->
+<!--   y =c(rnorm(50, .075, .004), rnorm(50, .087, .004)), -->
+<!--   stick = rep(letters[1:2],e=50) -->
+<!-- )->df -->
+<!-- ggplot(df,aes(x=y))+geom_density()+ -->
+<!--   ggplot(df,aes(x=y))+geom_density(aes(col=stick)) -->
+<!-- ``` -->
+
+There are certain properties of normal distributions which we can exploit, in order to determine how plausible an observed value is relative to a distribution. 
+
+:::sticky
+When a distribution is normal (symmetric and bell-shaped):  
+
+- 68% of values will lie within 1 standard deviation of the mean.
+- 95% of values will lie within 1.96 standard deviations of the mean.
+- 99.7% of values will lie within 3 standard deviations of the mean.  
+
+```{r}
+#| echo: false
+#| fig-width: 3
+#| fig-height: 3
+knitr::include_graphics("images/hypothesis/normal.png")
+```
+::: 
+
+
+
+Let's return to the IQ data we saw in the [previous reading](02a_measurement.html#histograms). We have our observed sample distribution of IQ scores: 
+
+```{r}
+#| echo: true
+#| warning: false
+#| message: false
+#| code-fold: true
+#| fig-height: 2.5
+wechsler <- read_csv("https://uoepsy.github.io/data/wechsler.csv")
+ggplot(data = wechsler, aes(x = iq)) + 
+  geom_histogram()
+```
+We know how to address questions such as "what proportion of our sample has an IQ >120?". We can use the data we have to calculate the proportion:
+```{r}
+# number of IQ scores less than 70 divided by number of scores
+sum(wechsler$iq < 120) / length(wechsler$iq)
+```
+We are using IQ as an example here because IQ scales are developed and updated in attempts to standardise the tests so that the scores have an average of 100 and a standard deviation of 15.^[Often in neuropsychological testing, a set of "normative values" are provided in order to define "what is expected" (sometimes in reference to a specific population).] If we think of these two parameters (mean of 100, standard deviation of 15) as defining the _expected_ distribution of IQ scores, then we can ask the question:
+ 
+"what is the _probability_ of observing someone with an IQ >120?"  
+
+What we're asking here is for the amount of the normal distribution with mean = 100, sd = 15 that falls beyond 120 (@fig-iq120). Note that the distribution we're talking about here is an abstract one that represents all the possible IQ scores that we _might_ observe if we were to randomly sample the population.  
+
+```{r}
+#| label: fig-iq120
+#| fig-cap: "what is the _probability_ of observing someone with an IQ >120?"
+#| echo: false
+#| fig-height: 2
+
+new_theme_empty <- theme_bw()
+new_theme_empty$line <- element_blank()
+new_theme_empty$rect <- element_blank()
+new_theme_empty$axis.text.y <- element_blank()
+new_theme_empty$plot.title <- element_blank()
+new_theme_empty$axis.title.y <- element_blank()
+
+df <- tibble(x=c(50,150))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1) +
+  xlab("IQ scores") + ylab("density")
+ld <- layer_data(g) %>% filter(x>= 120)
+g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1)+
+  scale_x_continuous(breaks=seq(50,150,10))+
+  new_theme_empty
+```
+Years ago we would have to work out how many standard deviations this is above the mean ($\frac{120 - 100}{15} = 1\frac{1}{3}$) and then look up in a [big table](https://en.wikipedia.org/wiki/Standard_normal_table#Cumulative_from_minus_infinity_to_Z){target="_blank"} to work out the probability of observing something which is `r round((120-100)/15,2)` standard deviations above the mean.  
+
+Conveniently, there are some functions which can do this for us. 
+The `pnorm()` function will give us the area to the left or right (depending on whether we put `lower.tail = TRUE/FALSE`) of a given number:  
+```{r}
+pnorm(120, mean = 100, sd = 15, lower.tail = FALSE)
+```
+```{r}
+#| label: fig-pnorm1
+#| echo: false
+#| fig-cap: "pnorm() can be used to give us the area to the left/right of some value"
+#| fig-height: 2.5
+df <- tibble(x=c(50,150))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1) +
+  xlab("IQ scores (raw)") + ylab("density")
+ld <- layer_data(g) %>% filter(x>= 120)
+g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1)+
+  scale_x_continuous(breaks=seq(50,150,10))+
+  annotate("label",label="pnorm(120, mean = 100, sd = 15, lower.tail = FALSE)", x=120, y=.02)+
+  geom_curve(x=140,xend=130,y=.019,yend=0.002,curvature = -.2)+
+  new_theme_empty
+```
+
+
+Note that if we translate our "IQ >120" to being in terms of standard deviations - $\frac{120 - 100}{15} = 1\frac{1}{3}$ - then this is the same computation when we compare against a normal distribution with mean of 0 and standard deviation of 1, which are the defaults for the `pnorm()` function:
+```{r}
+pnorm((120-100)/15, lower.tail = FALSE)
+```
+```{r}
+#| label: fig-pnorm2
+#| echo: false
+#| fig-cap: "pnorm() with the 'standard normal distribution': the normal distribution with mean = 0 and sd = 1"
+#| fig-height: 2.5
+df <- tibble(x=c(50,150))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1) +
+  xlab("IQ scores, standardised\n(subtract the mean and divide by sd)") + ylab("density")
+ld <- layer_data(g) %>% filter(x>= 120)
+g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1)+
+  scale_x_continuous(breaks=c(seq(55,115,15),120,130,145), labels=c("-3","-2","-1","0","1","1.33","2","3"))+
+  annotate("label",label="pnorm(1.33333, lower.tail = FALSE)", x=120, y=.02)+
+  geom_curve(x=135,xend=130,y=.019,yend=0.002,curvature = -.2)+
+  new_theme_empty
+```
+
+
+The probability of observing IQ <120 is easily obtained by changing the `lower.tail` argument:  
+```{r}
+pnorm(120, mean = 100, sd = 15, lower.tail = TRUE)
+```
+```{r}
+#| label: fig-pnorm3
+#| echo: false
+#| fig-cap: "pnorm() can be used to get the area either side by changing the `lower.tail` argument"
+#| fig-height: 2.5
+df <- tibble(x=c(50,150))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1) +
+  xlab("IQ scores (raw)") + ylab("density")
+ld <- layer_data(g) %>% filter(x<= 120)
+g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1)+
+  scale_x_continuous(breaks=seq(50,150,10))+
+  annotate("label",label="pnorm(120, mean = 100, sd = 15, lower.tail = TRUE)", x=120, y=.02)+
+  geom_curve(x=130,xend=100,y=.019,yend=0.009,curvature = -.2)+
+  new_theme_empty
+```
+And we know that the total area under the curve is 1, so we can also use this to get the area to the right again:
+```{r}
+1 - pnorm(120, mean = 100, sd = 15, lower.tail = TRUE)
+```
+The opposite functionality of `pnorm()` comes in the `qnorm()` function, which takes a specified area (e.g. 5%) and gives us the value at which that area falls above (or below, depending on the `lower.tail`).  
+
+So to find out at what score is the top 5% percent of IQ scores, we would need to ask the point at which there is 5% to the right, or 95% to the left:  
+```{r}
+#| label: qnormm
+#| eval: false
+# either: 
+qnorm(0.05, mean = 100, sd = 15, lower.tail = FALSE)
+qnorm(0.95, mean = 100, sd = 15, lower.tail = TRUE)
+```
+```{r}
+#| echo: false
+qnorm(0.05, mean = 100, sd = 15, lower.tail = FALSE)
+```
+
+```{r}
+#| label: fig-qnorm
+#| echo: false
+#| fig-cap: "qnorm() takes an area and gives us the value on the x-axis at which point the are is to the left/right of. it is the opposite of pnorm()"
+#| fig-height: 2.5
+df <- tibble(x=c(50,150))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1) +
+  xlab("IQ scores (raw)") + ylab("density")
+ld <- layer_data(g) %>% filter(x>= qnorm(.05,100,15,lower.tail=F))
+ld2 <- layer_data(g) %>% filter(x<= qnorm(.05,100,15,lower.tail=F)+1)
+g + geom_area(data=ld,aes(x=x,y=y),fill="red", alpha=.2) +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1)+
+  scale_x_continuous(breaks=seq(50,150,10))+
+  annotate("label",label="5%", x=129, y=.002, col="red")+
+  geom_area(data=ld2,aes(x=x,y=y),fill="blue", alpha=.2) +
+  annotate("label",label="95%", x=100, y=.005, col="blue")+
+  geom_vline(xintercept=124.8,lty="dashed")+
+  annotate("label",label="qnorm(0.05, mean = 100, sd = 15, lower.tail = FALSE)", x=125, y=.0193, col="red")+
+  annotate("label",label="qnorm(0.95, mean = 100, sd = 15, lower.tail = TRUE)", x=125, y=.016, col="blue")+
+  new_theme_empty
+
+```
+
+
+:::rtip
+
+- `pnorm()` takes a value on the x-axis and returns the area to the left (`lower.tail = TRUE`) or to the right (`lower.tail = FALSE`). 
+- `qnorm()` takes an area (from 0 to 1) and returns the value on the x-axis at which point that area is to the left (`lower.tail = TRUE`) or to the right (`lower.tail = FALSE`). 
+
+```{r}
+#| label: fig-normfunc
+#| fig-cap: "pnorm() and qnorm()"
+#| echo: false
+#| eval: false
+knitr::include_graphics("images/hypothesis/norms.png")
+```
+
+
+There are a couple of related functions which it is also worth knowing about:  
+
+- `dnorm()` takes a value on the x-axis and returns the height of the curve (the **d**ensity).  
+- `rnorm()` returns `n` randomly generated values.  
+
+:::
+
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Sampling & Sampling Distributions
+
+Often, what we're really interested does not concern a specific individual but the wider population in general - we are typically interested in things _on average_, and want to make generalisations such as "drug X will increase life expectancy by _on average_ 2 years" or "higher levels of conscientiousness is _typically_ associated with more happiness". These sort of statements are made in reference to a population, not about individuals.^[and the statements may not hold for all individuals - for certain people, some drugs just won't work! but what is important for a healthcare system deciding on whether or not to purchase supplies of a drug is the _average_ treatment effect.] 
+
+In practice, it is rarely feasible to directly measure the entire population to calculate the average, so when we do research we tend to collect data from a subset, or _sample_. By using a random sample to represent a population of interest, we introduce uncertainty (due to sampling variability) in how accurate our _sample_ is as to provide an _estimate_ of something in the _population_.  
+
+For us to better understand the idea of "sampling variability", it's going to be necessary for us to clearly distinguish between populations and samples.  
+
+:::sticky
+__Samples & Populations__  
+  
+A __sample statistic__ is a computed value based on our sample data, the we use to _estimate_ a __population parameter__ (the value of which is unknown).  
+We use different symbols to denote each of these:  
+
+|  Sample Statistic|  Population Parameter|
+|:--|:--|
+|  $\bar{x}$|  $\mu$|
+|  $s$|  $\sigma$|
+|  $s^2$|  $\sigma^2$|
+
+:::
+
+When we discussed IQ [above](#normal_distributions), we had the idea of an underlying _population distribution_ of everybody's IQ scores. When we randomly choose one person (a sample of $n=1$), we might get someone who has an IQ a bit lower, or a bit higher, than the average.  
+
+The same applies when we take are taking the mean of a sample. Suppose we are interested in the average "life satisfaction rating" (@fig-lifesat) for the entire adult population. If we take a sample of say, $n=30$ people, we might just happen to have a few more people in our sample who are highly satisfied, or a few more people who are more dissatisfied. Consequently, the mean of our sample will be a little bit higher/lower than the population average.
+```{r}
+#| label: fig-lifesat
+#| fig-cap: "Life Satisfaction rating, slider scale 0-100"
+#| echo: false
+knitr::include_graphics("images/hypothesis/slider.png")
+```
+
+When we use the mean rating from our sample as an _estimate_ of the mean rating in the _population_, it would be good to be able to quantify how much certainty we have in that estimate - i.e. how much do we expect the mean life satisfaction rating from samples of $n=30$ to vary just due to our random sampling?
+
+<!-- The same applies when we take are taking the mean of a sample. Suppose we are interested in the average height of the entire adult population. If we take a sample of say, $n=20$ people, we might just happen to have a few more people in our sample who are relatively tall, or a few more people who are relatively shorter. Consequently, the mean of our sample will be a little bit higher/lower than the population average. When we use the mean height from our sample as an _estimate_ of the mean height of the _population_, it would be good to be able to quantify how much certainty we have in that estimate - i.e. how much do we expect the mean height from samples of $n=20$ to vary just due to our random sampling?  -->
+
+Let's look at this with a little simulation.  
+
+:::frame
+__Simulated Sampling__  
+
+Let's pretend that the average life satisfaction rating (measured on the slider in @fig-lifesat) of the entire global adult population is _exactly_ 65, and that the standard deviation of ratings is exactly 12. However, let's also pretend that we _do not know this_, and that we are interested in trying to _estimate_ the average rating. All we have is the measurements of 30 people who we randomly sampled. We want to use the mean rating of our sample as an estimate of the mean rating of the population.  
+
+In R, we can simulate the act of randomly sampling 30 people's ratings from the population with $\mu = 65$ and $\sigma = 12$ using `rnorm()`:  
+```{r}
+our_sample <- rnorm(n = 30, mean = 65, sd = 12)
+mean(our_sample)
+```
+
+Note that the mean of our sample (`r round(mean(our_sample),2)`) is not quite the same as the mean of the population (65 exactly). As we know, *samples vary*. If we do the same thing again, R will take a different sample of 30, and so the mean of this new sample will also be different:  
+```{r}
+mean(rnorm(n = 30, mean = 65, sd = 12))
+```
+Each time we get a new sample, we get a different mean: 
+```{r manymean}
+#| eval: false
+mean(rnorm(n = 30, mean = 65, sd = 12))
+mean(rnorm(n = 30, mean = 65, sd = 12))
+mean(rnorm(n = 30, mean = 65, sd = 12))
+```
+```{r manymean}
+#| eval: true
+#| echo: false
+
+```
+
+What we're wanting to do here is think about _all_ possible samples of 30 people we could have taken, and _all_ the possible resulting mean ratings. Let's consider 1000 different samples of 30 people that we could have taken, and for each one we calculate the mean rating. Where would all these different means fall? Some would be above our population parameter (i.e. we just might happened to have sampled some slightly more satisfied people) and some would be below.  
+
+We can use R to enact this repeated sampling: the `replicate()` function allows us to repeatedly execute a bit of code, which means we can take lots of samples and calculate their means. These means we can then visualise using `hist()`:  
+```{r}
+#| fig-height: 3
+manysamplemeans <- replicate(1000, mean(rnorm(n = 30, mean = 65, sd = 12)))
+hist(manysamplemeans)
+```
+
+**What does the simulation show us?**  
+
+What we're doing here is showing the process of taking many samples of the same size from a population and calculating a statistic (the mean) for each sample. The distribution of these sample statistics shows how the statistic will vary from sample to sample due to chance. Provided that our sampling is *truly* random, the sample statistics will be centered around the population parameter (the unknown value that we're trying to estimate).  
+
+In the above example, for samples of $n=30$ drawn from a population with mean $\mu=65$ and standard deviation $\sigma=12$, the sample means are centered around 65, and we're quite likely to get sample means between 60 and 70, but less likely to see sample means $<60$ and $>70$. Importantly, we can quantify this. The distribution of means from samples of size $n=30$ has a standard deviation of:  
+```{r}
+sd(manysamplemeans)
+```
+This metric, the standard deviation of the sampling distribution of a statistic, is known as the __standard error.__  
+
+**What happens with different sample sizes?**  
+
+Note what happens to the distribution when we consider the means from 1000 different samples of size $n=200$, rather than $n=30$. Many more of the of the values are in a much narrower bracket (pay careful attention to the x-axis) than when we took lots of samples of $n=30$.  
+```{r}
+#| fig-height: 3
+manysamplemeans200 <- replicate(1000, mean(rnorm(n = 200, mean = 65, sd = 12)))
+hist(manysamplemeans200)
+```
+
+We can see that an estimate from a sample of 200 is more precise (it has a greater chance of being closer to the true population value) than an estimate from a sample of 20. 
+
+:::
+
+
+:::sticky
+__Sampling Distribution and Standard Error__
+
+- The theoretical distribution of how sample statistics will vary on repeated sampling is known as the **sampling distribution**.  
+- The standard deviation of the sampling distribution is known as the **standard error**.   
+- Note that the bigger our sample size, the smaller our standard error - i.e., the more precise our sample means are going to be as estimates of the population mean:
+```{r}
+#| echo: false
+#| fig-width: 4
+#| fig-height: 2.5
+
+tibble(
+  samplemean20 = replicate(5000, mean(rnorm(n = 20, mean = 65, sd = 12))),
+  samplemean200 = replicate(5000, mean(rnorm(n = 200, mean = 65, sd = 12))),
+  samplemean2000 = replicate(5000, mean(rnorm(n = 2000, mean = 65, sd = 12)))
+) %>%
+  ggplot(.)+
+  geom_density(aes(x=samplemean20,fill="20", y=..count..),alpha=.4)+
+  geom_density(aes(x=samplemean200,fill="200",y=..count..), alpha=.4)+
+  geom_density(aes(x=samplemean2000,fill="2000",y=..count..), alpha=.4)+
+  labs(x="sample mean",y=NULL)+
+  viridis::scale_fill_viridis("Sample size",discrete = TRUE)+
+  theme_light()+
+  scale_y_continuous(NULL, breaks=NULL)+
+  NULL
+```
+:::
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Standard Error in practice
+
+In practice, we cannot actually take lots and lots of samples in order to construct a sampling distribution, and nor do we know the population parameters which are required to simulate samples like we did above (we do not know the population mean $\mu$ or standard deviation $\sigma$)  
+
+Instead, we start with just one observed sample, e.g. here are the life satisfaction ratings of the 30 people that I surveyed:  
+```{r}
+observed_sample <- c(53.8, 59, 51.1, 66.7, 86.1, 71, 65.3, 72.6, 56.6, 56.8, 50.1, 57.3, 60, 74, 73.4, 68.3, 53.5, 85.5, 68.8, 67.6, 67.4, 47.9, 46.3, 96.1, 52.8, 78.9, 74.8, 50.9, 78.2, 63.4)
+```
+
+
+What we *can* do is either: 
+
+- **A:** Estimate the standard error using a formula:  
+  $$
+  SE = \frac{\sigma}{\sqrt{n}}  \\
+  \quad \\
+  \begin{align}
+  & \text{Where} \\
+  & \sigma = \text{standard deviation} \\
+  & n = \text{sample size} \\
+  \end{align}
+  $$
+  Note that $\sigma$ is the standard deviation of the population, which is unknown to us. However, we can use the standard deviation of our sample ($\hat \sigma$ or $s$) as our estimate of this: 
+  ```{r}
+  # SE = standard deviation / square root of n
+  sd(observed_sample)/sqrt(length(observed_sample))
+  ```
+- or **B:** Simulate lots of sampling via **bootstrapping**.`r set.seed(85)`  
+    This uses *resampling with replacement*^[Imagine a bag full of coloured marbles. If we sample *with replacement*, then we take a marble out, record its colour, and put it back. Then we take a marble out, record its colour, and put it back. And so on. This means we might get the same marble more than once.] from our original sample as a means of imitating repeated sampling. Note the `replace = TRUE`:   
+  ```{r}
+  # bootstrap means of resamples with replacement of the same size (30) as observed sample
+  bootstrap_means <- replicate(1000, mean(sample(observed_sample, size = 30, replace = TRUE)))
+  # SE = sd of bootstrap resample means 
+  sd(bootstrap_means)
+  ```
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Central Limit Theorem (CLT)
+
+Provided we have a sufficiently large sample, the notion of the standard error holds even when the underlying population distribution is not normally distributed.  
+  
+Let's imagine we are interested in estimating these three things:  
+
+- The average life satisfaction rating of people in Scotland
+- The proportion of people over 6 foot in Scotland
+- The average income of people in Scotland
+
+If we could, we would collect data from _everyone_ in Scotland, and might find distributions like these: 
+
+```{r}
+#| label: fig-cltpop
+#| fig-cap: "Population distributions on three variables (numbers like 4e+05 are a compact way of writing 400000)"
+#| echo: false
+#| fig-width: 10
+#| fig-height: 3
+
+set.seed(393)
+popn=5e3
+mult_format <- function() {
+     function(x) format(1000*x,digits = 2,scientific=T) 
+}
+scot <- tibble(
+  life_sat = pmin(100,rnorm(popn, 65, 12)),
+  income = rchisq(popn, df=2)*20,
+  over6ft = factor(rbinom(popn, 1, .2), labels=c("No","Yes"))
+)
+ggplot(scot, aes(x=life_sat))+
+  geom_histogram()+
+  labs(x = "life satisfaction rating\n(0-100)") +
+ggplot(scot, aes(x=income))+
+  geom_histogram()+
+  labs(x = "income\n(thousands)")+
+ggplot(scot, aes(x=over6ft))+
+  geom_bar()+
+  labs(x = "Over 6ft tall") &
+  scale_y_continuous(labels=mult_format())
+```
+
+If we repeatedly collect samples of say, 50 people, and calculated the mean life satisfaction, the mean income, and the proportion >6 foot tall for each sample of 50, then the distribution of those sample statistics will be normal: 
+
+```{r}
+#| label: fig-cltstat
+#| fig-cap: "Sampling distributions for three statistics computed on samples of n=50"
+#| echo: false
+#| fig-width: 10
+#| fig-height: 3
+
+set.seed(124)
+tibble(
+  life_sat = replicate(1000, mean(pmin(100,rnorm(50, 65, 12)))),
+  income = replicate(1000, mean(rchisq(50, df=2)*20)),
+  over6ft = replicate(1000, mean(rbinom(50, 1, .2)))
+) -> manymeans
+
+ggplot(manymeans, aes(x=life_sat))+
+  geom_histogram()+
+  labs(x = "mean life satisfaction rating\nsamples of 50") +
+ggplot(manymeans, aes(x=income))+
+  geom_histogram()+
+  labs(x = "mean income\nsamples of 50")+
+ggplot(manymeans, aes(x=over6ft))+
+  geom_bar()+
+  labs(x = "proportion over 6ft tall\nsamples of 50")
+```
+
+:::sticky
+
+The **central limit theorem (CLT)** states that when we take sufficiently large random samples from a population, the distribution of the sample means will be approximately normally distributed. This holds regardless of whether the population is normal (or skewed).  
+
+You can find little applets online which help to illustrate this, such as those from [StatKey](https://www.lock5stat.com/StatKey/sampling_1_quant/sampling_1_quant.html){target="_blank"} and [WISE](https://wise1.cgu.edu/vis/bootstrap/){target="_blank"}.    
+
+:::
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Confidence Intervals
+
+One thing that is often useful to do when using a sample estimate is to construct a _range of plausible values_, providing a view of our uncertainty, rather than just a __point estimate__ (a single value).  
+
+In our simulation example (where we repeatedly take samples of the same size), we can simply ask for the points at which 2.5% of the sample means are below, and 2.5% are above. The `quantile()` function essentially orders our 1000 sample means and gives us the 25th and the 975th:  
+```{r}
+manysamplemeans <- replicate(1000, mean(rnorm(n = 30, mean = 65, sd = 12)))
+quantile(manysamplemeans, c(0.025, 0.975))
+```
+
+However, in real life remember we _don't have_ lots of sample means. We just have the one:  
+
+```{r}
+observed_sample <- c(53.8, 59, 51.1, 66.7, 86.1, 71, 65.3, 72.6, 56.6, 56.8, 50.1, 57.3, 60, 74, 73.4, 68.3, 53.5, 85.5, 68.8, 67.6, 67.4, 47.9, 46.3, 96.1, 52.8, 78.9, 74.8, 50.9, 78.2, 63.4)
+```
+
+We now know, however, that we can approximate the standard error using the formula $SE = \frac{sigma}{\sqrt{n}}$:  
+```{r}
+sd(observed_sample)/sqrt(length(observed_sample))
+```
+
+Remember that the standard error is the standard deviation of the _theoretical_ distribution of all the possible sample statistics we _might have computed_ (from all the samples of $n$ that we _might have taken_). And recall also that from central limit theorem we can rely on assuming the sampling distribution to be normally distributed. 
+
+Combine these with the [rules of thumb](#normal_distributions) for normal distributions that we saw above, where 68%/95%/99.7% of values will lie within 1/1.96/3 standard deviation of the mean.  
+
+We can use these to create intervals which X% of the time will contain the true population value. For 95%, we simply use 1.96 $\times$ standard error either side of our sample mean. This is called a __confidence interval (CI)__. 
+
+$$
+\begin{align}
+& \text{95% CI} = \bar{x} \pm 1.96 \times SE \\
+\qquad \\
+& \text{Where: } \\ 
+& \bar{x} = \text{sample mean} \\
+& SE = \text{standard error}
+\end{align}
+$$
+
+Our confidence interval^[using the formula $\frac{\sigma}{\sqrt{n}}$ for standard error] is therefore: 
+
+```{r}
+xbar = mean(observed_sample)
+se = sd(observed_sample)/sqrt(length(observed_sample))
+
+xbar - (1.96*se)
+xbar + (1.96*se)
+```
+
+
+:::sticky
+__Confidence Interval__  
+
+A confidence interval is a range of plausible values for an estimate. 
+
+When we say that we have "95% confidence", we mean that if we were to do the whole process (take a sample, compute a mean, compute a standard error, construct a confidence interval) over and over again, then 95 of every 100 confidence intervals we might construct will contain the true population parameter.  
+  
+Think of it like a [game of ring toss](https://en.wikipedia.org/wiki/Ring_toss){target="_blank"}: our intervals are the rings, and the value we are trying to estimate is the stake. We are [X]% confindent that the ring will land on the stake. 
+
+:::
+
+
+
+
+
