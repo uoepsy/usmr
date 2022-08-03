@@ -1,0 +1,1117 @@
+---
+title: "9A: More Linear Regression"
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(xaringanExtra)
+library(tidyverse)
+library(patchwork)
+xaringanExtra::use_panelset()
+```
+
+
+
+<!-- w9 -->
+<!-- standardising coefficients -->
+<!-- categorical predictors -->
+<!-- contrast coding -->
+<!-- interactions -->
+
+<!-- # more multiple regression -->
+<!-- ## reminder of categorical predictor -->
+<!-- ## ~ numeric + categorical -->
+
+<!-- # interactions -->
+<!-- ## numeric * categorical -->
+<!-- ## numeric * numeric -->
+
+<!-- # model fit & model comparison -->
+<!-- ## model fit (move to prev week?) -->
+<!-- ## comparison -->
+
+# Standardising Coefficients 
+
+:::statbox
+
+Often it is useful to make distinctions in notation between the effects that we are interested in (the _population parameter_) and our best guess (the _estimate_). With regression coefficients this is the notation we tend to use in this course _(there are many other conventions for notation)_:    
+
+| Population parameter | Fitted estimate |
+|:-----|:-----|
+| $b$ | $\hat b$ |
+
+:::
+
+
+:::lo
+__Remember the scale of your variables!__  
+
+Recall one of our models from last week, explaining wellbeing by the combination of social interactions and outdoor time:  
+$$
+\textrm{Wellbeing} = b_0 \ + \ b_1 (\textrm{Outdoor Time}) \ + \ b_2 (\textrm{Social Interactions}) \ +\ \epsilon
+$$
+We fitted this as so:  
+```{r}
+mwdata <- read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
+wbmodel2 <- lm(wellbeing ~ outdoor_time + social_int, data=mwdata)
+```
+
+
+- **Wellbeing:** Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS), a self-report measure of mental health and well-being. The scale is scored by summing responses to each item, with items answered on a 1 to 5 Likert scale. The minimum scale score is 14 and the maximum is 70.  
+- **Social Interactions:** Self report estimated number of social interactions per week (both online and in-person)
+- **Outdoor Time:** Self report estimated number of hours per week spent outdoors  
+
+This influences our interpretation of the coefficients (the $\hat b$'s):  
+
+- $\hat b_0$ = the estimated mean score on the WEMWBS for someone who has __zero__ social interactions per week and __zero__ hours of outdoor time per week.  
+- $\hat b_1$ = for every increase in __1 hour__ of outdoor time per week, scores on the WEMWBS are estimated to change by $\hat b_1$ __points__. 
+- $\hat b_2$ = for every increase in __1 social interaction__ per week, scores on the WEMWBS are estimated to change by $\hat b_2$ __points__. 
+
+:::
+
+`r qbegin("A1")`
+The code below creates a  __standardised__ the `outdoor_time` variable, transforming the values so that the mean of the new variable is 0, and the standard deviation is 1. 
+We can either use the `scale()` function to do this, or do it manually:  
+```{r}
+mwdata <- mwdata %>%
+  mutate(
+    outdoor_time_scaled = (outdoor_time - mean(outdoor_time))/sd(outdoor_time)
+  )
+```
+Note that the shape of the distribution stays exactly the same, but the units on the x-axis are different.  
+```{r echo=F, fig.asp=.5}
+library(patchwork)
+ggplot(mwdata,aes(x=outdoor_time))+geom_histogram(binwidth = 1) + 
+  ggplot(mwdata,aes(x=outdoor_time_scaled))+geom_histogram(binwidth=1/sd(mwdata$outdoor_time))
+```
+How does the interpretation of $\hat b_0$ and $\hat b_1$ change for the model:
+```{r eval=F}
+lm(wellbeing ~ social_int + outdoor_time_scaled, data=mwdata)
+```
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+- $\hat b_0$ = the estimated mean score on the WEMWBS for someone who has zero social interactions per week and has the __mean number of__ hours of outdoor time per week.  
+- $\hat b_1$ = for every increase in __1 standard deviation of__ hours of outdoor time per week, scores on the WEMWBS are estimated to change by $\hat b_1$ __points__.  
+- $\hat b_2$ = for every increase in 1 social interaction per week, scores on the WEMWBS are estimated to change by $\hat b_2$ points. 
+
+
+Note that the significance of $\hat b_1$ (the effect of outdoor time) is exactly the same, but the estimate is different:  
+```{r}
+wbmodel2 <- lm(wellbeing ~ social_int + outdoor_time, data=mwdata)
+wbmodel2a <- lm(wellbeing ~ social_int + outdoor_time_scaled, data=mwdata)
+summary(wbmodel2)$coefficients
+summary(wbmodel2a)$coefficients
+```
+This is because it now represents the change in wellbeing associated with a 1 _standard deviation_ change in outdoor time, rather than a 1 _hour_ increase.  
+
+```{r}
+coef(wbmodel2)['outdoor_time'] * sd(mwdata$outdoor_time)
+```
+
+`r solend()`
+
+
+`r qbegin("A2")`
+We can also standardise our outcome variable, the `wellbeing` variable. 
+Let's use the `scale()` function this time: 
+```{r}
+mwdata <- mwdata %>%
+  mutate(
+    wellbeing_scaled = scale(wellbeing)
+  )
+```
+
+How will our coefficients change for the following model?  
+```{r eval=F}
+lm(wellbeing_scaled ~ social_int + outdoor_time_scaled, data = mwdata)
+```
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+- $\hat b_0$ = the estimated __number of standard deviations from the mean__ on the WEMWBS for someone who has __zero__ social interactions per week and has the __mean number of__ hours of outdoor time per week.  
+- $\hat b_1$ = for every increase in __1 standard deviation of__ hours of outdoor time per week, scores on the WEMWBS are estimated to change by $\hat b_1$ __standard deviations__.  
+- $\hat b_2$ = for every increase in 1 social interaction per week, scores on the WEMWBS are estimated to change by $\hat b_2$ __standard deviations__. 
+
+
+The coefficients now represent the change in _standard deviations_ of wellbeing scores. 
+```{r}
+coef(wbmodel2)['social_int'] / sd(mwdata$wellbeing)
+```
+`r solend()`
+
+:::rtip
+
+We can actually standardise all the variables in our model by using the function `standardCoefs()` from the __lsr__ package.  
+
+In some notations, the distinction between these __"standardised coefficients"__ and the original coefficients in the raw units, gets denoted by $\hat b$ changing to $\hat \beta$ for the standardised coefficients^[A common alternative is to use $\beta$ for the population parameter, $\hat \beta$ for the fitted estimate, and something like $\hat \beta^*$ for the standardised estimate.]:  
+
+
+:::statbox
+__Notation__  
+
+| Population parameter | Fitted estimate | Standardised Estimate |
+|:-----|:-----|:-----|
+| $b$ | $\hat b$ | $\hat \beta$ |
+
+:::
+
+```{r}
+library(lsr)
+standardCoefs(wbmodel2)
+```
+
+The interpretation of $\hat \beta$s (the "beta") column, is now:  
+
+- $\hat \beta_1$: The estimated change in standard deviations of wellbeing scores associated with a change of 1 standard deviation of number of hours of outdoor time per week.   
+- $\hat \beta_2$: The estimated change in standard deviations of wellbeing scores associated with a change of 1 standard deviation of number of social interactions per week.
+
+A benefit of this is that the standardised coefficients are much more comparable. Comparing $\hat b_1$ and $\hat b_2$ is asking whether 1 hour of outdoor time has a bigger effect than 1 social interaction. This is a bit like 'comparing apples and oranges'.  
+  
+If instead we compare $\hat \beta_1$ and $\hat \beta_2$, then the comparisons we make are in terms of standard deviations of each predictor. Thus we might consider increasing the number of social interactions each week to have a greater effect on wellbeing than increasing the hours of outdoor time (because $0.67 > 0.35$).  
+
+:::
+
+# More Categorical Predictors
+
+:::statbox
+
+We talked briefly about binary predictor variables last week. A categorical variable with two levels (e.g., "Dog" vs "Cat") can be represented in binary 0s and 1s. R does this translation for us when we put a categorical variable into a linear model, so we might have data that we would plot like the top plot in Figure \@ref(fig:catpred), but our model is really doing what is in the bottom plot.   
+```{r catpred,echo=FALSE, fig.cap="Binary Predictors"}
+set.seed(74)
+df <- tibble(
+  catdog = rep(c("Cat","Dog"),each=50),
+  weight = c(rnorm(50,5,2), rnorm(50,12,3))
+)
+cstat = coef(lm(weight~catdog,df))
+df %>%
+  mutate(
+    isDog = ifelse(catdog == "Dog", 1, 0),
+    isdogj = jitter(isDog,amount=.03)+1,
+    f = fitted(lm(weight~catdog,df))
+  ) %>% ggplot(.,aes(x=isdogj, y=weight))+
+  #geom_boxplot(fatten=NULL)+
+  geom_point()+
+  geom_segment(aes(x=isdogj,xend=isdogj,y=weight,yend=f),col="red",lty="dotted")+
+  geom_smooth(method="lm",aes(x=isDog+1), se=F)+
+  geom_segment(aes(x=2,xend=2,y=cstat[1],yend=cstat[1]+cstat[2]), lty="dashed",col="blue")+
+  geom_segment(aes(x=1,xend=2,y=cstat[1],yend=cstat[1]), lty="dashed",col="blue")+
+  annotate("text",x=2.15,y=mean(c(cstat[1], sum(cstat))),label=expression(paste(beta[1], " (slope)")), col="blue") + 
+  geom_point(x=1,y=cstat[1], col="blue",size=3)+
+  annotate("text",x=1,y=cstat[1],label=expression(paste(beta[0], " (intercept)")), col="blue", hjust=1.1)+
+  scale_x_continuous("isDog",limits = c(0.8,2.2), breaks=1:2, labels=0:1) +labs(title="The model")-> pp1
+
+ggplot(df,aes(x=catdog, y=weight))+geom_boxplot()+
+  labs(title="The Data")+labs(title="The data") -> pp0
+
+pp0 / pp1
+```
+
+We can have categorical predictors in multiple regression, and not a great deal changes. Last week we visualised a regression surface, and if we have a binary predictor, instead of the continuum, we simply have two lines: 
+```{r echo=FALSE}
+mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
+mwdata %>% rename(y=wellbeing,x1=outdoor_time,x2=social_int) -> mwdata
+fit<-lm(y~x1+x2, data=mwdata)
+steps=50
+x1 <- with(mwdata, seq(min(x1),max(x1),length=steps))
+x2 <- with(mwdata, seq(min(x2),max(x2),length=steps))
+newdat <- expand.grid(x1=x1, x2=x2)
+y <- matrix(predict(fit, newdat), steps, steps)
+
+
+par(mfrow=c(1,2))
+p <- persp(x1,x2,y, theta = 35,phi=10, col = NA, main="y~x1+x2")
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+#points(pred, col = "blue", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y)
+
+
+mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
+fit<-lm(wellbeing~outdoor_time+routine, data=mwdata)
+mwdata$hasR = as.numeric(mwdata$routine=="Routine")+1
+fit<-lm(wellbeing~outdoor_time+routine, data=mwdata)
+with(mwdata, plot(wellbeing ~ outdoor_time, col=hasR, pch = 20,xlab="x1",ylab="y",main="y~x1+x2\n(x2 is categorical)"))
+abline(a = coef(fit)[1],b=coef(fit)[2])
+abline(a = coef(fit)[1]+coef(fit)[3],b=coef(fit)[2], col="red")
+
+par(mfrow=c(1,1))
+```
+
+<!-- `r optbegin("visualising y ~ x1 + x2 + x3 (x3 is categorical)", olabel=F, toggle=params$TOGGLE)` -->
+<!-- ```{r echo=F} -->
+<!-- mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv") -->
+<!-- fit<-lm(wellbeing~outdoor_time+social_int+routine, data=mwdata) -->
+<!-- steps=20 -->
+<!-- outdoor_time <- with(mwdata, seq(min(outdoor_time),max(outdoor_time),length=steps)) -->
+<!-- social_int <- with(mwdata, seq(min(social_int),max(social_int),length=steps)) -->
+<!-- newdat <- expand.grid(outdoor_time=outdoor_time, social_int=social_int, routine = "Routine") -->
+<!-- wellbeing <- matrix(predict(fit, newdat), steps, steps) -->
+
+<!-- x1 <- outdoor_time -->
+<!-- x2 <- social_int -->
+<!-- y <- wellbeing -->
+
+<!-- p <- persp(x1,x2,y, theta = 35,phi=10, col = NA,zlim=c(10,70), main="y~x1+x2+x3\n(x3 is categorical)") -->
+<!-- newdat <- expand.grid(outdoor_time=outdoor_time, social_int=social_int-2, routine = "No Routine") -->
+<!-- wellbeing <- matrix(predict(fit, newdat), steps, steps) -->
+<!-- y <- wellbeing -->
+<!-- par(new=TRUE) -->
+<!-- persp(x1,x2,y, theta = 35,phi=10, col = NA,zlim=c(10,80), axes=F) -->
+<!-- ``` -->
+<!-- `r optend()` -->
+
+:::
+
+`r qbegin("B1")`
+Fit the multiple regression model below using `lm()`, and assign it to an object to store it in your environment. 
+$$
+\textrm{Wellbeing} = b_0 + b_1 (\textrm{Outdoor Time}) + b_2 (\textrm{HasARoutine}) + \epsilon
+$$
+
+$\hat b_0$ (the intercept) is the estimated average wellbeing score associated with zero hours of weekly outdoor time and zero in the routine variable.  
+  
+For which group (routine vs no routine) does the intercept correspond?  
+_Hint:_ looking at the `summary()` might help
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+wbmodel3 <- lm(wellbeing ~ 1 + outdoor_time + routine, data = mwdata)
+summary(wbmodel3)
+```
+
+As you can see in the output of the model, we have a coefficient called `routineRoutine`. This is the parameter estimate for a dummy variable which has been inputted into the model. The `lm()` function will automatically name the dummy variables (and therefore the coefficients) according to what level is identified by the 1. It names them `<variable><Level>`, so we can tell that `routineRoutine` is 1 for "Routine" and 0 for "No Routine".  
+
+The intercept is therefore the estimated wellbeing score for those with No Routine and zero hours of outdoor time.  
+`r qend()`
+
+`r qbegin("B2")`
+Get a pen and paper, and sketch out the plot shown in Figure \@ref(fig:plot-annotate).  
+
+```{r plot-annotate, echo=FALSE, fig.cap="Multiple regression model: Wellbeing ~ Outdoor Time + Routine"}
+sjPlot::plot_model(wbmodel3, type="pred", terms=c("outdoor_time","routine"), show.data=FALSE)+
+  scale_fill_manual(NULL, values=c(NA,NA))
+```
+
+Annotate your plot with labels for each of parameter estimates from your model: 
+
+| Parameter Estimate   |      Model Coefficient      |  Estimate |
+|----------|:-------------:|------:|
+| $\hat b_0$ | `(Intercept)` | `r round(coef(wbmodel3)[1],2)` |
+| $\hat b_1$ | `outdoor_time`   |  `r round(coef(wbmodel3)[2],2)` |
+| $\hat b_2$ | `routineRoutine` | `r round(coef(wbmodel3)[3],2)` |
+
+
+`r optbegin("Hint",olabel=FALSE, toggle=params$TOGGLE)`
+Below you can see where to add the labels, but we have not said which is which. 
+
+```{r echo=FALSE}
+sjPlot::plot_model(wbmodel3, type="pred", terms=c("outdoor_time","routine"), show.data=FALSE)+
+  scale_fill_manual(NULL, values=c(NA,NA))+
+  geom_vline(xintercept = 0) +
+  geom_segment(aes(x=1,xend=0,
+                   y=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=0))-1,
+                   yend=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=0))),
+               col="black",lwd=.2)+
+  geom_label(aes(x=2,y=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=0))-3), 
+             label="B")+
+  geom_segment(aes(x=20,xend=20,
+                   y=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=20)),
+                   yend=predict(wbmodel3,newdata=data.frame(routine="Routine",outdoor_time=20))),
+               col="black",lwd=.2,
+               arrow = arrow(length = unit(3, "mm")))+
+  geom_label(aes(x=21,y=predict(wbmodel3,newdata=data.frame(routine="Routine",outdoor_time=20))-5),
+               label="A")+
+  geom_segment(aes(x=10,xend=11,
+                 y=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=10)),
+                 yend=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=10))),
+             col="black",lwd=.2)+
+  geom_segment(aes(x=11,xend=11,
+                 y=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=10)),
+                 yend=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=11))),
+             col="black",lwd=.2)+
+  geom_label(aes(x=12,y=predict(wbmodel3,newdata=data.frame(routine="No Routine",outdoor_time=10))),
+                 label="C")+
+  NULL -> plot_annotate
+
+plot_annotate
+
+```
+
++ A is the vertical distance between the red and blue lines (the lines are parallel, so this distance is the same wherever you cut it on the x-axis).  
++ B is the point at which the blue line cuts the y-axis.  
++ C is the vertical increase (increase on the y-axis) for the blue line associated with a 1 unit increase on the x-axis (the lines are parallel, so this is the same for the red line).  
+
+`r optend()`
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
++ A = $\hat b_2$ = `routineRoutine` coefficient = `r round(coef(wbmodel3)[3],2)`
++ B = $\hat b_0$ = `(Intercept)` coefficient  = `r round(coef(wbmodel3)[1],2)`
++ C = $\hat b_1$ = `outdoor_time` coefficient = `r round(coef(wbmodel3)[2],2)` 
+
+```{r echo=FALSE}
+plot_annotate
+```
+
+`r solend()`
+
+`r qbegin("B3")`
+Load the __sjPlot__ package using `library(sjPlot)` and try running the code below (changing to use the name of your fitted model). You may already have the __sjPlot__ package installed from previous exercises. If not, you will need to install it first. 
+
+```{r eval=FALSE}
+library(sjPlot)
+plot_model(wbmodel3)
+plot_model(wbmodel3, type = "pred")
+plot_model(wbmodel3, type = "pred",  terms=c("outdoor_time","routine"), show.data=TRUE)
+```
+
+What do you think each one is showing?  
+
+:::rtip
+The `plot_model` function (and the __sjPlot__ package) can do a lot of different things. Most packages in R come with tutorials (or "vignettes"), for instance: https://strengejacke.github.io/sjPlot/articles/plot_model_estimates.html 
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+library(sjPlot)
+plot_model(wbmodel3)
+```
+These are the parameter estimates (the $\hat b$'s), and the confidence intervals. 
+```{r}
+confint(wbmodel3)
+```
+
+When we add `type="pred"` we are asking for the predicted values. It will provide a separate plot for each explanatory variable, showing the predicted values at each level of that variable:
+```{r}
+plot_model(wbmodel3, type = "pred")
+```
+
+We can combine these into one plot, and ask it to show the raw data as well:
+```{r}
+plot_model(wbmodel3, type = "pred",  terms=c("outdoor_time","routine"), show.data=TRUE)
+```
+`r solend()`
+
+
+## Categorical Predictors with $k$ levels
+
+:::statbox
+
+We have seen how a _binary categorical_ variable gets inputted into our model as a variable of 0s and 1s (these typically get called __"dummy variables"__).   
+<br>
+&nbsp;&nbsp;&nbsp; __> Dummy variables__ are numeric variables that represent categorical data.  
+<br>
+When we have a _categorical_ explanatory variable with __more than 2 levels__, our model gets a bit bigger - it needs not just one, but _a number of_ dummy variables. For a categorical variable with $k$ levels, we can express it in $k-1$ dummy variables.  
+
+For example, the "species" column below has three levels, and can be expressed by the two variables "species_dog" and "species_parrot":  
+```{r echo=FALSE, out.width="80%"}
+data.frame(
+  species = c("cat","cat","dog","parrot","dog","cat","..."),
+  species_dog = c(0,0,1,0,1,0,"..."),
+  species_parrot = c(0,0,0,1,0,0,"...")
+)
+```
+
++ The "cat" level is expressed whenever both the "species_dog" and "species_parrot" variables are 0.
++ The "dog" level is expressed whenever the "species_dog" variable is 1 and the "species_parrot" variable is 0.
++ The "parrot" level is expressed whenever the "species_dog" variable is 0 and the "species_parrot" variable is 1.  
+
+R will do all of this re-expression for us. If we include in our model a categorical explanatory variable with 4 different levels, the model will estimate 3 parameters - one for each dummy variable. We can interpret the parameter estimates (the coefficients we obtain using `coefficients()`,`coef()` or `summary()`) as the estimated increase in the outcome variable associated with an increase of one in each dummy variable (holding all other variables equal).  
+```{r echo=FALSE}
+set.seed(348)
+catplot <- tibble(
+  species = rep(c("cat","dog","parrot"), each = 15),
+  outcome = c(rnorm(15,60,5), rnorm(15,50,5), rnorm(15,55,5))
+)
+cstat = coef(lm(outcome~species,catplot))
+pander::pander(summary(lm(outcome~species,catplot))$coefficients)
+```
+
+Note that in the above example, an increase in 1 of "species_dog" is the difference between a "cat" and a "dog". An increase in one of "species_parrot" is the difference between a "cat" and a "parrot". We think of the "cat" category in this example as the _reference level_ - it is the category against which other categories are compared against. 
+
+```{r echo=FALSE}
+ggplot(catplot, aes(x=species, y=outcome))+
+  #geom_boxplot(fatten=NULL)+
+  geom_jitter(height=0,width=.05, alpha=.4)+
+  geom_point(x=1,y=cstat[1], col="blue",size=3)+
+  annotate("text",x=1,y=cstat[1],label=expression(paste(beta[0], " (intercept)")), col="blue", hjust=1.1)+
+  geom_segment(aes(x=1,xend=2,y=cstat[1],yend=cstat[1]+cstat[2]),col="blue")+
+  geom_segment(aes(x=1,xend=2,y=cstat[1],yend=cstat[1]),col="blue", lty="dashed")+
+  geom_segment(aes(x=2,xend=2,y=cstat[1],yend=cstat[1]+cstat[2]),col="blue", lty="dashed")+
+  annotate("text",x=2.15,y=mean(c(cstat[1],sum(cstat[1:2]))),label=expression(paste(beta[1], " (slope)")), col="blue", hjust=.35)+
+  
+  geom_segment(aes(x=1,xend=3,y=cstat[1],yend=cstat[1]+cstat[3]),col="blue")+
+  geom_segment(aes(x=1,xend=3,y=cstat[1],yend=cstat[1]),col="blue", lty="dashed")+
+  geom_segment(aes(x=3,xend=3,y=cstat[1],yend=cstat[1]+cstat[3]),col="blue", lty="dashed")+
+  annotate("text",x=3.15,y=mean(c(cstat[1],sum(cstat[c(1,3)]))),label=expression(paste(beta[2], " (slope)")), col="blue", hjust=.35)
+```
+
+If you think about it, a regression model with a categorical predictor with $k$ levels is really just a regression model with $k-1$ dummy variables as predictors.  
+
+:::
+
+`r optbegin("Optional: Contrasts!", olabel=F, toggle=params$TOGGLE)`
+
+As it happens, we don't always have to use 0s and 1s to represent categorical variables.  
+
+By changing what numbers we use, we change what the various estimates represent. For instance, we might use -1 and 1. Which makes 0 the mid-point, or the overall mean, and this is where our intercept will be. The coefficient will then be the difference from the group to the overall mean. In additional, we can also change what "a change of 1" represents. 
+```{r dogtest, echo=F}
+set.seed(74)
+df <- tibble(
+  catdog = rep(c("Cat","Dog"),each=50),
+  weight = c(rnorm(50,5,2), rnorm(50,12,3))
+)
+cstat = coef(lm(weight~catdog,df,contrasts=list(catdog="contr.sum")))
+df %>%
+  mutate(
+    isDog = ifelse(catdog == "Dog", 1, 0),
+    isdogj = jitter(isDog,amount=.03)+1,
+    f = fitted(lm(weight~catdog,df))
+  ) %>% ggplot(.,aes(x=isdogj, y=weight))+
+  #geom_boxplot(fatten=NULL)+
+  geom_point()+
+  geom_segment(aes(x=isdogj,xend=isdogj,y=weight,yend=f),col="red",lty="dotted")+
+  geom_smooth(method="lm",aes(x=isDog+1), se=F)+
+  geom_segment(aes(x=2,xend=2,y=cstat[1],yend=cstat[1]-cstat[2]), lty="dashed",col="blue")+
+  geom_segment(aes(x=1.5,xend=2,y=cstat[1],yend=cstat[1]), lty="dashed",col="blue")+
+  annotate("text",x=2.15,y=(cstat[1]-(cstat[2]/2)),label=expression(paste(beta[1], " (slope)")), col="blue") + 
+  geom_point(x=1.5,y=cstat[1], col="blue",size=3)+
+  annotate("text",x=1.5,y=cstat[1],label=expression(paste(beta[0], " (intercept)")), col="blue", hjust=1.1)+
+  scale_x_continuous("isDog",limits = c(0.8,2.2), breaks=c(1,1.5,2), labels=c(-1,0,1)) -> pp0
+
+df$catdog <- factor(df$catdog)
+contrasts(df$catdog)[,1] <- c(-.5,.5)
+cstat = coef(lm(weight~catdog,df))
+df %>%
+  mutate(
+    isDog = ifelse(catdog == "Dog", 1, 0),
+    isdogj = jitter(isDog,amount=.03)+1,
+    f = fitted(lm(weight~catdog,df))
+  ) %>% ggplot(.,aes(x=isdogj, y=weight))+
+  #geom_boxplot(fatten=NULL)+
+  geom_point()+
+  geom_segment(aes(x=isdogj,xend=isdogj,y=weight,yend=f),col="red",lty="dotted")+
+  geom_smooth(method="lm",aes(x=isDog+1), se=F)+
+  geom_segment(aes(x=2,xend=2,y=cstat[1]-cstat[2]/2,yend=cstat[1]+cstat[2]/2), lty="dashed",col="blue")+
+  geom_segment(aes(x=1,xend=2,y=cstat[1]-cstat[2]/2,yend=cstat[1]-cstat[2]/2), lty="dashed",col="blue")+
+  annotate("text",x=2.15,y=cstat[1],label=expression(paste(beta[1], " (slope)")), col="blue") + 
+  geom_point(x=1.5,y=cstat[1], col="blue",size=3)+
+  annotate("text",x=1.5,y=cstat[1],label=expression(paste(beta[0], " (intercept)")), col="blue", hjust=1.1)+
+  scale_x_continuous("isDog",limits = c(0.8,2.2), breaks=c(1,1.5,2), labels=c(-0.5,0,0.5)) -> pp1
+
+pp0 / pp1
+```
+
+This can get _very_ confusing very quickly as we move to variables that have more than 2 levels, but the short story is that we can use these "contrasts" to test the specific differences that we might be interested in (depending on what our hypothesis is).  
+In R, we can see quickly how our variables will be encoded in our model by using `contrasts()`.  
+__tip:__ it requires a variable to be a factor.  
+```{r}
+mwdata$location <- factor(mwdata$location)
+contrasts(mwdata$location)
+```
+In the output of `contrasts()`, the columns are the dummy variables which go into our model. So we know that if we use `location` in a model, the reference level will be "City" (where both variables are zero), and we will get a coefficient for "Rural" which will be the difference "Rural - City", and a coefficient for "Suburb" which will be the difference "Suburb - City". 
+
+:::frame
+We can see that here:
+```{r}
+coef(lm(wellbeing ~ location, data = mwdata))
+```
+And calculating the group means of wellbeing helps to show that it's doing what we expect:  
+```{r}
+mwdata %>% group_by(location) %>%
+  summarise(
+    meanwb = mean(wellbeing)
+  ) %>%
+  mutate(diff_from_city = meanwb - meanwb[1])
+```
+:::
+
+We're not going to delve too much into contrasts in this course, other than to say that we can use them change the way that information in categorical variables get inputted in our model, thereby changing the group differences that we are estimating. If you would like to learn more, then do please email and ask us. There are also lots of great resources around online, such as [this one](https://stats.idre.ucla.edu/r/library/r-library-contrast-coding-systems-for-categorical-variables/).    
+
+`r optend()`
+
+
+# Interactions  
+
+:::lo 
+We're now going to move on to something a little more interesting, and we're _finally_ going to stop using that dataset about wellbeing, outdoor time and socialising etc.  
+
+So far, we've been talking a lot about "the effect of x" and "change in y for a 1 unit change in x" etc. But what if we think that some such "effects" are actually dependent upon some other variable? For example, we might think that the amount to which caffeine makes you stressed _depends upon_ how old you are. 
+  
+An *interaction* is a quantitative researcher's way of answering the question "what is the relationship between Y and X?" with, "well, it depends...".    
+
+We're going to look at interactions between two numeric variables, but before that we're going to look at an interaction between a numeric variable and a categorical variable.  
+:::
+
+## ~ Numeric * Categorical
+
+<!-- Reseachers have become interested in how time spent outdoors might influence mental health and wellbeing differently for those living in rural communities compared to those in cities and suburbs. They want to assess whether the effect of outdoor time on wellbeing _is moderated by_ (depends upon) whether or not a person lives in a rural area.   -->
+<!-- Their initial data did not have much data (only 7 respondents were from a rural location). They have collected a some new data.   -->
+
+<!-- :::frame -->
+<!-- __Data: wellbeing_rural.csv__   -->
+
+<!-- From the Edinburgh & Lothians, 100 city/suburb residences and 100 rural residences were chosen at random and contacted to participate in the study. The Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS), was used to measure mental health and well-being.  -->
+<!-- Participants filled out a questionnaire including items concerning: estimated average number of hours spent outdoors each week, estimated average number of social interactions each week (whether on-line or in-person), whether a daily routine is followed (yes/no). For those respondents who had an activity tracker app or smart watch, they were asked to provide their average weekly number of steps.   -->
+
+<!-- The data in `wellbeing_rural.csv` contain seven attributes collected from a random sample of $n=200$ hypothetical residents over Edinburgh & Lothians, and include:   -->
+
+<!-- - `wellbeing`: Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS), a self-report measure of mental health and well-being. The scale is scored by summing responses to each item, with items answered on a 1 to 5 Likert scale. The minimum scale score is 14 and the maximum is 70.   -->
+<!-- - `outdoor_time`: Self report estimated number of hours per week spent outdoors   -->
+<!-- - `social_int`: Self report estimated number of social interactions per week (both online and in-person) -->
+<!-- - `routine`: Binary 1=Yes/0=No response to the question "Do you follow a daily routine throughout the week?" -->
+<!-- - `location`: Location of primary residence (City, Suburb, Rural) -->
+<!-- - `steps_k`: Average weekly number of steps in thousands (as given by activity tracker if available) -->
+<!-- - `age`: Age in years of respondent -->
+
+<!-- __Download link__ -->
+
+<!-- The data is available at https://uoepsy.github.io/data/wellbeing_rural.csv.   -->
+<!-- ::: -->
+
+
+:::frame
+__Data: cogapoe.csv__  
+
+Ninety adult participants were recruited for a study investigating how cognitive functioning varies by age, and whether this is different depending on whether people carry an APOE-4 gene.  
+
+```{r}
+cogapoe <- read_csv("../../data/cogapoe4.csv")
+tibble(
+  variables = names(cogapoe),
+  description = c("Participant ID","Age (in Years)","Years of Education","Birthweight (in Kg)","APOE-4 Gene expansion ('none', 'apoe4a', 'apoe4b', apoe4c')","Score on Addenbrooke's Cognitive Examination")
+) %>% knitr::kable() %>% kableExtra::kable_styling(.,full_width=T)
+```
+
+__Download Link__ 
+
+The data are available at https://uoepsy.github.io/data/cogapoe4.csv.  
+
+:::
+
+
+`r qbegin("C1")`
+> **Research Question:** 
+> Does the relationship between age and cognitive function differ between those with and without the APOE-4 genotype?  
+
+Read in the data and explore the variables which you think you will use to answer this research question (create some plots, some descriptive stats etc.) 
+
+Some tips:  
+
+- The `pairs.panels()` function from the __psych__ package is quite a nice way to plot a scatterplot matrix of a dataset.  
+- The `describe()` function is also quite nice (from the __psych__ package too).  
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+cogapoe <- read_csv("https://uoepsy.github.io/data/cogapoe4.csv")
+summary(cogapoe)
+```
+
+Judging by the research question, we're going to be interested in participants' ages, whether they carry the APOE4 gene, and their cognitive functioning.    
+```{r}
+library(psych)
+cogapoe %>% 
+  select(age, apoe4, acer) %>%
+  pairs.panels()
+cogapoe %>% 
+  select(age, apoe4, acer) %>%
+  describe()
+```
+
+`r solend()`
+
+`r qbegin("C2")`
+Check the `apoe4` variable. It currently has four levels ("none"/"apoe4a"/"apoe4b"/"apoe4c"), but the research question is actually interested in two ("none" vs "apoe4"). We'll need to fix this. One way to do this would be to use `ifelse()` to define a variable which takes one value (e.g., "NO") if the observation meets from some condition, or another value (e.g., "YES") if it does not. Type `?ifelse` in the **console** if you want to see the help function. You can use it to add a new variable either inside `mutate()`, or using `data$new_variable_name <- ifelse(test, x, y)` syntax. We saw it briefly in the [previous set of exercises](07_regression.html#binpred).  
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+Create a new variable for Rural/Not Rural
+```{r}
+cogapoe <- 
+  cogapoe %>% 
+  mutate(
+    isAPOE4 = ifelse(apoe4 == "none", "No", "Yes")
+  )
+```
+`r solend()`
+
+
+`r qbegin("C3")`
+Produce a visualisation of the relationship between age and cognitive functioning, with separate _facets_ for people with and without the APOE4 gene.  
+
+__Hint:__ remember `facet_wrap()`?  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+ggplot(data = cogapoe, aes(x = age, y = acer)) + 
+  geom_point() + 
+  facet_wrap(~isAPOE4)
+```
+`r solend()`
+
+
+:::statbox
+__Interactions in linear models__  
+
+Specifying an interaction in a regression involves simply including the product of the two relevant predictor variables in your set of predictors. So if we are wanting to examine how the effect of $x$ on $y$ _depends on_ $z$, we would want to estimate a parameter $b$ such that our outcome is predicted by $b(x \times z)$. However, we also need to include $x$ and $z$ themselves: $y = b_0 + b_1(x) + b_2(z) + b_3(x \times z)$.  
+
+:::frame
+_"Except in special circumstances, a model including a product term for interaction between two explanatory variables should also include terms with each of the explanatory variables individually, even though their coefficients may not be significantly different from zero. Following this rule avoids the logical inconsistency of saying that the effect of $X_1$ depends on the level of $X_2$ but that there is no effect of $X_1$."_    
+@Ramsey2012
+
+:::
+:::
+
+`r qbegin("C4")`
+To address the research question, we are going to fit the following model:  
+$$
+\text{ACE-R} = b_0 + b_1(\text{Age}) + b_2(\text{isAPOE4}) + b_3 (\text{Age} \times \text{isAPOE4}) + \epsilon \\ 
+\quad \\ \text{where} \quad \epsilon \sim N(0, \sigma) \text{ independently}
+$$
+
+Fit the model using `lm()`.   
+
+:::rtip
+__Tip:__  
+When fitting a regression model in R with two explanatory variables A and B, and their interaction, these two are equivalent:  
+
++ y ~ A + B + A:B
++ y ~ A*B  
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+apoe4mod <- lm(acer ~ 1 + age * isAPOE4, data = cogapoe)
+```
+`r solend()`
+
+:::statbox
+__Interpreting coefficients for A and B in the presence of an interaction A:B__   
+
+When you include an interaction between $x_1$ and $x_2$ in a regression model, you are estimating the extent to which the effect of $x_1$ on $y$ is different across the values of $x_2$.  
+
+What this means is that the effect of $x_1$ on $y$ *depends on/is conditional upon* the value of $x_2$.  
+(and vice versa, the effect of $x_2$ on $y$ is different across the values of $x_1$).   
+This means that we can no longer talk about the "effect of $x_1$ _holding $x_2$ constant_". Instead we can talk about a _conditional effect_ of $x_1$ on $y$ at a specific value of $x_2$. 
+
+:::imp
+When we fit the model $y = b_0 + b_1(x_1)+ b_2(x_2) + b_3(x_1 \times x_2) + \epsilon$ using `lm()`:  
+
+- the parameter estimate $\hat b_1$ is the _conditional effect_ of $x_1$ on $y$ where $x_2 = 0$  
+- the parameter estimate $\hat b_2$ is the _conditional effect_ of $x_2$ on $y$ where $x_1 = 0$  
+:::
+
+<div style="margin-left: 15px">
+<small>
+__side note:__ Regardless of whether or not there is an interaction term in our model, all parameter estimates in multiple regression are "conditional" in the sense that they are dependent upon the inclusion of other variables in the model. For instance, in $y = b_0 + b_1(x_1) + b_2(x_2) + \epsilon$ the coefficient $\hat b_1$ is conditional upon holding $x_2$ constant. The difference with an interaction is that they are conditional upon $x_2$ being _at_ some specific value.  
+</small>
+</div>
+
+:::
+
+:::statbox
+__Interpreting the interaction term A:B__  
+
+The coefficient for an interaction term can be thought of as providing an _adjustment to the slope._   
+  
+In our model: $\text{ACE-R} = b_0 + b_1(\text{Age}) + b_2(\text{isAPOE4}) + b_3 (\text{Age} \times \text{isAPOE4}) + \epsilon$, we have a numeric*categorical interaction.  
+The estimate $\hat b_3$ is the adjustment to the slope $\hat b_1$ to be made for the individuals in the $\text{isAPOE4}=1$ group. 
+
+:::
+
+:::frame
+_"The best method of communicating findings about the presence of significant interaction may be to present a table of graph of the estimated means at various combinations of the interacting variables."_    
+@Ramsey2012  
+:::
+
+`r qbegin("C5")`  
+Look at the parameter estimates from your model, and write a description of what each one corresponds to on the plot shown in Figure \@ref(fig:plot-annotate-int) (it may help to sketch out the plot yourself and annotate it).  
+
+```{r plot-annotate-int, echo=FALSE, fig.cap="Multiple regression model: ACER ~ Age * isAPOE4<br>The dotted lines show the extension back to where the x-axis is zero"}
+nd = expand_grid(age=0:100,isAPOE4=c("No","Yes"))
+nd = nd %>% mutate(acer = predict(apoe4mod, newdata = .))
+sjPlot::plot_model(apoe4mod, type="int")+
+  scale_fill_manual(NULL, values=c(NA,NA))+
+  scale_x_continuous(expand = c(0, 0),limits=c(0,100)) + 
+  scale_y_continuous(expand = c(0, 1))+
+  geom_line(inherit.aes=FALSE,data=nd,aes(x=age,y=acer,col=factor(isAPOE4)), lty="longdash")+
+  NULL
+```
+
+`r optbegin("Hints", olabel=FALSE, toggle=params$TOGGLE)`
+Here are some options to choose from:
+
++ The point at which the blue line cuts the y-axis (where age = 0)
++ The point at which the red line cuts the y-axis (where age = 0)
++ The average vertical distance between the red and blue lines. 
++ The vertical distance from the blue to the red line _at the y-axis_ (where age = 0)
++ The vertical distance from the red to the blue line _at the y-axis_ (where age = 0)
++ The vertical distance from the blue to the red line _at the center of the plot_
++ The vertical distance from the red to the blue line _at the center of the plot_
++ The slope (vertical increase on the y-axis associated with a 1 unit increase on the x-axis) of the blue line
++ The slope of the red line
++ The adjustment to the slope when you move from the blue to the red line
++ The adjustment to the slope when you move from the red to the blue line
+`r optend()`
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+We can obtain our parameter estimates using various functions such as `summary(apoe4mod)`,`coef(apoe4mod)`, `coefficients(apoe4mod)` etc. 
+
+```{r}
+coefficients(apoe4mod)
+```
+
+
++ $\hat b_0$ = `(Intercept)` = `r round(coef(apoe4mod)[1],2)`: The point at which the red line cuts the y-axis (where age = 0).  
++ $\hat b_1$ = `age` = `r round(coef(apoe4mod)[2],2)`: The slope (vertical change on the y-axis associated with a 1 unit change on the x-axis) of the red line.
++ $\hat b_2$ = `isAPOE4Yes` = `r round(coef(apoe4mod)[3],2)`: The vertical distance from the red to the blue line _at the y-axis_ (where age = 0).  
++ $\hat b_3$ = `age:isAPOE4Yes` = `r round(coef(apoe4mod)[4],2)`: How the slope of the line changes when you move from the red to the blue line.   
+
+`r solend()`
+
+`r qbegin("C6")`
+Make sure the __sjPlot__ package is loaded and try using the function `plot_model()`.  
+The default behaviour of `plot_model()` is to plot the parameter estimates and their confidence intervals. This is where `type = "est"`. 
+Try to create a plot like Figure \@ref(fig:plot-annotate-int), which shows the two lines (**Hint:** what is this set block of exercises all about? `type = ???`.)
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+library(sjPlot)
+plot_model(apoe4mod, type="int")
+```
+`r solend()`
+
+
+## ~ Numeric * Numeric  
+
+We will now look at a multiple regression model with an interaction between two numeric explanatory variables. For these exercises we'll move onto another different dataset.  
+
+:::frame
+__Data: scs_study.csv__  
+
+Data from 656 participants containing information on scores on each trait of a Big 5 personality measure, their perception of their own social rank, and their scores on a measure of depression.  
+
+The data in `scs_study.csv` contain seven attributes collected from a random sample of $n=656$ participants: 
+
+- `zo`: Openness (Z-scored), measured on the Big-5 Aspects Scale (BFAS)
+- `zc`: Conscientiousness (Z-scored), measured on the Big-5 Aspects Scale (BFAS)
+- `ze`: Extraversion (Z-scored), measured on the Big-5 Aspects Scale (BFAS)
+- `za`: Agreeableness (Z-scored), measured on the Big-5 Aspects Scale (BFAS)
+- `zn`: Neuroticism (Z-scored), measured on the Big-5 Aspects Scale (BFAS)
+- `scs`: Social Comparison Scale - An 11-item scale that measures an individual’s perception of their social rank, attractiveness and belonging relative to others. The scale is scored as a sum of the 11 items (each measured on a 5-point scale), with higher scores indicating more favourable perceptions of social rank.
+- `dass`: Depression Anxiety and Stress Scale - The DASS-21 includes 21 items, each measured on a 4-point scale. The score is derived from the sum of all 21 items, with higher scores indicating higher a severity of symptoms.  
+
+__Download link__
+
+The data is available at https://uoepsy.github.io/data/scs_study.csv
+
+:::
+
+:::statbox
+__Refresher: Z-scores__
+
+When we __standardise__ a variable, we re-express each value as the distance from the mean _in units of standard deviations._ These transformed values are called __z-scores.__  
+
+To transform a given value $x_i$ into a __z-score__ $z_i$, we simply calculate the distance from $x_i$ to the mean, $\bar{x}$, and divide this by the standard deviation, $s$:    
+$$
+z_i = \frac{x_i - \bar{x}}{s}
+$$
+
+A Z-score of a value is the number of standard deviations below/above the mean that the value falls.  
+
+:::
+
+
+`r qbegin("C7")`
+> **Research question**   
+> Previous research has identified an association between an individual's perception of their social rank and symptoms of depression, anxiety and stress. We are interested in the individual differences in this relationship.  
+Specifically: Does the effect of social comparison on symptoms of depression, anxiety and stress vary depending on level of neuroticism?
+
+Read in the Social Comparison Study data and explore the relevant distributions and relationships between the variables of interest to the research question.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+scs_study <- read_csv("https://uoepsy.github.io/data/scs_study.csv")
+summary(scs_study)
+```
+
+```{r}
+ggplot(data = scs_study, aes(x=dass)) + 
+  geom_density() + 
+  geom_boxplot(width = 1/50) +
+  labs(title="Marginal distribution of DASS-21 Scores", 
+       x = "Depression Anxiety and Stress Scale", y = "Probability density")
+```
+
+:::int 
+The marginal distribution of scores on the Depression, Anxiety and Stress Scale (DASS-21) is unimodal with a mean of approximately `r round(mean(scs_study$dass))` and a standard deviation of `r round(sd(scs_study$dass))`. 
+:::
+
+
+```{r}
+ggplot(data = scs_study, aes(x=scs)) + 
+  geom_density() + 
+  geom_boxplot(width = 1/50) +
+  labs(title="Marginal distribution of Social Comparison Scale (SCS) scores", 
+       x = "Social Comparison Scale Score", y = "Probability density")
+```
+
+:::int 
+The marginal distribution of score on the Social Comparison Scale (SCS) is unimodal with a mean of approximately `r round(mean(scs_study$scs))` and a standard deviation of `r round(sd(scs_study$scs))`. There look to be a number of outliers at the upper end of the scale. 
+:::
+
+
+```{r}
+ggplot(data = scs_study, aes(x=zn)) + 
+  geom_density() + 
+  geom_boxplot(width = 1/50) +
+  labs(title="Marginal distribution of Neuroticism (Z-Scored)", 
+       x = "Neuroticism (Z-Scored)", y = "Probability density")
+```
+
+:::int 
+The marginal distribution of Neuroticism (Z-scored) is positively skewed, with the 25\% of scores falling below `r round(quantile(scs_study$zn, .25),2)`, 75\% of scores falling below `r round(quantile(scs_study$zn, .75),2)`.
+:::
+
+
+```{r}
+library(patchwork) # for arranging plots side by side
+library(knitr) # for making tables look nice
+
+p1 <- ggplot(data = scs_study, aes(x=scs, y=dass)) + 
+  geom_point()+
+  labs(x = "SCS", y = "DASS-21")
+
+p2 <- ggplot(data = scs_study, aes(x=zn, y=dass)) + 
+  geom_point()+
+  labs(x = "Neuroticism", y = "DASS-21")
+
+p1 | p2
+
+# the kable() function from the knitr package can make table outputs print nicely into html.
+scs_study %>%
+  select(dass, scs, zn) %>%
+  cor %>% 
+  kable
+```
+
+:::int
+There is a weak, negative, linear relationship between scores on the Social Comparison Scale and scores on the Depression Anxiety and Stress Scale for the participants in the sample. Severity of symptoms measured on the DASS-21 tend to decrease, on average, the more favourably participants view their social rank.  
+There is a weak, positive, linear relationship between the levels of Neuroticism and scores on the DASS-21. Participants who are more neurotic tend to, on average, display a higher severity of symptoms of depression, anxiety and stress.  
+:::
+
+`r solend()`
+
+`r qbegin("C8")`
+Specify the model you plan to fit in order to answer the research question (e.g., $\text{??} = b_0 + b_1 (\text{??}) + .... + \epsilon$)
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+$$
+\text{DASS-21 Score} = b_0 + b_1(\text{SCS Score}) + b_2(\text{Neuroticism}) + b_3(\text{SCS score} \times \text{Neuroticism}) + \epsilon
+$$
+`r solend()`
+
+`r qbegin("C9")`
+We named the data `scs_study` in our environment, but you will likely have named yours something different. Edit the code below accordingly to run it on your data.  
+The code takes the dataset, and uses the `cut()` function to add a new variable called "zn_group", which is the "zn" variable split into 4 groups.  
+<div style="margin-left:15px">
+_Remember:_ we have re-assign this output as the name of the dataset (the `scs_study <- ` bit at the beginning) to make these changes occur in our __environment__ (the top-right window of Rstudio). If we didn't have the first line, then it would simply print the output.   
+</div>
+
+```{r}
+scs_study <-
+  scs_study %>%
+  mutate(
+    zn_group = cut(zn, 4)
+  )
+```
+
+We can see how it has split the "zn" variable by plotting the two against one another:  
+(Note that the levels of the new variable are named according to the cut-points).
+```{r}
+ggplot(data = scs_study, aes(x = zn_group, y = zn)) + 
+  geom_point()
+```
+`r qend()`
+
+`r qbegin("C10")`
+Plot the relationship between scores on the SCS and scores on the DASS-21, _for each group of the variable (`zn_group`) that we just created._  
+How does the pattern change? Does it suggest an interaction?  
+
+**Tip:** Rather than creating four separate plots, you might want to map some feature of the plot to the variable we created in the data, or make use of `facet_wrap()`/`facet_grid()`.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+ggplot(data = scs_study, aes(x = scs, y = dass, col = zn_group)) + 
+  geom_point() + 
+  facet_wrap(~zn_group, scales="free_x") +
+  theme(legend.position = "none") # remove the legend
+```
+
+The relationship between SCS scores and DASS-21 scores appears to be different between these groups. For those with a relatively high neuroticism score, the relationship seems stronger, while for those with a low neuroticism score there is almost no discernable relationship. 
+This suggests an interaction - the relationship of DASS-21 ~ SCS differs across the values of neuroticism! 
+`r solend()`
+
+:::statbox
+
+Cutting one of the explanatory variables up into groups essentially turns a numeric variable into a categorical one. We did this just to make it easier to visualise how a relationship changes across the values of another variable, because we can imagine a separate line for the relationship between SCS and DASS-21 scores for each of the groups of neuroticism. However, in grouping a numeric variable like this we lose information. Neuroticism is measured on a continuous scale, and we want to capture how the relationship between SCS and DASS-21 changes across that continuum (rather than cutting it into chunks).   
+We could imagine cutting it into more and more chunks (see Figure \@ref(fig:reglinescut)), until what we end up with is a an infinite number of lines - i.e., a three-dimensional plane/surface (recall that in for a multiple regression model with 2 explanatory variables, we can think of the model as having three-dimensions). The inclusion of the interaction term simply results in this surface no longer being necessarily flat. You can see this in Figure \@ref(fig:3dint). 
+ 
+```{r reglinescut, echo=FALSE, fig.cap="Separate regression lines DASS ~ SCS for neuroticism when cut into 4 (left) or 6 (center) or 12 (right) groups", out.width="80%"}
+p1 <- ggplot(data = scs_study, aes(x = scs, y = dass, col = zn_group)) + 
+  geom_point(alpha=.1) + 
+  stat_smooth(method="lm",se=FALSE)+theme(legend.position = "none")
+
+scs_study %>%
+  mutate(
+    zn_group = cut(zn, 6)
+  ) %>% ggplot(data = ., aes(x = scs, y = dass, col = zn_group)) + 
+  geom_point(alpha=.1) + 
+  stat_smooth(method="lm",se=FALSE)+theme(legend.position = "none") -> p2
+
+scs_study %>%
+  mutate(
+    zn_group = cut(zn, 12)
+  ) %>% ggplot(data = ., aes(x = scs, y = dass, col = zn_group)) + 
+  geom_point(alpha=.1) + 
+  stat_smooth(method="lm",se=FALSE)+theme(legend.position = "none") -> p3
+
+p1 | p2 | p3
+```
+
+
+```{r include=FALSE, echo=FALSE}
+fit<-lm(dass ~ scs*zn, data = scs_study)
+steps=50
+scs <- with(scs_study, seq(min(scs),max(scs),length=steps))
+zn <- with(scs_study, seq(min(zn),max(zn),length=steps))
+newdat <- expand.grid(scs=scs, zn=zn)
+dass <- matrix(predict(fit, newdat), steps, steps)
+p <- persp(scs,zn,dass, theta = -25,phi=5, col = NA)
+```
+
+
+```{r 3dint, echo=FALSE, fig.cap="3D plot of regression surface with interaction. You can explore the plot in the figure below from different angles by moving it around with your mouse."}
+library(plotly)
+plot_ly(x=scs,y=zn,z=dass, type="surface") %>% layout(
+    scene = list(
+      xaxis = list(title = "SCS"),
+      yaxis = list(title = "Neuroticism"),
+      zaxis = list(title = "DASS-21")
+    ))
+```
+
+:::
+
+
+`r qbegin("C11")`
+Fit your model using `lm()`. 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+dass_mdl <- lm(dass ~ 1 + scs*zn, data = scs_study)
+summary(dass_mdl)
+```
+`r solend()`
+
+`r qbegin("C12")`
+```{r echo=FALSE}
+pander::pander(summary(dass_mdl)$coefficients)
+```
+
+Recall that the coefficients `zn` and `scs` from our model now reflect the estimated change in the outcome associated with an increase of 1 in the explanatory variables, _when the other variable is zero._  
+
+**Think** - what is 0 in each variable? what is an increase of 1? Are these meaningful? Would you suggest recentering either variable?
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+The neuroticism variable `zn` is Z-scored, which means that 0 is the mean (it is mean-centered), and 1 is a standard deviation.   
+  
+The Social Comparison Scale variable `scs` is the raw-score. Looking back at the description of the variables, we can work out that the minimum possible score is 11 (if people respond 1 for each of the 11 questions) and the maximum is 55 (if they respond 5 for all questions). Is it meaningful/useful to talk about estimated effects for people who score 0? Not really.  
+
+But we can make it so that zero represents something else, such as the minimum score, or the mean score. For instance, `scs_study$scs - 11` will subtract 11 from the scores, making zero the minimum possible score on the scale.  
+
+`r solend()`
+
+`r qbegin("C13")`
+Recenter one or both of your explanatory variables to ensure that 0 is a meaningful value
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+We're going to mean-center the scores on the SCS. Think about what someone who now scores zero on the `zn` variable *and* zero on the mean-centered SCS?  
+```{r}
+scs_study <-
+  scs_study %>%
+  mutate(
+    scs_mc = scs - mean(scs)
+  )
+```
+`r solend()`
+
+`r qbegin("C14")`
+We'll now re-fit the model using mean-centered SCS scores instead of the original variable. Here are the parameter estimates: 
+```{r}
+dass_mdl2 <- lm(dass ~ 1 + scs_mc * zn, data = scs_study)
+
+# pull out the coefficients from the summary():
+summary(dass_mdl2)$coefficients
+```
+
+Fill in the blanks in the statements below. 
+
+:::int 
+  
++ For those of average neuroticism and who score average on the SCS, the estimated DASS-21 Score is **???**  
++ For those who who score **???** on the SCS, an increase of **???** in neuroticism is associated with a change of `r round(coef(dass_mdl2)[3],2)` in DASS-21 Scores
++ For those of average neuroticism, an increase of **???** on the SCS is associated with a change of `r round(coef(dass_mdl2)[2],2)` in DASS-21 Scores  
++ For every increase of **???** in neuroticism, the change in DASS-21 associated with an increase of **???** on the SCS is asjusted by **???**
++ For every increase of **???** in SCS, the change in DASS-21 associated with an increase of **???** in neuroticism is asjusted by **???**
+  
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+:::int 
+  
++ For those of average neuroticism and who score average on the SCS, the estimated DASS-21 Score is **`r round(coef(dass_mdl2)[1],2)`**  
++ For those who who score **average (mean)** on the SCS, an increase of **1 standard deviation** in neuroticism is associated with a change of `r round(coef(dass_mdl2)[3],2)` in DASS-21 Scores
++ For those of average neuroticism, an increase of **1** on the SCS is associated with a change of `r round(coef(dass_mdl2)[2],2)` in DASS-21 Scores  
++ For every increase of **1 standard deviation** in neuroticism, the change in DASS-21 associated with an increase of **1** on the SCS is asjusted by **`r round(coef(dass_mdl2)[4],2)`**
++ For every increase of **1** in SCS, the change in DASS-21 associated with an increase of **1 standard deviation** in neuroticism is asjusted by **`r round(coef(dass_mdl2)[4],2)`**
+  
+:::
+
+`r solend()`
+
+`r qbegin("C15")`
+What do we get when we use the `plot_model()` function from __sjPlot__ to plot this continuous*continuous interaction?  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+`plot_model()` will choose two values of `zn` at which to plot the effect of `scs_mc` on `dass`. Specifically, it will choose the minimum and the maximum:
+```{r}
+plot_model(dass_mdl2, type="int")
+```
+We might want to choose some other values, such as the mean of `zn` and $\pm 1$ standard deviation from the mean. We can do this fairly easily:  
+```{r}
+plot_model(dass_mdl2, type = "pred", terms = c("scs_mc", "zn [-1, 0, 1]"))
+```
+`r solend()`
+
+---
+<br><br>
+__References__  
+<br> 
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>

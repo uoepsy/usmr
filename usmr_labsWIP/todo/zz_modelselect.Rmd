@@ -1,0 +1,118 @@
+---
+title: "Extras: Model Selection"
+bibliography: references.bib
+biblio-style: apalike
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+
+```{r setup, include=FALSE}
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+```
+
+__"Which predictors should I include in my model?"__  
+
+As a rule of thumb, you should include as predictors your variables of interest (i.e., those required to answer your questions), and those which theory suggests you should take into account (for instance, if theory tells you that temperature is likely to influence the number of shark attacks on a given day, it would be remiss of you to not include it in your model).  
+
+However, in some specific situations, you may simply want to let the data tell you whatever there is to tell, without being guided by theory. This is where analysis becomes **exploratory** in nature (and therefore should *not* be used as confirmatory evidence in support of theory).  
+
+In both the design and the analysis of a study, you will have to make many many choices. Each one takes you a different way, and leads to a different set of choices. This idea has become widely known as the [garden of forking paths](https://www.americanscientist.org/article/the-statistical-crisis-in-science), and has important consequences for your statistical inferences.  
+
+Out of all the possible paths you could have taken, some will end with what you consider to be a significant finding, and some you will simply see as dead ends. If you reach a dead-end, do you go back and try a different path? Why might this be a risky approach to statistical analyses? 
+
+For a given set of data, there will likely be some significant relationships between variables which are there simply by chance (recall that $p<.05$ corresponds to a 1 in 20 chance - if we study 20 different relationships, we would expect one of them two be significant by chance). The more paths we try out, the more likely we are to find a significant relationship, even though it may actually be completely spurious!  
+
+Model selection is a means of answering the question "which predictors should I include in my model?", but it is a big maze of forking paths, which will result in keeping only those predictors which meet some criteria (e.g., significance). 
+
+:::statbox
+### Stepwise
+
+__Forward Selection__  
+
++ Start with variable which has highest association with DV.
++ Add the variable which most increases $R^2$ out of all which remain.
++ Continue until no variables improve $R^2$.  
+
+__Backward Elimination__  
+
++ Start with all variables in the model.
++ Remove the predictor with the highest p-value.
++ Run the model again and repeat.  
++ Stop when all p-values for predictors are less than the _a priori_ set critical level.  
+
+<br>
+Note that we can have different criteria for selecting models in this stepwise approach, for instance, choosing the model with the biggest decrease in AIC. 
+
+:::
+
+
+`r qbegin("1")`
+Using the backward elimination approach, construct a final model to predict wellbeing scores using the `mwdata2` dataset.
+```{r}
+mwdata2 <- read_csv("https://uoepsy.github.io/data/wellbeing_rural.csv")
+```
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+We will stop when all p-values are $<.05$
+
+Note that we have two variables in there which are direct transformations of one another - "location" and "isRural". We can't have both.
+```{r}
+summary(mwdata2)
+
+full_model <- lm(wellbeing ~ age + outdoor_time + social_int + routine + location + steps_k, data = mwdata2)
+summary(full_model)
+```
+
+We will remove the "steps_k" variable, as it is the predictor with the highest p-value (don't be tempted to think that "location" has the highest p-value. The estimated difference between urban and suburban does indeed have a high p-value, but the difference between rural and urban has a very low p-value).
+
+```{r}
+model1 <- lm(wellbeing ~ age + outdoor_time + social_int + routine + location, data = mwdata2)
+summary(model1)
+```
+And now the "age" variable:
+
+```{r}
+model2 <- lm(wellbeing ~ outdoor_time + social_int + routine + location, data = mwdata2)
+summary(model2)
+```
+
+In this model, all our predictors have p-values lower than our critical level of $.05$. 
+
+`r solend()`
+
+
+`r qbegin("2")`
+There are functions in R which automate the stepwise procedure for us.  
+`step(<modelname>)` will by default use backward elimination to choose the model with the lowest AIC.  
+
+1. Using data on the Big 5 Personality traits, perceptions of social ranks, and depression and anxiety, fit the full model to predict DASS-21 scores.
+2. Use `step()` to determine which predictors to keep in your model. 
+3. What predictors do you have in your final model?
+  
+```{r}
+scs_study <- read_csv("https://uoepsy.github.io/data/scs_study.csv")
+
+scs_study <-
+  scs_study %>%
+  mutate(
+    scs_mc = scs - mean(scs)
+  )
+```
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+full_dass_model <- lm(dass ~ zn*scs_mc + zo + zc + ze + za + zn, data = scs_study)
+step(full_dass_model)
+```
+`r solend()`
+
+--- 
+
+Extra reading: [Joshua Loftus' Blog: Model selection bias invalidates significance tests](http://joshualoftus.com/post/model-selection-bias-invalidates-significance-tests/)
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
