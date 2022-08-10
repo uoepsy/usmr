@@ -17,13 +17,6 @@ library(patchwork)
 xaringanExtra::use_panelset()
 ```
 
-:::lo
-The best way to learn R is to use it.   
-  
-Try following along with this reading by typing the code into your R script and running them. You will hopefully get the same output as is presented on this page below each bit of code.  
-If you get errors and warnings, don't panic - read them!  
-:::
-
 
 # Probability distributions  
 
@@ -263,7 +256,7 @@ knitr::include_graphics("images/hypothesis/normal.png")
 
 
 
-Let's return to the IQ data we saw in the [Reading 2A](02a_measurement.html#histograms). We have our observed sample distribution of IQ scores: 
+Let's return to the IQ data we saw in the [Section 2A](02a_measurement.html#histograms). We have our observed sample distribution of IQ scores: 
 
 ```{r}
 #| echo: true
@@ -334,28 +327,6 @@ g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
   new_theme_empty
 ```
 
-
-Note that if we translate our "IQ >120" to being in terms of standard deviations - $\frac{120 - 100}{15} = 1\frac{1}{3}$ - then this is the same computation when we compare against a normal distribution with mean of 0 and standard deviation of 1, which are the defaults for the `pnorm()` function:
-```{r}
-pnorm((120-100)/15, lower.tail = FALSE)
-```
-```{r}
-#| label: fig-pnorm2
-#| echo: false
-#| fig-cap: "pnorm() with the 'standard normal distribution': the normal distribution with mean = 0 and sd = 1"
-#| fig-height: 2.5
-df <- tibble(x=c(50,150))
-g <- df %>% ggplot(aes(x=x)) +
-  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1) +
-  xlab("IQ scores, standardised\n(subtract the mean and divide by sd)") + ylab("density")
-ld <- layer_data(g) %>% filter(x>= 120)
-g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
-  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1)+
-  scale_x_continuous(breaks=c(seq(55,115,15),120,130,145), labels=c("-3","-2","-1","0","1","1.33","2","3"))+
-  annotate("label",label="pnorm(1.33333, lower.tail = FALSE)", x=120, y=.02)+
-  geom_curve(x=135,xend=130,y=.019,yend=0.002,curvature = -.2)+
-  new_theme_empty
-```
 
 
 The probability of observing IQ <120 is easily obtained by changing the `lower.tail` argument:  
@@ -444,7 +415,36 @@ There are a couple of related functions which it is also worth knowing about:
 
 :::
 
+## The Standard Normal Distribution
 
+Note that if we translate our "IQ >120" to being in terms of standard deviations - $\frac{120 - 100}{15} = 1\frac{1}{3}$ - then we can perform the same computations as we have done above, but comparing against against a normal distribution with mean of 0 and standard deviation of 1 (which are the defaults for the `pnorm()` function):
+```{r}
+pnorm((120-100)/15, lower.tail = FALSE)
+```
+```{r}
+#| label: fig-pnorm2
+#| echo: false
+#| fig-cap: "pnorm() with the 'standard normal distribution': the normal distribution with mean = 0 and sd = 1"
+#| fig-height: 2.5
+df <- tibble(x=c(50,150))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1) +
+  xlab("IQ scores, standardised\n(subtract the mean and divide by sd)") + ylab("density")
+ld <- layer_data(g) %>% filter(x>= 120)
+g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1)+
+  scale_x_continuous(breaks=c(seq(55,115,15),120,130,145), labels=c("-3","-2","-1","0","1","1.33","2","3"))+
+  annotate("label",label="pnorm(1.33333, lower.tail = FALSE)", x=120, y=.02)+
+  geom_curve(x=135,xend=130,y=.019,yend=0.002,curvature = -.2)+
+  new_theme_empty
+```
+
+What we're doing here is re-expressing the observed distribution into one which has mean of 0 and standard deviation of 1 - we are _standardising_ them. This idea will become incredibly useful. For one thing it makes comparisons possible, for example, consider the two statements below:  
+
+- "I am 15 IQ points higher than average, and 24cm taller than average"
+- "I am 1 standard deviation above the average IQ, and 2 standard deviations above average height"
+
+The __standard normal distribution__ - the normal distribution with `mean = 0, sd = 1`, is going to be seen a lot more frequently.  
 
 <div class="divider div-transparent div-dot"></div>
 
@@ -725,7 +725,7 @@ We can use these to create intervals which X% of the time will contain the true 
 
 $$
 \begin{align}
-& \text{95% CI} = \bar{x} \pm 1.96 \times SE \\
+& \text{95\% CI} = \bar{x} \pm 1.96 \times SE \\
 \qquad \\
 & \text{Where: } \\ 
 & \bar{x} = \text{sample mean} \\

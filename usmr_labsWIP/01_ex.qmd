@@ -2,6 +2,9 @@
 title: "Week 1 Exercises: Intro R"
 reference-location: margin
 citation-location: margin
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
 ---
 
 ```{r setup, include=FALSE}
@@ -15,7 +18,7 @@ xaringanExtra::use_panelset()
 The very first things to do are to open RStudio and get a blank script ready for writing your code.
 
 :::column-margin
-Our recommendation is that you have an R project for this course, and use a new script for each week of work. See [the tip about "R projects" in Reading 1A](01a_R.html#_The_Four_RStudio_Panes){target="_blank"}.  
+Our recommendation is that you have an R project for this course, and use a new script for each week of work. See [the tip about "R projects" in Section 1A](01a_R.html#_The_Four_RStudio_Panes){target="_blank"}.  
 :::
 
 # Pet Data
@@ -49,9 +52,16 @@ knitr::kable(dict)
 Write a line of code that reads in the data to your R session. Then examine the dimensions of the dataset, and take a look at the first few lines lines.
 
 :::hints
-__Hints:__ You'll need the `read.csv()` function. Remember to assign it a name to store it in your environment. Reading 1B contains [an example of reading in data from a URL](01b_data.html#Basic_Data_Wrangling){target="_blank"}. You'll then want to play with functions like `dim()` and `head()`.  
+__Hints:__ You'll need the `read.csv()` function. Remember to assign it a name to store it in your environment. Section 1B contains [an example of reading in data from a URL](01b_data.html#Basic_Data_Wrangling){target="_blank"}. You'll then want to play with functions like `dim()` and `head()`.  
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+petdata<-read.csv("https://uoepsy.github.io/data/pets_seattle.csv")
+dim(petdata)
+head(petdata)
+```
+`r solend()`
 
 `r qbegin(2)`
 What are the names of the 47th and the 200th animals in the dataset?  
@@ -60,15 +70,43 @@ What are the names of the 47th and the 200th animals in the dataset?
 __Hints:__ You'll probably want to make use of the square brackets `data[rows, columns]`.
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+Lots of different ways. 
+We can get out the entire rows: 
+```{r}
+petdata[47,]
+petdata[200,]
+```
+Or we can extract the names only:
+```{r}
+#| eval: false
+# These all do the same
+petdata[c(47,200),"name"]
+petdata[c(47,200),3]
+petdata$animals_name[c(47,200)]
+```
+```{r}
+#| echo: false
+petdata$animals_name[c(47,200)]
+```
+
+`r solend()`
 
 
 `r qbegin(3)`
 Subset the data to only the data for the dogs, and store this object as another named object in your environment. Subset the data to only the data for the cats, and store this object as another named object in your environment.   
 
 :::hints
-__Hints:__ You'll want to think about how we access data via asking for those entries that meet a specific _condition_ (see [this section of Reading 1B](01b_data.html#Accessing_by_a_condition){target="_blank"})  
+__Hints:__ You'll want to think about how we access data via asking for those entries that meet a specific _condition_ (see [this part of Section 1B](01b_data.html#Accessing_by_a_condition){target="_blank"})  
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+dogdata <- petdata[petdata$species=="Dog", ]
+catdata <- petdata[petdata$species=="Cat", ]
+```
+
+`r solend()`
 
 `r qbegin(4)`
 Find the name and weight of the heaviest cat, and of the lightest dog.  
@@ -77,6 +115,13 @@ Find the name and weight of the heaviest cat, and of the lightest dog.
 __Hints:__ You could do this using the original data you read in from question 1, or use the subsets you created in question 3. You'll again want to supply a condition within square brackets. That condition may well have something to do with being equal to the `min()` or the `max()` of some variable.  
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+With our new objects:
+```{r}
+dogdata[dogdata$weight_kg == min(dogdata$weight_kg), ]
+catdata[catdata$weight_kg == max(catdata$weight_kg), ]
+```
+`r solend()`
 
 `r qbegin(5)`
 Does the data contain _only_ dogs and cats?  
@@ -85,26 +130,45 @@ Does the data contain _only_ dogs and cats?
 __Hints:__ Given what you did in question 3, you might be able to answer this by just looking at your environment.  
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+In the environment, we can see that the entire dataset has `r nrow(petdata)` observations, the Dog's data frame has `r nrow(dogdata)`, and the Cat's has `r nrow(catdata)`.  
+So there are `r nrow(petdata) - (nrow(dogdata) + nrow(catdata))` missing!  
+`r solend()`
 
 `r qbegin(6)`
 Extract the entries of the dataset for which the species is neither "Dog" nor "Cat"? What are the names and species of these animals? 
 
 :::hints
-__Hints:__ This is a slightly complex one. The section on [more complex conditions in Reading 1B](01b_data.html#More_complex_conditions){target="_blank"} might help you here.  
+__Hints:__ This is a slightly complex one. The bit on [more complex conditions in Section 1B](01b_data.html#More_complex_conditions){target="_blank"} might help you here.  
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+petdata[petdata$species != "Cat" & petdata$species != "Dog", ]
+```
+`r solend()`
 
 `r qbegin(7)`
 Create a new variable in the data, which contains the weights of all the animals, but rounded to the nearest kg. 
 
 :::hints
-__Hints__: Try looking up the help documentation for the function `round()`. Try playing with it in the console, e.g. `round(c(3.5, 4.257, 1.1111))`. You may find it helpful to look back at [Reading 1B/'Adding/Changing a variable'](01b_data.html#AddingChanging_a_variable){target="_blank"}.  
+__Hints__: Try looking up the help documentation for the function `round()`. Try playing with it in the console, e.g. `round(c(3.5, 4.257, 1.1111))`. You may find it helpful to look back at [Section 1B: 'Adding/Changing a variable'](01b_data.html#addingchanging-a-variable){target="_blank"}.  
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+petdata$weight_rounded <- round(petdata$weight_kg)
+```
+`r solend()`
 
 `r qbegin(8)`
 Try giving the dataset to the function `summary()`. You'll get out some information on each of the variables. It is likely that you'll get more useful information for the variables containing information on the animal's weights than for those containing their names, breeds etc because these variables are vectors of "characters". We'll start to look more about different types of data next week.  
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+summary(petdata)
+```
+`r solend()`
 
 <div class="divider div-transparent div-dot"></div>
 
@@ -161,6 +225,11 @@ Look up the function `replicate()`. We can use it to do something in R lots of t
 __Hints:__ A single dice means `num = 1`   
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+rolls100 <- replicate(100, dice(num = 1))
+```
+`r solend()`
 
 `r qbegin(11)`
 Create a barplot showing the frequency with which each number was landed on in the 100 rolls.
@@ -169,28 +238,30 @@ Create a barplot showing the frequency with which each number was landed on in t
 __Hints:__ the functions `table()` and `barplot()` were used to do this in the lecture.  
 :::
 `r qend()`
-
-```{r eval=F,echo=F}
-roll100 <- replicate(100, dice(1))
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+Your plots will look slightly different to these, because all of our dice are random!
+```{r}
 # We can get the frequency table using table()
-table(roll100)
+table(rolls100)
 # Which we can then pass to the barplot() function:
-barplot(table(roll100))
+barplot(table(rolls100))
 ```
+`r solend()`
 
 `r qbegin(12)`
 Do the same for 1,000 rolls, and then for 10,000. What do you notice?   
 `r qend()`
-
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 ```{r eval=F,echo=F}
-d <- replicate(1000, dice(1))
-barplot(table(d))
+morerolls <- replicate(1000, dice(1))
+barplot(table(morerolls))
 
-d <- replicate(10000, dice(1))
-barplot(table(d))
-
-# The more rolls we do of the dice, the flatter the graph becomes. This is because there is an equal probability of the die landing on any of the responses - there is a uniform probability.  
+morerolls2 <- replicate(10000, dice(1))
+barplot(table(morerolls2))
 ```
+The more rolls we do of the dice, the flatter the graph becomes. This is because there is an equal probability of the die landing on any of the responses - there is a uniform probability.  
+`r solend()`
+
 
 `r qbegin(12)`
 Copy the code below into your script and run it. It creates a new function called `wdice()` which simulates the rolling of `num` dice which are slightly weighted. Roll a single weighted die 100 times and plot the frequency distribution. Do the same for 1,000 and 10,000 rolls of a single die. Does a pattern emerge? At how many rolls?  
@@ -200,10 +271,8 @@ wdice <- function(num = 1){
 }
 ```
 `r qend()`
-
-```{r echo=F,eval=F}
-# Your plots will look slightly different to these, because all of our dice are random!  
-set.seed(564)
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
 wd <- replicate(100, wdice(1))
 barplot(table(wd))
 
@@ -212,14 +281,19 @@ barplot(table(wd))
 
 wd <- replicate(10000, wdice(1))
 barplot(table(wd))
-
-# The die is clearly weighted towards landing on 6. 
-# However, 100 rolls is not enough to reliably observe this. In our 100 rolls above, it landed on 2 quite a bit too! The pattern becomes clearer after 1000 rolls.  
 ```
+
+The die is clearly weighted towards landing on 6. 
+However, 100 rolls is not enough to reliably observe this. In our 100 rolls above, it landed on 2 quite a bit too! The pattern becomes clearer after 1000 rolls.  
+
+`r solend()`
 
 `r qbegin(14)`
 Remember, `wdice()` and `dice()` are really just relying on different functions, like `sample()`. Try playing around with `sample()` in the console again - what does the `prob = c(....)` bit do?   
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+The prob bit is defining the probabilities of observing each outcome - i.e. there is a 25% chance of rolling a 6.  
+`r solend()`
 
 `r qbegin(15)`
 Let's try to modify the `wdice()` function. Edit the code for `wdice()` so that 50% of the time it lands on number 6.  
@@ -228,27 +302,34 @@ Let's try to modify the `wdice()` function. Edit the code for `wdice()` so that 
 __Hints:__ To test out your modified function, you will need to re-run the code which defines the function. When we use `wdice()` we use the function which is in our environment. If we want to edit the function, we need to overwrite (or "replace"/"reassign") the object in our environment. We need to be careful to remember that the probability of different outcomes should sum to 1 (i.e., it's not possible to "50% of the time land on 6" as well as "70% of the time land on 5"!). 
 :::
 `r qend()`
-
-```{r eval=F, echo=F}
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
 wdice <- function(num = 1){
     sum(sample(1:6, num, replace=TRUE, prob = c(0.1,0.1,0.1,0.1,0.1,0.5)))
 }
 ```
 
+`r solend()`
+
+
 `r qbegin(16)`
 Can you observe the weighting in your new die (the one which 50% of the time lands on number 6) in only 100 rolls?  
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+wd <- replicate(100, wdice(1))
+barplot(table(wd))
+```
+`r solend()`
 
   
 `r qbegin(17)`
 Conceptually, what can we learn from this toy example?    
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+The bigger the effect, the smaller the sample required to observe it. 
+`r solend()`
 
-```{r echo=F, eval=F}
-wd <- replicate(100, wdice(1))
-barplot(table(wd))
-# The bigger the effect, the smaller the sample required to observe it. 
-```
 
 <div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
 

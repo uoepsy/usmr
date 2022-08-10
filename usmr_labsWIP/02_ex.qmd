@@ -2,6 +2,9 @@
 title: "Week 2 Exercises: More R; Estimates & Intervals"
 reference-location: margin
 citation-location: margin
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
 ---
 
 ```{r setup, include=FALSE}
@@ -12,7 +15,8 @@ xaringanExtra::use_panelset()
 
 
 :::frame
-In the last couple of years during welcome week, we have asked students of the statistics courses in the Psychology department to fill out a little survey. Anonymised data are available at https://uoepsy.github.io/data/surveydata_allcourse.csv. 
+In the last couple of years during welcome week, we have asked students of the statistics courses in the Psychology department to fill out a little survey.  
+Anonymised data are available at [https://uoepsy.github.io/data/surveydata_allcourse22.csv](https://uoepsy.github.io/data/surveydata_allcourse22.csv).  
 :::
 
 # Data manipulation & visualisation
@@ -26,15 +30,38 @@ You might use `mutate()`. Remember to make the changes apply to the objects in y
 `data <- data %>% mutate(...)`
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+library(tidyverse)
+surveydata <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv")
+
+surveydata <- surveydata %>%
+  mutate(
+    over6ft = height > 182
+  )
+```
+
+`r solend()`
 
 `r qbegin(2)`
 What percentage of respondents to the survey are greater than 6 foot tall?
 
 :::hints
 Try `table()`, and then think about how we can convert the counts to percentages (what does `sum()` of the table give you?).  
-See also [the discussion of categorical data in Reading 2A](02a_measurement.html#categorical){target="_blank"}.
+See also [the discussion of categorical data in Section 2A](02a_measurement.html#categorical){target="_blank"}.
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+We can divide the table by the `sum` of the table
+```{r}
+table(surveydata$over6ft) / sum(table(surveydata$over6ft))
+```
+We can also use `prop.table()`
+```{r}
+prop.table(table(surveydata$over6ft))
+```
+`r solend()`
+
 
 `r qbegin(3)`
 how many of USMR students in `r paste0(as.numeric(substr(Sys.Date(),1,4)),"/",as.numeric(substr(Sys.Date(),3,4))+1)` are born in the same month as you? 
@@ -46,6 +73,15 @@ You can also try `... %>% count(variable1, variable2)`
 :::
 
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+surveydata %>% 
+  filter(course == "usmr", year=="2022") %>%
+  count(birthmonth)
+```
+
+`r solend()`
+
 
 `r qbegin(4)`
 Calculate the mean and standard deviation of heights of all respondents to the survey.  
@@ -54,18 +90,42 @@ Can you (also) do this using the tidyverse syntax?
 
 :::hints
 We can do it with `mean(data$height)`, but it will be useful to practice tidyverse style. You'll want to `summarise()` the data.  
-We're likely to have missing data in here, so `na.rm=TRUE` will be handy (see [Reading 2A on numeric variables](02a_measurement.html#numeric){target="_blank"})
+We're likely to have missing data in here, so `na.rm=TRUE` will be handy (see [Section 2A on numeric variables](02a_measurement.html#numeric){target="_blank"})
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+```{r}
+mean(surveydata$height)
+sd(surveydata$height)
+
+surveydata %>% 
+  summarise(
+    meanheight = mean(height, na.rm = T),
+    sdheight = sd(height, na.rm = T)
+  )
+```
+`r solend()`
 
 `r qbegin(5)`
 Plot the distribution of heights of all respondents. 
 Try to make it 'publication ready'.  
 
 :::hints
-No `hist()` here, we're going to want **ggplot**, which was [introduced in Reading 2A](02a_measurement.html#ggplot){target="_blank"}.  
+No `hist()` here, we're going to want **ggplot**, which was [introduced in Section 2A](02a_measurement.html#ggplot){target="_blank"}.  
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+ggplot(surveydata, aes(x=height)) + 
+  geom_histogram(binwidth = 5) + 
+  labs(x = "Height (cm)", 
+       y = "Frequency", 
+       title = "Heights of respondents to the survey") + 
+  theme_minimal()
+```
+`r solend()`
+
 
 `r qbegin(6)`
 For respondents _from each of the different courses_, calculate the mean and standard deviation of heights.  
@@ -74,6 +134,17 @@ For respondents _from each of the different courses_, calculate the mean and sta
 This is just like an earlier question - we want to `summarise` our data. Only this time we need to `group_by` something else first.   
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+surveydata %>% 
+  group_by(course) %>%
+  summarise(
+    meanheight = mean(height, na.rm = T),
+    sdheight = sd(height, na.rm = T)
+  )
+```
+
+`r solend()`
 
 `r qbegin(7)`
 Plot the distributions of heights for each course.  
@@ -84,6 +155,19 @@ You'll probably want to add an extra `aesthetic` mapping from the `course` varia
 Or try looking up the documentation for `?facet_wrap`. 
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+ggplot(surveydata, aes(x=height)) + 
+  geom_histogram(binwidth = 5) + 
+  facet_wrap(~course) + 
+  labs(x = "Height (cm)", 
+       y = "Frequency", 
+       title = "Heights of respondents to the survey") + 
+  theme_minimal()
+```
+
+`r solend()`
+
 
 `r qbegin(8)`
 What proportion of respondents to the survey are taller than you?  
@@ -95,42 +179,85 @@ We can actually use this logic inside tidyverse functions like `summarise` and `
 
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+There are this _many_ people who are taller than me:
+```{r}
+sum(surveydata$height > 177, na.rm = T)
+```
+
+And if we divide that by the total number of respondents, we get the proportion:  
+```{r}
+sum(surveydata$height > 177, na.rm = T) / nrow(surveydata)
+```
+
+`r solend()`
+
 
 <div class="divider div-transparent div-dot"></div>
 
 # Estimates & Intervals
 
 `r qbegin(9)`
-Suppose we are interested in the average life-satisfaction rating of MSc students at Edinburgh University.  
+Suppose we are interested in how well people feel that they sleep?  
 
-We only asked this question to students in USMR in `r paste0(as.numeric(substr(Sys.Date(),1,4)),"/",as.numeric(substr(Sys.Date(),3,4))+1)`, so to make things easier, let's create a subset of the dataset which includes only those students. 
+```{r}
+#| echo: false
+knitr::include_graphics("images/sleepquestion.png")
+```
+
+We only asked this question to students in USMR in the 2022/23 academic year, so to make things easier, let's create a subset of the dataset which includes only those students. 
 
 :::hints
 This will be some `filter`ing, and assigning (`usmrdata <-`) to a new name.
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+#| eval: false
+usmrdata <- surveydata %>% 
+  filter(course == "usmr", year == "2022")
+```
+`r solend()`
+
 
 `r qbegin(10)`
-For the USMR students in `r paste0(as.numeric(substr(Sys.Date(),1,4)),"/",as.numeric(substr(Sys.Date(),3,4))+1)`, calculate the following: 
+For the USMR students in the 2022/23 academic cohort, calculate the following: 
 
-- mean life satisfaction rating
-- standard deviation of life satisfaction ratings
-- number of respondents who completed life satisfaction rating
+- mean Sleep-Quality rating
+- standard deviation of Sleep-Quality ratings
+- number of respondents who completed Sleep-Quality rating
 
 :::hints
-You can do this with things like `mean(data$variable)`, or you can do it all in tidyverse (see the example of `summarise` in [the intro to tidyverse in Reading 2A](02a_measurement.html#tidyverse-and-pipes){target="_blank"}). If you do this all inside `summarise()` then you might find the function `n()` useful.
+You can do this with things like `mean(data$variable)`, or you can do it all in tidyverse (see the example of `summarise` in [the intro to tidyverse in Section 2A](02a_measurement.html#tidyverse-and-pipes){target="_blank"}). If you do this all inside `summarise()` then you might find the function `n()` useful.
 :::
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+#| eval: false
+usmrdata %>% 
+  summarise(
+    m_sleep = mean(sleeprating),
+    sd_sleep = mean(sleeprating),
+    n_sleep = n()
+  )
+```
+
+`r solend()`
 
 `r qbegin(11)`
-Using your answers to the previous question, construct a 95% confidence interval for the mean life satisfaction rating.  
+Using your answers to the previous question, construct a 95% confidence interval for the average Sleep-Quality rating.  
 
-Why might it be a _bad_ idea to use this as an estimate of the average life-satisfaction rating of all MSc students at Edinburgh University?  
+Why might it be a _bad_ idea to use this as an estimate of the average Sleep-Quality  rating of the general population?  
 
 :::hints
-The previous question gives you all the pieces that you need. You'll just need to put them together in the way seen in [Reading 2B/Confidence Intervals](02b_sampling.html#confidence-intervals){target="_blank"}.  
+The previous question gives you all the pieces that you need. You'll just need to put them together in the way seen in [Section 2B: Confidence Intervals](02b_sampling.html#confidence-intervals){target="_blank"}.  
 
 Think about who makes up the sample (e.g. USMR students). Are they _representative_ of the population we are trying to generalise to?  
 :::
 
 `r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+`r solend()`
+

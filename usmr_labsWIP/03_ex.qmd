@@ -1,0 +1,180 @@
+---
+title: "Week 3 Exercises: T-tests"
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+set.seed(017)
+```
+
+# One sample
+
+:::frame
+> __Research Question__
+> Do Edinburgh University students report endorsing procrastination less than the norm?  
+
+The Procrastination Assessment Scale for Students (PASS) was designed to assess how individuals approach decision situations, specifically the tendency of individuals to postpone decisions (see [Solomon & Rothblum, 1984](http://dx.doi.org/10.1037/0022-0167.31.4.503)). The PASS assesses the prevalence of procrastination in six areas: writing a paper; studying for an exam; keeping up with reading; administrative tasks; attending meetings; and performing general tasks. For a measure of total endorsement of procrastination, responses to 18 questions (each measured on a 1-5 scale) are summed together, providing a single score for each participant (range 0 to 90). The mean score from Solomon & Rothblum, 1984 was 33.  
+
+A student administers the PASS to 20 students from Edinburgh University.  
+The data are available at [https://uoepsy.github.io/data/pass_scores.csv](https://uoepsy.github.io/data/pass_scores.csv).  
+:::
+
+`r qbegin(1)`
+Conduct a one sample $t$-test to evaluate whether Edinburgh University students' average score on the PASS is less than 33. Remember to check the assumptions!    
+
+:::hints
+**Hint:** Think carefully about the wording of the research question. Is the alternative hypothesis "less than", "greater than" or "not equal to"? What does this mean in relation to the areas of the $t$-distribution for which you will reject the null hypothesis - upper tail, lower tail, or both tails? Check out the help page for `t.test()` - is there some thing you can change to make sure it is the correct option?  
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r fig.height=3, fig.width=5}
+pass_scores <- read_csv("https://edin.ac/2wJgYwL") 
+
+ggplot(data = pass_scores, aes(x=PASS)) + 
+  geom_boxplot() + 
+  geom_vline(xintercept=33, lty="dashed", col="red")
+
+t.test(pass_scores$PASS, mu = 33, alternative = "less")
+```
+`r solend()`
+
+`r qbegin(2)`
+Write up the results.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r include=FALSE}
+res2<-t.test(pass_scores$PASS, mu = 33, alternative = "less")
+```
+
+:::int
+A one-sided one-sample t-test was conducted in order to determine if the average score on the Procrastination Assessment Scale for Students (PASS) for a sample of `r nrow(pass_scores)` students at Edinburgh University was significantly lower ($\alpha = .05$) than the average score obtained during development of the PASS. 
+
+Edinburgh University students scored lower (Mean = `r mean(pass_scores$PASS) %>% round(2)`, SD = `r sd(pass_scores$PASS) %>% round(2)`) than the score reported by the authors of the PASS (Mean = 33). This difference was statistically significant (t(`r nrow(pass_scores)-1`)=`r res2$statistic %>% round(2)`, p < .05, one-tailed).  
+:::
+`r solend()`
+
+
+:::frame
+> __Research Question__
+>  Is the average height of students taking the USMR statistic course in Psychology at Edinburgh University in 2021/2022 is different from 165cm?  
+
+```{r echo=FALSE, out.width="30%"}
+knitr::include_graphics("images/hypothesis/playmo_tms.jpg")
+```
+
+The data for students from all psychology statistics courses last year and USMR this year, are available at [https://uoepsy.github.io/data/surveydata_allcourse22.csv](https://uoepsy.github.io/data/surveydata_allcourse22.csv).  
+
+:::
+
+
+`r qbegin(3)`
+Conduct a one sample $t$-test to evaluate whether the average height of students taking the USMR courses in Psychology at Edinburgh University in 2022/23 is different from 165cm.  
+
+:::hints
+**Remember:** We should check that the data meet the assumptions of our test.  
+This means you will need to investigate the extent to which the sample data appears to have been drawn from a normal distribution. However, *this is real data*, and [real data is rarely normal](https://dpananos.github.io/posts/2019/08/blog-post-23/)! If you conduct a Shapiro-Wilk test, you may well find $p<.05$ and conclude that your data is not normal.   
+So what do we do if a test indicates our assumptions are violated?  
+Well, we should bear a couple of things in mind.  
+
+1. A decision rule such as $p<.05$ on Shapiro-Wilk test creates very dichotomous thinking for something which is in reality not black and white. Real life distributions are not *either* normal *or* non-normal. Plot the data, and make a judgement!  
+2. As it happens, the t-test is actually reasonably robust against slight deviations from normality! Plot your data and make a judgement! 
+3. The deeper you get into statistics, the more you discover that it is not simply a case of following step-by-step rules:
+```{r echo=FALSE, out.width="80%"}
+knitr::include_graphics("images/hypothesis/guidelines.gif")
+```
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv")
+
+survey_data <- survey_data %>% filter(year==2021)
+
+#the shapiro.test suggests that our assumption of normality may be violated!! oh no!
+shapiro.test(survey_data$height)
+
+# However, let's have a histogram to check how non-normal our data is. 
+# let's also add our hypothesised mean on there as a vertical line:
+ggplot(data = survey_data, aes(x = height)) + 
+  geom_histogram(bins=15) +
+  geom_vline(xintercept = 165)
+
+
+# The t.test is quite robust against slight violations of normality.
+# Our data here doesn't look too non-normal (This is just a judgement call here!).
+# Let's proceed with the t.test
+t.test(survey_data$height, mu = 165, alternative = "two.sided")
+```
+`r solend()`
+
+
+# Two Samples
+
+:::frame
+> __Research Question__
+> Can a server earn higher tips simply by introducing themselves by name when greeting customers?
+
+Researchers investigated the effect of a server introducing herself by name on restaurant tipping.
+The study involved forty, 2-person parties eating a \$23.21 fixed-price buffet Sunday brunch at Charley Brown's Restaurant in Huntington Beach, California, on April 10 and 17, 1988.
+Each two-person party was randomly assigned by the waitress to either a name or a no name introduction condition using a random mechanism. The waitress kept track of the two-person party condition and how much the party paid at the end of the meal.   
+  
+The data are available at [https://uoepsy.github.io/data/gerritysim.csv](https://uoepsy.github.io/data/gerritysim.csv). (This is a simulated example based on [Garrity and Degelman (1990)](https://doi.org/10.1111/j.1559-1816.1990.tb00405.x))  
+:::
+
+`r qbegin(4)`
+Conduct an independent samples $t$-test to assess whether higher tips are earned when the server introduces themselves by name, in comparison to when they do not.    
+
+:::hints
+__Hints:__ 
+
+- We'll want to check the normality (either visually or with a test) of the variable of interest _for each group_.  
+- Some researchers suggest using the Welch t-test by default. This means you can relax the assumption of equal variances in the groups. If you want to _test_ whether two variances are equal, try the `var.test()` function.
+
+:::
+`r qend()`  
+
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+tipdata <- read_csv("https://uoepsy.github.io/data/gerritysim.csv")
+
+#make a "tip" column, which is minus the meal amount
+tipdata <- 
+  tipdata %>% mutate(
+    tip = paid - 23.21
+  )
+
+ggplot(data = tipdata, aes(x = tip, y = condition)) +
+  geom_boxplot()
+```
+  
+__check assumptions__  
+
+According to these tests, we have normally distributed data for both groups, with equal variances. 
+```{r}
+shapiro.test(tipdata$tip[tipdata$condition=="name"])
+shapiro.test(tipdata$tip[tipdata$condition=="no name"])
+with(tipdata, var.test(tip ~ condition))
+```
+
+__conduct t-test__
+
+Because the variances do not appear to be unequal, we can actually use the standard t-test with `var.equal = TRUE` if we want. However, we'll continue with the Welch t-test. 
+
+Remember that our alternative hypothesis here is that the average tips in the "name" condition is greater than in the "no name" condition.  
+R will take the levels in order here (alphabetically), and assume that the alternative is for that group, so we use `alternative = "greater"` here to say that the alternative is $\text{name}-\text{no name} > 0$.  
+```{r}
+with(tipdata, t.test(tip ~ condition, alternative = "greater"))
+```
+
+`r solend()`
