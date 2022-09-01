@@ -1,0 +1,347 @@
+---
+title: "8A: Multiple Linear Regression"
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(xaringanExtra)
+library(tidyverse)
+library(patchwork)
+xaringanExtra::use_panelset()
+```
+
+
+The simple linear regression model with a single predictor - `lm(y ~ x1)` - is a useful introduction to the idea of model-based thinking, but it's not clear how much benefit this gives us as it is actually equivalent to the basic statistical tests we have already seen. 
+
+```{r}
+#| echo: false
+tribble(
+  ~`outcome (y)`, ~`predictor (x)`, ~`regression`, ~`equivalent to`,
+  "continuous","continuous","lm(y ~ x)","cor.test(x,y)",
+  "continuous","binary","lm(y ~ x)","t.test(y ~ x)",
+) %>% knitr::kable()
+```
+
+
+```{r}
+#| include: false
+set.seed(993)
+library(tidyverse)
+df <- 
+  tibble(
+    x_cont = rnorm(100),
+    x_cat = cut(x_cont, 2, labels = c(0,1)),
+    y = 1.2*x_cont + rnorm(100)
+  )
+```
+
+`r optbegin("Optional: Equivalence of Correlation Coefficient and **Standardised** Regression Coefficient", olabel=FALSE)`
+
+The covariance is a measure of the shared variance in two variables (i.e., how one variable varies with the other). However, it is hard to interpret because it is dependent on the units of the variables. Correlation is a _standardised_ way of expressing this. 
+
+One way to think about this is to remember that we can __standardise__ our variables (subtract each value from the mean and divide by the standard deviation (See, e.g. [2B #the-standard-normal-distribution](02b_sampling.html#the-standard-normal-distribution){target="_blank"})), which transforms our set of numbers so that they have a mean of zero and a standard deviation of one. If we standardise both variable $x$ and variable $y$, the covariance of $x_{standardised}$ and $y_{standardised}$ is the same as the correlation between $x$ and $y$ (see [5A #covariance-&-correlation](05a_covcor.html#covariance-&-correlation){target="_blank"}).   
+TODO CHECK LINK
+
+If you've been reading these "optional dropdowns", you may remember that the regression coefficient from `lm(y ~ x)` is _also_ the covariance between $x$ and $y$, simply rescaled to be the amount of change in $y$ when $x$ changes by 1 (see the optional dropdown in [7A #the-model](07a_slr.html#the-model){target="_blank"}).  
+
+So actually, all these metrics are pretty much the same thing, only scaled in different ways. And whether we perform a test of the relationship (e.g. test the correlation using `cor.test()`, or test of the regression slope from `lm(y~x)`), we're actually testing the same thing:  
+
+```{r}
+cor.test(df$x_cont, df$y)
+summary(lm(y ~ x_cont, data = df))$coefficients
+```
+TODO t value, p-value. 
+
+`r optend()`
+
+
+The real power of regression models comes into effect when we start to concern ourselves with more than just "one outcome explained by one predictor".   
+
+
+# The Multiple Regression Model
+
+Last week was all about "y predicted by x".  
+This week, enter... x2.  
+
+We're initially looking at the case of "one outcome, two predictors", but the beauty of this is that the logic scales up to however many predictor variables we want.  
+
+When we fitted the regression model $y = b_0 + b_1(x) + \epsilon$, we were fitting a _line_ to a scatterplot of points that we plotted in _2 dimensions_ (an x-axis and a y-axis). 
+
+When we fit a regression model with two predictors, "y predicted by x1 and x2" ($y = b_0 + b_1(x_1) + b_2(x_2) + \epsilon$), we are fitting a _plane_ (or "surface") to a 3-dimensional cloud of datapoints (@fig-regsurf). 
+
+The model is now determined by 3 numbers:  
+
+- the __intercept__, denoted $b_0$.  
+This is the point at which the line hits the y-axis (i.e. where $x_1=0$ __and__ $x_2=0$)
+- the __slope of x1__, in this case denoted $b_1$.  
+This is the angle of the regression plane with respect to the axis of $x_1$. It is the amount which the plane increases for every 1 increase in $x_1$.  
+- the __slope of x2__, in this case denoted $b_2$.  
+This is the angle of the regression plane with respect to the axis of $x_2$. It is the amount which the plane increases for every 1 increase in $x_2$.  
+
+
+```{r}
+#| label: fig-regsurf
+#| echo: false
+#| fig-cap: "Regression surface for y~x1+x2, from two different angles"
+#| message: false
+#| warning: false
+
+mwdata = read_csv(file = "../../data/wellbeing.csv")
+mwdata %>% rename(y=wellbeing,x1=outdoor_time,x2=social_int) -> mwdata
+fit<-lm(y~x1+x2, data=mwdata)
+steps=50
+x1 <- with(mwdata, seq(min(x1),max(x1),length=steps))
+x2 <- with(mwdata, seq(min(x2),max(x2),length=steps))
+newdat <- expand.grid(x1=x1, x2=x2)
+y <- matrix(predict(fit, newdat), steps, steps)
+
+par(mfrow=c(1,2))
+
+p <- persp(x1,x2,y, theta = 35,phi=10, col = NA)
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+#points(pred, col = "blue", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y)
+
+p <- persp(x1,x2,y, theta = -35,phi=10, col = NA)
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+#points(pred, col = "blue", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y)
+
+par(mfrow=c(1,1))
+```
+
+
+Don't worry about trying to figure out how to visualise it if we had any more explanatory variables! We can only conceive of 3 spatial dimensions. One could imagine this surface changing over time, which would bring in a 4th dimension, but beyond that, it's not worth trying! However, the logic stays the same when we increase this to having $p$ predictors, but we are talking about a $p$-dimensional surface, and each coefficient is the angle of that surface with respect to each predictor.  
+
+So __why__ is this a useful thing to do? How exactly are the coefficients from a multiple regression model different from those from a simple regression model?  
+
+
+# Multiple Regression Coefficients
+
+The benefit of multiple regression models is that it allows us to exercise _statistical control_. 
+
+if we have multiple predictor variables in our model, the coefficients we get out represent the association between the outcome and the bit of each variable that is unique from the other variables.  
+
+A common way to build this intuition is to consider a venn diagram with a circle showing the variance in each variable. The overlap between circles shows the covariance. 
+
+slr venn
+mlr venn cov x1 x2 = 0
+mlr venn 
+
+
+:::statbox
+__Example: Caffeine Heart Rates__
+
+We have a sample of 100 people, and we measure their resting heart rate and their caffeine consumption. We're interested in estimating how caffeine consumption is associated with differences in resting heart rate.  
+
+However, we also know that heart rate increases with age _and_ we think that older people tend to drink less caffeine. So we want to isolate the differences in heart rate due to caffeine from those due to age.  
+
+:::frame
+__Control on the front-end__
+
+If we haven't collected the data yet, one option would be to __control by design__. We try to collect our data such that caffeine consumption is _independent_ from age. 
+We could do this by __randomisation__ (randomly allocate people to different levels of caffeine consumption, meaning that the age should not be related to caffeine - this is what a "randomized control trial" does, randomly allocating people to take a drug or a placebo).  
+Alternatively, we could do achieve it by __"case-matching"__ (easier when we are talking about 2 groups: e.g. for every 60 year old taking the drug, we also measure a 60 year old taking the placebo). 
+
+:::
+
+```{r}
+set.seed(38)
+df <- tibble(
+  age = rdunif(100,40,80),
+  caffeine = 150 + age*-.8 + rnorm(100,0,5),
+  rhr = 56 + age*.3 + 0*caffeine + rnorm(100,0,5)
+)
+summary(lm(rhr ~ caffeine, data = df))$coefficients
+summary(lm(rhr ~ age + caffeine, data = df))$coefficients
+```
+
+The toy dataset for our heart rate and caffeine example is at [TODO LINK].  
+We can see plots of the different relationships in @fig-caffplot. It looks from these like heart rate _decreases_ with caffeine, and _increases_ with age. But note also that caffeine decreases with age. 
+```{r}
+#| label: fig-caffplot
+#| fig-cap: "bi-variate relationships between each of resting heart rate, caffeine consumption, and age"
+#| echo: false
+
+library(patchwork)
+ggplot(df, aes(x=caffeine,y=rhr))+
+  geom_point() +
+ggplot(df, aes(x=age,y=rhr))+
+  geom_point() +
+ggplot(df, aes(x=age,y=caffeine))+
+  geom_point() & theme_minimal()
+
+```
+
+fit lm rhr ~ caff
+oh look, a nice line! significant. 
+more caffeine is associated with lower heart rate! 
+
+but what if the reason that people in our sample who drink more caff have lower hr not because they drink more caff, but because they are older (and older people have lower hr).  
+
+The coefficient for the association between caffeine and heart rate when we _also_ include age in as a predictor (`lm(rhr ~ age + caffeine)`), is no longer significant. Why? Because after we take into account how old people are, their caffeine consumption doesn't actually provide any information about their heart rate.  
+
+
+
+This example is a very extreme one where the relationship completely disappears. in real data associations tend to be more subtle/less clear cut. Including a covariate $x_2$ may increase or decrease the association between $y$ and $x_1$, depending on the extent to which $x_1$ and $x_2$ are correlated. 
+
+:::
+
+optional good bad control
+
+
+line > surface
+if we have categorical, then line > two lines
+
+
+# fitting multiple regression models
+
+lm
+
+# multiple categories = multiple regression
+
+# Model Evaluation
+
+## Adjusted $R^2$
+
+We know from our work on simple linear regression that the R-squared can be obtained as:
+$$
+R^2 = \frac{SS_{Model}}{SS_{Total}} = 1 - \frac{SS_{Residual}}{SS_{Total}}
+$$
+
+If we briefly return to the venn diagrams we used above, the $R^2$ is capturing all variance in $y$ that is explained by the predictors (including the overlapping bits between $x_1$ and $x_2$).  
+TODO
+
+r2 venn
+
+
+However, when we add more and more predictors into a multiple regression model, $SS_{Residual}$ cannot increase, and may decrease by pure chance alone, even if the predictors are unrelated to the outcome variable. Because $SS_{Total}$ is constant, the calculation $1-\frac{SS_{Residual}}{SS_{Total}}$ will increase by chance alone. 
+
+An alternative, the Adjusted-$R^2$, does not necessarily increase with the addition of more explanatory variables, by including a penalty according to the number of explanatory variables in the model. It is not by itself meaningful, but can be useful in determining what predictors to include in a model. 
+$$
+Adjusted{-}R^2=1-\frac{(1-R^2)(n-1)}{n-k-1} \\
+\quad \\
+\begin{align}
+& \text{Where:} \\
+& n = \text{sample size} \\
+& k = \text{number of explanatory variables} \\
+\end{align}
+$$
+
+**In R,** you can view the mutiple and adjusted $R^2$ at the bottom of the output of `summary(<modelname>)`:
+
+TODO
+```{r}
+#| label: fig-mlroutputrsq
+#| fig-cap: "Multiple regression output in R, summary.lm(). R-squared highlighted"
+#| echo: false
+knitr::include_graphics("images/mlr/mlroutputrsq.png")
+```
+
+## Joint test
+
+As in simple linear regression, the F-statistic is used to test the null hypothesis that __all__ regression slopes are zero (it is just that now that we have multiple predictors, so "all" is more than 1).  
+
+$$
+\begin{aligned}
+H_0: & \text{the model is ineffective, } \\
+& b_1, ..., b_k = 0 \\
+H_1: &\text{the model is effective, } \\
+& \text{any of }b_1, ..., b_k \neq 0
+\end{aligned}
+$$
+
+The $F$-statistic is sometimes called the F-ratio because it is the ratio of the how much of the variation is explained by the model (per parameter) versus how much of the variation is unexplained (per remaining degrees of freedom). 
+
+We extend the formula for the $F$-statistic for simple regression to encompass situations where there are more predictors:  
+
+$$
+\begin{align}
+& F_{df_{model},df_{residual}} = \frac{MS_{Model}}{MS_{Residual}} = \frac{SS_{Model}/df_{Model}}{SS_{Residual}/df_{Residual}} \\
+& \quad \\
+& \text{Where:} \\
+& df_{model} = k \\
+& df_{error} = n-k-1 \\
+& n = \text{sample size} \\
+& k  = \text{number of explanatory variables} \\
+\end{align}
+$$
+
+**In R,** at the bottom of the output of `summary(<modelname>)`, you can view the F ratio, along with an hypothesis test against the alternative hypothesis that the at least one of the coefficients $\neq 0$ (under the null hypothesis that all coefficients = 0, the ratio of explained:unexplained variance should be approximately 1):
+
+TODO
+```{r}
+#| label: fig-mlroutputrf
+#| fig-cap: "Multiple regression output in R, summary.lm(). F statistic highlighted"
+#| fig-align: "left"
+#| echo: false
+knitr::include_graphics("images/mlr/mlroutputf.png")
+```
+  
+
+# Model Comparisons
+
+The $F$-statistic we see at the bottom of `summary(model)` is actually a comparison between two models: our model (with some explanatory variables in predicting $y$) and __the null model.__ In regression, the null model can be thought of as the model in which all explanatory variables have zero regression coefficients. It is also referred to as the __intercept-only model__, because if all predictor variable coefficients are zero, then the only we are only estimating $y$ via an intercept (which will be the mean: $\bar y$).  
+
+But we don't always have to compare our model to the null model. We can compare it to all the intermediate models which vary in the complexity, from the null model to our full model.  
+
+:::imp
+If (*and only if*) two models are __nested__ (one model contains all the predictors of the other and is fitted to the same data), we can compare them using an __incremental F-test.__  
+:::
+
+:::statbox
+__Incremental F-test__  
+
+This is a formal test of whether the additional predictors provide a better fitting model.  
+Formally this is the test of:  
+
++ $H_0:$ coefficients for the added/ommitted variables are all zero.
++ $H_1:$ at least one of the added/ommitted variables has a coefficient that is not zero. 
+
+:::rtip
+
+**In R,** we can conduct an incremental F-test by constructing two models, and passing them to the `anova()` function: `anova(model1, model2)`. 
+
+:::
+
+`r optbegin("Optional: F-ratio written for model comparison", olabel=FALSE, toggle=params$TOGGLE)`
+The F-ratio for comparing the residual sums of squares between two models can be written as:
+
+$$
+\begin{align}
+& F_{(df_R-df_F),df_F} = \frac{(SSR_R-SSR_F)/(df_R-df_F)}{SSR_F / df_F} \\
+& \quad \\
+& \text{Where:} \\
+& SSR_R = \text{residual sums of squares for the restricted model} \\
+& SSR_F = \text{residual sums of squares for the full model} \\
+& df_R = \text{residual degrees of freedom from the restricted model} \\
+& df_F = \text{residual degrees of freedom from the full model} \\
+\end{align}
+$$
+`r optend()`
+
+:::
+
+To fit the 'null model', we simply fit the model with only an intercept term, and no predictors. We can use the `anova()` function to compare this model with ours, and we will see that it matches the $F$-statistic at the bottom of the full model output.  
+
+TODO
+```{r}
+```
+
+
+# Types of SS
+
+todo borrow from explainer doc 2122? 
+

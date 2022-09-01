@@ -2,7 +2,7 @@
 title: "Week 3 Exercises: T-tests"
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -16,7 +16,7 @@ library(patchwork)
 set.seed(017)
 ```
 
-# One sample
+# Procrastination Scores
 
 :::frame
 > __Research Question__
@@ -28,28 +28,140 @@ A student administers the PASS to 20 students from Edinburgh University.
 The data are available at [https://uoepsy.github.io/data/pass_scores.csv](https://uoepsy.github.io/data/pass_scores.csv).  
 :::
 
+
 `r qbegin(1)`
-Conduct a one sample $t$-test to evaluate whether Edinburgh University students' average score on the PASS is less than 33. Remember to check the assumptions!    
+
+1. Read in the data
+2. Calculate some relevant descriptive statistics
+3. Check the assumptions that we will be concerned with for a one-sample test of whether the mean PASS scores is less than 33. 
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+__Read in the data:__  
+
+```{r}
+pass_scores <- read_csv("https://uoepsy.github.io/data/pass_scores.csv") 
+```
+
+__Descriptives:__  
+
+```{r}
+pass_scores %>%
+  summarise(
+    mPASS = mean(PASS),
+    sdPASS = sd(PASS)
+  )
+```
+
+
+__Assumptions:__ 
+
+We want to check that the data are close to normally distributed. This is especially relevant as we have only 20 datapoints here. The plot below makes it look like we may have one or two data points in the tails of the distribution that are further than we might expect. 
+```{r}
+ggplot(pass_scores, aes(sample = PASS)) + 
+  geom_qq() + 
+  geom_qq_line()
+```
+But the Shapiro-Wilk test of $p > .05$ indicates that we are probably okay to continue with our t-test  
+```{r}
+shapiro.test(pass_scores$PASS)
+```
+
+`r solend()`
+
+
+`r qbegin(2)`
+Our test here is going to be have the following hypotheses:  
+
+- __Null:__ mean PASS score in Edinburgh Uni students is $\geq 33$
+- __Alternative:__ mean PASS score in Edinburgh Uni students is $< 33$ 
+
+Read in the data and manually calculate the relevant test statistic.  
 
 :::hints
-**Hint:** Think carefully about the wording of the research question. Is the alternative hypothesis "less than", "greater than" or "not equal to"? What does this mean in relation to the areas of the $t$-distribution for which you will reject the null hypothesis - upper tail, lower tail, or both tails? Check out the help page for `t.test()` - is there some thing you can change to make sure it is the correct option?  
+__Hints:__
+
+- you can see the manual calculation of a one sample t-test in [3B #one-sample-t-test](03b_inference2.html#one-sample-t-test){target="_blank"}. 
+- The relevant formula is:  
+$$
+\begin{align}
+& t =  \frac{\bar x - \mu_0}{\frac{s}{\sqrt{n}}} \\
+\qquad \\
+& \text{Where:} \\
+& \bar x : \text{mean of PASS in our sample} \\
+& \mu_0 : \text{hypothesised mean score of 33} \\
+& s : \text{standard deviation of PASS in our sample} \\
+& n : \text{number of observations}
+\end{align}
+$$
 :::
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r fig.height=3, fig.width=5}
-pass_scores <- read_csv("https://edin.ac/2wJgYwL") 
 
-ggplot(data = pass_scores, aes(x=PASS)) + 
-  geom_boxplot() + 
-  geom_vline(xintercept=33, lty="dashed", col="red")
+```{r}
+pass_scores <- read_csv("https://uoepsy.github.io/data/pass_scores.csv") 
 
-t.test(pass_scores$PASS, mu = 33, alternative = "less")
+pass_scores %>% 
+  summarise(
+    xbar = mean(PASS),
+    s = sd(PASS),
+    n = n(),
+    t = (xbar - 33)/(s / sqrt(n))
+  )
 ```
 `r solend()`
 
-`r qbegin(2)`
+`r qbegin(3)`
+Using the test statistic calculated in question 1, compute the p-value.  
+
+:::hints
+__Hint:__ 
+
+- this will be needing the `pt()` function.
+- the degrees of freedom is $n-1$ (we used one up by estimating the mean).
+- The test we are performing is against the null hypothesis that the mean is $\geq 33$. Our t-statistic is in the broad sense calculated as "mean minus 33", so negative numbers mean we have a mean lower than 33. These are the instances that we will reject the null hypothesis - if we get a test statistic very low. So we want the lower.tail of the distribution for our p-value. 
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+We have 20 participants, so $df=19$
+```{r}
+pt(-3.107272, df = 19, lower.tail = TRUE)
+```
+`r solend()`
+
+`r qbegin(4)`
+Now using the `t.test()` function, conduct the same test. Check that the numbers match with questions 1 and 2, and create a visualisation to illustrate any results.  
+
+:::hints
+__Hint:__ Check out the help page for `t.test()` - there is an argument in the function that allows us to easily change between whether our alternative hypothesis is "less than", "greater than" or "not equal to".  
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+t.test(pass_scores$PASS, mu = 33, alternative = "less")
+```
+
+```{r}
+#| fig.height: 3
+#| fig.width: 5
+ggplot(data = pass_scores, aes(x=PASS)) + 
+  geom_boxplot() + 
+  geom_vline(xintercept=33, lty="dashed", col="red")
+```
+
+`r solend()`
+
+`r qbegin(5)`
 Write up the results.  
+
+:::hints
+__Hints:__ There are some quick example write-ups for each test in [3B #basic-tests](03b_inference2.html#basic-tests){target="_blank"}
+:::
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r include=FALSE}
@@ -63,6 +175,7 @@ Edinburgh University students scored lower (Mean = `r mean(pass_scores$PASS) %>%
 :::
 `r solend()`
 
+# Heights 
 
 :::frame
 > __Research Question__
@@ -77,18 +190,21 @@ The data for students from all psychology statistics courses last year and USMR 
 :::
 
 
-`r qbegin(3)`
+`r qbegin(6)`
+No more manual calculations of test statistics and p-values for this week.  
+
 Conduct a one sample $t$-test to evaluate whether the average height of students taking the USMR courses in Psychology at Edinburgh University in 2022/23 is different from 165cm.  
 
+
 :::hints
-**Remember:** We should check that the data meet the assumptions of our test.  
-This means you will need to investigate the extent to which the sample data appears to have been drawn from a normal distribution. However, *this is real data*, and [real data is rarely normal](https://dpananos.github.io/posts/2019/08/blog-post-23/)! If you conduct a Shapiro-Wilk test, you may well find $p<.05$ and conclude that your data is not normal.   
+**Hints:** 
+
+- This is *real data*, and [real data is rarely normal](https://dpananos.github.io/posts/2019/08/blog-post-23/)! If you conduct a Shapiro-Wilk test, you may well find $p<.05$ and conclude that your data is not normal.   
 So what do we do if a test indicates our assumptions are violated?  
 Well, we should bear a couple of things in mind.  
-
-1. A decision rule such as $p<.05$ on Shapiro-Wilk test creates very dichotomous thinking for something which is in reality not black and white. Real life distributions are not *either* normal *or* non-normal. Plot the data, and make a judgement!  
-2. As it happens, the t-test is actually reasonably robust against slight deviations from normality! Plot your data and make a judgement! 
-3. The deeper you get into statistics, the more you discover that it is not simply a case of following step-by-step rules:
+    1. A decision rule such as $p<.05$ on Shapiro-Wilk test creates very dichotomous thinking for something which is in reality not black and white. Real life distributions are not *either* normal *or* non-normal. Plot the data, and make a judgement!  
+    2. As it happens, the t-test is actually reasonably robust against slight deviations from normality! Plot your data and make a judgement! 
+    3. The deeper you get into statistics, the more you discover that it is not simply a case of following step-by-step rules:
 ```{r echo=FALSE, out.width="80%"}
 knitr::include_graphics("images/hypothesis/guidelines.gif")
 ```
@@ -96,30 +212,56 @@ knitr::include_graphics("images/hypothesis/guidelines.gif")
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+__Read in the data:__  
+
+We need to filter it to just the USMR students this year
 ```{r}
 survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv")
 
-survey_data <- survey_data %>% filter(year==2021)
-
-#the shapiro.test suggests that our assumption of normality may be violated!! oh no!
-shapiro.test(survey_data$height)
-
-# However, let's have a histogram to check how non-normal our data is. 
-# let's also add our hypothesised mean on there as a vertical line:
-ggplot(data = survey_data, aes(x = height)) + 
-  geom_histogram(bins=15) +
-  geom_vline(xintercept = 165)
-
-
-# The t.test is quite robust against slight violations of normality.
-# Our data here doesn't look too non-normal (This is just a judgement call here!).
-# Let's proceed with the t.test
-t.test(survey_data$height, mu = 165, alternative = "two.sided")
+usmr_data <- survey_data %>% 
+  filter(course=="usmr", year==2021)
 ```
+
+__Descriptives:__  
+
+```{r}
+usmr_data %>% 
+  summarise(
+    mheight = mean(height, na.rm = T),
+    sdheight = sd(height, na.rm = T)
+  )
+```
+__Assumptions:__  
+
+TODO - update with new data
+The `shapiro.test()` suggests that our assumption of normality may be violated!! oh no!
+```{r}
+shapiro.test(usmr_data$height)
+```
+
+However, visualisations are vital here. The histogram below does not look too bad to me. 
+```{r}
+ggplot(data = usmr_data, aes(x = height)) + 
+  geom_histogram(bins=15) +
+  # adding our hypothesised mean
+  geom_vline(xintercept = 165)
+```
+
+The t.test is quite robust against slight violations of normality, and our data here doesn't look *too* non-normal (this is a judgement call here - over time you will start to get a sense of what you might deem worrisome in these plots!).
+
+__Conduct test__ 
+
+```{r}
+t.test(usmr_data$height, mu = 165, alternative = "two.sided")
+```
+
+
+
 `r solend()`
 
 
-# Two Samples
+# Names and Tips  
 
 :::frame
 > __Research Question__
@@ -132,7 +274,7 @@ Each two-person party was randomly assigned by the waitress to either a name or 
 The data are available at [https://uoepsy.github.io/data/gerritysim.csv](https://uoepsy.github.io/data/gerritysim.csv). (This is a simulated example based on [Garrity and Degelman (1990)](https://doi.org/10.1111/j.1559-1816.1990.tb00405.x))  
 :::
 
-`r qbegin(4)`
+`r qbegin(7)`
 Conduct an independent samples $t$-test to assess whether higher tips are earned when the server introduces themselves by name, in comparison to when they do not.    
 
 :::hints
@@ -145,6 +287,8 @@ __Hints:__
 `r qend()`  
 
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+__Read in the data__ 
 ```{r}
 tipdata <- read_csv("https://uoepsy.github.io/data/gerritysim.csv")
 
@@ -154,11 +298,23 @@ tipdata <-
     tip = paid - 23.21
   )
 
+```
+  
+__Descriptives and a plot__   
+  
+```{r}
+tipdata %>% 
+  group_by(condition) %>%
+  summarise(
+    meantip = mean(tip),
+    sdtip = sd(tip)
+  )
+
 ggplot(data = tipdata, aes(x = tip, y = condition)) +
   geom_boxplot()
 ```
   
-__check assumptions__  
+__Assumptions__  
 
 According to these tests, we have normally distributed data for both groups, with equal variances. 
 ```{r}
@@ -167,7 +323,7 @@ shapiro.test(tipdata$tip[tipdata$condition=="no name"])
 with(tipdata, var.test(tip ~ condition))
 ```
 
-__conduct t-test__
+__Conduct test:__
 
 Because the variances do not appear to be unequal, we can actually use the standard t-test with `var.equal = TRUE` if we want. However, we'll continue with the Welch t-test. 
 
@@ -178,3 +334,6 @@ with(tipdata, t.test(tip ~ condition, alternative = "greater"))
 ```
 
 `r solend()`
+
+
+

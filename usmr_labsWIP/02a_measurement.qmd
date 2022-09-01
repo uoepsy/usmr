@@ -905,7 +905,7 @@ table(roll1000) %>%
   barplot(col=c(rep("#bbbbbb",5),"#ff0000"),ylab="count/total")
 ```
 
-Nothing really changes with a density curve! If we want to ask what proportion of our distribution of IQ scores is >110, then we are asking about the area under the curve that is to the right of 110:  
+Nothing really changes with a density curve! If we want to ask what proportion of our distribution of IQ scores is >120, then we are asking about the area under the curve that is to the right of 120:  
 
 ```{r}
 #| echo: false
@@ -924,7 +924,7 @@ sum(wechsler$iq>110) / length(wechsler$iq)
 It might seem a little odd to think about area under the curve when we are asking about "what _proportion_ of the data is ...?". If we have the data, then we can just calculate the answer (like we did above). 
 However, a lot of statistics is really concerned with the _probability_ of events. When we discuss probability, we move from talking about a specific set of observed data to thinking about a theoretical/mathematical model that defines the way in which data is generated. This where it becomes more useful to think about distributions in a more abstract sense.  
 
-For instance, with a fair six-sided die, we have a probability distribution in which each side is given the probability $\frac{1}{6}$:
+For instance, with a fair six-sided die, we have a probability distribution  (@fig-diceprob) in which each side is given the probability $\frac{1}{6}$:
 $$
 \begin{gather*}
 P(x) = \begin{cases}
@@ -933,9 +933,12 @@ P(x) = \begin{cases}
   \end{cases}
 \end{gather*}
 $$
-
+Instead of rolling a die, suppose that we are picking a person off the street and measuring their IQ. Given that IQ scales are designed to have a mean of 100 and standard deviation of 15, what is the _probability_ that we pick a person with an IQ of greater than 110?  
 ```{r}
+#| label: fig-diceprob
+#| fig-cap: "Left: Discrete probability distribution of a fair six-sided die. Right: Continuous probability distribution of IQ scores"
 #| echo: false
+#| fig-height: 3.5
 tibble(response = 1:6, prob = rep(1/6,6)) %>%
 ggplot(., aes(x=response, y=prob))+
   geom_point(size=3)+
@@ -943,7 +946,21 @@ ggplot(., aes(x=response, y=prob))+
   scale_x_continuous("faces of a die", breaks=1:6)+
   scale_y_continuous("probability", limits = c(0,1), breaks=map_dbl(1:6,~./6), labels=c(paste0(1:5,"/6"),"1"))+
   theme_classic()+
+  theme(text = element_text(size = 24)) -> dp
+
+
+df <- tibble(x=c(50,150))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1) +
+  xlab("IQ scores") + ylab("density")
+ld <- layer_data(g) %>% filter(x>= 110)
+cp <- 
+  g + geom_area(data=ld,aes(x=x,y=y),fill="red")+theme_classic()+
   theme(text = element_text(size = 24))
+
+library(patchwork)
+dp + cp
+
 ```
 
 :::

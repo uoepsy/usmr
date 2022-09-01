@@ -2,7 +2,7 @@
 title: "Week 5 Exercises: Cov, Cor, Models"
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -21,7 +21,7 @@ set.seed(017)
 __Q1:__ Go to [http://guessthecorrelation.com/](http://guessthecorrelation.com/){target="_blank"} and play the "guess the correlation" game for a little while to get an idea of what different strengths and directions of $r$ can look like.
 `r qend()`
 
-# Correlation  
+# Sleepy time  
 
 :::frame
 __Data: Sleep levels and daytime functioning__  
@@ -52,31 +52,57 @@ Read in the data, and calculate the overall daytime functioning score, following
 :::hints
 To reverse items 4, 5 and 6, we we need to make all the scores of 1 become 5, scores of 2 become 4, and so on... What number satisfies all of these equations: `? - 5 = 1`, `? - 4 = 2`, `? - 3 = 3`?  
   
-<br>To quickly sum accross rows, you might find the `rowSums()` function useful (you don't have to use it though)
+To quickly sum accross rows, you might find the `rowSums()` function useful (you don't have to use it though)
 :::
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r message=FALSE}
 sleepdtf <- read_csv("https://uoepsy.github.io/data/sleepdtf.csv")
 summary(sleepdtf)
-# To reverse the items, we can simply do 6 minus the score.   
+```
+
+To reverse the items, we can simply do 6 minus the score: 
+```{r}
 sleepdtf <- 
   sleepdtf %>% mutate(
     item_4=6-item_4,
     item_5=6-item_5,
     item_6=6-item_6
   ) 
+```
 
-# Now using rowSums(), and subtracting it from 50 (the max score)
+Now we can use `rowSums()`, and subtract the sum scores from from 50 (the max score):  
+```{r}
 sleepdtf$dtf = 50-rowSums(sleepdtf[, 2:11])
 ```
+
+An alternative way to do this would be: 
+
+```{r}
+#| eval: false
+sleepdtf %>% 
+  mutate(
+    dtf = 50 - (item_1 + item_2 + item_3 + item_4 + item_5 + item_6 + item_7 + item_8 + item_9 + item_10)
+  )
+```
+
+
+
+
+
 `r solend()`
 
 `r qbegin(3)`
 Calculate the correlation between the total sleep time (`TST`) and the overall daytime functioning score calculated in the previous question.  
 Conduct a test to establish the probability of observing a correlation this strong in a sample of this size assuming the true correlation to be 0.  
-<br>
+
 Write a sentence or two summarising the results. 
+
+:::hints
+__Hint:__ 
+You can do this all with one function, see [5A #correlation-test](05a_covcor.html#correlation-test){target="_blank"}.  
+:::
+
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
@@ -122,9 +148,10 @@ sng <- tibble(
 )
 ```
 
-Plot the data from the Scottish National Gallery using `ggplot()`.  
+Plot the data from the Scottish National Gallery using `ggplot()`, with the side measurements of the paintings on the x-axis, and the perimeter measurements on the y-axis.  
   
 We know that there is a mathematical model for the relationship between the side-length and perimeter of squares: $perimeter = 4 \times \ side$.  
+
 Try adding the following line to your plot:
 ```{r eval=FALSE}
   stat_function(fun = ~.x * 4)
@@ -150,9 +177,12 @@ The above plot shows perfect agreement between the observed data and the model.
 
 `r qbegin(6)`
 Use our mathematical model to predict the perimeter of a painting with a side of 1.5 metres.  
-We do not have a painting with a side of 1.5 metres within the random sample of paintings from the Scottish National Gallery, but we can work out the perimeter of an hypothetical square painting with 1.5m sides, using our model. 
 
-You can obtain this prediction either using the plot from the previous question, or calculating it algebraically.  
+:::hints
+__Hint:__  
+We don't have a painting with a side of 1.5 metres within the random sample of paintings from the Scottish National Gallery, but we can work out the perimeter of an hypothetical square painting with 1.5m sides, using our model - either using the plot from the previous question, or calculating it algebraically.  
+:::
+
 `r qend()`
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
 **Visual approach**
@@ -180,7 +210,11 @@ However, in this case it is not that easy to read it from the drawing... Let's t
 
 You can substitute the x value in the formula and calculate the corresponding y value.
 $$
-y = 4 \times \ x = 4 \times \ (1.5) = 6
+\begin{align}
+perimeter &= 4 \times \ side \\
+&= 4 \times \ (1.5) \\
+&= 6
+\end{align}
 $$
 
 <br>
@@ -210,7 +244,7 @@ The data are available at [https://uoepsy.github.io/data/handheight.csv](https:/
 `r qbegin(7)`
 Consider the relationship between height (in inches) and handspan (in cm).  
 
-Read the handheight data into R, and investigate how handspan varies as a function of height for the students in the sample.
+Read the handheight data into R, and investigate (visually) how handspan varies as a function of height for the students in the sample.
 
 Do you notice any outliers or points that do not fit with the pattern in the rest of the data? 
 
@@ -240,7 +274,7 @@ Outliers are extreme observations that do not seem to fit with the rest of the d
 - *marginally* along one axis: points that have an unusual (too high or too low) x-coordinate or y-coordinate;
 - *jointly*: observations that do not fit with the rest of the point cloud.
 
-The boxplots in @fig:handheight-scatterplot do not highlight any outliers in the marginal distributions of height and handspan.
+The boxplots in fig-handheight-scatterplot do not highlight any outliers in the marginal distributions of height and handspan.
 Furthermore, from the scatterplot we do not notice any extreme observations or points that do not fit with the rest of the point cloud.
 
 We notice a moderate, positive (that is, increasing) linear relationship between height and handspan.
@@ -249,40 +283,39 @@ Recall @fig-squares-scatterplot, displaying the relationship between side and pe
 In the plot we notice two points on top of each other, reflecting the fact that two squares having the same side will always have the same perimeter.
 In fact, the data from the Scottish National Gallery include two squared paintings with a side of 1.1m, both having a measured perimeter of 4.4m.
 
-Figure \@ref(fig:handheight-scatterplot), instead, displays the relationship between height and handspan of a sample of students. The first thing that grabs our attention is the fact that students having the same height do not necessarily have the same handspan. Rather, we clearly see a variety of handspan values for students all having a height of, for example, 70in. To be more precise, the seven students who are 70 in. tall all have differing handspans.
+fig-handheight-scatterplot, instead, displays the relationship between height and handspan of a sample of students. The first thing that grabs our attention is the fact that students having the same height do not necessarily have the same handspan. Rather, we clearly see a variety of handspan values for students all having a height of, for example, 70in. To be more precise, the seven students who are 70 in. tall all have differing handspans.
 `r solend()`
 
 `r qbegin(8)`
-Using the following command, superimpose on top of your scatterplot a best-fit line describing how handspan varies as a function of height.
+Hopefully, as part of the previous question, you created a scatterplot of handspans against heights. If not, make one now.  
+
+Try adding the following line of code to the scatterplot. It will add a best-fit line describing how handspan varies as a function of height.
 For the moment, the argument `se = FALSE` tells R to not display uncertainty bands.
-```
+```{r}
+#| eval: false
 geom_smooth(method = lm, se = FALSE)
 ```
 
-Comment on any differences you notice with the line summarising the linear relationship between side and perimeter.
+Think about the differences you notice with between this and @fig-squares-scatterplot.  
 `r qend()`
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
-```{r handheight-fitted-model, fig.cap='The best-fit line.'}
+```{r}
+#| label: fig-handheight-fitted-model
+#| fig-cap: 'The best-fit line.'
 ggplot(handheight, aes(x = height, y = handspan)) +
   geom_point(size = 3, alpha = 0.5) +
   geom_smooth(method = lm, se = FALSE) +
   labs(x = 'Height (in.)', y = 'Handspan (cm)')
 ```
 
-The line representing the relationship between side and perimeter of squares is able to predict the actual perimeter value from the measurement of the side of a square.
-This is possible because the relationship between side and perimeter is an **exact** one. 
-That is, any squares having the same side will have the same perimeter, and there will be no variation in those values.
+The line representing the relationship between side and perimeter of squares (@fig-squares-scatterplot) is able to predict the actual perimeter value from the measurement of the side of a square. This is possible because the relationship between side and perimeter is an **exact** one. That is, any squares having the same side will have the same perimeter, and there will be no variation in those values.
 
-The line that best fits the relationship between height and handspan, instead, is only able to predict the **average** handspan for a given value of height.
-This is because there will be a distribution of handspans at each value of height.
-The line will fit the trend/pattern in the values, but there will be individual-to-individual variability that we must accept around that average pattern.
+The line that best fits the relationship between height and handspan (@fig-handheight-fitted-model) is only able to predict the **average** handspan for a given value of height. This is because there will be a distribution of handspans at each value of height. The line will fit the trend/pattern in the values, but there will be individual-to-individual variability that we must accept around that average pattern.
 `r solend()`
 
 
 :::statbox
-The _mathematical_ model $Perimeter = 4 \times \ Side$ represents the **exact** relationship between side-length and perimeter of squares.
-
-In contrast, the relationship between height and handspan shows deviations from an "average pattern". Hence, we need to create a model that allows for deviations from the linear relationship. This is called a _statistical_ model.  
+Relationships such as that between height and handspan show deviations from an "average pattern". To model this, we need need to create a model that allows for deviations from the linear relationship. This is called a _statistical_ model.  
 
 A statistical model includes **both** a deterministic function and a random error term:
 $$
@@ -293,7 +326,8 @@ $$
 y = \underbrace{\beta_0 + \beta_1 \ x}_{f(x)} + \underbrace{\epsilon}_{\text{random error}}
 $$
 
-The deterministic function need not be linear if the scatterplot displays signs of nonlinearity.
+The deterministic function $f(x)$ need not be linear if the scatterplot displays signs of nonlinearity, but in this course we focus primarily on linear relationships.   
+
 In the equation above, the terms $\beta_0$ and $\beta_1$ are numbers specifying where the line going through the data meets the y-axis and its slope (rate of increase/decrease). 
 :::
 

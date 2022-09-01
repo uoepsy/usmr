@@ -4,6 +4,8 @@ link-citations: yes
 params: 
     SHOW_SOLS: TRUE
     TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
 ---
 
 
@@ -47,9 +49,15 @@ ggplot(df,aes(x=x,y=y))+
 
 We're going to use the data in this plot for the remainder of the reading. If you wish to play around with it yourself, it is available at [https://uoepsy.github.io/data/usmr_slr.csv](https://uoepsy.github.io/data/usmr_slr.csv), and contains a sample of 100 observations on variables `x` and `y`.   
 
-The plot above highlights a linear relationship, where the data points are scattered around an underlying linear pattern with a roughly-constant spread as we move along `x`.  
+```{r}
+library(tidyverse)
+my_data <- read_csv("https://uoepsy.github.io/data/usmr_slr.csv")
+head(my_data)
+```
 
-In [Section 5A](05a_covcor.html){target="_blank"} we have already talked about one way to describe this relationship, by calculating either the covariance or the correlation between `x` and `y`.  
+@fig-lmintro, above, highlights a linear relationship, where the data points are scattered around an underlying linear pattern with a roughly-constant spread as we move along `x`.  
+
+In [5A: Covariance & Correlation](05a_covcor.html){target="_blank"} we have already talked about one way to describe this relationship, by calculating either the covariance or the correlation between `x` and `y`.  
 However, as we will see in the coming weeks, the linear model provides us with the scope to extend our analysis to many more situations - it is the building block of many more complex analytical methods.  
 
 The simple linear regression model takes the form:  
@@ -63,8 +71,7 @@ $$
 You will see a variety of different ways of specifying the linear model form in different resources, some use $\beta$, some use $b$. Sometimes you will see $\alpha$ instead of $b_0$.
 :::
 
-We typically denote the outcome ('dependent') variable with $y$ and our predictor ('explanatory'/'independent') variables with $x$.  
-When we construct a linear model we are trying to re-express our outcome variable $y$ with some linear transformation of our predictor variable $x$.  
+We typically refer to the outcome ('dependent') variable with the letter $y$ and to our predictor ('explanatory'/'independent') variables with the letter $x$. When we construct a linear model we are trying to re-express our outcome variable $y$ with some linear transformation of our predictor variable $x$.  
 
 You can think of this in broader terms as: 
 $$
@@ -76,8 +83,10 @@ $$
 
 When we fit a simple regression model, the bit we refer to as the 'model' is the line that is defined by two numbers:
 
-- the __intercept__, denoted $b_0$. This is the point at which the line hits the y-axis (i.e. where $x=0$)
-- the __slope__, denote $b_1$. This the angle of the line. It is the amount which the line increases for every 1 increase in $x$.  
+- the __intercept__, denoted $b_0$.  
+This is the point at which the line hits the y-axis (i.e. where $x=0$)
+- the __slope__, denoted $b_1$.  
+This is the angle of the line. It is the amount which the line increases for every 1 increase in $x$.  
 
 ```{r}
 #| label: fig-slr
@@ -138,18 +147,60 @@ ggplot(., aes(x = x)) +
        y = "Y (outcome)")
 ```
 
+`r optbegin("Optional: Regression Slope vs Covariance",olabel=FALSE)`
+With simple linear regression, the fitted line we are describing is actually a scaled version of our covariance.  
 
+Remember that covariance is the average of the products of $(x_{i}-\bar{x})(y_{i}-\bar{y})$, which is a bit like the average area of the rectangles in @fig-covsq. If we think about what the average __width__ of these rectangles is, it is the average of $(x_{i}-\bar{x})$, which is actually just the variance of $x$! 
 
-`r optbegin("Optional: regression and cov/cor",olabel=FALSE)`
-TODO
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| label: fig-covsq
+#| fig-cap: "Covariance" 
+set.seed(7135)
+tibble(x=runif(10,20,80),y=rnorm(10,160,10)) %>%
+  mutate(y=y+x/2,
+         coldir = ifelse( (x>mean(x) & y>mean(y)) | (x<mean(x) & y<mean(y)), "pos","neg")
+  ) -> df
+p5<-ggplot(df,aes(x=x,y=y))+
+  geom_point(aes(col=coldir))+
+  scale_color_manual("",values=c("blue","red"))+
+  theme_classic()+
+  theme(legend.position = "none")+
+  geom_vline(aes(xintercept=mean(x)), lty="dashed")+
+  annotate("text",x=mean(df$x)-1, y=max(df$y)-5,label=expr(bar("x")))+
+  geom_hline(aes(yintercept=mean(y)), lty="dashed")+
+  annotate("text",x=min(df$x)+5, y=mean(df$y)+1,label=expr(bar("y")))+
+  geom_segment(aes(x = mean(x), y = 200.9559, xend = 69.47989, yend = 200.9559), color="tomato1", data = df)+
+  geom_segment(aes(x = 69.47989, y = mean(y), xend = 69.47989, yend = 200.9559), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 211.5757, xend = 56.36053, yend = 211.5757), color="tomato1", data = df)+
+  geom_segment(aes(x = 56.36053, y = mean(y), xend = 56.36053, yend = 211.5757), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 180.5799, xend = 44.37031, yend = 180.5799), color="tomato1", data = df)+
+  geom_segment(aes(x = 44.37031, y = mean(y), xend = 44.37031, yend = 180.5799), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 194.4188, xend = 45.32536, yend = 194.4188), color="skyblue3", data = df)+
+  geom_segment(aes(x = 45.32536, y = mean(y), xend = 45.32536, yend = 194.4188), color="skyblue3",data = df)+
+  geom_segment(aes(x = mean(x), y = 182.6440, xend = 66.73541, yend = 182.6440), color="skyblue3", data = df)+
+  geom_segment(aes(x = 66.73541, y = mean(y), xend = 66.73541, yend = 182.6440), color="skyblue3",data = df)
+p5
+```
+
+We can divide the area of the average rectangle ($cov(x, y)$) by its width ($var(x)$), thereby scaling it so that the width is 1. What we're getting from our coefficient is the area of this new rectangle which has width = 1. Because width = 1, the area is also the height ($\text{area} = \text{width} \times \text{height} = 1 \times \text{height}$). So what we get is the amount that $y$ increases (the height) as $x$ increases by 1 (the width).  
+
+We can see this working: 
+```{r}
+cov(my_data$x, my_data$y)
+var(my_data$x)
+```
+This calculation gives us the same linear regression slope of `r round(cov(my_data$x, my_data$y)/var(my_data$x),2)` that we see when we fit the model lower down this page.
+```{r}
+cov(my_data$x, my_data$y)/var(my_data$x)
+```
 `r optend()`
-
 
 ## The Error 
 
-Our model is not perfect. It is a model - i.e. it is a simplification of the world, and so is inherently going to be inaccurate for individuals. This innaccuracy can be seen in @fig-slr and @fig-slrfit. Some points are higher than the model predicts, some lower.  
-
-These deviations  (the red lines in @fig-slr2) from the model are the random error component $\hat \epsilon$, or "residuals".  
+Our model is not perfect. It is a model - i.e. it is a simplification of the world, and so is inherently going to be inaccurate for individuals. This innaccuracy can be seen in the plots above: some points are higher than the model predicts, some lower. These deviations (shown by the red lines in @fig-slr2) from the model are the random error component $\hat \epsilon$, or "residuals".  
 
 ```{r}
 #| label: fig-slr2
@@ -187,7 +238,7 @@ The new bit here: "$\epsilon \sim N(0, \sigma) \text{ independently}$" means tha
 
 The standard deviation of the errors, denoted by $\sigma$ is an important quantity that our model estimates. It measures how much individual data points tend to deviate above and below the regression line. A small $\sigma$ indicates that the points hug the line closely and we should expect fairly accurate predictions, while a large $\sigma$ suggests that, even if we estimate the line perfectly, we can expect individual values to deviate from it by substantial amounts.
 
-$\sigma$ is estimated by summing the squared residuals:  
+$\sigma$ is estimated by essentially averaging squared residuals (giving the variance) and taking the square-root:  
 $$
 \begin{align}
 & \hat \sigma = \sqrt{\frac{SS_{Residual}}{n - 2}} \\
@@ -211,7 +262,13 @@ The syntax of the `lm()` function is:
 model_name <- lm(outcome ~ 1 + predictor, data = dataframe)
 ```
 
-`r optbegin("Why ~1?", olabel=F,toggle=params$TOGGLE)`
+We don't _have_ to include the `1 + ` when we specify the model, as this will be included by default, so we can also simply write: 
+
+```
+model_name <- lm(outcome ~ predictor, data = dataframe)
+```
+
+`r optbegin("What is the ~1 + doing?", olabel=F,toggle=params$TOGGLE)`
 The fitted model can be written as
 $$
 \hat y = \hat b_0 + \hat b_1 x
@@ -243,7 +300,7 @@ summary(my_model)
 knitr::include_graphics("images/slr/slr1.png")
 ```
 
-We can see in @fig-lmoutput our estimated values for the intercept and slope of the line. Our model is:  
+The __intercept__ $b_0$ is the point at which the line hits the y-axis (i.e. where $x=0$), and the __slope__ $b_1$ is the amount which the line increases for every 1 increase in $x$. We can see the estimated values of these in @fig-lmoutput, providing us with our fitted line: 
 
 $$
 \begin{align}
@@ -327,7 +384,7 @@ Our coefficients accurately describe the relationship between $y$ (outcome) and 
 knitr::include_graphics("images/slr/conv1a.png")
 ```
 
-Much like our discussion of sample means and intervals in [Section 2B](02b_sampling.html){target="_blank"}, we have our coefficients: 
+Much like our discussion of sample means and intervals in [2B: Sampling & Curves](02b_sampling.html){target="_blank"}, we have our coefficients: 
 ```{r}
 coef(my_model)
 ```
@@ -365,7 +422,7 @@ summary(my_model)$coefficients
 ```
 
 :::int
-A significant association was found between x and y ($t(98) = 7.83,\ p < .001$, two-sided).
+A significant association was found between x and y ($b = 0.78$, $SE = 0.10$, $t(98)=7.83$, $p<.001$).
 :::
 :::column-margin
 Recall that the p-value `5.92-e12` in the `Pr(>|t|)` column simply means $5.92 \times 10^{-12}$. This is a very small value, hence we will report it as <.001 following the APA guidelines.
@@ -386,7 +443,7 @@ knitr::include_graphics("images/slr/conv2a.png")
 
 ## Partitioning Variance
 
-We might ask ourselves if the model is useful in explaining the variance in our outcome variable $y$. To quantify and assess model utility, we split the total variability of the response into two terms: the variability explained by the model plus the variability left unexplained in the residuals.
+We might ask ourselves if the model is useful in explaining the variance in our outcome variable $y$. To quantify and assess model utility, we split the total variability of the outcome variable into two terms: the variability explained by the model plus the variability left unexplained in the residuals.
 
 $$
 \begin{align}
@@ -394,6 +451,8 @@ $$
 & \text{variability explained by model } + \text{unexplained variability in residuals}
 \end{align}
 $$
+The illustration in @fig-sstssrssm gets at the intuition behind this: the top panel shows the total variability in the outcome variable $y$ - for each datapoint we see the distance from the mean of y. These distances can be split into the bit from the mean to the model predicted value (seen in the bottom left panel of @fig-sstssrssm), and the bit from that value to the actual value (bottom right panel). 
+
 Each term can be quantified by a sum of squares:
 
 $$
@@ -539,7 +598,22 @@ $$
 :::
 
 
-`r optbegin('Optional: Equivalence of t-test for the slope and model utility F-test in simple regression.', olabel = FALSE,  toggle=params$TOGGLE)`
+
+Like the $R^2$, the `summary()` of our model prints out the $F$-statistic, degrees of freedom, and p-value. These are right at the bottom of the summary output, printed as:  
+
+```
+F-statistic: 61.26 on 1 and 98 DF,  p-value: 5.918e-12
+```
+
+:::int
+The F-test of model utility was significant ($F(1,98) = 61.26,\ p <.001$) suggesting that the model is effective in explaining variance in outcome $y$. 
+:::
+
+Note that the p-value here is exactly the same as the one for the coefficient. This is because in testing "the model is (in)effective", the "model" is really _only_ the relationship between the outcome and our one predictor. When we move to adding more predictors into our model, we have more $b$'s, and the $F$-test will be testing jointly whether $b_1 = b_2 =\ ...\ = b_k = 0$.   
+
+
+
+`r optbegin('Optional: When only one predictor variable, the F-test is equivalent to the t-test of the slope', olabel = FALSE,  toggle=params$TOGGLE)`
 **In simple linear regression only** (where we have just __one__ predictor), the F-statistic for overall model significance is equal to the square of the t-statistic for $H_0: b_1 = 0$.
 
 You can check that the squared t-statistic is equal, up to rounding error, to the F-statistic:
@@ -588,9 +662,9 @@ It is evident that the latter is obtained as the square root of the former.
 <div class="divider div-transparent div-dot"></div>
 
 
-# Binary predictors {#binpred}
+# Binary predictors
 
-Let's suppose that instead of having measured $x$ so accurately, we simply had information on whether $x>3$ or not. Our predictor variable would be binary categorical (think back to our discussion of [types of data in Reading 2A](02a_measurement.html){target="_blank"}) - it would have 2 levels:    
+Let's suppose that instead of having measured $x$ so accurately, we simply had information on whether $x>3$ or not. Our predictor variable would be binary categorical (think back to our discussion of types of data in [2A: Measurement](02a_measurement.html){target="_blank"}) - it would have 2 levels:    
 ```{r}
 my_data <- 
   my_data %>% 
@@ -620,7 +694,8 @@ my_data %>% sample_n(size=n()) %>%
 ```
 
 Our coefficients are just the same as before. The intercept is where our predictor equals zero, and the slope is the change in our outcome variable associated with a 1-unit change in our predictor.  
-However, "zero" for this predictor variable now corresponds to a whole level. This is known as the "reference level". Accordingly, the 1-unit change in our predictor (the move from "zero" to "one") corresponds to the difference between the two levels. 
+
+However, "zero" for this predictor variable now corresponds to a whole level. This is known as the "reference level". So the intercept is the estimated mean of $y$ when `x_cat == "level1"` (it will default to alphabetical, so "level1" will be treated as zero). Accordingly, the 1-unit change in our predictor (the move from "zero" to "one") corresponds to the estimated change in mean of $y$ when moving from "level1" to "level2" (i.e. the difference between the two levels). 
 
 
 ```{r echo=FALSE}
@@ -643,9 +718,307 @@ my_data %>%
 
 <div class="divider div-transparent div-dot"></div>
 
-# Basic Tests are Linear Models!  
+# Assumptions
 
-TODO
+All our work here is in aim of making **models of the world**.  
 
+- Models are models. They are simplifications. They are therefore wrong.  
+- Our residuals ( $y - \hat{y}$ ) reflect everything that we **don't** account for in our model.  
+- In an ideal world, our model accounts for _all_ the systematic relationships. The leftovers (our residuals) are just random noise.  
+- If our model is mis-specified, or we don't measure some systematic relationship, then our residuals will reflect this.  
+We check by examining how much "like randomness" the residuals appear to be (zero mean, normally distributed, constant variance, i.i.d ("independent and identically distributed"). These ideas tend to get referred to as our __"assumptions".__  
+- While we will **never** know whether our residuals contain only randomness (we can never observe everything), our ability to generalise from the model we fit on sample data to the wider population relies on these assumptions.  
+
+:::statbox
+__Assumptions in a nutshell__   
+
+In using linear regression, we have assumptions about our model in that we assume that modelling the outcome variable as a **linear** combination of the explanatory variables is an appropriate thing to do.  
+We also make certain assumptions about what we have _left out_ of our model - the **errors** component.    
+<!-- $$ -->
+<!-- \color{red}{y} = \color{blue}{\underbrace{\beta_0 \cdot{} 1 + \beta_1 \cdot{} x_1 + ... + \beta_k \cdot x_k}_{X \boldsymbol \beta}} + \varepsilon -->
+<!-- $$ -->
+
+Specifically, we assume that our errors have __"zero mean and constant variance"__.  
+
+- mean of the residuals = zero across the predicted values on the linear predictor.  
+- spread of residuals is normally distributed and constant across the predicted values on the linear predictor.  
+
+
+`r optbegin("What does it look like?",olabel=FALSE,toggle=params$TOGGLE)`
+```{r echo=FALSE, fig.height=4}
+library(ggdist)
+library(tidyverse)
+df<-tibble(x=runif(1000,1,10),xr = round(x), y=1*x+rnorm(1000))
+df$y2 <- resid(lm(y~x,df))
+#df$y[df$x==6]<-6+rnorm(100,0,3)
+df %>% group_by(xr) %>% summarise(m=mean(y2), s=sd(y2)) -> dfd
+p1 <- ggplot(df, aes(x=x,y=y))+
+  geom_point()+
+  geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("y")
+p2 <- ggplot(df, aes(x=xr,y=y2))+
+  geom_jitter(height=0,width=1, alpha=.3)+
+  stat_dist_halfeye(inherit.aes=F,data=dfd, aes(x=xr,dist="norm",arg1=m,arg2=s),alpha=.6, fill="orange")+
+  #geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("residuals")
+
+p1 + p2
+```
+`r optend()`
+
+`r optbegin("What does it <b>not</b> look like?",olabel=FALSE,toggle=params$TOGGLE)`
+Things look a bit wrong (like there is something systematic that we haven't accounted for), when our residuals do not have mean zero:  
+```{r echo=FALSE, fig.height=4}
+library(ggdist)
+library(tidyverse)
+tibble(x = runif(1000,1,10),
+       xr = round(x),
+       s = abs(5-x)*2,
+       e = map_dbl(s,~rnorm(1,0,1)),
+       y = x + s + e) -> df
+df$y2 <- resid(lm(y~x,df))
+#df$y[df$x==6]<-6+rnorm(100,0,3)
+df %>% group_by(xr) %>% summarise(m=mean(y2), s=sd(y2)) -> dfd
+p1 <- ggplot(df, aes(x=x,y=y))+
+  geom_point()+
+  geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("y")
+p2 <- ggplot(df, aes(x=xr,y=y2))+
+  geom_jitter(height=0,width=1, alpha=.3)+
+  stat_dist_halfeye(inherit.aes=F,data=dfd, aes(x=xr,dist="norm",arg1=m,arg2=s),alpha=.6, fill="orange")+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("residuals")
+
+p1 + p2
+```
+
+Or do not have constant variance: 
+```{r echo=FALSE, fig.height=4}
+library(ggdist)
+library(tidyverse)
+tibble(x = runif(1000,1,10),
+       xr = round(x),
+       s = abs(x)/2,
+       e = map_dbl(s,~rnorm(1,0,.)),
+       y = x + e) -> df
+df$y2 <- resid(lm(y~x,df))
+#df$y[df$x==6]<-6+rnorm(100,0,3)
+df %>% group_by(xr) %>% summarise(m=mean(y2), s=sd(y2)) -> dfd
+p1 <- ggplot(df, aes(x=x,y=y))+
+  geom_point()+
+  geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("y")
+p2 <- ggplot(df, aes(x=xr,y=y2))+
+  geom_jitter(height=0,width=1, alpha=.3)+
+  stat_dist_halfeye(inherit.aes=F,data=dfd, aes(x=xr,dist="norm",arg1=m,arg2=s),alpha=.6, fill="orange")+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("residuals")
+
+p1 + p2
+```
+`r optend()`
+:::
+
+:::rtip
+__Assumptions in R__  
+
+We can get a lot of plots for this kind of thing by using __plot(model)__
+
+Here's what it looks like for a nice neat model:  
+```{r echo=FALSE}
+set.seed(993)
+df<-tibble(x=runif(150,1,10),xr = round(x), y=1*x+rnorm(150))
+my_model <- lm(y ~ x, data = df)
+```
+
+```{r eval=FALSE}
+plot(my_model)
+```
+```{r echo=FALSE}
+par(mfrow=c(2,2))
+plot(my_model)
+par(mfrow=c(1,1))
+```
+
+- Top Left: For the __Residuals vs Fitted__ plot, we want the red line to be horizontal at close to zero across the plot. We don't want the residuals (the points) to be fanning in/out.  
+- Top Right: For the __Normal Q-Q__ plot, we want the residuals (the points) to follow closely to the diagonal line, indicating that they are relatively normally distributed
+- Bottom Left: For the __Scale-Location__ plot, we want the red line to be horizontal across the plot. If it is angled, we are likely to see fanning in/out of the points in the residuals vs fitted plot.
+- Bottom Right: The __Residuals vs Leverage__ plot indicates points that might be of individual interest as they may be unduly influencing the model. There are funnel-shaped lines that will appear on this plot for messier data (not visible above as the data is too neat!), ideally, the further the residual is to the right, the closer to the 0 we want it to be. We'll look at this in more depth in a future reading. 
+
+:::
+
+<div class="divider div-transparent div-dot"></div>
+
+
+# Example
+
+:::frame
+> **Research Question:** Is perceptual speed associated with age?  
+
+The data for this example contains a sample of 130 participants all of whom are over the age of 65, with ages ranging from 67 to 88. All participants completed a short task measuring Perceptual Speed and Accuracy that scores from 0 to 50.  
+
+```{r}
+#| eval: false
+#| echo: false
+set.seed(993)
+perc <- tibble(
+  id = paste0("ppt",1:130),
+  gmv = round(rnorm(130, 65, 7),2),
+  age = 60 + .27*gmv + rnorm(130,0,3),
+  percept = pmax(2,79 - 0.4*age - .4*gmv + rnorm(130,0,12))
+) %>%
+  mutate(
+    gmv_cm3 = round(gmv*10),
+    age = round(age),
+    percept = pmin(50,round(percept))
+  )
+# ggplot(perc,aes(x=gmv,y=percept))+
+#  geom_point()+
+#  geom_smooth(method=lm)
+# lm(percept~age,perc) %>% summary #%>% pluck(coefficients)
+# lm(percept~age+gmv,perc) %>% summary #%>% pluck(coefficients)
+perc %>% select(id,age,percept) %>% write_csv(., "../../data/usmr_percept1.csv")
+```
+
+The data are accessible at [https://uoepsy.github.io/data/usmr_percept1.csv](https://uoepsy.github.io/data/usmr_percept1.csv).  
+
+:::
+
+:::panelset
+
+:::panel
+#### Exploring 
+
+```{r}
+percdat <- read_csv("../../data/usmr_percept1.csv")
+```
+
+Some visualisations:  
+```{r}
+plt1 <- 
+  ggplot(percdat, aes(x = percept)) + 
+  geom_density() +
+  geom_boxplot(width = 1/300)
+
+plt2 <- 
+  ggplot(percdat, aes(x = age)) + 
+  geom_density() +
+  geom_boxplot(width = 1/80)
+
+plt3 <- ggplot(percdat, aes(x = age, y = percept)) + 
+  geom_point()
+
+library(patchwork)
+(plt1 + plt2) / plt3
+```
+
+:::
+:::panel
+#### Fitting  
+
+```{r}
+p_model <- lm(percept ~ age, data = percdat)
+summary(p_model)
+```
+
+:::
+:::panel
+#### Checking
+
+These plots don't look too bad to me. The Residuals vs Fitted plot looks like a random cloud of points (which is good). The residuals look relatively normally distributed (see the QQ plot), and apart from at the lower end of the fitted values, the variance is fairly constant across (see the Scale-Location plot). 
+
+```{r}
+#| eval: false
+plot(p_model)
+```
+```{r}
+#| echo: false
+par(mfrow=c(2,2))
+plot(p_model)
+par(mfrow=c(1,1))
+```
+
+
+:::
+:::panel
+#### Interpreting
+
+```{r}
+coef(p_model)
+```
+
+- `(Intercept)`: For someone of age zero, the estimated average score on the Perceptual Speed task is 77.2  
+- `age`: For each additional year of age, the estimated average score on the task is -0.695 points lower. 
+
+Note the intercept isn't very useful here at all. It estimates the score for a newborn (who wouldn't be able to complete the task anyway). Furthermore, it estimates a score of 77, when the task only scores up to 50. This is because these models are _linear_, so the lines just keep on going outside of the range.  
+
+```{r}
+summary(p_model)$r.squared
+```
+
+- age explains approximately 4.5% of the variance in scores of the perceptual speed task. 
+
+:::
+:::panel
+#### Visualising
+
+There are lots of ways to visualise models, and lots of packages that are designed to help us.  
+One such useful package:  
+```{r}
+library(sjPlot)
+plot_model(p_model, 
+           type = "eff",
+           show.data = TRUE)
+```
+
+`r optbegin("Optional: If we want to do it manually", olabel=F)`
+
+```{r}
+percdat %>% 
+  mutate(
+    # get the fitted values
+    fit = predict(p_model),
+    # get the SE at each level of fitted values
+    se = predict(p_model, se = TRUE)$se.fit,
+    # create confidence intervals
+    # df = 128 because we have 130 observations
+    c.lwr = fit - qt(.975, df = 128) * se,
+    c.upr = fit + qt(.975, df = 128) * se
+  ) %>%
+  # plot!
+  ggplot(., aes(x = age, y = percept))+
+  geom_point()+
+  geom_ribbon(aes(ymin = c.lwr, ymax = c.upr), alpha = .2) + 
+  geom_line(aes(y = fit))
+```
+
+`r optend()`
+
+:::
+:::panel
+#### Tabulating
+
+The same package (**sjPlot**) provides some nice quick ways to create regression tables (a bit like what we get from `summary(model)`, only presented a lot more nicely!)  
+
+```{r}
+library(sjPlot)
+tab_model(p_model)
+```
+
+:::
+:::panel
+#### Writing up
+
+A total of `r nrow(percdat)` participants were included in the analysis, with ages ranging from `r min(percdat$age)` to `r max(percdat$age)` (Mean = `r round(mean(percdat$age),1)`, sd = `r round(sd(percdat$age),1)`). On average, participants scored `r round(mean(percdat$percept),1)` (SD = `r round(sd(percdat$percept),1)`) on the perceptual speed task. 
+
+A simple linear regression model was fitted, with scores on the perceptual speed task regressed on to age. A significant association was found, with scores on the task increasing by `r round(coef(p_model)[2],2)` with every year of age ($b = `r round(coef(p_model)[2],3)`$, $SE = `r round(summary(p_model)$coefficients[2,2],2)`$, $t(`r p_model$df.residual`)=`r round(summary(p_model)$coefficients[2,3],2)`$, $p = `r format.pval(summary(p_model)$coefficients[2,4], digits=3)`$), suggesting that perception may get worse in older age.   
+
+:::
+
+:::
 
 <div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>

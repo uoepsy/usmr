@@ -20,9 +20,16 @@ set.seed(017)
 
 # Covariance & Correlation  
 
+:::frame
+> **Research Question:** Is there a correlation between accuracy and self-perceived confidence of memory recall?  
+
 Our data for this walkthrough is from a (hypothetical) study on memory. Twenty participants studied passages of text (c500 words long), and were tested a week later. The testing phase presented participants with 100 statements about the text. They had to answer whether each statement was true or false, as well as rate their confidence in each answer (on a sliding scale from 0 to 100). The dataset contains, for each participant, the percentage of items correctly answered, and the average confidence rating. Participants' ages were also recorded.   
 
-Let's take a look at the relationships between the percentage of items answered correctly (`recall_accuracy`) and participants' average self-rating of confidence in their answers (`recall_confidence`): 
+The data are available at ["https://uoepsy.github.io/data/recalldata.csv](https://uoepsy.github.io/data/recalldata.csv).  
+
+:::
+
+Let's take a look visually at the relationships between the percentage of items answered correctly (`recall_accuracy`) and participants' average self-rating of confidence in their answers (`recall_confidence`). Let's also look at the relationship between accuracy and age.  
 
 ```{r}
 #| message: false
@@ -30,7 +37,7 @@ Let's take a look at the relationships between the percentage of items answered 
 library(tidyverse)
 library(patchwork)
 
-recalldata <- read_csv("https://uoepsy.github.io/data/recalldata.csv")
+recalldata <- read_csv('https://uoepsy.github.io/data/recalldata.csv')
 
 ggplot(recalldata, aes(x=recall_confidence, recall_accuracy))+
   geom_point() + 
@@ -73,53 +80,8 @@ cov(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
 
 :::
 
-`r optbegin("Optional: Manually calculating covariance", olabel=FALSE,toggle=params$TOGGLE)`
-1. Create 2 new columns in the memory recall data, one of which is the mean recall accuracy, and one which is the mean recall confidence. 
-```{r}
-recalldata <-
-  recalldata %>% mutate(
-    maccuracy = mean(recall_accuracy),
-    mconfidence = mean(recall_confidence)
-  )
-```
 
-2. Now create three new columns which are:
-
-    i. recall accuracy minus the mean recall accuracy - this is the $(x_i - \bar{x})$ part.   
-    ii. confidence minus the mean confidence - and this is the $(y_i - \bar{y})$ part.   
-    iii. the product of i. and ii. - this is calculating $(x_i - \bar{x})$$(y_i - \bar{y})$.    
-
-```{r}
-recalldata <- 
-  recalldata %>% 
-    mutate(
-      acc_minus_mean_acc = recall_accuracy - maccuracy,
-      conf_minus_mean_conf = recall_confidence - mconfidence,
-      prod_acc_conf = acc_minus_mean_acc * conf_minus_mean_conf
-    )
-
-recalldata
-```
-
-3. Finally, sum the products, and divide by $n-1$
-
-```{r}
-recalldata %>%
-  summarise(
-    prod_sum = sum(prod_acc_conf),
-    n = n()
-  )
-
-2243.46 / (20-1)
-```
-
-Which is the same result as using `cov()`:
-```{r}
-cov(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
-```
-`r optend()`
-
-`r optbegin("Optional: Covariance explained visually", olabel=FALSE,toggle=params$TOGGLE)`
+`r optbegin("Covariance explained visually", olabel=FALSE,toggle=params$TOGGLE)`
 ```{r}
 #| echo: false
 #| message: false
@@ -239,13 +201,60 @@ Now take another look at the formula for covariance:
 
 $$\mathrm{cov}(x,y)=\frac{\sum_{i=1}^n (x_{i}-\bar{x})(y_{i}-\bar{y})}{n-1}$$
   
-It is the sum of all these products divided by $n-1$. It is the average of the products! 
+It is the sum of all these products divided by $n-1$. It is the average of the products! Sort of like the average area of the rectangles!  
 `r optend()`
+
+`r optbegin("Optional: Manually calculating covariance", olabel=FALSE,toggle=params$TOGGLE)`
+1. Create 2 new columns in the memory recall data, one of which is the mean recall accuracy, and one which is the mean recall confidence. 
+```{r}
+recalldata <-
+  recalldata %>% mutate(
+    maccuracy = mean(recall_accuracy),
+    mconfidence = mean(recall_confidence)
+  )
+```
+
+2. Now create three new columns which are:
+
+    i. recall accuracy minus the mean recall accuracy - this is the $(x_i - \bar{x})$ part.   
+    ii. confidence minus the mean confidence - and this is the $(y_i - \bar{y})$ part.   
+    iii. the product of i. and ii. - this is calculating $(x_i - \bar{x})$$(y_i - \bar{y})$.    
+
+```{r}
+recalldata <- 
+  recalldata %>% 
+    mutate(
+      acc_minus_mean_acc = recall_accuracy - maccuracy,
+      conf_minus_mean_conf = recall_confidence - mconfidence,
+      prod_acc_conf = acc_minus_mean_acc * conf_minus_mean_conf
+    )
+
+recalldata
+```
+
+3. Finally, sum the products, and divide by $n-1$
+
+```{r}
+recalldata %>%
+  summarise(
+    prod_sum = sum(prod_acc_conf),
+    n = n()
+  )
+
+2243.46 / (20-1)
+```
+
+Which is the same result as using `cov()`:
+```{r}
+cov(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
+```
+`r optend()`
+
   
 :::sticky
 <center> __Correlation - $r$__ </center>  
 <br>
-You can think of correlation as a standardized covariance. It has a scale from negative one to one, on which the distance from zero indicates the strength of the relationship.  
+You can think of correlation as a standardised covariance. It has a scale from negative one to one, on which the distance from zero indicates the strength of the relationship.  
 Just like covariance, positive/negative values reflect the nature of the relationship.  
 
 The __correlation coefficient__ is a standardised number which quantifies the strength and direction of the **linear** relationship between two variables. In a population it is denoted by $\rho$, and in a sample it is denoted by $r$.  
@@ -309,7 +318,7 @@ cor(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
 
 Now that we've seen the formulae for _covariance_ and _correlation_, as well as how to quickly calculate them in R using `cov()` and `cor()`, we can use a statistical test to establish the probability of finding an association this strong by chance alone.  
 
-:::frame
+:::statbox
 __Hypotheses__  
 
 The hypotheses of the correlation test are, as always, statements about the _population_ parameter (in this case the correlation between the two variables in the population - i.e., $\rho$).  
@@ -324,25 +333,26 @@ a. $H_1: \rho > 0$ There is a positive linear relationship between $x$ and $y$.
 b. $H_1: \rho < 0$ There is a negative linear relationship between $x$ and $y$.
 c. $H_1: \rho \neq 0$ There is a linear relationship between $x$ and $y$.  
   
-:::
 
-:::frame
 __Test Statistic__  
 
 The __test statistic__ for this test here is _another_ $t$ statistic, the formula for which depends on both the observed correlation ($r$) and the sample size ($n$):
 
 $$t = r \sqrt{\frac{n-2}{1-r^2}}$$
 
-:::
-
-:::frame
 __p-value__  
 
 We calculate the p-value for our $t$-statistic as the long-run probability of a $t$-statistic with $n-2$ degrees of freedom being less than, greater than, or more extreme in either direction (depending on the direction of our alternative hypothesis) than our observed $t$-statistic.  
-:::
 
+__Assumptions__  
 
-:::frame
+For a test of Pearson's correlation coefficient $r$, we need to make sure a few conditions are met:  
+
++ Both variables are quantitative
++ Both variables should be drawn from normally distributed populations.
++ The relationship between the two variables should be linear.  
+
+:::rtip
 **In R**  
 We can test the significance of the correlation coefficient really easily with the function `cor.test()`:  
 
@@ -368,19 +378,10 @@ tstat = r * sqrt((n - 2) / (1 - r^2))
 #calculate p-value for t, with df = n-2 
 2*(1-pt(tstat, df=n-2))
 ```
-
-:::frame
-__Assumptions__  
-
-For a test of Pearson's correlation coefficient $r$, we need to make sure a few conditions are met:  
-
-+ Both variables are quantitative
-+ Both variables should be drawn from normally distributed populations.
-+ The relationship between the two variables should be linear.  
+`r optend()`
 
 :::
 
-`r optend()`
 
 <div class="divider div-transparent div-dot"></div>
 

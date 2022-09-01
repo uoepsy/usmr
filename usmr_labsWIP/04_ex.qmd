@@ -2,7 +2,7 @@
 title: "Week 4 Exercises: Chi-Square Tests"
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -13,26 +13,23 @@ params:
 source('assets/setup.R')
 library(tidyverse)
 library(patchwork)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
 set.seed(017)
-survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv") 
+survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv") 
 ```
 
-# Course Survey Data
+# Birth-Months
 
 :::frame
 
-TODO update on new survey data 
+> **Research Question:** Are people more likely to be born in certain months than others?  
 
-As you may remember, in the survey we asked students to complete in welcome week, one of the questions concerned the month in which you were born. You can download the data from https://uoepsy.github.io/data/surveydata_allcourse.csv.  
+As you may remember, in the survey we asked students to complete in welcome week, one of the questions concerned the month in which you were born. You can download the data from [https://uoepsy.github.io/data/surveydata_allcourse22.csv](https://uoepsy.github.io/data/surveydata_allcourse22.csv).  
 
-We need to make sure we know how many observations we have. While there are currently `r nrow(survey_data)` observations in our sample, we may have missing data in our variable of interest! 
-
-We can use filter to remove any which are missing (or `NA`s).  
-Take a bit of time to look at what each bit of this does. To help figure it out, try seeing what `is.na(c(NA,1,2))` does. Then try `!is.na(c(NA,1,2))`.  
 ```{r}
-survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv") 
-survey_data <-
-  survey_data %>% filter(!is.na(birthmonth))
+survey_data <- 
+  read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv")
 ```
 :::
 
@@ -49,35 +46,12 @@ You can do this quickly with `barplot()` and `table()`, or you could create try 
 `r qend()`
 
 `r solbegin(show=TRUE, toggle=params$TOGGLE)`
-The quick and dirty way:
+The quick and dirty way to plot:
 ```{r}
 barplot(table(survey_data$birthmonth))
 ```
 
 A ggplot option:
-```{r}
-ggplot(data = survey_data, aes(x = birthmonth)) +
-    geom_bar() +
-    labs(x = "- Birth Month -")
-```
-To order the months correctly, we need to make the "birthmonth" variable a *factor* (a categorical variable), and order the levels:
-```{r}
-# we can make use of month.abb which is the abbreviated months in R
-month.abb
-# but we want them all lower case:
-tolower(month.abb)
-
-#This is one way to do it
-survey_data$birthmonth <- factor(survey_data$birthmonth, levels = tolower(month.abb), ordered=T)
-
-# and this is another (the tidyverse way):
-survey_data <-
-  survey_data %>%
-    mutate(
-      birthmonth = fct_relevel(factor(birthmonth), tolower(month.abb))
-    )
-```
-Now when we plot it, they're in the right order!
 ```{r}
 ggplot(data = survey_data, aes(x = birthmonth)) +
     geom_bar() +
@@ -106,24 +80,30 @@ $$
 `r solend()`
 
 `r qbegin(3)`
-Given that there are there are `r nrow(survey_data)` people who entered their birth-month, how many observations would we *expect* to find with a birthday in January? And in February? ... and so on? 
+We can find out how many people have valid entries (i.e. not `NA`) in the birth-month variable:
+```{r}
+sum(!is.na(survey_data$birthmonth))
+```
+
+Given this information, how many observations would we *expect* to find with a birthday in January? And in February? ... and so on? 
 `r qend()`
 
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-We would expect $\frac{1}{12} \times$ `r nrow(survey_data)` = `r round(nrow(survey_data)/12,2)` observations in each month. 
+We would expect $\frac{1}{12} \times$ `r sum(!is.na(survey_data$birthmonth))` = `r round(sum(!is.na(survey_data$birthmonth))/12,2)` observations in each month. 
 `r solend()`
 
 `r qbegin(4)`
-The code below creates counts for each month: 
+The code below creates counts for each month. Before doing that, it removes the rows which have an NA in them for birthmonth: 
 ```{r}
 #| eval: false
 survey_data %>%
-    group_by(birthmonth) %>%
-    summarise(
-        observed = n()
-    )
+  filter(!is.na(birthmonth)) %>%
+  group_by(birthmonth) %>%
+  summarise(
+      observed = n()
+  )
 ```
-(A shortcut for this would be `survey_data %>% count(birthmonth)`)  
+(A shortcut for this would be `survey_data %>% filter(!is.na(birthmonth)) %>% count(birthmonth)`)  
 
 Add to the code above to create columns showing:
 
@@ -135,18 +115,20 @@ Add to the code above to create columns showing:
 Then calculate the $\chi^2$ statistic (the sum of the standardised squared differences).  
 If your observed counts matched the expected counts *perfectly*, what would the $\chi^2$ statistic be? 
 
+:::hints
+__Hint:__ This was all done in the manual example of a $\chi^2$ test in [4A #chi2-goodness-of-fit-test](04a_chisq.html#chi2-goodness-of-fit-test){target="_blank"}
+:::
+
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
-# the nrow() function tells us how many rows there are in the dataset!
-totaln <- nrow(survey_data)
-
 chi_table <- 
     survey_data %>%
+    filter(!is.na(birthmonth)) %>%
     group_by(birthmonth) %>%
     summarise(
         observed = n(),
-        expected = totaln/12,
+        expected = 391/12,
         diff = observed-expected,
         sq_diff = diff^2,
         std_sq_diff = sq_diff / expected
@@ -163,7 +145,7 @@ If all our observed counts are equal to our expected counts, then the `diff` col
 `r solend()`
 
 `r qbegin(5)`
-You can see the distribution of $\chi^2$ distributions with different degrees of freedom below.  
+You can see the distribution of $\chi^2$ statistics with different degrees of freedom below.  
 ```{r}
 #| label: fig-chidist
 #| echo: false
@@ -174,7 +156,7 @@ knitr::include_graphics("https://upload.wikimedia.org/wikipedia/commons/thumb/3/
 We can find out the proportion of the distribution which falls to either side of a given value of $\chi^2$ using `pchisq()`. We need to give it our calculated $\chi^2$ statistic, our degrees of freedom (`df`), which is equal to the number of categories minus 1. We also need to specify whether we want the proportion to the left (`lower.tail=TRUE`) or to the right (`lower.tail=FALSE`).  
 
 1. Using `pchisq()`, calculate the probability of observing a $\chi^2$ statistic as least as extreme as the one we have calculated.  
-2. Check that these results match with those provided by R's built-in function: `chisq.test(table(survey_data$birthmonth))`.  
+2. Check that these results match with those provided by R's built-in function: `chisq.test(table(survey_data$birthmonth))` (the `table` function will ignore NAs by default, so we don't need to do anything extra for this).    
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -230,14 +212,30 @@ The greatest *absolute* values are for `r names(presids)[1]` and `r names(presid
 
 `r solend()`
 
-`r qbegin(7)`
-According to the internet (that reliable source of information!), 76% of people in the world have brown eyes, 10% have blue, 5% hazel, 5% amber, 2% green, 1% grey, and 1% have some other eye colouring (red/violet/heterochromia).
+# Eye-Colours
 
+:::frame
+> **Research Question:** Do the proportions of people with different eye-colours correspond to those suggested by the internet? 
+
+According one part of the internet (that reliable source of information!), 76% of people in the world have brown eyes, 10% have blue, 5% hazel, 5% amber, 2% green, 1% grey, and 1% have some other eye colouring (red/violet/heterochromia).
+
+We'll use the same data from the course survey's here:
+```{r}
+survey_data <- 
+  read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv")
+```
+:::
+
+
+`r qbegin(7)`
 Perform a $\chi^2$ goodness of fit test to assess the extent to which our sample of students conform to this theorised distribution of eye-colours.  
+
+No need to do this manually - once is enough. Just go straight to using the `chisq.test()` function.  
 
 :::hints
 __Hint:__
 Try using `chisq.test(..., p = c(?,?,?,...) )`.  
+We saw this in the example goodness of fit test, [4A #example](04a_chisq.html#example){target="_blank"}  
 :::
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -268,7 +266,7 @@ barplot(prop.table(table(survey_data$eyecolour))*100)
 
 <div class="divider div-transparent div-dot"></div>
 
-# Jokes and Tips Data
+# Jokes and Tips
 
 
 :::frame
@@ -291,6 +289,14 @@ The dataset contains the variables:
 
 `r qbegin(9)`
 Produce a plot and a table to display the relationship between whether or not the customer left a tip, and what (if any) card they received alongside the bill.  
+
+Don't worry about making it all pretty. Mosaic plots in R are a bit difficult. 
+
+:::hints
+__Hint:__  
+`plot(table(...))` will give you something. You can see one in the example $\chi^2$ test of independence,[4A #example-1](04a_chisq.html#example-1){target="_blank"}.  
+:::
+
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
@@ -361,14 +367,72 @@ chisq.test(table(tipjoke$Card, tipjoke$Tip))
 
 # Some RMarkdown
 
+```{r}
+#| include: false
+pass_scores <- read_csv("https://uoepsy.github.io/data/pass_scores.csv")
+res2<-t.test(pass_scores$PASS, mu = 33, alternative = "less")
+```
+
+
+For one of the $t$-tests we saw in the previous week's exercises, we can use an RMarkdown document in which we write our results so that they get compiled to look nice and pretty:  
+
+::: {.panelset}
+
+::: {.panel}
+#### Writing this
+
+```{r echo=FALSE, out.width="1000px"}
+knitr::include_graphics("images/hypothesis/rmarkdownbacktick.png")
+```
+
+:::
+::: {.panel}
+#### Compiles to this
+
+:::frame
+A one-sided one-sample t-test was conducted in order to determine if the average score on the Procrastination Assessment Scale for Students (PASS) for a sample of `r nrow(pass_scores)` students at Edinburgh University was significantly lower ($\alpha = .05$) than the average score obtained during development of the PASS. 
+
+Edinburgh University students scored lower (Mean = `r mean(pass_scores$PASS) %>% round(2)`, SD = `r sd(pass_scores$PASS) %>% round(2)`) than the score reported by the authors of the PASS (Mean = 33). This difference was statistically significant (t(`r nrow(pass_scores)-1`)=`r res2$statistic %>% round(2)`, p < .05, one-tailed).  
+:::
+
+:::
+
+:::
+
+This is one of the huge benefits of RMarkdown. Imagine we collected more data - we wouldn't have to edit all the results, we could simply recompile and they would update for us!  
+Note how it works:  
+
+  - the code chunk saves the results of the `t.test()` function as a named object `res2`.
+  - in text, the backticks <code>&grave;r ... ... ... &grave;</code> are used to execute small bits of R code, and include the output within the text. For instance, the line <code>&grave;r res2\$statistic %>% round(2)&grave;</code> gets the t-statistic from the results, and rounds it to 2 decimal places, which get's printed out as `r res2[["statistic"]] %>% round(2)`. 
+  - the bits between the dollar signs, e.g. \$\\alpha\$ will get printed as mathematical symbols such as $\alpha$. 
+
+:::imp
+
+RMarkdown documents are __self-contained.__  
+
+You need to to put *everything* that is needed to reproduce your analysis *in the correct order*.  
+
+For instance, if you have used the console (bottom left window) to define an object `peppapig <- 30`, you will have an object in your environment (top right window) called "peppapig" which has the value 30.  
+
+If you were to refer to that object in your RMarkdown document, you will be able to run a line of code such as `peppapig/10` because it will find the "peppapig" object in **your** environment. __BUT__ you won't be able to compile the document because it "starts fresh" (i.e., compiles within its own environment). In order for it to compile, you would need to *define* what "peppapig" is **inside** your document, and **before** the document then refers to it. 
+
+The same applies with using functions in from packages. The RMarkdown document needs to know what packages to load before it uses functions from them. Just because *you* yourself have loaded a package in your session, it does not mean the compilation process for your RMarkdown has access to it. 
+
+:::
+
+If you want some extra explanations on these aspects of RMarkdown, then please see Lessons 0-3 of our [Rmd-bootcamp](https://uoepsy.github.io/scs/rmd-bootcamp/){target="_blank"}.  
+
 `r qbegin(12)`
 Can you create an RMarkdown document which:
 
-1. Reads in the https://uoepsy.github.io/data/TipJoke.csv data.
+1. Reads in the [https://uoepsy.github.io/data/TipJoke.csv](https://uoepsy.github.io/data/TipJoke.csv) data.
 2. Conducts and reports a $\chi^2$ test of independence examining whether telling a joke affect whether or not a waiter in a coffee bar receives a tip from a customer.
 3. Successfully compiles ("knits") into an **.html** file. 
 
 `r qend()`
+
+
+
 
 <div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
 

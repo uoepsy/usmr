@@ -2,7 +2,7 @@
 title: "Week 7 Exercises: Linear Regression"
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -17,12 +17,15 @@ set.seed(017)
 survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv") 
 ```
 
-Our data for these exercises is from an hypothetical study into income disparity for employees in a local authority. We're interested in investigating the link between the level of education and an employee’s income. Those with more formal education seem to be better paid. 
+
+# Income and Education
 
 :::frame
+> **Research Question:** is there an association between the level of education and an employee's income? 
+
 __Data: riverview.csv__  
 
-The riverview data, which come from [Lewis-Beck, 2015](https://methods.sagepub.com/book/applied-regression-an-introduction-second-edition), contain five attributes collected from a random sample of $n=32$ employees working for the city of Riverview, a hypothetical midwestern city in the US. The attributes include:  
+Our data for these exercises is from an hypothetical study into income disparity for employees in a local authority. The riverview data, which come from [Lewis-Beck, 2015](https://methods.sagepub.com/book/applied-regression-an-introduction-second-edition), contain five attributes collected from a random sample of $n=32$ employees working for the city of Riverview, a hypothetical midwestern city in the US. The attributes include:  
 
 - `education`: Years of formal education
 - `income`: Annual income (in thousands of U.S. dollars)
@@ -46,7 +49,7 @@ The data is available at [https://uoepsy.github.io/data/riverview.csv.](https://
 :::
 
 
-`r qbegin("A1")` 
+`r qbegin(1)` 
 Load the required libraries (probably just __tidyverse__ for now), and read in the riverview data to your R session.  
 `r qend()`
 
@@ -59,7 +62,7 @@ head(riverview)
 ```
 `r solend()`
 
-`r qbegin("A2")`  
+`r qbegin(2)`  
 Let us first visualise and describe the *marginal distributions* of those variables which are of interest to us. 
 These are the distribution of each variable (employee incomes and education levels) *without* reference to the values of the other variables.
 
@@ -116,7 +119,7 @@ The marginal distribution of education is unimodal with a mean of 16 years. Ther
 :::
 `r solend()`
 
-`r qbegin("A3")`  
+`r qbegin(3)`  
 After we've looked at the marginal distributions of the variables of interest in the analysis, we typically move on to examining *relationships* between the variables.  
   
 Visualise and describe the relationship between income and level of education among the employees in the sample.  
@@ -150,7 +153,7 @@ High incomes tend to be observed, on average, with more years of formal educatio
 The scatterplot does not highlight any outliers.
 :::
 
-To comment numerically on the strength of the linear association we might compute the correlation coefficient that we were introduced to in [Reading 5A](05a_covcor.html)
+To comment numerically on the strength of the linear association we might compute the correlation coefficient that we were introduced to in [5A: Covariance & Correlation](05a_covcor.html)
 ```{r}
 riverview %>%
   select(education, income) %>%
@@ -161,8 +164,14 @@ that is, $r_{\text{education, income}} = 0.79$
 
 `r solend()`
 
-`r qbegin("A4")`
-Using the `lm()` function, fit a linear model to the sample data, in which employee income is explained by education level. Assign it to a name to store it in your environment.
+`r qbegin(4)`
+Using the `lm()` function, fit a linear model to the sample data, in which employee income is explained by education level. Assign it to a name to store it in your environment.  
+
+:::hints
+__Hint:__  
+You can see how to fit linear models in R using `lm()` in [7A #fitting-linear-models-in-r](07a_slr.html#fitting-linear-models-in-r){target="_blank"}
+:::
+
 `r qend()`
 
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
@@ -172,20 +181,22 @@ model1 <- lm(income ~ 1 + education, data = riverview)
 ```
 `r solend()`
 
-`r qbegin("A5")`
+`r qbegin(5)`
 Interpret the estimated intercept and slope in the context of the question of interest.  
 
 :::hints
-Let's suppose we assigned our linear model object to the name "model1" in R. To obtain the estimated regression coefficients we can use it's name in various ways and with various functions. 
+__Hint:__ 
+We saw how to extract lots of information on our model using `summary()` (see [7A #model-summary](07a_slr.html#model-summary){target="_blank"}), but there are lots of other functions too.  
 
+If we called our linear model object "model1" in the environment, then we can use:  
 - type `model1`, i.e. simply invoke the name of the fitted model;
 - type `model1$coefficients`;
 - use the `coef(model1)` function;
 - use the `coefficients(model1)` function;
-- use the `summary(model1)` function and look under the "Estimate" column.
+- use the `summary(model1)$coefficients` to extract just that part of the summary.
 
-The estimated parameters returned by the above methods are all equivalent. However, `summary()` returns more information and you need to look under the column "Estimate".
 :::
+
 `r qend()`
 
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
@@ -210,7 +221,7 @@ The estimated increase in average income associated with a one year increase in 
 :::
 `r solend()`
 
-`r qbegin("A6")`
+`r qbegin(6)`
 Consider the following:  
 
 1. In fitting a linear regression model, we make the assumption that the errors around the line are normally distributed around zero (this is the $\epsilon \sim N(0, \sigma)$ bit.)  
@@ -218,6 +229,10 @@ Consider the following:
 
 We can obtain the estimated standard deviation of the errors ($\hat \sigma$) from the fitted model using `sigma()` and giving it the name of our model.  
 What does this tell us?  
+
+:::hints
+__Hint:__ see [7A #the-error](07a_slr.html#the-error){target="_blank"}.
+:::
 
 `r qend()`
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
@@ -234,10 +249,14 @@ Since $2 \hat \sigma = 2 (8.98) = 17.96$, we expect most (about 95\%) of the emp
 
 `r solend()`
 
-`r qbegin("A7")`
+`r qbegin(7)`
 Compute the model-predicted income for someone with 1 year of education.  
 
+:::hints
+__Hint:__ 
 Given that you know the intercept and slope, you can calculate this algebraically. However, try to also use the `predict()` function.  
+:::
+
 `r qend()`
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
 Using `predict()`, we need to give it our model, plus some new data which contains a person with only 1 year of education.  First we make a new dataframe with an education variable, with one entry which has the value 1, and then we give that to `predict()`:  
@@ -264,12 +283,14 @@ $$
 
 `r solend()`
 
-`r qbegin("A9")`
+`r qbegin(8)`
 Test the hypothesis that the population slope is zero --- that is, that there is no linear association between income and education level in the population.  
 
 :::hints
-__Hint:__ you don't need to *do* anything for this, you can find all the necessary information in `summary()` of your model
+__Hint:__ you don't need to *do* anything for this, you can find all the necessary information in `summary()` of your model.  
+See [7A #inference-for-regression-coefficients](07a_slr.html#inference-for-regression-coefficients){target="_blank"}.
 :::
+
 `r qend()`
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
 The information is already contained in the row corresponding to the variable "education" in the output of `summary()`, which reports the t-statistic under `t value` and the p-value under `Pr(>|t|)`:
@@ -280,17 +301,20 @@ summary(model1)
 Recall that the p-value `5.56e-08` in the `Pr(>|t|)` column simply means $5.56 \times 10^{-8}$. This is a very small value, hence we will report it as <.001 following the APA guidelines.
 
 :::int
-A significant association was found between level of education (in years) and income ($t(30) = 7.173,\ p < .001$, two-sided). 
+A significant association was found between level of education (in years) and income, with income increasing by on average \$2,651 for every additional year of education ($b = 2.65$, $SE = 0.37$, $t(30)=7.17$, $p<.001$). 
 :::
 
 `r solend()`
 
-`r qbegin("A10")`
+`r qbegin(9)`
 What is the proportion of the total variability in incomes explained by the linear relationship with education level?
 
 :::hints
-**Hint:** The question asks to compute the value of $R^2$, but you might be able to find it already computed somewhere (so much stuff is already in `summary()` of the model.
+**Hint:**  
+- The question asks to compute the value of $R^2$, but you might be able to find it already computed somewhere (so much stuff is already in `summary()` of the model.
+- See [7A #r2](07a_slr.html#r2){target="_blank"} if you're unsure about what $R^2$ is.    
 :::
+
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 For the moment, ignore "Adjusted R-squared". We will come back to this later on. 
@@ -304,8 +328,14 @@ Approximately 63\% of the total variability in employee incomes is explained by 
 
 `r solend()`
 
-`r qbegin("A11")`
-Look at the output of `summary()` of your model. Identify the relevant information to conduct an F-test against the null hypothesis that the model is ineffective at predicting income using education level.
+`r qbegin(10)`
+Look at the output of `summary()` of your model. Identify the relevant information to conduct an F-test against the null hypothesis that the model is ineffective at predicting income using education level.  
+
+:::hints
+__Hints:__  
+- [7A #the-f-statistic](http://localhost:3288/07a_slr.html#the-f-statistic){target="_blank"} will help.  
+:::
+
 `r qend()`
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
 ```{r}
@@ -326,18 +356,64 @@ The overall test of model utility was significant $F(1, 30) = 51.45, p < .001$, 
 
 
 
-`r qbegin()`
-TODO binary predictor
+`r qbegin(11)`
+Let's suppose instead of having measured education in years, researchers simply asked "have you had more than 18 years of education?", assuming this to be indicative of having a degree.  
+The code below creates a this new variable for us:  
+```{r}
+riverview <- riverview %>%
+  mutate(
+    degree = ifelse(education >= 18, "yes","no")
+  )
+```
+
+Fit the following model, and interpret the coefficients.  
+
+$$
+Income = b_0 + b_1 \ Degree + \varepsilon
+$$
+
+:::hints
+__Hint:__  
+For help interpreting the coefficients, see [7A #binary-predictors](07a_slr.html#binary-predictors){target="_blank"}.  
+:::
+
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+model2 <- lm(income ~ degree, data = riverview)
+summary(model2)
+```
+- `(Intercept)` = the estimated income of employees without a degree ($46,083$)
+- `degreeyes` = the estimated change in income from employees without a degree to employees with a degree 
 
+```{r}
+ggplot(riverview, aes(x = degree, y = income)) +
+  geom_boxplot()
+```
 `r solend()`
 
+# Basic Tests are Linear Models!
 
-`r qbegin()`
-t.test. does it match
+`r qbegin(12)`
+We've actually already seen a way to analyse questions of this sort ("is the average income different between those with and those without a degree?")  
+
+Run the following t-test, and consider the statistic, p value etc. How does it compare to the model in the previous question?  
+```{r}
+t.test(income ~ degree, data = riverview, var.equal = TRUE)
+```
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+It is identical! the $t$-statistics are the same, the p-values are the same, the degrees of freedom. Everything!  
+
+The two sample t-test is actually just a special case of the linear model, where we have a numeric outcome variable and a binary predictor! 
+
+__And...__ the one-sample t-test is the linear model without any predictors, so just with an intercept.  
+```{r}
+t.test(riverview$income, mu = 0)
+interceptonly_model <- lm(income ~ 1, data = riverview)
+summary(interceptonly_model)$coefficients
+```
+
 
 `r solend()`
 

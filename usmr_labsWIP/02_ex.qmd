@@ -3,7 +3,7 @@ title: "Week 2 Exercises: More R; Estimates & Intervals"
 reference-location: margin
 citation-location: margin
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -26,8 +26,10 @@ Anonymised data are available at [https://uoepsy.github.io/data/surveydata_allco
 Create a new variable in the dataset which indicates whether people are taller than 6 foot (182cm).
 
 :::hints
-You might use `mutate()`. Remember to make the changes apply to the objects in your environment, rather than just printing it out.  
-`data <- data %>% mutate(...)`
+You might want to use `mutate()`. Remember to make the changes apply to the objects in your environment, rather than just printing it out.  
+`data <- data %>% mutate(...)`  
+(see [2A #tidyverse-and-pipes](02a_measurement.html#tidyverse-and-pipes){target="_blank"})
+
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
@@ -48,7 +50,7 @@ What percentage of respondents to the survey are greater than 6 foot tall?
 
 :::hints
 Try `table()`, and then think about how we can convert the counts to percentages (what does `sum()` of the table give you?).  
-See also [the discussion of categorical data in Section 2A](02a_measurement.html#categorical){target="_blank"}.
+See also [2A #categorical](02a_measurement.html#categorical){target="_blank"}.
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
@@ -68,8 +70,8 @@ how many of USMR students in `r paste0(as.numeric(substr(Sys.Date(),1,4)),"/",as
 
 :::hints
 This will involve `filter`ing your data to current USMR students first.  
-In tidyverse you can make a table using `... %>% select(variable1, variable2) %>% table()`  
-You can also try `... %>% count(variable1, variable2)`
+In tidyverse you can make a table using `... %>% select(variable) %>% table()`  
+You can also try `... %>% count(variable)` to get the same information.  
 :::
 
 `r qend()`
@@ -89,15 +91,19 @@ Calculate the mean and standard deviation of heights of all respondents to the s
 Can you (also) do this using the tidyverse syntax?
 
 :::hints
-We can do it with `mean(data$height)`, but it will be useful to practice tidyverse style. You'll want to `summarise()` the data.  
-We're likely to have missing data in here, so `na.rm=TRUE` will be handy (see [Section 2A on numeric variables](02a_measurement.html#numeric){target="_blank"})
+We can do it with `mean(data$variable)`, but it will be useful to practice tidyverse style. You'll want to `summarise()` the data.  
+We're likely to have missing data in here, so `na.rm=TRUE` will be handy (see [2A #numeric](02a_measurement.html#numeric){target="_blank"})
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
-
+This returns us NA:
 ```{r}
 mean(surveydata$height)
-sd(surveydata$height)
+```
+So we need to make sure we use `na.rm = TRUE` (we can use `T` as a shorthand for `TRUE`).  
+```{r}
+mean(surveydata$height, na.rm = T)
+sd(surveydata$height, na.rm = T)
 
 surveydata %>% 
   summarise(
@@ -112,7 +118,7 @@ Plot the distribution of heights of all respondents.
 Try to make it 'publication ready'.  
 
 :::hints
-No `hist()` here, we're going to want **ggplot**, which was [introduced in Section 2A](02a_measurement.html#ggplot){target="_blank"}.  
+`hist()` won't cut it here, we're going to want **ggplot**, which was introduced in [2A #ggplot](02a_measurement.html#ggplot){target="_blank"}.  
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
@@ -131,10 +137,11 @@ ggplot(surveydata, aes(x=height)) +
 For respondents _from each of the different courses_, calculate the mean and standard deviation of heights.  
 
 :::hints
-This is just like an earlier question - we want to `summarise` our data. Only this time we need to `group_by` something else first.   
+This is just like question 4 - we want to `summarise` our data.   Only this time we need to `group_by` something else first.   
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+We're using the same code as we did for question 4, but we've added in one new line using `group_by()`.  
 ```{r}
 surveydata %>% 
   group_by(course) %>%
@@ -151,18 +158,20 @@ Plot the distributions of heights for each course.
 Based on your answer to the previous question, can you picture what the distributions are going to look like _before_ you plot them?  
 
 :::hints
-You'll probably want to add an extra `aesthetic` mapping from the `course` variable to some feature of your plot (e.g. colour).  
-Or try looking up the documentation for `?facet_wrap`. 
+Try looking up the documentation for `?facet_wrap`. It is an incredibly useful extension of ggplot which allows you to create the same plot for different groups.  
+
+You might also want to add an extra `aesthetic` mapping from the `course` variable to some feature of your plot (e.g. 'colour' or 'fill').  
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 ```{r}
-ggplot(surveydata, aes(x=height)) + 
+ggplot(surveydata, aes(x=height, fill = course)) + 
   geom_histogram(binwidth = 5) + 
   facet_wrap(~course) + 
   labs(x = "Height (cm)", 
        y = "Frequency", 
        title = "Heights of respondents to the survey") + 
+  guides(fill = "none") + 
   theme_minimal()
 ```
 
@@ -181,7 +190,8 @@ We can actually use this logic inside tidyverse functions like `summarise` and `
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 
-There are this _many_ people who are taller than me:
+There are this _many_ people who are taller than me. 
+We need to ignore the NAs again:  
 ```{r}
 sum(surveydata$height > 177, na.rm = T)
 ```
@@ -198,18 +208,17 @@ sum(surveydata$height > 177, na.rm = T) / nrow(surveydata)
 
 # Estimates & Intervals
 
-`r qbegin(9)`
-Suppose we are interested in how well people feel that they sleep?  
-
+For these next exercises we are going to be focusing on self-perceived sleep quality ratings. Our survey contains a set of respondents who completed the question below. We're going to use this sample to get an estimate of the sleep quality rating in the wider population.   
 ```{r}
 #| echo: false
 knitr::include_graphics("images/sleepquestion.png")
 ```
 
-We only asked this question to students in USMR in the 2022/23 academic year, so to make things easier, let's create a subset of the dataset which includes only those students. 
+`r qbegin(9)`
+We only asked the sleep quality rating question to students in USMR in the 2022/23 academic year, so to make things easier, let's create a subset of the dataset which includes only those students. 
 
 :::hints
-This will be some `filter`ing, and assigning (`usmrdata <-`) to a new name.
+This will need some `filter`ing, and assigning (`usmrdata <-`) to a new name.
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
@@ -217,6 +226,7 @@ This will be some `filter`ing, and assigning (`usmrdata <-`) to a new name.
 #| eval: false
 usmrdata <- surveydata %>% 
   filter(course == "usmr", year == "2022")
+dim(usmrdata)
 ```
 `r solend()`
 
@@ -229,7 +239,20 @@ For the USMR students in the 2022/23 academic cohort, calculate the following:
 - number of respondents who completed Sleep-Quality rating
 
 :::hints
-You can do this with things like `mean(data$variable)`, or you can do it all in tidyverse (see the example of `summarise` in [the intro to tidyverse in Section 2A](02a_measurement.html#tidyverse-and-pipes){target="_blank"}). If you do this all inside `summarise()` then you might find the function `n()` useful.
+You can do this with things like `mean(data$variable)`, or you can do it all in tidyverse (see the example of `summarise` in the intro to tidyverse: [2A #tidyverse-and-pipes](02a_measurement.html#tidyverse-and-pipes){target="_blank"}).  
+
+To find out how many in a variable are not NAs, we might need to use `is.na()`. 
+A little example for you to play with:  
+```{r}
+mynumbers <- c(1,5,NA,3,6,NA)
+# for each number, TRUE if it's an NA, otherwise FALSE
+is.na(mynumbers)
+# ! means "not", so this is asking if each number is "not" an NA
+!is.na(mynumbers)
+# how many non-NAs are there? 
+sum(!is.na(mynumbers))
+```
+
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
@@ -237,9 +260,10 @@ You can do this with things like `mean(data$variable)`, or you can do it all in 
 #| eval: false
 usmrdata %>% 
   summarise(
-    m_sleep = mean(sleeprating),
-    sd_sleep = mean(sleeprating),
-    n_sleep = n()
+    m_sleep = mean(sleeprating, na.rm = TRUE),
+    sd_sleep = mean(sleeprating, na.rm = TRUE),
+    n_sleep = sum(!is.na(sleeprating)), 
+    n_total = n() # n() will give the total count
   )
 ```
 
@@ -251,13 +275,13 @@ Using your answers to the previous question, construct a 95% confidence interval
 Why might it be a _bad_ idea to use this as an estimate of the average Sleep-Quality  rating of the general population?  
 
 :::hints
-The previous question gives you all the pieces that you need. You'll just need to put them together in the way seen in [Section 2B: Confidence Intervals](02b_sampling.html#confidence-intervals){target="_blank"}.  
+The previous question gives you all the pieces that you need. You'll just need to put them together in the way seen in [2B #confidence-intervals](02b_sampling.html#confidence-intervals){target="_blank"}.  
 
 Think about who makes up the sample (e.g. USMR students). Are they _representative_ of the population we are trying to generalise to?  
 :::
 
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
-
+TODO with data
 `r solend()`
 

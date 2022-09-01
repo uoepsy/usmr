@@ -8,6 +8,12 @@ newsurv <- newsurv[2:9]
 names(newsurv) <- c("pseudonym","birthmonth","ampm","height","eyecolour","catdog","sleeprating","threewords")
 newsurv$course = "usmr"
 newsurv$year = 2022
+newsurv$eyecolour <- tolower(newsurv$eyecolour)
+
+newsurv$birthmonth <- tolower(month.abb[which(newsurv$birthmonth == month.name)])
+
 
 updated <- bind_rows(prev,newsurv)
 write_csv(updated,"~/Desktop/uoepsy/data/surveydata_allcourse22.csv")
+
+
