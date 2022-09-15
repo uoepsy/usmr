@@ -1,0 +1,156 @@
+---
+title: "USMR live R: week 11"
+author: "USMR team"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+set.seed(0)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+
+We will first load the required package: tidyverse.
+
+```{r}
+library(tidyverse)
+```
+
+We will work with the class survey data:
+
+```{r}
+usmrsurv2 <- read_csv("https://uoepsy.github.io/data/usmrsurvey2.csv")
+```
+
+Check which variables were collected:
+
+```{r}
+names(usmrsurv2)
+```
+
+Give shorter names to some variables for ease of handling:
+
+```{r}
+names(usmrsurv2)[9:14] <- c("E","A","C","ES","I","LOC")
+
+summary(usmrsurv2)
+```
+
+```{r}
+summary(as.factor(usmrsurv2$gender))
+```
+
+Remember that the trick `1 * (condition`) transforms `TRUE/FALSE` to `1/0`
+
+```{r}
+usmrsurv2 <- usmrsurv2 %>% 
+  filter(gender != "non-binary") %>% 
+  mutate(is.female = 1*(gender=="female"))
+```
+
+Plot the indicator `is.female` as a function of `height`:
+
+```{r}
+usmrsurv2 %>% 
+  ggplot(aes(x=height, y=is.female)) +
+  geom_jitter(width=0, height=.1) +
+  geom_smooth(method="glm", method.args=list(family=binomial), colour="black") +
+  theme_classic()
+```
+
+
+## Model with height variable:
+
+```{r}
+model <- glm(is.female ~ height, family=binomial, data=usmrsurv2)
+
+summary(model)
+```
+
+Intercept = log odds of being female when height = 0.
+
+The interpretation of the intercept, involving height = 0, is not very meaningful. We can do better by mean-centering the height variable, leading to more meaningful estimates.
+
+
+## Model with mean-centred height variable:
+
+New plot:
+
+```{r}
+usmrsurv2 %>% 
+  ggplot(aes(x=height-mean(height), y=is.female)) +
+  geom_jitter(width=0, height=.1) +
+  geom_smooth(method="glm", method.args=list(family=binomial), colour="black") +
+  theme_classic()
+```
+
+First, create a new column in the data representing the mean-centred height:
+
+```{r}
+usmrsurv2 <- usmrsurv2 %>%
+  mutate(height_mc = height - mean(height))
+```
+
+```{r}
+model_mc <- glm(is.female ~ height_mc, family=binomial, data=usmrsurv2)
+
+summary(model_mc)
+```
+
+logit estimate for a participant having a height of 10 above the mean height:
+
+```{r}
+3.3746 + (-0.4191) * 10
+```
+
+predicted logit = 3.3746 + (-0.4191) * 10 = -0.8164
+
+```{r}
+exp(-0.8164) / (1 + exp(-0.8164))
+```
+
+predicted prob = exp(logit) / (1 + exp(logit)) = exp(-0.8164) / (1 + exp(-0.8164)) = 0.3065
+
+We can write a little function that takes any input and calls it x, and returns the transformation of x given by exp(x) / (1 + exp(x)). This is the transformation that goes from logit to prob, so we can call the function l2p:
+
+```{r}
+l2p <- function(x) {
+  exp(x) / (1 + exp(x))
+}
+```
+
+Apply this function to the logit computation:
+
+```{r}
+l2p(3.3746 + (-0.4191) * 10)
+```
+
+predicted prob = 0.3065
+
+
+Let's verify the computation using the predict() function. It takes two arguments: (1) the fitted model, and (2) the new data at which you wish to obtain a prediction.
+
+Create the new data, which contain the mean-centred height at which we want the prediction: 10. This is because we are interested in those having a height of 10 cm above the mean.
+
+```{r}
+newData <- tribble(
+  ~height_mc,
+  10
+)
+```
+
+Predict the logit:
+
+```{r}
+predict(model_mc, newdata = newData)   # by default type = "link"
+predict(model_mc, newdata = newData, type = "link")   # prediction in logit scale
+l2p(-0.8164805)   # Transform logit to prob
+```
+
+Directly predict the prob:
+
+```{r}
+predict(model_mc, newdata = newData, type = "response")   # prediction in probability scale
+```
+
+

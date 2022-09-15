@@ -1,0 +1,64 @@
+---
+title: "Chi and Tea"
+author: "Martin Corley"
+date: "13/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(digits=3)
+library(tidyverse)
+```
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec vel vestibulum nisl. Vivamus maximus scelerisque nisi at feugiat. Nulla tempor nulla vel euismod hendrerit. Pellentesque a nisl congue, placerat dui nec, iaculis purus. Sed dignissim imperdiet ultrices. Sed ipsum urna, molestie vitae odio sed, eleifend pulvinar justo. Suspendisse rhoncus condimentum mi ultrices sollicitudin. Nunc a orci consectetur, auctor enim non, pulvinar risus.
+
+Morbi felis purus, tincidunt vitae neque et, tincidunt sagittis diam. Aliquam eu luctus mauris. Vivamus tincidunt ligula a justo varius, dignissim fermentum libero posuere. Aliquam vestibulum diam ligula. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aenean ultrices lectus eget elit accumsan, vitae faucibus ex viverra. Pellentesque ac tempor ligula. Phasellus sit amet posuere orci. Phasellus elit elit, congue a orci nec, sodales luctus felis.
+
+```{r readdata}
+classdata <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse.csv") 
+classdata <- classdata %>% 
+  filter(!is.na(birthmonth)) %>%
+  mutate(isWinterBaby=(birthmonth %in%
+                         c('nov','dec','jan','feb','mar')))
+```
+
+Create contingency table to summarise data
+
+```{r}
+with(classdata, table(catdog,isWinterBaby))
+```
+
+```{r}
+plot(with(classdata, table(catdog,isWinterBaby)),
+     main="very grey mosaic")
+
+```
+Observed vs expected values
+
+```{r}
+t <- table(classdata$catdog,classdata$isWinterBaby)
+rowSums(t) %o% colSums(t) / sum(t) -> expected
+
+plot(as.table(expected))
+```
+Do Chi-Sq test
+```{r}
+chisq.test(t)
+```
+
+The p value for the chisquared test was `r chisq.test(t)$p.value`
+
+# t-tests
+
+
+```{r t}
+do_test <- function(effect=5, size=20) {
+  heights <- rnorm(size, 165, 12)
+  bigheights <- rnorm(size, 165+effect, 12)
+  t.test(heights,bigheights,paired=FALSE)$p.value < .05
+}
+
+sum(replicate(1000,do_test(effect=12,size=20)))/1000
+
+```
