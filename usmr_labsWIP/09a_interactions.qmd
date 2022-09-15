@@ -8,6 +8,32 @@ editor_options:
   chunk_output_type: console
 ---
 
+```{r}
+library(tidyverse)
+set.seed(993)
+contcont <- tibble(
+  x1 = rnorm(60),
+  x2 = rnorm(60),
+  y = .8*x1 + -2*x2 + .6*x1*x2 + rnorm(60)
+)
+
+contcat <- tibble(
+  x1 = rnorm(60),
+  x2 = sample(0:1,60,T),
+  y = -.8*x1 + 2*x2 - .6*x1*x2 + rnorm(60)
+)
+
+catcat <- tibble(
+  x1 = sample(0:1,60, T),
+  x2 = sample(0:1,60, T),
+  y = 2*x1 - 2*x2 -1*x1*x2 + rnorm(60)
+)
+```
+
+
+
+
+
 # holding constant
 
 plot eff for x2 = -3, 0, 3
@@ -17,6 +43,57 @@ what if we think the y~x1 is different depending on x2
  - examples panelset: cont cont, cont cat, cat cat. 
  - switch to eg: x1 eff is bigger the more x2 you are. 
   - how much bigger? we can model that
+
+
+
+```{r}
+fit<-lm(y~x1*x2, data=contcont)
+steps=50
+x1 <- with(contcont, seq(min(x1),max(x1),length=steps))
+x2 <- with(contcont, seq(min(x2),max(x2),length=steps))
+newdat <- expand.grid(x1=x1, x2=x2)
+y <- matrix(predict(fit, newdat), steps, steps)
+
+p <- persp(x1,x2,y, theta = -60,phi=20, col = NA)
+obs <- with(contcont, trans3d(x1,x2, y, p))
+pred <- with(contcont, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+#points(pred, col = "blue", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y)
+
+```
+
+```{r}
+plot(contcat$y~contcat$x1,col=ifelse(contcat$x2,"red","black"))
+abline(lm(y~x1,contcat[contcat$x2==0,]))
+abline(lm(y~x1,contcat[contcat$x2==1,]),col="red")
+```
+
+
+```{r}
+library(scatterplot3d)
+plt <- with(catcat,scatterplot3d(x1,x2,y, scale.y=.8,angle=-30,
+                                 x.ticklabs = c(0,NA,NA,NA,NA,1), 
+                                 y.ticklabs = c(0,NA,NA,NA,NA,1), 
+                                 main="y~x1*x2\n(x1 and x2 are categorical)"))
+fit = lm(y~x1*x2,catcat)
+pp <- expand_grid(x1=seq(0,1,.1), x2=seq(0,1,.1))
+pp$y <- predict(fit, pp)
+
+pp1 <- pp[pp$x2==0,]
+pp2 <- pp[pp$x2==1,]
+pp3 <- pp[pp$x1==0,]
+pp4 <- pp[pp$x1==1,]
+plt$points(pp1$x1,pp1$x2,pp1$y,type="l")
+plt$points(pp2$x1,pp2$x2,pp2$y,type="l")
+plt$points(pp3$x1,pp3$x2,pp3$y,type="l")
+plt$points(pp4$x1,pp4$x2,pp4$y,type="l")
+```
+
+
+
+
+
 
 # interactions
   
@@ -68,6 +145,30 @@ cat * cat : plot the various group means, and add some dotted lines to show the 
 
 
 
+
+```{r}
+fit = lm(y~x1*x2,catcat %>% mutate(across(x1:x2,factor)))
+sjPlot::plot_model(fit, type="int",show.data=T)+geom_line()
+
+# it's just viewing that cube from one side 
+library(scatterplot3d)
+plt <- with(catcat,scatterplot3d(x1,x2,y, scale.y=0,angle=90,
+                                 x.ticklabs = c(0,NA,NA,NA,NA,1), 
+                                 y.ticklabs = c(0,NA,NA,NA,NA,1), 
+                                 main="y~x1*x2\n(x1 and x2 are categorical)"))
+fit = lm(y~x1*x2,catcat)
+pp <- expand_grid(x1=seq(0,1,.1), x2=seq(0,1,.1))
+pp$y <- predict(fit, pp)
+
+pp1 <- pp[pp$x2==0,]
+pp2 <- pp[pp$x2==1,]
+pp3 <- pp[pp$x1==0,]
+pp4 <- pp[pp$x1==1,]
+plt$points(pp1$x1,pp1$x2,pp1$y,type="l")
+plt$points(pp2$x1,pp2$x2,pp2$y,type="l")
+plt$points(pp3$x1,pp3$x2,pp3$y,type="l")
+plt$points(pp4$x1,pp4$x2,pp4$y,type="l")
+```
 
 
 
