@@ -2,9 +2,10 @@ library(tidyverse)
 library(googlesheets4)
 newsurv <- read_sheet("14FA9d52K5NxyN160_9NU202YO_6pCoYGS4rvGXH8oq0")
 prev <- read_csv("C:/Users/jking34/Desktop/uoepsy/data/surveydata_allcourse22.csv")
+uprev <- read_csv("https://uoepsy.github.io/data/usmrsurvey2.csv")
 
 
-ipip <- read_csv("../../ipip.csv")
+ipip <- read_csv("C:/Users/jking34/Desktop/ipip.csv")
 ipip$construct = as.numeric(gsub("\\(|\\-|\\+|\\)","",ipip$scoring))
 ipip$rev = ifelse(grepl("-",ipip$scoring),1,0)
 
@@ -38,8 +39,8 @@ newsurv$loc <- rowSums(newsurv[,"loc2"]) +
 newsurv <- newsurv[,-c(16:71)]
 
 names(newsurv)[1:18] <- 
-  c("tstamp","pseudonym","birthmonth","ampm","height","eyecolour","catdog","sleeprating","threeword",
-    "feelings_stat","feelings_prog","software_stat","course_hopes","course_concerns","rm","spiritual","rm2","clarify")
+  c("tstamp","pseudonym","birthmonth","ampm","height","eyecolour","catdog","sleeprating","threewords",
+    "feelings_stat","feelings_prog","software_stat","course_hopes","course_concerns","rm","spirituality","rm2","clarify")
 
 newsurv$course = "usmr"
 newsurv$year = 2022
@@ -53,7 +54,5 @@ newsurv <- newsurv[c(2:8,16,9,19:26)]
 newsurv %>% select_if(is.numeric) %>%
   psych::pairs.panels()
 
-#updated <- bind_rows(prev,newsurv)
-#write_csv(updated,"~/Desktop/uoepsy/data/surveydata_allcourse22.csv")
-
-
+#updated <- bind_rows(prev,newsurv) %>% arrange(desc(year),desc(course))
+#write_csv(updated,"C:/Users/jking34/Desktop/uoepsy/data/surveydata_allcourse22.csv")

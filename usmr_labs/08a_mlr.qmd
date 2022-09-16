@@ -1,0 +1,906 @@
+---
+title: "8A: Multiple Linear Regression"
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(xaringanExtra)
+library(tidyverse)
+library(patchwork)
+xaringanExtra::use_panelset()
+```
+
+
+The simple linear regression model with a single predictor `lm(y ~ x1)` is a useful introduction to the idea of model-based thinking, but it's not clear how much benefit this gives us as it is actually equivalent to the basic statistical tests we have already seen. 
+
+:::statbox
+__Simple Statistical Tests as Regression Models__
+
+```{r}
+#| echo: false
+tribble(
+  ~`outcome (y)`, ~`predictor (x)`, ~`regression`, ~`equivalent to`,
+  "continuous","continuous","lm(y ~ x)","cor.test(x, y) and cor.test(y, x)",
+  "continuous","binary","lm(y ~ x)","t.test(y ~ x)",
+) %>% knitr::kable()
+```
+
+
+```{r}
+#| include: false
+set.seed(993)
+library(tidyverse)
+df <- 
+  tibble(
+    x_cont = rnorm(100),
+    x_cat = cut(x_cont, 2, labels = c(0,1)),
+    y = 1.2*x_cont + rnorm(100,0,6)
+  )
+```
+
+`r optbegin("Optional: correlation = regression", olabel=FALSE)`
+
+Remember, the covariance is a measure of the shared variance in two variables (i.e., how one variable varies with the other). However, it is hard to interpret because it is dependent on the units of the variables. Correlation is a _standardised_ way of expressing this. 
+
+One way to think about this is to remember that we can __standardise__ our variables (subtract each value from the mean and divide by the standard deviation (See, e.g. [2B #the-standard-normal-distribution](02b_sampling.html#the-standard-normal-distribution){target="_blank"})), which transforms our set of numbers so that they have a mean of zero and a standard deviation of one. If we standardise both variable $x$ and variable $y$, the covariance of $x_{standardised}$ and $y_{standardised}$ is the same as the correlation between $x$ and $y$ (see [5A #correlation](05a_covcor.html#correlation){target="_blank"}).  
+
+If you've been reading these "optional dropdowns", you may remember that the regression coefficient from `lm(y ~ x)` is _also_ the covariance between $x$ and $y$, simply rescaled to be the amount of change in $y$ when $x$ changes by 1 (see the optional dropdown in [7A #the-model](07a_slr.html#the-model){target="_blank"}).  
+
+So actually, all these metrics are pretty much the same thing, only scaled in different ways. And whether we perform a test of the relationship (e.g. test the correlation using `cor.test()`, or test of the regression slope from `lm(y~x)`), we're actually testing the same thing.  
+
+Note that the $t$-statistics and $p$-values are identical:  
+```{r}
+cor.test(df$x_cont, df$y)
+summary(lm(y ~ x_cont, data = df))$coefficients
+```
+
+In fact, the __"correlation coefficient"__ $r$ is equivalent to the __standardised__ regression slope of $y_{standardised} \sim b_0 + b_1 (x_{standardised})$. 
+
+`r optend()`
+
+`r optbegin("Optional: t.test = regression", olabel=FALSE)`
+We saw last week about when we have a linear regression model with one binary predictor, we interpret the regression coefficient as the difference in mean $y$ between the two levels of our predictor (see [7A #binary-predictors](07a_slr.html#binary-predictors){target="_blank"}).  
+
+We've actually seen this idea before. [3A #two-sample-t-test](03a_inference2.html#two-sample-t-test){target="_blank"} saw how we can use a $t$-test to test whether the mean of some variable is different between two groups.  
+
+These are actually just different expressions of the same thing. The $t$-statistics and $p$-values are identical:  
+```{r}
+t.test(df$y ~ df$x_cat, var.equal = TRUE)
+summary(lm(y ~ x_cat, data = df))$coefficients
+```
+
+__Note:__ The `t.test()` function allows us to perform a Welch t-test, which means we can relax the assumption of equal variance in the two groups. Simple linear regression does not allow us to do this, so if our research question is straightforward enough to be simply "is the mean of $y$ different between these two groups", then a Welch t-test _may_ be preferable. 
+
+`r optend()`
+
+:::
+
+The real power of regression models comes into effect when we start to concern ourselves with more than just "one outcome explained by one predictor".  
+  
+This week, enter... $x_2$!  
+
+We will initially look at the case of "one outcome, two predictors", but the beauty of this is that the logic scales up to however many predictor variables we want to include in our model.  
+
+
+```
+lm(y ~ x1 + x2 + ... + xp)
+```
+  
+
+# The Multiple Regression Model
+
+
+When we fitted the simple regression model with __one__ predictor: 
+$$
+y = b_0 + b_1(x) + \epsilon
+$$
+we were fitting a _line_ to a scatterplot of points that we plotted in _2 dimensions_ (an x-axis and a y-axis). 
+
+When we fit a multiple regression model with __two__ predictors:  
+$$
+y = b_0 + b_1(x_1) + b_2(x_2) + \epsilon
+$$
+we are fitting a __surface__ (or "plane") to a 3-dimensional cloud of datapoints (@fig-regsurf). There are three dimensions: x1, x2, and y.    
+```{r}
+#| label: fig-regsurf
+#| echo: false
+#| fig-cap: "Regression surface for y~x1+x2, from two different angles"
+#| message: false
+#| warning: false
+
+mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
+mwdata %>% rename(y=wellbeing,x1=outdoor_time,x2=social_int) -> mwdata
+fit<-lm(y~x1+x2, data=mwdata)
+steps=50
+x1 <- with(mwdata, seq(min(x1),max(x1),length=steps))
+x2 <- with(mwdata, seq(min(x2),max(x2),length=steps))
+newdat <- expand.grid(x1=x1, x2=x2)
+y <- matrix(predict(fit, newdat), steps, steps)
+
+par(mfrow=c(1,2))
+
+p <- persp(x1,x2,y, theta = 35,phi=10, col = NA)
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
+
+p <- persp(x1,x2,y, theta = -35,phi=10, col = NA)
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
+
+par(mfrow=c(1,1))
+```
+
+Don't worry about trying to figure out how to visualise it if we had more predictors! We can only conceive of 3 spatial dimensions.^[One could imagine this surface changing over time, which would bring in a 4th dimension, but beyond that, it's not worth trying!] However, the logic stays the same when we increase this to having $p$ predictors, but we have a model that is a $p$-dimensional surface, and each coefficient is the angle of that surface with respect to each predictor.  
+
+
+When we have two predictors, our model is now determined by three numbers:  
+
+- the __intercept__, denoted $b_0$.  
+This is the point at which the plane hits the y-axis (i.e. where $x_1=0$ __and__ $x_2=0$)
+- the __slope of x1__, in this case denoted $b_1$.  
+This is the angle of the regression plane with respect to the axis of $x_1$. It is the amount which the plane increases for every 1 increase in $x_1$.  
+- the __slope of x2__, in this case denoted $b_2$.  
+This is the angle of the regression plane with respect to the axis of $x_2$. It is the amount which the plane increases for every 1 increase in $x_2$.  
+
+
+
+:::rtip
+__Fitting Multiple Regression Models in R__ 
+
+As we did for simple linear regression, we can fit our multiple regression model using the `lm()` function. We can add as many explanatory variables as we like, separating them with a `+`.  
+
+```
+model_name <- lm(y ~ 1 + x1 + x2 + ... + xk, data = dataframe)
+```
+
+And we can use all the same functions that we have already seen such as `summary()`, `predict()`, `fitted()`, `coef()` etc.  
+
+```{r}
+#| include: false
+set.seed(85)
+mydata <- tibble(
+  x1 = rdunif(50,18,70),
+  x2 = round(rnorm(50,14,5)),
+  x3 = round(rnorm(50,0,1),2),
+  y = .15*x1 - .8*x2 + rnorm(50,0,7)
+)
+mydata$x3<-cut(mydata$x3,3,labels = c("level1","level2","level3"))
+#write_csv(mydata, "../../data/usmr_mlr.csv")
+```
+```{r}
+mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+eg_model <- lm(y ~ x1 + x2, data = mydata)
+summary(eg_model)
+```
+
+:::
+
+So __why__ is this a useful thing to do? There are two primary aims that might lead you to fit models with more predictors:  
+
+1. __Estimation:__ Our coefficients now estimate the association between each predictor and the outcome variable, _after accounting for variance explained by other predictors._  
+2. __Prediction:__ We can build a model that better predicts the outcome.  
+
+Typically, psychological research is more interested in _estimation_ of specific associations. Other areas (think industry/data science/machine learning et al.) may be more interested in building a model for a functional purpose - e.g. to predict what product on a website a user is going to click on. We'll take a look later on about some of the overall model metrics (like $R^2$ etc.), but we're going to first focus on the coefficients from multiple regression models.   
+
+<div class="divider div-transparent div-dot"></div>
+# Multiple Regression Coefficients
+
+The benefit of multiple regression models is that they allow us to exercise _statistical control_. 
+
+We often conduct research where we are interested mainly in one relationship, but we know that there are other things also at play - there are other variables that will probably strongly influence results if they aren't held constant. _Statistical control_ allows us to examine the relationship of interest _while holding constant_ these other variables. 
+
+When we have multiple predictor variables in our model, the coefficients we get out represent the association between the outcome $y$ and **the bit of each predictor variable that is unique from the other predictors**. 
+
+:::statbox
+__Terminology__ 
+
+As with all areas of statistics, people seem to use lots of different terms here. It can be confusing!    
+
+- **outcome/response/dependent variable**: variable on the left hand side of the model equation
+- **predictor:** any variable on the right hand side of the model equation
+- **focal predictor/independent variable:** the predictor of interest
+- **covariates/confounders/control variables:** other variables that we are less interested in but believe to relevant to how the data comes about  
+
+:::
+
+A common way to build this intuition is to consider a Venn diagram with a circle showing the variance in each variable. @fig-vennslr shows a simple linear regression with one predictor (i.e. `lm(y ~ x1)`). The circle for $y$ shows the total variance in $y$ (the same for the $x_1$ circle). The overlap between circles (labelled "A") shows the variance in $y$ that is explained by $x_1$ (i.e. the covariance).  
+
+```{r}
+#| label: fig-vennslr
+#| fig-cap: "Venn Diagram for Simple Regression y ~ x1"
+#| echo: false
+knitr::include_graphics("images/mlr/venn_slr.png")
+```
+
+When we add in a new predictor, $x_2$, where do we add it? If $x_1$ and $x_2$ are _completely_ uncorrelated with one another, then it would look something like @fig-vennmlr1, where there is no overlap between the $x_1$ and $x_2$ circles. The total variance explained in $y$ by both predictors is $A + B$, and in this case, nothing changes in our estimate of the relationship between $y$ and $x_1$. It's just the same as before (the area labelled "A" is the same in both @fig-vennslr and @fig-vennmlr1). 
+
+
+```{r}
+#| label: fig-vennmlr1
+#| fig-cap: "Venn Diagram for Multiple Regression y ~ x1 + x2 where x1 and x2 are completely uncorrelated"
+#| echo: false
+knitr::include_graphics("images/mlr/venn_mlr1.png")
+```
+
+However, in practice the predictors in our regression model are likely to overlap a bit (it's hard to find additional predictor variables that are not correlated with other predictors). In this case, our Venn diagram is going to look like @fig-vennmlr2. The correlation between $x_1$ and $x_2$ is shown by the overlap of those two circles (the area $C + D$ in the diagram). 
+The total variance explained in $y$ is now separated into the areas $A + B + C$ (and $E$ is the _unexplained_ variance - the residuals).  
+  
+Areas $A$ and $B$ are no longer the same as in the previous diagrams - there's a little bit (area $C$) that we don't want to double count in its explanatory power as it can't be attributable to specifically one variable or the other.  
+
+```{r}
+#| label: fig-vennmlr2
+#| fig-cap: "Venn Diagram for Multiple Regression y ~ x1 + x2 where x1 and x2 are somewhat correlated"
+#| echo: false
+knitr::include_graphics("images/mlr/venn_mlr2.png")
+```
+
+- $A$ is the variance in $y$ _uniquely_ explained by $x_1$  
+- $B$ is the variance in $y$ _uniquely_ explained by $x_2$
+- $C$ is the variance in $y$ that is explained by both $x_1$ and $x_2$ but not attributable to either one uniquely.  
+
+The coefficients (one for each predictor) from our multiple regression model `lm(y ~ x1 + x2)` reflect the areas $A$ and $B$, scaled to be the "change in $y$ associated with a one unit change in [predictor], holding [other predictors] constant".   
+
+:::sticky
+__Interpreting multiple regression coefficients__  
+
+The parameters of a multiple regression model are:
+
++ $b_0$ (The intercept);
++ $b_1$ (The slope across values of $x_1$);
++ ...  
++ ...
++ $b_k$ (The slope across values of $x_k$);
++ $\sigma$ (The standard deviation of the errors).
+
+<br>
+You'll hear a lot of different ways that people explain multiple regression coefficients. For the model $y = b_0 + b_1(x_1) + b_2 (x_2) + \epsilon$, we might hear $b_1$ (the coefficient for $x_1$), described as:
+  
+the increase in $y$ for a one unit increase in $x_1$ when...
+
+- holding $x_2$ constant.
+- controlling for differences in $x_2$.
+- partialling out the effects of $x_2$.
+- holding $x_2$ equal. 
+- accounting for effects of $x_2$.
+
+What exactly do all these mean? If we return to our regression surface, our coefficients are the angles of this surface. We can see that as $x_1$ increases, the surface goes up. This increase is the same no matter where on $x_2$ we are (i.e. the angle doesn't change as we move up $x_2$).  
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+mwdata = read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+fit<-lm(y~x1+x2, data=mwdata)
+steps=50
+x1 <- with(mwdata, seq(min(x1),max(x1),length=steps))
+x2 <- with(mwdata, seq(min(x2),max(x2),length=steps))
+newdat <- expand.grid(x1=x1, x2=x2)
+y <- matrix(predict(fit, newdat), steps, steps)
+p <- persp(x1,x2,y, theta = -140,phi=10, col = NA,zlim=c(min(mwdata$y),max(mwdata$y)))
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+#points(pred, col = "blue", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
+```
+
+```{r}
+#| eval: false
+mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+eg_model <- lm(y ~ x1 + x2, data = mydata)
+summary(eg_model)
+```
+```
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)   
+(Intercept) -2.39138    3.67735  -0.650  0.51867   
+x1           0.17570    0.06435   2.730  0.00888 **
+x2          -0.64756    0.19959  -3.244  0.00217 **
+```
+
+
+Imagine a person who scores 3 on $x_1$. what is the estimated change in $y$ if they scored 4 instead? The coefficient for $x_1$ tells us how much their score on $y$ would increase by 0.176 _provided they don't also change on $x_2$._ So we are moving along the regression surface in the $x_1$ direction. This makes sense, because if they _also_ changed on $x_2$, then we would expect their score on $y$ to change because of this too (i.e. we would be moving diagonally on the surface).  
+
+:::
+
+:::sticky
+__Visualising Associations__ 
+
+The associations we get out from our coefficients are conditional upon holding constant other predictors. How are we supposed to visualise this?  
+
+Three-dimensional plots like the ones above are lovely, but a) they're difficult to make and b) they only work when there is _one_ other predictor variable being controlled for.  
+
+The typical way to plot these associations is to make a 2-dimensional figure that shows the _model estimated_ increase in $y$ across values of $x$. Notice the use of "model estimated" - we are visualising the model, _not_ the data.  
+
+Luckily, the __sjPlot__ package can make it very easy for us to create plots of model estimated effects. We need to give it the model, the type of thing we want plotted (in this case "eff" for "effect"), and the relevant predictor term (in this case "x1"):  
+
+```{r}
+#| fig-height: 2.5
+mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+eg_model <- lm(y ~ x1 + x2, data = mydata)
+
+library(sjPlot)
+plot_model(fit, type = "eff", terms = "x1")
+```
+
+It might help to think of this as if we are just tilting the our view of the regression surface so that we see it from only one edge: 
+
+```{r}
+#| echo: false
+mwdata = read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+fit<-lm(y~x1+x2, data=mwdata)
+steps=50
+x1 <- with(mwdata, seq(min(x1),max(x1),length=steps))
+x2 <- with(mwdata, seq(min(x2),max(x2),length=steps))
+newdat <- expand.grid(x1=x1, x2=x2)
+y <- matrix(predict(fit, newdat), steps, steps)
+par(mfrow=c(1,2))
+p <- persp(x1,x2,y, theta = 140,phi=10, col = NA,
+           zlim=c(min(mwdata$y),max(mwdata$y)))
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
+
+p <- persp(x1,x2,y, theta = 0,phi=18, col = NA,
+           zlim=c(min(mwdata$y),max(mwdata$y)))
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
+par(mfrow=c(1,1))
+```
+
+`r optbegin("Optional: manually making the plot", olabel=FALSE,toggle=params$TOGGLE)`
+
+We can extract the predicted values, and confidence bounds, using `predict()`. First we create a dataset of the values of the predictors that we wish to predict across. We'll predict $y$ for all values of $x1$ from 18 to 70 (the range of x1 in our data), and holding $x2$ as 12.6 (the mean of x2 in our data): 
+
+```{r}
+plotdata <- data.frame(
+  x1 = 18:70,
+  x2 = 12.6
+)
+```
+Then we add the predictions and the standard error  
+```{r}
+plotdata <- plotdata %>%
+  mutate(
+    predy = predict(eg_model, newdata=plotdata),
+    se = predict(eg_model, plotdata, se.fit = TRUE)$se
+  )
+```
+And use the standard error to create the confidence intervals. Doing $1.96 \times SE$ would get us close, but to do it properly we should use the $t$-distribution: 
+```{r}
+plotdata <- plotdata %>% 
+  mutate(
+    lower = predy - (qt(.975, df=47) * se),
+    upper = predy + (qt(.975, df=47) * se)
+  )
+```
+
+And finally we can plot! 
+
+```{r}
+ggplot(plotdata, aes(x = x1, y = predy, 
+                     ymin = lower, ymax = upper)) +
+  geom_line() + 
+  geom_ribbon(alpha = .3) # alpha sets the transparency
+```
+
+`r optend()`
+
+:::
+
+
+
+:::statbox
+__Example: Caffeine Heart Rates__
+
+We have a sample of 100 people, and we measure their resting heart rate and their caffeine consumption. We're interested in estimating how caffeine consumption is associated with differences in resting heart rate. However, we also know that heart rate increases with age _and_ we think that older people tend to drink less caffeine. So we want to isolate the differences in heart rate due to caffeine from those due to age.  
+
+```{r}
+#| include: false
+set.seed(38)
+hrcaff <- tibble(
+  age = rdunif(100,40,80),
+  caffeine = 150 + age*-.8 + rnorm(100,0,5),
+  rhr = 56 + age*.3 + 0*caffeine + rnorm(100,0,5)
+)
+# write_csv(hrcaff, "../../data/usmr_hrcaff.csv")
+# summary(lm(rhr ~ caffeine, data = hrcaff))$coefficients
+# summary(lm(rhr ~ age + caffeine, data = hrcaff))$coefficients
+```
+
+The toy dataset for our heart rate and caffeine example is at [https://uoepsy.github.io/data/usmr_hrcaff.csv](https://uoepsy.github.io/data/usmr_hrcaff.csv).  
+We can see plots of the different relationships in @fig-caffplot. It looks from these like heart rate _decreases_ with caffeine, and _increases_ with age. But note also that caffeine decreases with age. 
+```{r}
+#| label: fig-caffplot
+#| fig-cap: "bi-variate relationships between each of resting heart rate, caffeine consumption, and age"
+#| out-width: "100%"
+#| fig-height: 3.5
+#| code-fold: true
+hrcaff <- read_csv("https://uoepsy.github.io/data/usmr_hrcaff.csv")
+library(patchwork)
+ggplot(hrcaff, aes(x=caffeine,y=rhr))+
+  geom_point() +
+ggplot(hrcaff, aes(x=age,y=rhr))+
+  geom_point() +
+ggplot(hrcaff, aes(x=age,y=caffeine))+
+  geom_point()
+
+```
+
+If we fit a simple regression $heartrate \sim b_0 + b_1(caffeine)$, we get a nice line, with a significant negative slope, suggesting to us that drinking more caffeine is associated with lower heart rate! Good news for me, I'm on my 6th coffee today!  
+
+```{r}
+#| fig-height: 3
+#| code-fold: true
+ggplot(hrcaff, aes(x=caffeine,y=rhr))+
+  geom_point() +
+  geom_smooth(method=lm)
+```
+```
+lm(rhr ~ caffeine, data = hrcaff)
+...
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 101.1746     5.3424  18.938  < 2e-16 ***
+caffeine     -0.2600     0.0527  -4.933 3.31e-06 ***
+```
+
+But... what if the reason that people in our sample who drink more caffeine have lower heart rates _not_ because they drink more caffeine, but because they are older (and older people have lower heart rates).  
+
+The coefficient for the association between caffeine and heart rate when we _also_ include age in as a predictor (`lm(rhr ~ age + caffeine)`), is no longer significant.  
+
+```
+lm(rhr ~ age + caffeine, data = hrcaff)
+...
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  41.8310    16.0000   2.614 0.010363 *  
+age           0.3914     0.1003   3.904 0.000175 ***
+caffeine      0.0933     0.1030   0.906 0.367398  
+```
+
+Why? Because after we take into account how old people are, knowing their caffeine consumption doesn't actually provide any information about their heart rate.  
+
+If it helps, we might think of this model as the diagram in @fig-vennhrcaff. When we don't have age in our model, then the estimated effect of caffeine on heart rate is the areas $B + C$. When we _do_ have age in the model, the variance in heart rate explained __uniquely__ by caffeine is just the tiny area $B$ (not a useful amount). 
+
+```{r}
+#| label: fig-vennhrcaff
+#| fig-cap: "lm(rhr ~ age + caffeine)"
+#| echo: false
+knitr::include_graphics("images/mlr/venn_hrcaff.png")
+```
+
+
+:::frame
+This example is a very extreme one where the relationship completely disappears. in real data associations tend to be more subtle/less clear cut. Including $x_2$ may increase or decrease the association between $y$ and $x_1$, depending on the extent to which $x_1$ and $x_2$ are correlated. 
+:::
+
+:::
+
+
+`r optbegin("Optional: Control on the front-end", olabel=FALSE,toggle=params$TOGGLE)`
+
+If we haven't collected the data yet, one option is to __control by design__. This would involve trying to collect our data such that the predictor of interest is _independent_ from other possibly confounding variables.  
+
+We could do this by __randomisation__, where we randomly allocate people to different levels of our focal predictor, meaning that other variables will not be related to the focal predictor. This is what a "randomized control trial" does, randomly allocating people to take a drug or a placebo means that the two groups should be similar in aspects such as age.  
+
+Alternatively, we could do achieve it by __"case-matching"__. This involves finding people at different levels of the focal predictor who match on possible confounders. For example, for every 60 year old taking the drug, we also measure a 60 year old taking the placebo. 
+
+`r optend()`
+
+
+<div class="divider div-transparent div-dot"></div>
+# Multiple Categories = Multiple Regression
+
+We saw last week how to interpret simple regression models when there is a binary predictor (see [7A#binary-predictors](07a_slr.html#binary-predictors)). The addition of binary predictors in multiple regression models is pretty much the same - the coefficient will give us the estimated change in $y$ when moving from one level to the other^[and the intercept will be the estimated $y$ when all predictors are zero, where "zero" is the reference category of the binary predictor], _holding other predictors constant._  
+
+If you want a visual intuition to this, it is like a shift between two lines, or between two surfaces (depending on how many other predictors there are). It's actually just another dimension to the model, but a dimension that is on a __discrete__ scale - observations fall on 0 or 1, not on the continuum in between.  
+
+```{r}
+#| echo: false
+
+par(mfrow=c(1,2))
+
+set.seed(03)
+df <- tibble(
+  x1 = rnorm(50),
+  x2 = sample(0:1,50,T),
+  y = .3*x1 + 2*x2 + rnorm(50)
+)
+fit<-lm(y~x1+x2,df %>% mutate(x2=factor(x2)))
+
+library(scatterplot3d)
+plt <- with(df,scatterplot3d(x1,x2,y, scale.y=.8,angle=-30,x.ticklabs = c(0,NA,NA,NA,NA,1), main="y~x1+x2\n(x2 is categorical)"))
+
+pp <- expand_grid(x1=seq(-4,4,.1), x2=factor(0:1))
+pp$y <- predict(fit, pp)
+pp$x2 = as.numeric(pp$x2)-1
+pp1 <- pp[pp$x2==0,]
+pp2 <- pp[pp$x2==1,]
+plt$points(pp1$x1,pp1$x2,pp1$y,type="l")
+plt$points(pp2$x1,pp2$x2,pp2$y,type="l")
+
+
+df <- tibble(
+  x1 = rnorm(50),
+  x2 = rnorm(50),
+  x3 = sample(1:2,50,T),
+  y = 2*x1 + 4*x2 + 7*x3 + rnorm(50)
+)
+
+fit<-lm(y~x1+x2+x3,df)
+steps=20
+x1 <- with(df, seq(min(x1),max(x2),length=steps))
+x2 <- with(df, seq(min(x2),max(x2),length=steps))
+newdat <- expand.grid(x1=x1, x2=x2, x3=1)
+y <- matrix(predict(fit, newdat), steps, steps)
+p <- persp(x1,x2,y, theta = 35,phi=10, col = NA,zlim=c(-10,30), main="y~x1+x2+x3\n(x3 is categorical)")
+
+newdat <- expand.grid(x1=x1,x2=x2,x3=2)
+y <- matrix(predict(fit, newdat), steps, steps)
+par(new=TRUE)
+persp(x1,x2,y, theta = 35,phi=10, col = NA,zlim=c(-10,30),axes=F)
+
+par(mfrow=c(1,1))
+
+```
+
+What about when we have a predictor with more than two categories? We might have lots of different conditions in our experiment, or we might have observations from lots of different distinct groups of people. 
+
+Consider an example where we are investigating the brain mass of different species of animals. We might have a datset which looks like this:  
+
+```{r}
+#| include: false
+#| eval: false
+set.seed(50)
+mm <- MASS::Animals
+mm <- mm[c("Rhesus monkey","Potar monkey","Chimpanzee"), ]
+mm$n <- rdunif(3,8,14)
+mm$sbody <- c(2,7,6)
+mm$sbrain <- rep(100,3)
+
+mm <- 
+  mm %>% 
+  mutate(
+    species = row.names(mm),
+    mass_body = pmap(list(n,body,sbody),~round(rnorm(..1,..2,..3))),
+    mass_brain = pmap(list(n,brain,sbrain),~round(rnorm(..1,..2,..3))/1000)
+  ) %>%
+  select(species,mass_body,mass_brain) %>%
+  unnest() %>% 
+  sample_n(n())
+
+mm$mass_body = mm$mass_body + 10
+mm$mass_brain = mm$mass_brain + .2
+mm$species[mm$species=="Chimpanzee"]<-"Human"
+mm$mass_brain[mm$species=="Rhesus monkey"]<-mm$mass_brain[mm$species=="Rhesus monkey"]+.06
+# write_csv(mm, "../../data/usmr_braindata.csv")
+```
+
+```{r}
+#| eval: false
+braindata <- read_csv("https://uoepsy.github.io/data/usmr_braindata.csv")
+head(braindata)
+```
+
+```{r}
+#| echo: false
+braindata <- read_csv("https://uoepsy.github.io/data/usmr_braindata.csv")
+knitr::kable(head(braindata) %>% rbind(.,c("...","...","...")))
+```
+
+
+When we consider a model in which brain mass is predicted by species, the `species` variable contains more than just two categories. In our example it has 3: "Potar monkey", "Rhesus Monkey" and "Human".  
+
+When we fit the model `lm(mass_brain ~ species)`, the default way in which the `species` predictor is included in the model is by setting one category as the "reference level", and comparing each level to that reference level. So if the reference level is "Human", the coefficients we get out include the intercept (which is the estimated brain mass of humans); the estimated difference in brain mass when we move from humans to potar monkeys; and from humans to rhesus monkeys:   
+
+
+```
+lm(formula = mass_brain ~ species, data = mm)
+
+Coefficients:
+                     Estimate Std. Error t value Pr(>|t|)    
+(Intercept)           0.60271    0.02748  21.936  < 2e-16 ***
+speciesPotar monkey  -0.35735    0.04142  -8.627 7.38e-10 ***
+speciesRhesus monkey -0.15261    0.04257  -3.585   0.0011 ** 
+```
+
+```{r}
+#| include: false
+fit <- lm(mass_brain~species, braindata)
+ggplot(braindata, aes(x=species,y=mass_brain))+
+  geom_jitter(width=.3)+
+  geom_boxplot(alpha=.5)+
+  geom_segment(aes(x=1,xend=2,y=coef(fit)[1],yend=sum(coef(fit)[1:2])),col="blue",lwd=1) + 
+  geom_segment(aes(x=1,xend=3,y=coef(fit)[1],yend=sum(coef(fit)[c(1,3)])),col="blue",lwd=1)
+```
+
+
+Under the hood, what really gets inputted into our model is a set of variables that are all 0s and 1s (much like it did for a binary predictor). In the table below, the left column shows the original `species` variable, and the remaining columns are the variables that R actually inputs to the model when we give it `species` as a predictor. We can see that one category ("Human") is where all these are zeros. 
+
+```{r}
+#| echo: false
+cc = contrasts(factor(braindata$species))
+dimnames(cc)[[2]]<-paste0("species",dimnames(cc)[[2]])
+knitr::kable(rbind(cc,rep("...",3)))
+```
+
+For a categorical variable with $k$ levels, this is the same as adding $k-1$ predictors into our model. Each of $k-1$ predictors is actually just another dimension to the model:  
+
+```{r}
+#| echo: false
+fit<-lm(mass_brain ~ species,braindata)
+braindata2 <- as.data.frame(model.matrix(fit)[,2:3]) 
+braindata2$mass_brain = braindata$mass_brain
+
+
+library(scatterplot3d)
+plt <- with(braindata2,scatterplot3d(`speciesRhesus monkey`,`speciesPotar monkey`,mass_brain, scale.y=1.,angle=30,ylab="",
+                                     y.ticklabs = c(0,NA,NA,NA,NA,1),
+                                     x.ticklabs = c(0,NA,NA,NA,NA,1),
+                                     main = "mass_brain ~ species(human/potar monkey/rhesus monkey)"))
+text(x = 7.5, y = 0.5, "speciesPotar monkey", srt =15)
+
+
+pp1 <- tibble(
+  `speciesRhesus monkey`=0,
+  `speciesPotar monkey`=seq(0,1,.1),
+  y = seq(coef(fit)[1], coef(fit)[1]+coef(fit)[2],length.out=11)
+)
+pp2 <- tibble(
+  `speciesRhesus monkey`=seq(0,1,.1),
+  `speciesPotar monkey`=0,
+  y = seq(coef(fit)[1], coef(fit)[1]+coef(fit)[3],length.out=11)
+)
+
+plt$points(pp1$`speciesRhesus monkey`,pp1$`speciesPotar monkey`,pp1$y,type="l",col="blue")
+plt$points(pp2$`speciesRhesus monkey`,pp2$`speciesPotar monkey`,pp2$y,type="l",col="blue")
+```
+
+
+:::rtip
+R will default to using alphabetical ordering, hence the reference level being set as "Human". We could override this by making it a factor with an ordering to it's levels (see the use of `factor()` and `levels()` in [2A#categorical](02a_measurement.html#categorical){target="_blank"}). Functions like `fct_relevel()` might be handy too.  
+
+:::
+
+<div class="divider div-transparent div-dot"></div>
+# Model Evaluation
+
+## Adjusted $R^2$
+
+We know from our work on simple linear regression that the R-squared can be obtained as:
+$$
+R^2 = \frac{SS_{Model}}{SS_{Total}} = 1 - \frac{SS_{Residual}}{SS_{Total}}
+$$
+
+If we briefly return to the venn diagrams we used above, the $R^2$ is capturing all variance in $y$ that is explained by the predictors (including the overlapping bits between $x_1$ and $x_2$). It is the total variance in $y$ explained by all predictors combined. This is area $A + B + C$ in @fig-vennmlr3.  
+
+```{r}
+#| label: fig-vennmlr3
+#| fig-cap: "Venn Diagram for Multiple Regression y ~ x1 + x2 where x1 and x2. The R squared is areas A + B + C"
+#| echo: false
+knitr::include_graphics("images/mlr/venn_mlr2.png")
+```
+
+However, when we add more and more predictors into a multiple regression model, $SS_{Residual}$ cannot increase. In fact, it will _always_ decrease, regardless of how useful our new predictors are. This means that $R^2$ will _always increase_ (because $SS_{Total}$ is constant, so $1-\frac{SS_{Residual}}{SS_{Total}}$ will increase as $SS_{Residual}$ decreases). If we added randomly generated 1000 new predictors (completely random, so they have nothing to do with the outcome), then by chance alone they will explain _some_ variance in the outcome $y$. 
+
+An alternative, the Adjusted-$R^2$, does not necessarily increase with the addition of more explanatory variables, by including a penalty according to the number of explanatory variables in the model. It is not by itself meaningful, but can be useful in determining what predictors to include in a model. 
+
+$$
+\begin{align}
+& Adjusted{-}R^2=1-\frac{(1-R^2)(n-1)}{n-k-1} \\
+& \quad \\
+& \text{Where:} \\
+& n = \text{sample size} \\
+& k = \text{number of explanatory variables} \\
+\end{align}
+$$
+
+**In R,** you can view the mutiple and adjusted $R^2$ at the bottom of the output of `summary(<modelname>)`:
+
+```{r}
+#| eval: false
+mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+eg_model <- lm(y ~ x1 + x2, data = mydata)
+summary(eg_model)
+```
+```{r}
+#| echo: false
+knitr::include_graphics("images/mlr/output_mlr_rsq.png")
+```
+
+
+## Joint test
+
+As in simple linear regression, the F-statistic is used to test the null hypothesis that __all__ regression slopes are zero (it is just that now that we have multiple predictors, so "all" is more than 1).  
+
+$$
+\begin{aligned}
+H_0: & \text{the model is ineffective, } \\
+& b_1, ..., b_k = 0 \\
+H_1: &\text{the model is effective, } \\
+& \text{any of }b_1, ..., b_k \neq 0
+\end{aligned}
+$$
+
+The $F$-statistic is sometimes called the F-ratio because it is the ratio of the how much of the variation is explained by the model (per parameter) versus how much of the variation is unexplained (per remaining degrees of freedom). 
+
+We extend the formula for the $F$-statistic for simple regression to encompass situations where there are more predictors:  
+
+$$
+\begin{align}
+& F_{df_{model},df_{residual}} = \frac{MS_{Model}}{MS_{Residual}} = \frac{SS_{Model}/df_{Model}}{SS_{Residual}/df_{Residual}} \\
+& \quad \\
+& \text{Where:} \\
+& df_{model} = k \\
+& df_{error} = n-k-1 \\
+& n = \text{sample size} \\
+& k  = \text{number of explanatory variables} \\
+\end{align}
+$$
+
+**In R,** at the bottom of the output of `summary(<modelname>)`, you can view the F ratio, along with an hypothesis test against the alternative hypothesis that the at least one of the coefficients $\neq 0$ (under the null hypothesis that all coefficients = 0, the ratio of explained:unexplained variance should be approximately 1):
+
+```{r}
+#| eval: false
+mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+eg_model <- lm(y ~ x1 + x2, data = mydata)
+summary(eg_model)
+```
+```{r}
+#| echo: false
+knitr::include_graphics("images/mlr/output_mlr_f.png")
+```
+
+  
+
+<div class="divider div-transparent div-dot"></div>
+# Model Comparisons
+
+The $F$-statistic we see at the bottom of `summary(model)` is actually a comparison between two models: our model (with some explanatory variables in predicting $y$) and __the null model.__ In regression, the null model can be thought of as the model in which all explanatory variables have zero regression coefficients. It is also referred to as the __intercept-only model__, because if all predictor variable coefficients are zero, then the only we are only estimating $y$ via an intercept (which will be the mean: $\bar y$).  
+
+We aren't limited to comparing our model to the null model. We can compare all the intermediate models which vary in the complexity, from the null model to our full model.  
+
+
+:::statbox
+__Incremental F-test__  
+
+If (*and only if*) two models are __nested__ (one model contains all the predictors of the other and is fitted to the same data), we can compare them using an __incremental F-test.__  
+
+This is a formal test of whether the __additional predictors__ provide a better fitting model.  
+Formally this is the test of:  
+
++ $H_0:$ coefficients for the added/ommitted variables are all zero.
++ $H_1:$ at least one of the added/ommitted variables has a coefficient that is not zero. 
+
+:::rtip
+
+**In R,** we can conduct an incremental F-test by constructing two models, and passing them to the `anova()` function: 
+```{r}
+#| eval: false
+model1 <- lm( ... 
+model2 <- lm( ... 
+anova(model1, model2)
+```
+
+:::
+
+:::
+
+`r optbegin("Optional: F-ratio written for model comparison", olabel=FALSE, toggle=params$TOGGLE)`
+The F-ratio for comparing the residual sums of squares between two models can be written as:
+
+$$
+\begin{align}
+& F_{(df_R-df_F),df_F} = \frac{(SSR_R-SSR_F)/(df_R-df_F)}{SSR_F / df_F} \\
+& \quad \\
+& \text{Where:} \\
+& SSR_R = \text{residual sums of squares for the restricted model} \\
+& SSR_F = \text{residual sums of squares for the full model} \\
+& df_R = \text{residual degrees of freedom from the restricted model} \\
+& df_F = \text{residual degrees of freedom from the full model} \\
+\end{align}
+$$
+`r optend()`
+
+For example, we might compare a model with just one predictor, $x_1$, to a model with 3 predictors: $x_1,\ x_2,\ x_3$, thereby assessing the extent to which the variables $x_2$ and $x_3$ jointly improve model fit:  
+
+```{r}
+mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+eg_model1 <- lm(y ~ x1, data = mydata)
+eg_model2 <- lm(y ~ x1 + x2 + x3, data = mydata)
+anova(eg_model1, eg_model2)
+```
+
+<div class="divider div-transparent div-dot"></div>
+# Analysis of Variance
+
+Another thing we can do is take a single model and partition out variance explained by the _**incremental addition** of each predictor._ We can do that by building a model with `lm()` and then giving the `anova()` function that model.  
+
+It's very important to note that the __order matters__ here, because it will assess the improvement in model fit due to each predictor in turn: 
+
+1. $x_1$ vs no predictors
+2. then the addition of $x_2$ to the model with $x_1$
+3. then the addition of $x_3$ to the model with $x_1$ and $x_2$)  
+
+```{r}
+eg_model2 <- lm(y ~ x1 + x2 + x3, data = mydata)
+anova(eg_model2)
+```
+
+If it helps, we might think of this again in terms of a Venn diagram. Each line of the Analysis of Variance Table above corresponds to the area of one of the coloured areas in @fig-vennss1 (relative to the size of the white area labelled "E").  
+```{r}
+#| label: fig-vennss1
+#| fig-cap: "Venn Diagram showing incremental sums of squares"
+#| echo: false
+knitr::include_graphics("images/mlr/venn_ss_type1.png")
+```
+
+And this is really just a big set of model comparisons:
+```{r}
+#| eval: false
+eg_model0 <- lm(y ~ 1, data = mydata)
+eg_model1 <- lm(y ~ x1, data = mydata)
+eg_model2 <- lm(y ~ x1 + x2, data = mydata)
+eg_model3 <- lm(y ~ x1 + x2 + x3, data = mydata)
+anova(eg_model0, eg_model1, eg_model2, eg_model3)
+```
+
+
+Note that this is a very different thing from what we have been doing previously, which was examining the effect of all predictors __after__ considering all others (see @fig-vennss3). The area $C$ is the same in both @fig-vennss1 and @fig-vennss3, demonstrating that this approach is like considering each predictor as if it were the "last one in" in the incremental approach.  
+```{r}
+#| label: fig-vennss3
+#| fig-cap: "Venn Diagram showing partial ('last one in') sums of squares"
+#| echo: false
+knitr::include_graphics("images/mlr/venn_ss_type3.png")
+```
+
+Our interpretation of our regression coefficients matches the "last one in" approach shown in @fig-vennss1, but the hypothesis tests of coefficients are technically tests against the null hypothesis that that the coefficient is zero. The `drop1()` function allows us to conduct an analysis of variance using the "last one in" approach: 
+
+```{r}
+eg_model2 <- lm(y ~ x1 + x2 + x3, mydata)
+drop1(eg_model2, test = "F")
+```
+
+It might seem pointless to do this, given we can just look at our regression coefficients. In fact, the p-values for $x_1$ and $x_2$ are just the same as the p-values for our coefficients:
+
+```{r}
+#| eval: false
+summary(eg_model2)$coefficients
+```
+```
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept) -8.66876    4.77570  -1.815 0.076164 .  
+x1           0.12176    0.07469   1.630 0.110026    
+x2          -0.60298    0.23596  -2.555 0.014054 *  
+x3level2     7.59135    2.80859   2.703 0.009663 ** 
+x3level3    11.62405    3.22863   3.600 0.000789 ***
+```
+
+But note that $x_3$ is a categorical variable that has three levels: "level1", "level2", "level3", which means we get out _two_ coefficients that test _two_ specific differences (level2 vs level1; level3 vs level1). The analysis of variance approach (above) allows us to perform one single test of whether the entire grouping (of observations into the three levels) explains variance in the outcome variable.  
+
+The very big picture could be taken as:
+
+- Analysis of Variance: "are there group differences in $y$?" 
+- Coefficients: "what are the differences in $y$ when comparing specific groups?"
+
+
+
+
+
+

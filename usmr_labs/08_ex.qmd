@@ -1,0 +1,372 @@
+---
+title: "Week 8 Exercises: Multiple Regression"
+link-citations: yes
+params: 
+    SHOW_SOLS: FALSE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+set.seed(017)
+```
+
+# Wellbeing and Outdoor Time
+
+
+:::frame
+> **Research Question:** *after* taking into account differences due to people's level of social interactions, to what extent is well-being associated with the time people spend outdoors?  
+
+__Data: wellbeing.csv__  
+
+Researchers interviewed 32 participants, selected at random from the population of residents of Edinburgh & Lothians. They used the Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS), a self-report measure of mental health and well-being. The scale is scored by summing responses to each item, with items answered on a 1 to 5 Likert scale. The minimum scale score is 14 and the maximum is 70.  
+The researchers also asked participants to estimate the average number of hours they spend outdoors each week, the average number of social interactions they have each week (whether on-line or in-person), and whether they believe that they stick to a routine throughout the week (Yes/No).  
+
+The dataset is available at [https://uoepsy.github.io/data/wellbeing.csv](https://uoepsy.github.io/data/wellbeing.csv){target="_blank"} and contains five attributes: 
+
+- `wellbeing`: Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS), a self-report measure of mental health and well-being. The scale is scored by summing responses to each item, with items answered on a 1 to 5 Likert scale. The minimum scale score is 14 and the maximum is 70.  
+- `outdoor_time`: Self report estimated number of hours per week spent outdoors  
+- `social_int`: Self report estimated number of social interactions per week (both online and in-person)
+- `routine`: Binary Yes/No response to the question "Do you follow a daily routine throughout the week?"
+- `location`: Location of primary residence (City, Suburb, Rural)
+
+:::
+
+`r qbegin(1)`
+Read in the data, and explore and describe the variables and relationships that are relevant to the research question.   
+
+:::hints
+__Hints:__  
+
+You might want to:  
+
+- plot the _marginal distributions_ (the distributions of each variable in the analysis without reference to the other variables)
+- plot the _marginal relationships_ between the outcome variable and each of the explanatory variables.  
+- make a quick correlation matrix of the variables which are to be used in the analysis, and write a short paragraph describing the relationships.
+  - e.g. `cor(data[,c(1:4)])` will give us a matrix of correlations between each pair of the first 4 variables in the data  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+#| label: fig-marg
+#| fig-cap: "Marginal distribution plots of wellbeing sores, weekly hours spent outdoors, and social interactions"
+library(tidyverse)
+library(patchwork) #used to arrange plots
+
+mwdata <- read_csv("https://uoepsy.github.io/data/wellbeing.csv")
+
+wellbeing_plot <- 
+  ggplot(data = mwdata, aes(x = wellbeing)) +
+  geom_density() +
+  geom_boxplot(width = 1/250) +
+  labs(x = "Score on WEMWBS (range 14-70)", y = "Probability\ndensity")
+
+outdoortime_plot <- 
+  ggplot(data = mwdata, aes(x = outdoor_time)) +
+  geom_density() +
+  geom_boxplot(width = 1/200) +
+  labs(x = "Time spent outdoors per week (hours)", y = "Probability\ndensity")
+
+social_plot <- 
+  ggplot(data = mwdata, aes(x = social_int)) +
+  geom_density() +
+  geom_boxplot(width = 1/150) +
+  labs(x = "Number of social interactions per week", y = "Probability\ndensity")
+
+wellbeing_plot / outdoortime_plot / social_plot
+```
+
+:::int  
+
++ The marginal distribution of scores on the WEMWBS is unimodal with a mean of approximately `r round(mean(mwdata$wellbeing),1)`. There is variation in scores (SD = `r round(sd(mwdata$wellbeing),1)`).   
++ The marginal distribution of weekly hours spend outdoors is unimodal with a mean of approximately `r round(mean(mwdata$outdoor_time),1)` hours. There is variation in outdoor time (SD = `r round(sd(mwdata$outdoor_time),1)` hours).  
++ The marginal distribution of numbers of social interactions per week is unimodal with a mean of approximately `r round(mean(mwdata$social_int),1)`. There is variation in in numbers of social interactions per week (SD = `r round(sd(mwdata$social_int),1)`).  
+
+:::
+
+```{r}
+#| label: fig-mwdata-mlr-rels
+#| fig-cap: 'Scatterplots displaying the relationships between scores on the WEMWBS and a) weekly outdoor time (hours), and b) weekly number of social interactions'
+
+
+wellbeing_outdoor <- 
+  ggplot(data = mwdata, aes(x = outdoor_time, y = wellbeing)) +
+  geom_point(alpha = 0.5) +
+  labs(x = "Time spent outdoors per week (hours)", y = "Wellbeing score (WEMWBS)")
+
+wellbeing_social <- 
+  ggplot(data = mwdata, aes(x = social_int, y = wellbeing)) +
+  geom_point(alpha = 0.5) +
+  labs(x = "Number of social interactions per week", y = "Wellbeing score (WEMWBS)")
+
+wellbeing_outdoor | wellbeing_social
+```
+
+We can either use:
+```{r}
+#| eval: false
+# correlation matrix of the first 3 columns
+cor(mwdata[,1:3])
+```
+or:
+```{r}
+# select only the columns we want by name, and pass this to cor()
+mwdata %>% 
+  select(wellbeing, outdoor_time, social_int) %>%
+  cor()
+```
+
+
+:::int
+There is a moderate, positive, linear relationship between weekly outdoor time and WEMWBS scores for the participants in the sample.
+Participants' wellbeing scores tend to increase, on average, with the number of hours spent outdoors each week.  
+There is a moderate, positive, linear relationship between the weekly number of social interactions and WEMWBS scores for the participants in the sample.
+Participants' wellbeing scores tend to increase, on average, with the weekly number of social interactions. 
+There is also a weak positive correlation between weekly outdoor time and the weekly number of social interactions.  
+::: 
+
+`r solend()`
+
+`r qbegin(2)`
+Fit a regression model that you can use to answer the research question (make sure to give it a name to store it in your environment).   
+
+:::hints
+__Hints:__  
+
+$Wellbeing = b_0 \ + \ b_1 \cdot Social Interactions \ + \ b_2 \cdot Outdoor Time \ + \ \epsilon$
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+wbmodel <- lm(wellbeing ~ 1 + social_int + outdoor_time, data = mwdata)
+```
+`r solend()`
+
+`r qbegin(3)`
+Extract *and interpret* the parameter estimates (the coefficients) from your model.  
+
+:::hints
+__Hints:__
+
+- There's a comprehensive section on how we interpret multiple regression coefficients in [8A#multiple-regression-coefficients](08a_mlr.html#multiple-regression-coefficients){target="_blank"}
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+summary(wbmodel)
+```
+
+- $\hat \beta_0$ = `r round(coef(wbmodel)[1],2)`, the estimated average wellbeing score associated with zero hours of outdoor time and zero social interactions per week.  
+- $\hat \beta_1$ = `r round(coef(wbmodel)[2],2)`, the estimated increase in average wellbeing score associated with an additional social interaction per week (an increase of one), _holding weekly outdoor time constant_ (i.e., when the remaining explanatory variables are held at the same value or are fixed).
+- $\hat \beta_2$ = `r round(coef(wbmodel)[3],2)`, the estimated increase in average wellbeing score associated with one hour increase in weekly outdoor time, _holding the number of social interactions constant_. 
+
+`r solend()`
+
+`r qbegin(4)`
+Along with the p-values given by `summary()` that test the null hypothesis that each coefficient is equal to zero, we can obtain confidence intervals for our estimates to provide a range of plausible values for each coefficient. This may be useful if we want to focus more on the estimated value, rather than "is it zero or not?".  
+
+Look up the function `confint()` and use it to obtain some 95% Confidence Intervals for the coefficients. 
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+confint(wbmodel, level = 0.95)
+```
+:::int 
+
++ The average wellbeing score for all those with zero hours of outdoor time and zero social interactions per week is between `r round(confint(wbmodel, level=.95)[1,1],2)` and `r round(confint(wbmodel, level=.95)[1,2],2)`.  
++ When _holding weekly outdoor time constant_, each increase of one social interaction per week is associated with a difference in wellbeing scores between `r round(confint(wbmodel, level=.95)[2,1],2)` and `r round(confint(wbmodel, level=.95)[2,2],2)`, on average.  
++ When _holding the number of social interactions per week constant_, each one hour increase in weekly outdoor time is associated with a difference in wellbeing scores between `r round(confint(wbmodel, level=.95)[3,1],2)` and `r round(confint(wbmodel, level=.95)[3,2],2)`, on average.  
+
+:::
+
+`r solend()`
+
+`r qbegin(5)`
+Does your model provide a better fit to the data than a model with no explanatory variables? (i.e., test against the alternative hypothesis that at least one of the explanatory variables significantly predicts wellbeing scores). 
+
+:::hints
+__Hints:__ 
+
+- it's all in the `summary()`!!
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+summary(wbmodel)
+```
+
+:::int
+```{r echo=FALSE}
+mdl1<-wbmodel
+```
+Weekly social interactions and outdoor time explained `r paste0(round(summary(mdl1)$adj.r.squared*100,1),"%")` of the variance (adjusted $R^2$ =`r round(summary(mdl1)$adj.r.squared,3)`, $F$(`r paste(summary(mdl1)$fstatistic[2:3],collapse=",")`)=`r round(summary(mdl1)$fstatistic,1)[1]`, p`r map_chr(pf(summary(mdl1)$fstatistic[1],summary(mdl1)$fstatistic[2],summary(mdl1)$fstatistic[3], lower.tail = FALSE), ~ifelse(.<001,"<.001",paste0("=",round(.,2))))`)
+:::
+
+`r solend()`
+
+`r qbegin(6)`
+Just to prove it to ourselves, conduct a model comparison between your model and the "null model", and check that the $F$-statistic from the `summary()` of your model matches that from the comparison.
+
+:::hints
+__Hints:__
+
+- we talked about the 'null model', and conducting model comparison in [8A#model-comparisons](08a_mlr.html#model-comparisons){target="_blank"}.  
+- we can fit a model with no predictors such as `lm(wellbeing ~ 1, data = mwdata)`.  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+nullmodel <- lm(wellbeing ~ 1, data = mwdata)
+anova(nullmodel, wbmodel)
+```
+
+Matches that seen in the bottom of `summary(wbmodel)`:
+```
+F-statistic: 41.34 on 2 and 29 DF,  p-value: 3.226e-09
+```
+
+`r solend()`
+
+
+`r qbegin(7)`
+Check the assumptions of your model. 
+
+:::hints
+__Hints:__  
+
+- See [8B#assumptions](08b_assumptdiag.html){target="_blank"}  
+- You don't necessarily have to perform statistical tests of assumptions, but check the plots at the very least!
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+We only have $n=32$ observations here, so our plots might look a bit wobbly. I might perform some quick tests to reassure myself we're okay.
+```{r}
+#| echo: !expr c(2)
+par(mfrow=c(2,2))
+plot(wbmodel)
+par(mfrow=c(1,1))
+```
+
+```{r}
+shapiro.test(residuals(wbmodel))
+library(car)
+ncvTest(wbmodel)
+```
+
+We seem to be okay!  
+
+`r solend()`
+
+`r qbegin(8)`
+Check for influential observations.  
+
+:::hints
+__Hints:__ 
+
+- [8B#individual-case-diagnostics](08b_assumptdiag.html#individual-case-diagnostics){target="_blank"} covers a whole load of different metrics you might use. As a starting point, perhaps consider Cook's Distances plots, or use `influence.measures()` to get lots of info.  
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+Here are the Cook's Distance values:  
+```{r}
+plot(wbmodel, which = 4)
+```
+We can see that one observation (labelled 27) is a little bit higher than the rest. It's not hugely out of keeping with the others, so I might not be too worried.  
+
+It's not flagged by `influence.measures()`, but another observation is flagged, this time on the covratio metric (influence on the standard errors).  
+With only $32$ observations, excluding datapoints comes with a big reduction in statistical power. On balance I might report this influential point in the write up, but keep it in the analysis. This decision is also based on the distribution of covratio values - it doesn't look like one value is really that much higher than the others (it is simply above the internal cutoff that `influence.measures()` uses).  
+```{r}
+summary(influence.measures(wbmodel))
+hist(covratio(wbmodel), breaks=20)
+```
+`r solend()`
+
+
+
+`r qbegin(9)`
+Create a visualisation of the relationship between wellbeing and outdoor time, after accounting for social interactions.  
+
+:::hints
+__Hints:__
+
+- There's an example of visualising multiple regression coefficients in [8A#multiple-regression-coefficients](08a_mlr.html#multiple-regression-coefficients){target="_blank"}.  
+- to visualise just one association, you might need the `terms` argument in `plot_model()`. Don't forget you can look up the documentation by typing `?plot_model` in the console. 
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+library(sjPlot)
+plot_model(wbmodel, type = "eff",
+           terms = c("outdoor_time"), 
+           show.data = TRUE)
+```
+
+`r solend()`
+
+`r qbegin(10)`
+Create a regression table to present your results
+
+:::hints
+__Hints:__  
+
+- There is a useful function called `tab_model()`, also from the __sjPlot__ package. You can see it used in [7A#example](07a_slr.html#example){target="_blank"}.  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+tab_model(wbmodel)
+```
+
+`r solend()`
+
+# Rmd
+
+`r qbegin(11)`
+Let's put this all together.  
+
+Create an rmarkdown file that:
+
+1. Reads in data and fits the model
+2. Describes the research question and the analytical method used to address it
+3. Presents and interprets the results
+
+:::hints
+__Hints:__
+
+- You've actually done all of this already in the earlier questions, it's just a matter of shoving it in the .Rmd file and tidying it up.  
+
+:::
+
+`r qend()`
+
+
