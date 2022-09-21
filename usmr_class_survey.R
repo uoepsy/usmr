@@ -46,13 +46,23 @@ newsurv$course = "usmr"
 newsurv$year = 2022
 newsurv$eyecolour <- tolower(newsurv$eyecolour)
 newsurv$birthmonth <- sapply(newsurv$birthmonth, function(x) tolower(month.abb[which(x == month.name)]))
-
 names(newsurv)
 
 newsurv <- newsurv[c(2:8,16,9,19:26)]
+newsurv$pseudonym[lengths(newsurv$pseudonym) == 0] <- NA
+newsurv$pseudonym <- unlist(newsurv$pseudonym, use.names = FALSE)
+
 
 newsurv %>% select_if(is.numeric) %>%
   psych::pairs.panels()
 
+
+prev <- prev %>% filter(year!=2022)
+
+updated <- bind_rows(prev, newsurv) %>%
+  arrange(desc(year),desc(course)) 
+write_csv(updated,"C:/Users/jking34/Desktop/uoepsy/data/surveydata_allcourse22.csv")
+
 #updated <- bind_rows(prev,newsurv) %>% arrange(desc(year),desc(course))
 #write_csv(updated,"C:/Users/jking34/Desktop/uoepsy/data/surveydata_allcourse22.csv")
+updated %>% filter(year==2022)
