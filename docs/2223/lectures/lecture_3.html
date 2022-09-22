@@ -36,43 +36,72 @@ class: center, middle, inverse, title-slide
 
 
 
+# Today's Key Topics
 
++ One-tailed vs Two-tailed Hypotheses
+
++ Null vs Alternative Hypotheses
+
++ The Null Distribution
+
++ z-Scores
+
++ t-tests
+
++ `\(\alpha\)`
+
+---
 class: inverse, center, middle
 
 # Part 1
 
 ---
+
 # More about Height
 
 .pull-left[
-- last time we simulated the heights of a population of 10,000 people
++ Last time we simulated the heights of a population of 10,000 people
+  + `\(\bar{x}\)` = 170 cm
+  + `\(\sigma\)` = 12 cm
 
-- mean height ( `\(\bar{x}\)` ) was 170; standard deviation ( `\(\sigma\)` ) was 12.
-  
 
-```r
-curve(dnorm(x,170,12),from = 120, to = 220)
+```
+##   height
+## 1  178.8
+## 2  168.1
+## 3  174.1
+## 4  152.9
 ```
 
-![](lecture_3_files/figure-html/pop-1.svg)&lt;!-- --&gt;
+![](lecture_3_files/figure-html/unnamed-chunk-2-1.svg)&lt;!-- --&gt;
 ]
+
+--
 .pull-right[
++ This time, you'll learn how to compute the probability of randomly observing a specific value within the normal distribution
 .center[
-![:scale 70%](lecture_3_files/img/playmo_tms.jpg)
+&lt;img src="lecture_3_files/img/playmo_tms.jpg" width="65%" /&gt;
 ]]
 
+???
+More specifically, a more extreme value than your value of interest
 
 ---
 # How Unusual is Casper?
 
-
 .pull-left[
-- in his socks, Casper is 198 cm tall
+- In his socks, Casper is 198 cm tall
 
-- how likely would we be to find someone Casper's height in our population?
+- How likely would we be to find someone Casper's height in our population?
+
+.center[
+&lt;img src="lecture_3_files/img/playmo_tms.jpg" width="55%" /&gt;
 ]
+]
+
+
 .pull-right[
-![](lecture_3_files/figure-html/normvline-1.svg)&lt;!-- --&gt;
+![](lecture_3_files/figure-html/unnamed-chunk-5-1.svg)&lt;!-- --&gt;
 ]
 ???
 - we can mark Casper's height on our normal curve
@@ -80,44 +109,48 @@ curve(dnorm(x,170,12),from = 120, to = 220)
   + technically the line has "no width" so we can't calculate area
   + we need to reformulate the question
 ---
+
 # How Unusual is Casper (Take 2)?
 
 .pull-left[
-- in his socks, Casper is 198 cm tall
+- In his socks, Casper is 198 cm tall
 
-- how likely would we be to find someone Casper's height _or more_ in our population?
+- How likely would we be to find someone Casper's height **or taller** in our population?
+
+.center[
+&lt;img src="lecture_3_files/img/playmo_tms.jpg" width="55%" /&gt;
+]
+
+
 ]
 .pull-right[
-![](lecture_3_files/figure-html/normarea-1.svg)&lt;!-- --&gt;
+![](lecture_3_files/figure-html/unnamed-chunk-7-1.svg)&lt;!-- --&gt;
 ]
-
-
 ---
 count: false
 # How Unusual is Casper (Take 2)?
 
 .pull-left[
-- in his socks, Casper is 198 cm tall
+- In his socks, Casper is 198 cm tall
 
-- how likely would we be to find someone Casper's height _or more_ in our population?
+- How likely would we be to find someone Casper's height **or taller** in our population?
 
-- the area is 0.0098
+- The area is 0.0098
 
-- so the probability of finding someone in the population of Casper's height or greater is 0.0098 (or, `\(p=0.0098\)` )
+- So the probability of finding someone in the population of Casper's height or greater is 0.0098 (or, `\(p=0.0098\)` )
 ]
 .pull-right[
-![](lecture_3_files/figure-html/normarea2-1.svg)&lt;!-- --&gt;
+![](lecture_3_files/figure-html/unnamed-chunk-8-1.svg)&lt;!-- --&gt;
 ]
-
 ---
 # Area under the Curve
 
 .pull-left[
-- so now we know that the area under the curve can be used to quantify **probability**
+- So now we know that the area under the curve can be used to quantify **probability**
 
-- but how do we calculate area under the curve?
+- But how do we calculate area under the curve?
 
-- luckily, R has us covered, using (in this case) the `pnorm()` function
+- Luckily, R has us covered, using (in this case) the `pnorm()` function
 
 
 ```r
@@ -131,24 +164,62 @@ pnorm(198, mean = 170, sd=12,
 
 ]
 .pull-right[
-![](lecture_3_files/figure-html/tails-1.svg)&lt;!-- --&gt;
-
+![](lecture_3_files/figure-html/unnamed-chunk-9-1.svg)&lt;!-- --&gt;
 ]
 
+
 ---
+# Area under the Curve
+.center[
+![](lecture_3_files/figure-html/tails-1.svg)&lt;!-- --&gt;
+]
+
+.pull-left[
+
+```r
+pnorm(198, mean = 170, sd=12,
+      lower.tail = TRUE)
+```
+
+```
+## [1] 0.9902
+```
+]
+.pull-right[
+
+```r
+pnorm(198, mean = 170, sd=12,
+      lower.tail = FALSE)
+```
+
+```
+## [1] 0.009815
+```
+]
+--
+
+```r
+pnorm(198, mean = 170, sd=12, lower.tail = TRUE) +
+  pnorm(198, mean = 170, sd=12,lower.tail = FALSE)
+```
+
+```
+## [1] 1
+```
+
+???
++ Note that if you add the two functions together, you get 1, or the total possible area under the curve. 
+
++ Obviously you could have come to this conclusion by looking at the numbers, but I also wanted to reinforce that you can add function outputs together in R. 
+
+---
+
 # Tailedness
 
 .pull-left[
-- we kind of knew that Casper was _tall_
-  + it made sense to ask what the likelihood of finding someone 198 cm _or greater_ was
-    + this is called a **one-tailed hypothesis** (we're not expecting Casper to be well below average height!)
-  
-- often our hypothesis might be vaguer
-  + we expect Casper to be "different", but we're not sure how
-    + we can capture this using a **two-tailed hypothesis**
-]
-.pull-right[
-![](lecture_3_files/figure-html/normtwo-1.svg)&lt;!-- --&gt;
++ In this example, we kind of knew that Casper was _tall_
+  + It made sense to ask what the likelihood of finding someone 198 cm _or greater_ was
+  + This is called a **one-tailed hypothesis** (we're not expecting Casper to be well _below_ average height!)
 ]
 
 ---
@@ -157,18 +228,25 @@ count: false
 # Tailedness
 
 .pull-left[
-- we kind of knew that Casper was _tall_
-  + it made sense to ask what the likelihood of finding someone 198 cm _or greater_ was
-    + this is called a **one-tailed hypothesis** (we're not expecting Casper to be well below average height!)
+- In this example, we kind of knew that Casper was _tall_
+  + It made sense to ask what the likelihood of finding someone 198 cm _or greater_ was
+  + This is called a **one-tailed hypothesis**
   
-- often our hypothesis might be vaguer
-  + we expect Casper to be "different", but we're not sure how
-    + we can capture this using a **two-tailed hypothesis**
+- Often our hypothesis might be vaguer
+  + We expect Casper to be _"different"_, but we're not sure how
+  + In this case, we would make a non-directional, or **two-tailed hypothesis**
 ]
 .pull-right[
-- for a two-tailed hypothesis we need to sum the relevant upper and lower areas
+![](lecture_3_files/figure-html/unnamed-chunk-13-1.svg)&lt;!-- --&gt;
+]
 
-- since the normal curve is symmetrical, this is easy!
+---
+count: false
+
+# Tailedness
+
+.pull-left[
++ For a two-tailed hypothesis we need to sum the relevant upper and lower areas:
 
 
 ```r
@@ -178,46 +256,59 @@ count: false
 ```
 ## [1] 0.01963
 ```
-
-
 ]
+.pull-right[
+![](lecture_3_files/figure-html/unnamed-chunk-15-1.svg)&lt;!-- --&gt;
+]
+
+
+???
+Since the normal curve is symmetrical, summing the two tails is easy!
 
 ---
 # So: Is Casper Special?
 
-- how surprised should we be that Casper is 198 cm tall?
+- How surprised should we be that Casper is 198 cm tall?
 
-- given the population he's in, the probability that he's 28cm or more taller than the mean of 170 is 0.0098 
-  + NB., this is according to a _one-tailed hypothesis_
+- Given the population he's in, the probability that he's 28cm or more taller than the mean of 170 is 0.0098 
+  + (Keep in mind, this is according to a _one-tailed hypothesis_)
   
 --
 
-- a more accurate way of saying this is that 0.0098 is the probability of selecting him (or someone even taller than him) from the population at random
+- A more accurate way of saying this is that 0.0098 is the probability of selecting him (or someone even taller than him) from the population at random
+  + There is about a 1% chance of selecting someone Casper's size or taller from the population. 
 
 ---
 # A Judgement Call
 
+We have to decide:
+
+--
+
 .pull-left[
-- if a 1% probability is _small enough_
 .center[
-![:scale 55%](lecture_3_files/img/playmo_good.jpg)
+If a 1% probability is _small enough_
+]
+.center[
+&lt;img src="lecture_3_files/img/playmo_good.jpg" width="55%" /&gt;
 ]]
 ???
-if a 1% probability of selecting someone 28cm or more above the mean is enough to surprise us, then we should be surprised
+If a 1% probability of selecting someone 28cm or more above the mean is enough to surprise us, then we should be surprised
 
-if, on the other hand, we think 1% isn't particularly low, then we shouldn't be surprised
+If, on the other hand, we think 1% isn't particularly low, then we shouldn't be surprised
 --
 
 .pull-right[
 .center[
-- if a 1% chance doesn't impress us much
+If a 1% chance doesn't impress us much
 .center[
-![:scale 55%](lecture_3_files/img/playmo_bad.jpg)
+&lt;img src="lecture_3_files/img/playmo_bad.jpg" width="55%" /&gt;
 ]]
-
 ]
 
-- in either case, we have nothing (mathematical) to say about the _reasons_ for Casper's height
+--
+
+Note that, in either case, we have nothing (mathematical) to say about the _reasons_ for Casper's height
 
 ???
 when it comes to comparing means, we'll see that there are conventions for the criteria we use, but they are just that:  conventions, because this is a judgement call.
@@ -241,170 +332,254 @@ class: inverse, center, middle
 ### Group Means
 
 ---
-# Investment Strategies
+# Sleeping Guidelines
 
 .br3.pa2.pt2.bg-gray.white.f3[
-The Playmo Investors' Circle have been pursuing a special investment strategy over the past year.  By no means everyone has made a profit.  Is the strategy worth advertising to others?
+The USMR instructors are concerned that university students are not following the recommended sleep guidelines of 8 hours per night, and worry this could affect their academic performance. Is this idea worth further investigation?
 ]
+
+--
 
 ![](lecture_3_files/figure-html/invest-1.svg)&lt;!-- --&gt;
 
----
-# Information About the Investments
+???
+We ask students to record the number of hours they slept the night before (also, can anyone thing of any problems with this method?).
 
-.pull-left[
-- there are 12 investors
-
-- the mean profit is £11.98
-
-- the standard deviation is £20.14
-
-- the standard error is `\(\sigma/\sqrt{12}\)` which is 5.8148
-
-.pt2[
-- we are interested in the _probability of 12 people making at least a mean £11.98 profit_
-
-  + assuming that they come from the same population
-]]
-
-.pull-right[
-![:scale 70%](lecture_3_files/img/playmo_investors.jpg)
-]
+Have students state the hypothesis and null hypothesis
 
 ---
-# Using Standard Error
-
+# Information About our Study
 .pull-left[
-- together with the mean, the standard error describes a normal distribution
++ **Null Hypothesis** ( `\(\sf{H_{0}}\)` )
+  + Students are getting less than the recommended amount of sleep
+  
++ **Alternative Hypothesis** ( `\(\sf{H_{1}}\)` )
+  + Students are getting the recommended amount of sleep
 
-- "likely distribution of means for other samples of 12"
++ There are 12 students
 ]
 
 .pull-right[
-![](lecture_3_files/figure-html/segraph-1.svg)&lt;!-- --&gt;
-]
-
----
-# Using Standard Error (2)
-
-.pull-left[
-- last time, our **null hypothesis** ("most likely outcome") was "Casper is of average height"
-
-- this time, our null hypothesis is "there was no profit"
-
-- easiest way to operationalize this:
-
-  + "the average profit was zero"
-  
-- so redraw the normal curve with _the same standard error_ and a _mean of zero_
-]
-
-.pull-right[
-![](lecture_3_files/figure-html/segraph2-1.svg)&lt;!-- --&gt;
-]
-
----
-# Using Standard Error (3)
-
-.pull-left[
-- null hypothesis: `\(\mu=0\)`
-
-- probability of making a mean profit of £11.98 or more:
-
-  + _one-tailed_ hypothesis
-  
-  + evaluated as relevant area under the curve
-  
 
 ```r
-se=sd(profit)/sqrt(12)
-
-pnorm(mean(profit), mean=0, sd=se,
-      lower.tail=FALSE)
+summary(m)
 ```
 
 ```
-## [1] 0.01969
-```
-]
-
-.pull-right[
-![](lecture_3_files/figure-html/segraph3-1.svg)&lt;!-- --&gt;
-]
-
----
-# The Standardized Version
-
-.flex.items-center[
-.w-60[
-- last week we talked about the _standard normal curve_
-  + mean = 0; standard deviation = 1
-- our investors' curve is very easy to transform
-  + mean is _already_ 0; divide by standard error  
-
-```r
-pnorm(mean(profit),0,se,lower.tail=FALSE)
-```
-
-```
-## [1] 0.01969
+##      sleep          names  
+##  Min.   :3.28   Abigail:1  
+##  1st Qu.:5.16   Brent  :1  
+##  Median :7.38   Chenyu :1  
+##  Mean   :6.81   Dave   :1  
+##  3rd Qu.:8.33   Emil   :1  
+##  Max.   :9.79   Fergus :1  
+##                 (Other):6
 ```
 
 ```r
-pnorm(mean(profit)/se,0,1,lower.tail=FALSE)
+sd(m$sleep)
 ```
 
 ```
-## [1] 0.01969
+## [1] 2.273
 ```
-- `mean(profit)/se` (2.0603) is "number of standard errors from zero"
+
+
 ]
-.w-40.pa2[
-![](lecture_3_files/figure-html/snc-1.svg)&lt;!-- --&gt;
 
-]]
-
----
-# The Standardised Version
-
-- you can take _any_ mean, and _any_ standard deviation, and produce "number of standard errors from the mean"
-
-  + `\(z=\bar{x}/\sigma\)`
-  
-- here, the standard deviation is a _standard error_, but needn't be
-
-  + the point of the calculation is to compare to the **standard normal curve**
-  
-  + made "looking up probability" easier in the days of printed tables
- 
 --
 
-- usual practice is to refer to standardised statistics
+.br3.pa2.pt2.bg-gray.white.f4[
+What is the probability of a group of 12 people getting a mean of 6.81 hours of sleep, given that most adults need around 8? (assuming they came from the same population)
+]
 
-  + _the name chosen for them comes from the relevant distribution_
-  
-- `\(z\)` is assessed using the normal distribution
+???
+Is this a one-tailed or two-tailed hypothesis? What would the two-tailed version be?
+
+Why is that the question that we care about? And what does it mean to come from the same population? To understand that, we need to go back to idea of the normal distribution we talked about last week. 
 
 ---
-# Which Means...
+# Back to the Normal Distribution
 
-- for `\(z=2.0603\)`, `\(p=0.0197\)`
-
-.br3.pa2.pt2.bg-gray.white.f3[
-If you picked 12 people at random from a population of investors who were making no profit, there would be a 2% chance that their average profit would be £11.98 or more.
+.center[
+![](lecture_3_files/figure-html/unnamed-chunk-21-1.svg)&lt;!-- --&gt;
 ]
 
-.pt2[
-- is 2% low enough for you to believe that the mean profit probably wasn't due to chance?
-
-  + again, it's a _judgement call_
-  
-  + but before we make that judgement...
+.br3.pa2.pt2.bg-gray.white.f4[
+What is the probability of a group of 12 people getting a mean of 6.81 hours of sleep, given that most adults need around 8? (assuming they came from the same population)
 ]
+
 ???
-obviously here our "population of investors" means "investors like the Playmo Investors' Circle.
+Let's take a guess that hours of sleep is a normally distributed variable in the population with a mean of around 8. So let's look at a density plot of this variable (remember, this shows the frequency of each value of the variable, or how often that value is measured). 
 
-One important thing about statistics is that you can only extrapolate to the relevant population (but it's a matter of interpretation what the relevant population is!)
+If hours of sleep is a normally distributed variable, it means that the hours of sleep most people need falls right around the mean, with some people needing fewer hours and some people needing more. 
+
+What do we mean when we say same population? 
+
+In general, we mean a collection of individuals who have similar characteristics. 
+
+For the purpose of this example, our population will refer to adults with typical sleep needs.
+
+For example the sleep recommendation of around 8 hours is for those 18 years and older. So in this case, children aren't part of our population. 
+
+Someone with a sleep disorder is also not part of our population.
+---
+count:false
+
+# Back to the Normal Distribution
+
+.center[
+![](lecture_3_files/figure-html/unnamed-chunk-22-1.svg)&lt;!-- --&gt;
+]
+
+.br3.pa2.pt2.bg-gray.white.f4[
+What is the probability of a group of 12 people getting a mean of 6.81 hours of sleep, given that most adults need around 8? (assuming they came from the same population)
+]
+
+---
+# The Null Distribution
+
+.center[
+![](lecture_3_files/figure-html/unnamed-chunk-23-1.svg)&lt;!-- --&gt;
+]
+
++ `\(\sf{H_{0}}\)`: Students are getting the recommended amount of sleep
+
++ If `\(\sf{H_{0}}\)` reflects the **ground truth** (and _sleep_ is a normally distributed variable), we would expect a frequency distribution of student measurements to look pretty similar to this
+
+---
+count: false
+# The Null Distribution
+
+.center[
+![](lecture_3_files/figure-html/unnamed-chunk-24-1.svg)&lt;!-- --&gt;
+]
+
++ `\(\sf{H_{0}}\)`: Students are getting the recommended amount of sleep
+
++ If `\(\sf{H_{0}}\)` reflects the **ground truth** (and _sleep_ is a normally distributed variable), we would expect a frequency distribution of student measurements to look pretty similar to this
+
+???
+The null distribution is the probability distribution of the scores when the null hypothesis is accurate.
+
+But what if the null hypothesis isn't accurate? What if the reason we see differences in the two means is because there are systematic differences in our group that affect their sleep?
+
+If that were truly the case, the distribution of the scores that we measured may support our alternative hypothesis. So let's map those.
+
+---
+
+# The Null Distribution
+
+.center[
+![](lecture_3_files/figure-html/unnamed-chunk-25-1.svg)&lt;!-- --&gt;
+]
+
+--
+
++ From this, it _looks_ as though our students may be getting less sleep than they should.
+
+--
+
++ However, simply seeing a shift in the curves isn't enough evidence to make that claim with certainty.
+
+---
+# Back to the Normal Distribution...Again
+
+We can compute the probability of a score's occurrence if it is part of a standardized normal distribution ( `\(\mu\)` = 0, `\(\sigma\)` = 1)
+
+.pull-left[
+![](lecture_3_files/figure-html/unnamed-chunk-26-1.svg)&lt;!-- --&gt;
+]
+
+--
+.pull-right[
+If our data are normally distributed, we can standardize the mean by converting it to a **z-score**  
+
+.center[
+`\(z = \frac{\bar{x} - \mu}{(\sigma/\sqrt{n})}\)`
+]]
+
+---
+count:false
+# Back to the Normal Distribution...Again
+
+We can compute the probability of a score's occurrence if it is part of a standardized normal distribution ( `\(\mu\)` = 0, `\(\sigma\)` = 1)
+
+.pull-left[
+![](lecture_3_files/figure-html/unnamed-chunk-27-1.svg)&lt;!-- --&gt;
+]
+
+.pull-right[
+If our data are normally distributed, we can standardize the mean by converting it to a **z-score** 
+
+.center[
+`\(z = \frac{\bar{x} - \mu}{(\sigma/\sqrt{n})}\)`
+]
+
+
+
+```r
+(mean(m$sleep) - 8)/(sd(m$sleep)/sqrt(12))
+```
+
+```
+## [1] -1.814
+```
+
+]
+
+---
+count:false
+
+# Back to the Normal Distribution...Again
+We can compute the probability of a score's occurrence if it is part of a standardized normal distribution ( `\(\mu\)` = 0, `\(\sigma\)` = 1)
+
+.pull-left[
+![](lecture_3_files/figure-html/unnamed-chunk-29-1.svg)&lt;!-- --&gt;
+]
+
+.pull-right[
+If our data are normally distributed, we can standardize the mean by converting it to a **z-score**   
+
+.center[
+`\(z = \frac{\bar{x} - \mu}{(\sigma/\sqrt{n})}\)`
+]
+
+
+
+```r
+(mean(m$sleep) - 8)/(sd(m$sleep)/sqrt(12))
+```
+
+```
+## [1] -1.814
+```
+
+
+
+```r
+pnorm(-1.814, mean = 0, sd = 1)
+```
+
+```
+## [1] 0.03484
+```
+
+]
+
+---
+
+# Back to the Normal Distribution...Again
+
+We can compute the probability of a score's occurrence if it is part of a standardized normal distribution ( `\(\mu\)` = 0, `\(\sigma\)` = 1)
+
+.pull-left[
+![](lecture_3_files/figure-html/unnamed-chunk-32-1.svg)&lt;!-- --&gt;
+]
+
+.pull-right[
+**If you picked 12 people at random from a population of people who get the recommended number of hours of sleep, there would be a 3% chance that their average sleep would be 6.81 hours or less**
+]
 
 ---
 class: inverse, middle, center, animated, rubberBand
@@ -422,151 +597,216 @@ class: inverse, middle, center
 # A Small Confession
 
 .pull-left[
-![:scale 70%](lecture_3_files/img/playmo_liar.jpg)
+&lt;img src="lecture_3_files/img/playmo_liar.jpg" width="70%" /&gt;
 ]
 
 .pull-right[
 ### Part Two wasn't entirely true
 
-- all of the principles are correct, but for smaller `\(n\)` the normal curve isn't the best estimate
+- All of the principles are correct, but for smaller `\(n\)` the normal curve isn't the best estimate
 
-- for that we use the `\(t\)` distribution
+- For that we use the `\(t\)` distribution
 ]
-
 
 ---
 # The `\(t\)` Distribution
 
 .pull-left[
 .center[
-![:scale 40%](lecture_3_files/img/gossett.jpg)
+&lt;img src="lecture_3_files/img/gossett.jpg" width="40%" /&gt;
 
 "A. Student", or William Sealy Gossett
 ]]
 
 .pull-right[
-![](lecture_3_files/figure-html/normvst-1.svg)&lt;!-- --&gt;
+![](lecture_3_files/figure-html/unnamed-chunk-35-1.svg)&lt;!-- --&gt;
 
 ]
 
-.pt2[
-- note that the shape changes according to _degrees of freedom_, hence `\(t(11)\)`
-]
 ???
 The official name for the `\(t\)`-distribution is "Student's t-distribution", after William Gossett's pen-name
 
 Gossett specialised in statistics for relatively small numbers of observations, working with Pearson, Fisher, and others
 
 ---
+count: false
 # The `\(t\)` Distribution
 
-.flex.items-top[
-.w-60.pa2[
-- conceptually, the `\(t\)` distribution increases uncertainty when the sample is small
+.pull-left[
+.center[
+&lt;img src="lecture_3_files/img/gossett.jpg" width="40%" /&gt;
 
-  + the probability of more extreme values is slightly higher
-  
-- exact shape of distribution depends on sample size
-  
-- the degrees of freedom are inherited from the standard error
-
-$$ \textrm{se} = \frac{\sigma}{\sqrt{n}} = \frac{\sqrt{\frac{\sum{(\bar{x}-x)^2}}{\color{red}{n-1}}}}{\sqrt{n}} $$
-]
-
-.w-40.pa2[
-![](lecture_3_files/figure-html/ts-1.svg)&lt;!-- --&gt;
+"A. Student", or William Sealy Gossett
 ]]
 
+.pull-right[
+![](lecture_3_files/figure-html/unnamed-chunk-37-1.svg)&lt;!-- --&gt;
+
+]
+
+.pt2[
+Note that the shape changes according to _degrees of freedom_
+]
+
+---
+count: false
+
+# The `\(t\)` Distribution
+
+.pull-left[
+.center[
+&lt;img src="lecture_3_files/img/gossett.jpg" width="40%" /&gt;
+
+"A. Student", or William Sealy Gossett
+]]
+
+.pull-right[
+![](lecture_3_files/figure-html/unnamed-chunk-39-1.svg)&lt;!-- --&gt;
+
+]
+
+.pt2[
+Note that the shape changes according to _degrees of freedom_
+]
+---
+# The `\(t\)` Distribution
+
++ Conceptually, the `\(t\)` distribution increases uncertainty when the sample is small
+
+  + The probability of more extreme values is slightly higher
+  
++ Exact shape of distribution depends on sample size
+
+
+![](lecture_3_files/figure-html/ts-1.svg)&lt;!-- --&gt;
+
+
 ???
-here, I'm only showing the right-hand side of each distribution, so that you can see the differences between different degrees of freedom
+here, I'= only showing the right-hand side of each distribution, so that you can see the differences between different degrees of freedom
 
 the distributions are, of course, symmetrical
 
 ---
-# Using the `\(t\)` Distribution
+# Using the t Distribution
 
-- in part 2, we calculated the mean profit for the group as £11.98 and the standard error as 5.8148
+- In part 2, we calculated the mean hours of sleep for the group as 6.81 
 
-- we used the formula `\(z=\bar{x}/\sigma\)` to calculate `\(z\)`, and the standard normal curve to calculate probability
+- We used the formula `\(z=\frac{\bar{x} - \mu}{\sigma/\sqrt{n}}\)` to calculate `\(z\)`, and the standard normal curve to calculate probability
 
 --
 
-- **the formula for `\(t\)` is the same as the formula for `\(z\)` **
+- **The formula for a one-sample `\(t\)`-test is the same as the formula for `\(z\)` **
 
-  + what differs is the _distribution we are using to calculate probability_
+  + What differs is the _distribution we are using to calculate probability_
   
-  + we need to know the degrees of freedom (to get the right `\(t\)`-curve)
+  + We need to know the degrees of freedom (to get the right `\(t\)`-curve)
   
-- so `\(t(\textrm{df}) = \bar{x}/\sigma\)`  
-
-- **in this case `\(t(11) = \bar{x}/\sigma\)`, where `\(\sigma\)` is the standard error**
+- so `\(t(\textrm{df}) = \frac{\bar{x} - \mu}{\sigma/\sqrt{n}}\)`
 
 ---
-# So What is the Probability of a £11.98 Profit?
+# Probability According to t
 .pull-left[
-- for 12 people who made a mean profit of £11.98 with an se of 5.8148
+- for 12 people who got a mean 6.81 hours of sleep with a sd of 2.2732
 
-- `\(t(11) = 11.98/5.8148 = 2.0603\)`
+
+- `\(t(11) = \frac{6.81 - 8}{2.27/\sqrt{12}} = -1.816\)`
+]
+
+.pull-right[
+![](lecture_3_files/figure-html/unnamed-chunk-40-1.svg)&lt;!-- --&gt;
+]
+---
+count: false
+
+# Probability According to t
+.pull-left[
+- for 12 people who got a mean 6.81 hours of sleep with a sd of 2.2732
+
+
+- `\(t(11) = \frac{6.81 - 8}{2.27/\sqrt{12}} = -1.816\)`
+
+
+- instead of `pnorm()` we use `pt()` for the `\(t\)` distribution
+
+]
+
+.pull-right[
+![](lecture_3_files/figure-html/unnamed-chunk-41-1.svg)&lt;!-- --&gt;
+]
+---
+count: false
+
+# Probability According to t
+.pull-left[
+- for 12 people who got a mean 6.81 hours of sleep with a sd of 2.2732
+
+
+- `\(t(11) = \frac{6.81 - 8}{2.27/\sqrt{12}} = -1.816\)`
+
 
 - instead of `pnorm()` we use `pt()` for the `\(t\)` distribution
   
-- `pt()` requires the degrees of freedom
+
+- `pt()` requires the degrees of freedom:
   
 
 ```r
-pt(mean(profit)/se,df=11,lower.tail=FALSE)
+pt(-1.814, df=11, lower.tail = TRUE)
 ```
 
 ```
-## [1] 0.03192
+## [1] 0.04851
 ```
 ]
 
 
 .pull-right[
-![](lecture_3_files/figure-html/tgraph-1.svg)&lt;!-- --&gt;
 
+![](lecture_3_files/figure-html/unnamed-chunk-43-1.svg)&lt;!-- --&gt;
 ]
 
 ---
 # Did We Have to Do All That Work?
 
+--
+No.
+
+--
+
 .flex.items-top[
 .w-70.pa2[
 
 ```r
-head(profit)
+head(m$sleep)
 ```
 
 ```
-## [1]  15.76  -0.83  -3.07  26.43 -10.00  11.09
+## [1] 7.122 9.791 5.674 8.264 8.176 7.647
 ```
 
 ```r
-t.test(profit, mu=0, alternative = "greater")
+t.test(m$sleep, mu=8, alternative = "less")
 ```
 
 ```
 ## 
 ## 	One Sample t-test
 ## 
-## data:  profit
-## t = 2.1, df = 11, p-value = 0.03
-## alternative hypothesis: true mean is greater than 0
+## data:  m$sleep
+## t = -1.8, df = 11, p-value = 0.05
+## alternative hypothesis: true mean is less than 8
 ## 95 percent confidence interval:
-##  1.537   Inf
+##   -Inf 7.988
 ## sample estimates:
 ## mean of x 
-##     11.98
+##     6.809
 ```
 
 ]
 .w-30.pa2[
-- **one-sample** `\(t\)`-test
+- **One-sample** `\(t\)`-test
 
-- compares a single sample against a hypothetical mean (`mu`)
-
-- usually zero
+- Compares a single sample against a hypothetical mean (`mu`)
   
 ]]
 
@@ -580,58 +820,90 @@ we'll talk about that on the next slide.
 
 
 ```r
-t.test(profit, mu=0, alternative = "greater")
+t.test(m$sleep, mu=0, alternative = "less")
 ```
 
-- note the use of `alternative="greater"`
++ Note the use of `alternative="less"`
 
-- we've talked about the _null hypothesis_ (also **H&lt;sub&gt;0&lt;/sub&gt;**)
-
-  + there is no profit (mean profit = 0)
++ This refers to the direction of our **alternative hypothesis, `\(H_{1}\)`**
+  + `\(H_{1}\)` is that our students would be getting _less_ sleep than the average person.
   
-- the **alternative hypothesis** (**H&lt;sub&gt;1&lt;/sub&gt;**, **experimental hypothesis**) is the hypothesis we're interested in
++ Can also have `alternative="greater"`...
 
-  + here, that the profit is reliably £11.98 _or more_ (_one-tailed_ hypothesis)
-  
-  + could also use `alternative = "less"` or `alternative = "two.sided"`
+--
+
+  + Our students are getting _more_ sleep than the average person
+
+--
+
++ ...And `alternative="two.sided"`
+
+--
+  + Our students are getting _different_ amounts of sleep than the average person
 
 ---
 # Putting it Together
 
-- for `\(t(11)=2.0603\)`, `\(p=0.0319\)`
+For `\(t(11)=-1.816\)`, `\(p =0.0483\)`:
 
-.br3.pa2.pt2.bg-gray.white.f3[
-If you picked 12 people at random from a population of investors who were making no profit, there would be a 3% chance that their average profit would be £11.98 or more.
+.br3.pa2.pt2.bg-gray.white.f4[
+If you picked 12 people at random from a population of people who get the recommended number of hours of sleep, there would be a 5% chance that their average sleep would be 6.81 hours or less
 ]
 
-.pt2[
-- is 3% low enough for you to believe that the mean profit probably wasn't due to chance?
+--
 
-- perhaps we'd better face up to this question!
+.pt2[
+- Is 5% low enough for you to believe that the mean sleep probably wasn't due to chance?
+
+- Perhaps we'd better face up to this question!
 
 ]
 
 ---
-# Setting the Alpha Level
+
+# Making a Decision 
+
++ To make this decision, we use a cut-off value for `\(p\)` called `\(\alpha\)` 
+
+--
+
++ `\(\alpha\)` is the probability of rejecting `\({H_{0}}\)` when it actually reflects the ground truth
+
+--
+
+  + If `\(p\)` is less than `\(\alpha\)`, we can decide to _reject H&lt;sub&gt;0&lt;/sub&gt;_ and _accept H&lt;sub&gt;1&lt;/sub&gt;_
+
+  + If `\(p\)` is greater than `\(\alpha\)`, we _fail to reject H&lt;sub&gt;0&lt;/sub&gt;_ 
+
+--
+
++ Typically, in Psychology, ** `\(\alpha\)` is set to .05**
+  + We're willing to take a 5% risk of incorrectly rejecting the null hypothesis. 
+
+--
+  
++ It's important to set `\(\alpha\)` _before_ any statistical analysis
+
+
+---
+
+# Making a Decision
 
 .pull-left[
-- the `\(\alpha\)` level is a criterion for `\(p\)`
-
-- if `\(p\)` is lower than the `\(\alpha\)` level
-
-  + we can (decide to) _reject H&lt;sub&gt;0&lt;/sub&gt;_
-
-  + we can (implicitly) _accept H&lt;sub&gt;1&lt;/sub&gt;_
-
-- what we set `\(\alpha\)` to is a _matter of convention_
-
-- typically, in Psychology, `\(\color{red}{\alpha}\)` .red[is set to .05]
-
-- important to set _before_ any statistical analysis
+.center[
+**One-Tailed**
 ]
+![](lecture_3_files/figure-html/unnamed-chunk-46-1.svg)&lt;!-- --&gt;
+]
+
+
 .pull-right[
-![](lecture_3_files/figure-html/twonorms-1.svg)&lt;!-- --&gt;
+.center[
+**Two-Tailed**
 ]
+![](lecture_3_files/figure-html/unnamed-chunk-47-1.svg)&lt;!-- --&gt;
+]
+
 ???
 I've shown you here on the normal curve because it's a more general distribution than the `\(t\)` distribution, which requires degrees of freedom, but the graphs would look quite similar, as you know
 
@@ -646,7 +918,7 @@ I've shown you here on the normal curve because it's a more general distribution
 ---
 # `\(p &lt; .05\)`
 
-- the `\(p\)`-value is the probability of finding our results under H&lt;sub&gt;0&lt;/sub&gt;, the null hypothesis
+- The `\(p\)`-value is the probability of finding our results under H&lt;sub&gt;0&lt;/sub&gt;, the null hypothesis
 
 - H&lt;sub&gt;0&lt;/sub&gt; is essentially "&amp;#128169; happens"
   
@@ -658,547 +930,60 @@ I've shown you here on the normal curve because it's a more general distribution
 ## there is a 5% probability of falsely rejecting H&lt;sub&gt;0&lt;/sub&gt;
 ]
 
-- wrongly rejecting H&lt;sub&gt;0&lt;/sub&gt; (false positive) is a **type 1 error**
+- Wrongly rejecting H&lt;sub&gt;0&lt;/sub&gt; (false positive) is a **type 1 error**
 
-- wrongly accepting H&lt;sub&gt;0&lt;/sub&gt; (false negative) is a **type 2 error**
+- Wrongly failing to reject H&lt;sub&gt;0&lt;/sub&gt; (false negative) is a **type 2 error**
 
 ???
 
 ---
-# Most Experiments Involve Differences
+# Types of t-tests
 
-.pull-left[
-- but of course "profit" _is_ a difference between **paired samples**
++ All `\(t\)`-tests compare two means, but with different group constraints
 
-<div id="dmdhclnvql" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>html {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
-}
+--
 
-#dmdhclnvql .gt_table {
-  display: table;
-  border-collapse: collapse;
-  margin-left: auto;
-  margin-right: auto;
-  color: #333333;
-  font-size: 16px;
-  font-weight: normal;
-  font-style: normal;
-  background-color: #FFFFFF;
-  width: auto;
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #A8A8A8;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #A8A8A8;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
-}
++ **One-sample `\(t\)`-test**
 
-#dmdhclnvql .gt_heading {
-  background-color: #FFFFFF;
-  text-align: center;
-  border-bottom-color: #FFFFFF;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-}
+--
 
-#dmdhclnvql .gt_title {
-  color: #333333;
-  font-size: 125%;
-  font-weight: initial;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-color: #FFFFFF;
-  border-bottom-width: 0;
-}
-
-#dmdhclnvql .gt_subtitle {
-  color: #333333;
-  font-size: 85%;
-  font-weight: initial;
-  padding-top: 0;
-  padding-bottom: 6px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-top-color: #FFFFFF;
-  border-top-width: 0;
-}
-
-#dmdhclnvql .gt_bottom_border {
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-}
-
-#dmdhclnvql .gt_col_headings {
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-}
-
-#dmdhclnvql .gt_col_heading {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: normal;
-  text-transform: inherit;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: bottom;
-  padding-top: 5px;
-  padding-bottom: 6px;
-  padding-left: 5px;
-  padding-right: 5px;
-  overflow-x: hidden;
-}
-
-#dmdhclnvql .gt_column_spanner_outer {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: normal;
-  text-transform: inherit;
-  padding-top: 0;
-  padding-bottom: 0;
-  padding-left: 4px;
-  padding-right: 4px;
-}
-
-#dmdhclnvql .gt_column_spanner_outer:first-child {
-  padding-left: 0;
-}
-
-#dmdhclnvql .gt_column_spanner_outer:last-child {
-  padding-right: 0;
-}
-
-#dmdhclnvql .gt_column_spanner {
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  vertical-align: bottom;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  overflow-x: hidden;
-  display: inline-block;
-  width: 100%;
-}
-
-#dmdhclnvql .gt_group_heading {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: middle;
-}
-
-#dmdhclnvql .gt_empty_group_heading {
-  padding: 0.5px;
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  vertical-align: middle;
-}
-
-#dmdhclnvql .gt_from_md > :first-child {
-  margin-top: 0;
-}
-
-#dmdhclnvql .gt_from_md > :last-child {
-  margin-bottom: 0;
-}
-
-#dmdhclnvql .gt_row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  margin: 10px;
-  border-top-style: solid;
-  border-top-width: 1px;
-  border-top-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: middle;
-  overflow-x: hidden;
-}
-
-#dmdhclnvql .gt_stub {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-right-style: solid;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-
-#dmdhclnvql .gt_stub_row_group {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-right-style: solid;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-  padding-left: 5px;
-  padding-right: 5px;
-  vertical-align: top;
-}
-
-#dmdhclnvql .gt_row_group_first td {
-  border-top-width: 2px;
-}
-
-#dmdhclnvql .gt_summary_row {
-  color: #333333;
-  background-color: #FFFFFF;
-  text-transform: inherit;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-
-#dmdhclnvql .gt_first_summary_row {
-  border-top-style: solid;
-  border-top-color: #D3D3D3;
-}
-
-#dmdhclnvql .gt_first_summary_row.thick {
-  border-top-width: 2px;
-}
-
-#dmdhclnvql .gt_last_summary_row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-}
-
-#dmdhclnvql .gt_grand_summary_row {
-  color: #333333;
-  background-color: #FFFFFF;
-  text-transform: inherit;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-
-#dmdhclnvql .gt_first_grand_summary_row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-top-style: double;
-  border-top-width: 6px;
-  border-top-color: #D3D3D3;
-}
-
-#dmdhclnvql .gt_striped {
-  background-color: rgba(128, 128, 128, 0.05);
-}
-
-#dmdhclnvql .gt_table_body {
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-}
-
-#dmdhclnvql .gt_footnotes {
-  color: #333333;
-  background-color: #FFFFFF;
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-}
-
-#dmdhclnvql .gt_footnote {
-  margin: 0px;
-  font-size: 90%;
-  padding-left: 4px;
-  padding-right: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-
-#dmdhclnvql .gt_sourcenotes {
-  color: #333333;
-  background-color: #FFFFFF;
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-}
-
-#dmdhclnvql .gt_sourcenote {
-  font-size: 90%;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-
-#dmdhclnvql .gt_left {
-  text-align: left;
-}
-
-#dmdhclnvql .gt_center {
-  text-align: center;
-}
-
-#dmdhclnvql .gt_right {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-#dmdhclnvql .gt_font_normal {
-  font-weight: normal;
-}
-
-#dmdhclnvql .gt_font_bold {
-  font-weight: bold;
-}
-
-#dmdhclnvql .gt_font_italic {
-  font-style: italic;
-}
-
-#dmdhclnvql .gt_super {
-  font-size: 65%;
-}
-
-#dmdhclnvql .gt_two_val_uncert {
-  display: inline-block;
-  line-height: 1em;
-  text-align: right;
-  font-size: 60%;
-  vertical-align: -0.25em;
-  margin-left: 0.1em;
-}
-
-#dmdhclnvql .gt_footnote_marks {
-  font-style: italic;
-  font-weight: normal;
-  font-size: 75%;
-  vertical-align: 0.4em;
-}
-
-#dmdhclnvql .gt_asterisk {
-  font-size: 100%;
-  vertical-align: 0;
-}
-
-#dmdhclnvql .gt_slash_mark {
-  font-size: 0.7em;
-  line-height: 0.7em;
-  vertical-align: 0.15em;
-}
-
-#dmdhclnvql .gt_fraction_numerator {
-  font-size: 0.6em;
-  line-height: 0.6em;
-  vertical-align: 0.45em;
-}
-
-#dmdhclnvql .gt_fraction_denominator {
-  font-size: 0.6em;
-  line-height: 0.6em;
-  vertical-align: -0.05em;
-}
-</style>
-<table class="gt_table">
+  + Compares the mean from a range of scores to a specific value
   
-  <thead class="gt_col_headings">
-    <tr>
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">before</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">after</th>
-      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">profit</th>
-    </tr>
-  </thead>
-  <tbody class="gt_table_body">
-    <tr><td class="gt_row gt_right">&#163;362.68</td>
-<td class="gt_row gt_right">&#163;378.44</td>
-<td class="gt_row gt_right">&#163;15.76</td></tr>
-    <tr><td class="gt_row gt_right">&#163;370.28</td>
-<td class="gt_row gt_right">&#163;369.45</td>
-<td class="gt_row gt_right">&minus;&#163;0.83</td></tr>
-    <tr><td class="gt_row gt_right">&#163;165.38</td>
-<td class="gt_row gt_right">&#163;162.31</td>
-<td class="gt_row gt_right">&minus;&#163;3.07</td></tr>
-    <tr><td class="gt_row gt_right">&#163;633.64</td>
-<td class="gt_row gt_right">&#163;660.07</td>
-<td class="gt_row gt_right">&#163;26.43</td></tr>
-    <tr><td class="gt_row gt_right">&#163;579.65</td>
-<td class="gt_row gt_right">&#163;569.65</td>
-<td class="gt_row gt_right">&minus;&#163;10.00</td></tr>
-    <tr><td class="gt_row gt_right">&#163;314.22</td>
-<td class="gt_row gt_right">&#163;325.31</td>
-<td class="gt_row gt_right">&#163;11.09</td></tr>
-  </tbody>
+--
   
+  + Lets you examine whether the mean of your data is significantly different from a set value
   
-</table>
-</div>
-]
+--
+  
++ **Independent-samples `\(t\)`-test**
 
-.pull-right[
-- doesn't matter whether _values_ are approx. normal as long as _differences_ are
+--
 
+  + Compares the means of two independent groups
+  
+--
+  
+  + Lets you examine whether two groups differ significantly from each other on the variable of interest
 
-```r
-hist(before)
-```
+--
 
-![](lecture_3_files/figure-html/hist-1.svg)&lt;!-- --&gt;
-]
++ **Paired-samples `\(t\)`-test**
 
----
-# Equivalent `\(t\)`-tests
+--
 
-.pull-left[
-
-```r
-t.test(profit, mu=0, 
-       alternative="greater")
-```
-
-```
-## 
-## 	One Sample t-test
-## 
-## data:  profit
-## t = 2.1, df = 11, p-value = 0.03
-## alternative hypothesis: true mean is greater than 0
-## 95 percent confidence interval:
-##  1.537   Inf
-## sample estimates:
-## mean of x 
-##     11.98
-```
-
-]
-.pull-right[
-
-```r
-t.test(after, before, paired=TRUE,
-       alternative="greater")
-```
-
-```
-## 
-## 	Paired t-test
-## 
-## data:  after and before
-## t = 2.1, df = 11, p-value = 0.03
-## alternative hypothesis: true mean difference is greater than 0
-## 95 percent confidence interval:
-##  1.537   Inf
-## sample estimates:
-## mean difference 
-##           11.98
-```
-]
-.flex.items-center[
-.w-5.pa1[
-![:scale 70%](lecture_1_files/img/danger.svg)
-]
-.w-95.pa1[
-- note that a paired-samples `\(t\)`-test is actually (kind of) _multivariate_ (&gt;1 measure per person)
-]]
+  + Compares means that are paired in some way
+  
+--
+  
+  + Allows you to compare measures that come from the same individual, e.g.
 
 ???
-- note that the `\(t\)`-values have different signs
-
-- this is essentially irrelevant
-
-  + it just reflects which column was subtracted from which
-
+Bearing all that in mind, let's get ready to jump into the Live R
 
 ---
 class: inverse, center, middle, animated, rubberBand
 
 # End
-
----
-# Acknowledgements
-
-- icons by Diego Lavecchia from the [Noun Project](https://thenounproject.com/)
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>

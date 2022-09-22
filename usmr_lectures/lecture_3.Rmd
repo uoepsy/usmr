@@ -3,7 +3,6 @@ title: "<b>Week 3: Testing Statistical Hypotheses</b>"
 subtitle: "Univariate Statistics and Methodology using R"
 author: ""
 institute: "Department of Psychology<br/>The University of Edinburgh"
-
 output:
   xaringan::moon_reader:
     lib_dir: libs
@@ -32,13 +31,14 @@ xaringanExtra::use_extra_styles(
 library(knitr)
 library(tidyverse)
 library(ggplot2)
-source('R/pres_theme.R')
+#source('R/pres_theme.R')
 knitr::opts_chunk$set(
   dev = "svg",
   warning = FALSE,
   message = FALSE
 )
 source('R/myfuncs.R')
+baseColor <- "#FCBB06"
 ```
 
 ```{r xaringan-themer, include = FALSE}
@@ -56,46 +56,85 @@ style_mono_accent(
   code_font_google = google_font("Source Code Pro")
 )
 ```
+# Today's Key Topics
 
++ One-tailed vs Two-tailed Hypotheses
+
++ Null vs Alternative Hypotheses
+
++ The Null Distribution
+
++ z-Scores
+
++ t-tests
+
++ $\alpha$
+
+---
 class: inverse, center, middle
 
 # Part 1
 
 ---
+
 # More about Height
 
 .pull-left[
-- last time we simulated the heights of a population of 10,000 people
++ Last time we simulated the heights of a population of 10,000 people
+  + $\bar{x}$ = 170 cm
+  + $\sigma$ = 12 cm
 
-- mean height ( $\bar{x}$ ) was 170; standard deviation ( $\sigma$ ) was 12.
-  
-```{r pop, fig.asp=.6}
-curve(dnorm(x,170,12),from = 120, to = 220)
+```{r, echo = F}
+dat <- data.frame(height=rnorm(10000, mean = 170, sd = 12))
+head(dat, 4)
+```
+
+```{r, echo = FALSE, fig.height = 2.75, fig.width = 5.5}
+ggplot(data = dat, aes(height)) + geom_density() +
+  stat_function(fun = dnorm, n = 10000, args = list(mean = 170, sd = 12), colour = 'red') + 
+  labs(x='Height', y='Density')
 ```
 ]
+
+--
 .pull-right[
++ This time, you'll learn how to compute the probability of randomly observing a specific value within the normal distribution
 .center[
-![:scale 70%](lecture_3_files/img/playmo_tms.jpg)
+```{r, out.width = '65%', echo=FALSE}
+knitr::include_graphics('lecture_3_files/img/playmo_tms.jpg')
+```
 ]]
 
+???
+More specifically, a more extreme value than your value of interest
 
 ---
 # How Unusual is Casper?
 
-
 .pull-left[
-- in his socks, Casper is 198 cm tall
+- In his socks, Casper is 198 cm tall
 
-- how likely would we be to find someone Casper's height in our population?
-]
-.pull-right[
-```{r normvline,echo=FALSE, fig.asp=.6}
-t <- tibble(x=c(120,220))
-p <- t %>% ggplot(aes(x=x)) +
-  stat_function(fun=dnorm,n=151,args=list(mean=170,sd=12),size=1.5) +
-  xlab("height") + ylab("density")
-p + geom_vline(xintercept=198,colour="red")
+- How likely would we be to find someone Casper's height in our population?
+
+.center[
+```{r, out.width = '55%', echo=FALSE}
+knitr::include_graphics('lecture_3_files/img/playmo_tms.jpg')
 ```
+]
+]
+
+
+.pull-right[
+```{r, echo=FALSE, fig.asp=.6}
+dat <- data.frame(height=rnorm(10000, mean = 170, sd = 12))
+
+p <- ggplot(data = dat, aes(height)) + 
+  stat_function(fun = dnorm, n = 10000, args = list(mean = 170, sd = 12), size=1.5) + 
+  geom_hline(yintercept = 0) + 
+  labs(x='Height', y='Density') +
+  theme(axis.text=element_text(size = 14), axis.title=element_text(size = 16, face = 'bold'))
+p + geom_vline(xintercept = 198, colour = 'red')
+```   
 ]
 ???
 - we can mark Casper's height on our normal curve
@@ -103,51 +142,57 @@ p + geom_vline(xintercept=198,colour="red")
   + technically the line has "no width" so we can't calculate area
   + we need to reformulate the question
 ---
+
 # How Unusual is Casper (Take 2)?
 
 .pull-left[
-- in his socks, Casper is 198 cm tall
+- In his socks, Casper is 198 cm tall
 
-- how likely would we be to find someone Casper's height _or more_ in our population?
-]
-.pull-right[
-```{r normarea,echo=FALSE, fig.asp=.6}
-ld <- layer_data(p) %>% filter(x >= 198)
-q<- p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
-  stat_function(fun=dnorm,n=151,args=list(mean=170,sd=12),size=1.5)
-q  
+- How likely would we be to find someone Casper's height **or taller** in our population?
+
+.center[
+```{r, out.width='55%', echo = FALSE}
+knitr::include_graphics('lecture_3_files/img/playmo_tms.jpg')
 ```
 ]
 
 
+]
+.pull-right[
+```{r, echo=FALSE, fig.asp=.6}
+ld <- layer_data(p) %>% filter(x >= 198)
+q <- p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,n=151,args=list(mean=170,sd=12),size=1.5)
+q  
+```
+]
 ---
 count: false
 # How Unusual is Casper (Take 2)?
 
 .pull-left[
-- in his socks, Casper is 198 cm tall
+- In his socks, Casper is 198 cm tall
 
-- how likely would we be to find someone Casper's height _or more_ in our population?
+- How likely would we be to find someone Casper's height **or taller** in our population?
 
-- the area is `r (pp=pnorm(198,170,12,lower.tail=F))`
+- The area is `r (pp=pnorm(198,170,12,lower.tail=F))`
 
-- so the probability of finding someone in the population of Casper's height or greater is `r pp` (or, $p=`r pp`$ )
+- So the probability of finding someone in the population of Casper's height or greater is `r pp` (or, $p=`r pp`$ )
 ]
 .pull-right[
-```{r normarea2,echo=FALSE, fig.asp=.6}
+```{r, echo=FALSE, fig.asp=.6}
 q
 ```
 ]
-
 ---
 # Area under the Curve
 
 .pull-left[
-- so now we know that the area under the curve can be used to quantify **probability**
+- So now we know that the area under the curve can be used to quantify **probability**
 
-- but how do we calculate area under the curve?
+- But how do we calculate area under the curve?
 
-- luckily, R has us covered, using (in this case) the `pnorm()` function
+- Luckily, R has us covered, using (in this case) the `pnorm()` function
 
 ```{r pnorm}
 pnorm(198, mean = 170, sd=12,
@@ -156,36 +201,79 @@ pnorm(198, mean = 170, sd=12,
 
 ]
 .pull-right[
-```{r tails, echo=F, fig.asp=.6}
-df <- data.frame(lx=200,rx=196,lxe=215,rxe=181,y=.025)
-p + geom_vline(xintercept=198,colour="red") +
-  geom_segment(data=df,aes(x=lx,y=y,xend=lxe,yend=y),arrow=arrow(unit(35,"npc")),colour="red") +
-  annotate(geom="text",x=df$lx+10,y=.028,label="upper tail",size=6,colour="red") + geom_segment(data=df,aes(x=rx,y=y,xend=rxe,yend=y),arrow=arrow(unit(35,"npc")),colour="red") +
-  annotate(geom="text",x=df$rx-10,y=.028,label="lower tail",size=6,colour="red")
-
+```{r, echo = FALSE, fig.asp=.6}
+q
 ```
-
 ]
 
+
 ---
+# Area under the Curve
+.center[
+```{r tails, echo=F, fig.width=6, fig.height=2.25}
+df <- data.frame(lx=200,rx=196,lxe=215,rxe=181,y=.025)
+p + geom_vline(xintercept=198,colour="red") +
+  geom_segment(data=df,aes(x=lx,y=y,xend=lxe,yend=y),arrow=arrow(unit(30,"npc")),colour="red") +
+  annotate(geom="text",x=df$lx+10,y=.03,label="upper tail",size=5,colour="red") + geom_segment(data=df,aes(x=rx,y=y,xend=rxe,yend=y),arrow=arrow(unit(30,"npc")),colour="red") +
+  annotate(geom="text",x=df$rx-10,y=.03,label="lower tail",size=5,colour="red")
+
+```
+]
+
+.pull-left[
+```{r}
+pnorm(198, mean = 170, sd=12,
+      lower.tail = TRUE)
+```
+]
+.pull-right[
+```{r}
+pnorm(198, mean = 170, sd=12,
+      lower.tail = FALSE)
+```
+]
+--
+```{r}
+pnorm(198, mean = 170, sd=12, lower.tail = TRUE) +
+  pnorm(198, mean = 170, sd=12,lower.tail = FALSE)
+```
+
+???
++ Note that if you add the two functions together, you get 1, or the total possible area under the curve. 
+
++ Obviously you could have come to this conclusion by looking at the numbers, but I also wanted to reinforce that you can add function outputs together in R. 
+
+---
+
 # Tailedness
 
 .pull-left[
-- we kind of knew that Casper was _tall_
-  + it made sense to ask what the likelihood of finding someone 198 cm _or greater_ was
-    + this is called a **one-tailed hypothesis** (we're not expecting Casper to be well below average height!)
++ In this example, we kind of knew that Casper was _tall_
+  + It made sense to ask what the likelihood of finding someone 198 cm _or greater_ was
+  + This is called a **one-tailed hypothesis** (we're not expecting Casper to be well _below_ average height!)
+]
+
+---
+count: false
+
+# Tailedness
+
+.pull-left[
+- In this example, we kind of knew that Casper was _tall_
+  + It made sense to ask what the likelihood of finding someone 198 cm _or greater_ was
+  + This is called a **one-tailed hypothesis**
   
-- often our hypothesis might be vaguer
-  + we expect Casper to be "different", but we're not sure how
-    + we can capture this using a **two-tailed hypothesis**
+- Often our hypothesis might be vaguer
+  + We expect Casper to be _"different"_, but we're not sure how
+  + In this case, we would make a non-directional, or **two-tailed hypothesis**
 ]
 .pull-right[
-```{r normtwo, echo=F,fig.asp=.6}
+```{r, echo=F,fig.asp=.6}
 ld <- layer_data(p) %>% filter(x <= 142)
-q + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+q+geom_area(data=ld,aes(x=x,y=y),fill="red") +
   stat_function(fun=dnorm,n=151,args=list(mean=170,sd=12),size=1.5) +
   geom_vline(xintercept = 170) + 
-  annotate(geom="text",colour="red",x=175,y=.015,label="mean")
+  annotate(geom="text",colour="red",x=176,y=.015,label="Mean", size=6)
 ```
 ]
 
@@ -195,62 +283,76 @@ count: false
 # Tailedness
 
 .pull-left[
-- we kind of knew that Casper was _tall_
-  + it made sense to ask what the likelihood of finding someone 198 cm _or greater_ was
-    + this is called a **one-tailed hypothesis** (we're not expecting Casper to be well below average height!)
-  
-- often our hypothesis might be vaguer
-  + we expect Casper to be "different", but we're not sure how
-    + we can capture this using a **two-tailed hypothesis**
-]
-.pull-right[
-- for a two-tailed hypothesis we need to sum the relevant upper and lower areas
++ For a two-tailed hypothesis we need to sum the relevant upper and lower areas:
 
-- since the normal curve is symmetrical, this is easy!
-
-```{r twot}
+```{r}
 2 * pnorm(198, 170, 12, lower.tail = FALSE)
 ```
-
-
 ]
+.pull-right[
+```{r, echo=F,fig.asp=.6}
+ld <- layer_data(p) %>% filter(x <= 142)
+q+geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,n=151,args=list(mean=170,sd=12),size=1.5) +
+  geom_vline(xintercept = 170) + 
+  annotate(geom="text",colour="red",x=176,y=.015,label="Mean", size=6)
+```
+]
+
+
+???
+Since the normal curve is symmetrical, summing the two tails is easy!
 
 ---
 # So: Is Casper Special?
 
-- how surprised should we be that Casper is 198 cm tall?
+- How surprised should we be that Casper is 198 cm tall?
 
-- given the population he's in, the probability that he's 28cm or more taller than the mean of 170 is `r (pp=pnorm(198,170,12,lower.tail=FALSE))` 
-  + NB., this is according to a _one-tailed hypothesis_
+- Given the population he's in, the probability that he's 28cm or more taller than the mean of 170 is `r (pp=pnorm(198,170,12,lower.tail=FALSE))` 
+  + (Keep in mind, this is according to a _one-tailed hypothesis_)
   
 --
 
-- a more accurate way of saying this is that `r pp` is the probability of selecting him (or someone even taller than him) from the population at random
+- A more accurate way of saying this is that `r pp` is the probability of selecting him (or someone even taller than him) from the population at random
+  + There is about a 1% chance of selecting someone Casper's size or taller from the population. 
 
 ---
 # A Judgement Call
+```{r, echo = F}
+pp=pnorm(198,170,12,lower.tail=FALSE)
+```
+We have to decide:
+
+--
 
 .pull-left[
-- if a `r (pc=round(100*pp,0))`% probability is _small enough_
 .center[
-![:scale 55%](lecture_3_files/img/playmo_good.jpg)
+If a `r (pc=round(100*pp,0))`% probability is _small enough_
+]
+.center[
+```{r, out.width='55%', echo = FALSE}
+knitr::include_graphics('lecture_3_files/img/playmo_good.jpg')
+```
 ]]
 ???
-if a `r pc`% probability of selecting someone 28cm or more above the mean is enough to surprise us, then we should be surprised
+If a `r pc`% probability of selecting someone 28cm or more above the mean is enough to surprise us, then we should be surprised
 
-if, on the other hand, we think `r pc`% isn't particularly low, then we shouldn't be surprised
+If, on the other hand, we think `r pc`% isn't particularly low, then we shouldn't be surprised
 --
 
 .pull-right[
 .center[
-- if a `r pc`% chance doesn't impress us much
+If a `r pc`% chance doesn't impress us much
 .center[
-![:scale 55%](lecture_3_files/img/playmo_bad.jpg)
+```{r, out.width = '55%', echo = FALSE}
+knitr::include_graphics('lecture_3_files/img/playmo_bad.jpg')
+```
 ]]
-
 ]
 
-- in either case, we have nothing (mathematical) to say about the _reasons_ for Casper's height
+--
+
+Note that, in either case, we have nothing (mathematical) to say about the _reasons_ for Casper's height
 
 ???
 when it comes to comparing means, we'll see that there are conventions for the criteria we use, but they are just that:  conventions, because this is a judgement call.
@@ -274,194 +376,282 @@ class: inverse, center, middle
 ### Group Means
 
 ---
-# Investment Strategies
+# Sleeping Guidelines
 
 .br3.pa2.pt2.bg-gray.white.f3[
-The Playmo Investors' Circle have been pursuing a special investment strategy over the past year.  By no means everyone has made a profit.  Is the strategy worth advertising to others?
+The USMR instructors are concerned that university students are not following the recommended sleep guidelines of 8 hours per night, and worry this could affect their academic performance. Is this idea worth further investigation?
 ]
 
-```{r invest, echo=F, fig.asp=.2, fig.width=11}
-set.seed(25)
-m <- tibble(profit=rnorm(12,20,20),color=if_else(profit <0,'A','B'),
-            names=c('Adam','Bill','Clare','Dave','Emma','Fred','Gina','Hal','Ian','Jane','Kim','Leo'))
-m %>% ggplot(aes(x=names,y=profit,fill=color)) +
-  geom_bar(stat="identity") +
-  scale_fill_manual(values=c("red","blue")) +
-  theme_presentation(10) +
-  theme(legend.position = "none", axis.text.x = element_text(angle=45)) +
-  xlab("") + ylab("£ profit")
-profit <- round(m$profit,2)
-
-```
-
----
-# Information About the Investments
-
-.pull-left[
-- there are 12 investors
-
-- the mean profit is £`r (pr=round(mean(profit),2))`
-
-- the standard deviation is £`r round(sd(profit),2)`
-
-- the standard error is $\sigma/\sqrt{12}$ which is `r sd(profit)/sqrt(12)`
-
-.pt2[
-- we are interested in the _probability of 12 people making at least a mean £`r pr` profit_
-
-  + assuming that they come from the same population
-]]
-
-.pull-right[
-![:scale 70%](lecture_3_files/img/playmo_investors.jpg)
-]
-
----
-# Using Standard Error
-
-.pull-left[
-- together with the mean, the standard error describes a normal distribution
-
-- "likely distribution of means for other samples of 12"
-]
-
-.pull-right[
-```{r segraph, echo=FALSE, fig.asp=.6}
-df <- tibble(x=c(-30,30))
-df %>% ggplot(aes(x=x)) +
-  stat_function(fun=dnorm,n=151,args=list(mean=mean(profit),sd=sd(profit)/sqrt(12)),size=2) +
-  geom_vline(xintercept=mean(profit),colour="red") +
-  xlab("mean profit") + ylab("density")
-```
-]
-
----
-# Using Standard Error (2)
-
-.pull-left[
-- last time, our **null hypothesis** ("most likely outcome") was "Casper is of average height"
-
-- this time, our null hypothesis is "there was no profit"
-
-- easiest way to operationalize this:
-
-  + "the average profit was zero"
-  
-- so redraw the normal curve with _the same standard error_ and a _mean of zero_
-]
-
-.pull-right[
-```{r segraph2, echo=FALSE, fig.asp=.6}
-ng <- df %>% ggplot(aes(x=x)) +
-  stat_function(fun=dnorm,n=151,args=list(mean=mean(profit),sd=sd(profit)/sqrt(12)),size=1.5,colour="grey") +
-  xlab("mean profit") + ylab("density") +
-  stat_function(fun=dnorm,n=151,args=list(mean=0,sd=sd(profit)/sqrt(12)),size=2)+
-  geom_vline(xintercept=mean(profit),colour="red") +
-  geom_vline(xintercept=0,linetype=3)
-ng
-```
-]
-
----
-# Using Standard Error (3)
-
-.pull-left[
-- null hypothesis: $\mu=0$
-
-- probability of making a mean profit of £`r pr` or more:
-
-  + _one-tailed_ hypothesis
-  
-  + evaluated as relevant area under the curve
-  
-```{r area}
-se=sd(profit)/sqrt(12)
-
-pnorm(mean(profit), mean=0, sd=se,
-      lower.tail=FALSE)
-```
-]
-
-.pull-right[
-```{r segraph3, echo=FALSE, fig.asp=.6}
-ld <- layer_data(ng,2) %>% filter(x>=mean(profit))
-ng + geom_area(data=ld,aes(x=x,y=y),fill="red") +
-    stat_function(fun=dnorm,n=151,args=list(mean=0,sd=sd(profit)/sqrt(12)),size=2)
-```
-]
-
----
-# The Standardized Version
-
-.flex.items-center[
-.w-60[
-- last week we talked about the _standard normal curve_
-  + mean = 0; standard deviation = 1
-- our investors' curve is very easy to transform
-  + mean is _already_ 0; divide by standard error  
-```{r twopnorms}
-pnorm(mean(profit),0,se,lower.tail=FALSE)
-pnorm(mean(profit)/se,0,1,lower.tail=FALSE)
-```
-- `mean(profit)/se` (`r mean(profit)/se`) is "number of standard errors from zero"
-]
-.w-40.pa2[
-```{r snc,echo=FALSE, fig.asp=.6}
-df <- tibble(x=c(-3.5,3.5))
-gr <- df %>% ggplot(aes(x=x)) +
-  stat_function(fun=dnorm,n=451,size=2) +
-  xlab("standard errors") +
-  ylab("density") +
-  geom_vline(xintercept=mean(profit)/se,colour="red") +
-  annotate(geom="text",x=mean(profit)/se-1,y=.28,label=paste0(round(mean(profit)/se,2)," standard errors"),size=6,colour="red")
-ld <- layer_data(gr) %>% filter(x >= mean(profit)/se)
-gr + geom_area(data=ld,aes(x=x,y=y),fill="red") +
-  stat_function(fun=dnorm,n=451,size=2)
-```
-
-]]
-
----
-# The Standardised Version
-
-- you can take _any_ mean, and _any_ standard deviation, and produce "number of standard errors from the mean"
-
-  + $z=\bar{x}/\sigma$
-  
-- here, the standard deviation is a _standard error_, but needn't be
-
-  + the point of the calculation is to compare to the **standard normal curve**
-  
-  + made "looking up probability" easier in the days of printed tables
- 
 --
 
-- usual practice is to refer to standardised statistics
+```{r invest, echo=F, fig.width=11, fig.height=3}
+set.seed(608)
+m <- data.frame(sleep=rnorm(12,6.75,2),
+            names=as.factor(c('Abigail','Brent','Chenyu','Dave','Emil','Fergus','Gina',
+                              'Hayley','Ian','Jane','Kate','Leo')))
 
-  + _the name chosen for them comes from the relevant distribution_
-  
-- $z$ is assessed using the normal distribution
+sl=round(mean(m$sleep),2)
+sdSl <- round(sd(m$sleep), 2)
+se <- sdSl/sqrt(12)
+tVal <-  (sl - 8)/(sdSl/sqrt(12))
+
+ggplot(m, aes(x=names,y=sleep,fill=if_else(sleep <8,'blue','red'))) +
+  geom_bar(stat="identity") +
+  scale_fill_manual(values=c("red","blue")) +
+  theme(legend.position = "none", axis.text.x = element_text(angle=25), axis.text = element_text(size=12),
+        axis.title = element_text(size=14, face='bold')) +
+  xlab("Student") + ylab("Hours of Sleep") +
+  geom_hline(yintercept = 8, linetype = 'dashed')
+```
+
+???
+We ask students to record the number of hours they slept the night before (also, can anyone thing of any problems with this method?).
+
+Have students state the hypothesis and null hypothesis
 
 ---
-# Which Means...
-
-- for $z=`r mean(profit)/se`$, $p=`r pnorm(mean(profit/se),lower.tail=FALSE)`$
-
-.br3.pa2.pt2.bg-gray.white.f3[
-If you picked 12 people at random from a population of investors who were making no profit, there would be a `r (pc=round(100*pnorm(mean(profit),0,sd(profit)/sqrt(12),lower.tail=F),0))`% chance that their average profit would be £`r pr` or more.
-]
-
-.pt2[
-- is `r pc`% low enough for you to believe that the mean profit probably wasn't due to chance?
-
-  + again, it's a _judgement call_
+# Information About our Study
+.pull-left[
++ **Null Hypothesis** ( $\sf{H_{0}}$ )
+  + Students are getting less than the recommended amount of sleep
   
-  + but before we make that judgement...
-]
-???
-obviously here our "population of investors" means "investors like the Playmo Investors' Circle.
++ **Alternative Hypothesis** ( $\sf{H_{1}}$ )
+  + Students are getting the recommended amount of sleep
 
-One important thing about statistics is that you can only extrapolate to the relevant population (but it's a matter of interpretation what the relevant population is!)
++ There are 12 students
+]
+
+.pull-right[
+```{r}
+summary(m)
+sd(m$sleep)
+```
+
+```{r, echo = F}
+sl=round(mean(m$sleep),2)
+```
+]
+
+--
+
+.br3.pa2.pt2.bg-gray.white.f4[
+What is the probability of a group of 12 people getting a mean of `r sl` hours of sleep, given that most adults need around 8? (assuming they came from the same population)
+]
+
+???
+Is this a one-tailed or two-tailed hypothesis? What would the two-tailed version be?
+
+Why is that the question that we care about? And what does it mean to come from the same population? To understand that, we need to go back to idea of the normal distribution we talked about last week. 
+
+---
+# Back to the Normal Distribution
+
+.center[
+```{r, echo=FALSE, fig.width=12, fig.height = 3.75}
+df <- tibble(x=c(2, 10))
+nullDis <- df %>% ggplot(aes(x=x)) +
+  xlab("Hours of Sleep") + ylab("Density") +
+  scale_x_continuous(breaks=seq(0, 16, 2), limits = c(0, 16)) +
+  stat_function(fun=dnorm,n=151,args=list(mean=8,sd=sd(m$sleep)/sqrt(12)),size=2) +
+  theme(axis.text=element_text(size=14), axis.title = element_text(size = 16, face = 'bold')) +
+  geom_vline(xintercept = 8, colour = 'red', linetype='dashed') +
+  geom_hline(yintercept = 0)
+
+nullDis
+
+```
+]
+
+.br3.pa2.pt2.bg-gray.white.f4[
+What is the probability of a group of 12 people getting a mean of `r sl` hours of sleep, given that most adults need around 8? (assuming they came from the same population)
+]
+
+???
+Let's take a guess that hours of sleep is a normally distributed variable in the population with a mean of around 8. So let's look at a density plot of this variable (remember, this shows the frequency of each value of the variable, or how often that value is measured). 
+
+If hours of sleep is a normally distributed variable, it means that the hours of sleep most people need falls right around the mean, with some people needing fewer hours and some people needing more. 
+
+What do we mean when we say same population? 
+
+In general, we mean a collection of individuals who have similar characteristics. 
+
+For the purpose of this example, our population will refer to adults with typical sleep needs.
+
+For example the sleep recommendation of around 8 hours is for those 18 years and older. So in this case, children aren't part of our population. 
+
+Someone with a sleep disorder is also not part of our population.
+---
+count:false
+
+# Back to the Normal Distribution
+
+.center[
+```{r, echo=FALSE, fig.width=12, fig.height = 3.75}
+nullDis + geom_vline(xintercept = mean(m$sleep), colour = baseColor) +
+  annotate(geom='text', label='Sample Mean', x = 5.25, y = .5, size = 6, colour = baseColor)
+```
+]
+
+.br3.pa2.pt2.bg-gray.white.f4[
+What is the probability of a group of 12 people getting a mean of `r sl` hours of sleep, given that most adults need around 8? (assuming they came from the same population)
+]
+
+---
+# The Null Distribution
+
+.center[
+```{r, echo=FALSE, fig.width=12, fig.height = 3.75}
+nullDis
+```
+]
+
++ $\sf{H_{0}}$: Students are getting the recommended amount of sleep
+
++ If $\sf{H_{0}}$ reflects the **ground truth** (and _sleep_ is a normally distributed variable), we would expect a frequency distribution of student measurements to look pretty similar to this
+
+---
+count: false
+# The Null Distribution
+
+.center[
+```{r, echo=FALSE, fig.width=12, fig.height = 3.75}
+nullDis + annotate(geom='text', label = 'Null Distribution', x = 10, y = 0.5, size = 5)
+```
+]
+
++ $\sf{H_{0}}$: Students are getting the recommended amount of sleep
+
++ If $\sf{H_{0}}$ reflects the **ground truth** (and _sleep_ is a normally distributed variable), we would expect a frequency distribution of student measurements to look pretty similar to this
+
+???
+The null distribution is the probability distribution of the scores when the null hypothesis is accurate.
+
+But what if the null hypothesis isn't accurate? What if the reason we see differences in the two means is because there are systematic differences in our group that affect their sleep?
+
+If that were truly the case, the distribution of the scores that we measured may support our alternative hypothesis. So let's map those.
+
+---
+
+# The Null Distribution
+
+.center[
+```{r, echo=FALSE, fig.width=12, fig.height = 3.75}
+nullDis + annotate(geom='text', label = 'Null Distribution', x = 10, y = 0.5, size = 5) + 
+  stat_function(fun=dnorm,n=151,args=list(mean=mean(m$sleep),sd=sd(m$sleep)/sqrt(12)),size=1.5,colour=baseColor) + geom_vline(xintercept = mean(m$sleep), colour = baseColor) +
+  annotate(geom='text', label = "Our Sample's \n Distribution", colour = baseColor, x = 5, y = 0.5, size = 5)
+```
+]
+
+--
+
++ From this, it _looks_ as though our students may be getting less sleep than they should.
+
+--
+
++ However, simply seeing a shift in the curves isn't enough evidence to make that claim with certainty.
+
+---
+# Back to the Normal Distribution...Again
+
+We can compute the probability of a score's occurrence if it is part of a standardized normal distribution ( $\mu$ = 0, $\sigma$ = 1)
+
+.pull-left[
+```{r, echo = FALSE, fig.height=4.5, fig.width=6}
+
+normPlot <- ggplot(data.frame(x = c(-4, 4)), aes(x = x)) + 
+  stat_function(fun = dnorm, size = 1.5) + labs(x=NULL, y = NULL) +
+  geom_hline(yintercept = 0) +
+  scale_x_continuous(breaks = seq(-4, 4, 1)) + 
+  theme(axis.text = element_text(size = 12))
+normPlot
+```
+]
+
+--
+.pull-right[
+If our data are normally distributed, we can standardize the mean by converting it to a **z-score**  
+
+.center[
+$z = \frac{\bar{x} - \mu}{(\sigma/\sqrt{n})}$
+]]
+
+---
+count:false
+# Back to the Normal Distribution...Again
+
+We can compute the probability of a score's occurrence if it is part of a standardized normal distribution ( $\mu$ = 0, $\sigma$ = 1)
+
+.pull-left[
+```{r, echo = FALSE, fig.height=4.5, fig.width=6}
+
+normPlot + geom_vline(xintercept = (mean(m$sleep) - 8)/(sd(m$sleep)/sqrt(12)), colour = baseColor) 
+```
+]
+
+.pull-right[
+If our data are normally distributed, we can standardize the mean by converting it to a **z-score** 
+
+.center[
+$z = \frac{\bar{x} - \mu}{(\sigma/\sqrt{n})}$
+]
+
+
+```{r}
+(mean(m$sleep) - 8)/(sd(m$sleep)/sqrt(12))
+```
+
+]
+
+---
+count:false
+
+# Back to the Normal Distribution...Again
+We can compute the probability of a score's occurrence if it is part of a standardized normal distribution ( $\mu$ = 0, $\sigma$ = 1)
+
+.pull-left[
+```{r, echo = FALSE, fig.height=4.5, fig.width=6}
+
+normPlot + geom_vline(xintercept = (mean(m$sleep) - 8)/(sd(m$sleep)/sqrt(12)), colour = baseColor) + 
+  stat_function(fun = dnorm, xlim = c(-4,(mean(m$sleep) - 8)/(sd(m$sleep)/sqrt(12))), geom = "area", fill = baseColor) 
+```
+]
+
+.pull-right[
+If our data are normally distributed, we can standardize the mean by converting it to a **z-score**   
+
+.center[
+$z = \frac{\bar{x} - \mu}{(\sigma/\sqrt{n})}$
+]
+
+
+```{r}
+(mean(m$sleep) - 8)/(sd(m$sleep)/sqrt(12))
+```
+
+
+```{r}
+pnorm(-1.814, mean = 0, sd = 1)
+```
+
+]
+
+---
+
+# Back to the Normal Distribution...Again
+
+We can compute the probability of a score's occurrence if it is part of a standardized normal distribution ( $\mu$ = 0, $\sigma$ = 1)
+
+.pull-left[
+```{r, echo = FALSE, fig.height=4.5, fig.width=6}
+
+normPlot + geom_vline(xintercept = (mean(m$sleep) - 8)/(sd(m$sleep)/sqrt(12)), colour = baseColor) + 
+  stat_function(fun = dnorm, xlim = c(-4,(mean(m$sleep) - 8)/(sd(m$sleep)/sqrt(12))), geom = "area", fill = baseColor) 
+```
+]
+
+.pull-right[
+**If you picked 12 people at random from a population of people who get the recommended number of hours of sleep, there would be a 3% chance that their average sleep would be `r round(mean(m$sleep), 2)` hours or less**
+]
 
 ---
 class: inverse, middle, center, animated, rubberBand
@@ -479,154 +669,255 @@ class: inverse, middle, center
 # A Small Confession
 
 .pull-left[
-![:scale 70%](lecture_3_files/img/playmo_liar.jpg)
+```{r, out.width = '70%', echo = FALSE}
+knitr::include_graphics('lecture_3_files/img/playmo_liar.jpg')
+```
 ]
 
 .pull-right[
 ### Part Two wasn't entirely true
 
-- all of the principles are correct, but for smaller $n$ the normal curve isn't the best estimate
+- All of the principles are correct, but for smaller $n$ the normal curve isn't the best estimate
 
-- for that we use the $t$ distribution
+- For that we use the $t$ distribution
 ]
-
 
 ---
 # The $t$ Distribution
 
 .pull-left[
 .center[
-![:scale 40%](lecture_3_files/img/gossett.jpg)
+```{r, out.width='40%', echo = FALSE}
+knitr::include_graphics('lecture_3_files/img/gossett.jpg')
+```
 
 "A. Student", or William Sealy Gossett
 ]]
 
 .pull-right[
-```{r normvst, echo=F, fig.asp=.6}
+```{r, echo=F, fig.width = 5, fig.height = 4}
 df <- tibble(x=c(-3.5,3.5))
 df %>% ggplot(aes(x=x)) +
-  stat_function(fun=dnorm,n=151,colour="grey") +
-  stat_function(fun=dt,n=151,args=list(df=11),colour="red") +
+  stat_function(fun=dnorm,n=151, size = 1) +
   xlab("standard deviations") + ylab("density") +
-  annotate(geom="text",x=1.7,y=.3,label="t(11)",colour="red",size=8)
+  annotate(geom="text",x=1.7,y=.4,label="Normal Curve", size=6)
 ```
 
 ]
 
-.pt2[
-- note that the shape changes according to _degrees of freedom_, hence $t(11)$
-]
 ???
 The official name for the $t$-distribution is "Student's t-distribution", after William Gossett's pen-name
 
 Gossett specialised in statistics for relatively small numbers of observations, working with Pearson, Fisher, and others
 
 ---
+count: false
 # The $t$ Distribution
 
-.flex.items-top[
-.w-60.pa2[
-- conceptually, the $t$ distribution increases uncertainty when the sample is small
+.pull-left[
+.center[
+```{r, out.width='40%', echo = FALSE}
+knitr::include_graphics('lecture_3_files/img/gossett.jpg')
+```
 
-  + the probability of more extreme values is slightly higher
-  
-- exact shape of distribution depends on sample size
-  
-- the degrees of freedom are inherited from the standard error
+"A. Student", or William Sealy Gossett
+]]
 
-$$ \textrm{se} = \frac{\sigma}{\sqrt{n}} = \frac{\sqrt{\frac{\sum{(\bar{x}-x)^2}}{\color{red}{n-1}}}}{\sqrt{n}} $$
+.pull-right[
+```{r, echo=F, fig.width = 5, fig.height = 4}
+df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,n=151, size = 1) +
+  stat_function(fun=dt,n=151,args=list(df=11),colour="red", size = 1) +
+  xlab("standard deviations") + ylab("density") +
+  annotate(geom="text",x=1.7,y=.4,label="Normal Curve", size=6) +
+  annotate(geom="text",x=1.7,y=.35,label="t(11)",colour="red",size=6)
+```
+
 ]
 
-.w-40.pa2[
-```{r ts, echo=F, fig.asp=.6}
+.pt2[
+Note that the shape changes according to _degrees of freedom_
+]
+
+---
+count: false
+
+# The $t$ Distribution
+
+.pull-left[
+.center[
+```{r, out.width='40%', echo = FALSE}
+knitr::include_graphics('lecture_3_files/img/gossett.jpg')
+```
+
+"A. Student", or William Sealy Gossett
+]]
+
+.pull-right[
+```{r, echo=F, fig.width = 5, fig.height = 4}
+df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,n=151, size = 1) +
+  stat_function(fun=dt,n=151,args=list(df=11),colour="red", size = 1) +
+  stat_function(fun=dt, n = 151, args = list(df = 5), colour = baseColor, size = 1) +
+  xlab("standard deviations") + ylab("density") +
+  annotate(geom="text",x=1.7,y=.4,label="Normal Curve", size=6) +
+  annotate(geom="text",x=1.7,y=.35,label="t(11)",colour="red",size=6) +
+  annotate(geom='text', label='t(5)', x=1.7, y = .3, colour = baseColor, size=6)
+```
+
+]
+
+.pt2[
+Note that the shape changes according to _degrees of freedom_
+]
+---
+# The $t$ Distribution
+
++ Conceptually, the $t$ distribution increases uncertainty when the sample is small
+
+  + The probability of more extreme values is slightly higher
+  
++ Exact shape of distribution depends on sample size
+
+
+```{r ts, echo=F, fig.width = 8, fig.height = 3.25}
 df <- tibble(x=c(0,3.5))
 df %>% ggplot(aes(x=x)) +
   stat_function(fun=dt,n=151,args=list(df=11),colour="red") +
-  stat_function(fun=dt,n=151,args=list(df=5),colour="blue") +
+  stat_function(fun=dt,n=151,args=list(df=5),colour = baseColor) +
   stat_function(fun=dt,n=151,args=list(df=23),colour="black") +
-  xlab("standard deviations") + ylab("density") +
-  annotate(geom="text",x=1.7,y=.3,label="t(11)",colour="red",size=8) +
-  annotate(geom="text",x=1.7,y=.34,label="t(23)",colour="black",size=8) +
-  annotate(geom="text",x=1.7,y=.26,label="t(5)",colour="blue",size=8)
+  xlab("Standard Deviations") + ylab("Density") +
+  annotate(geom="text",x=1.7,y=.3,label="t(11)",colour="red",size=6) +
+  annotate(geom="text",x=1.7,y=.34,label="t(23)",colour="black",size=6) +
+  annotate(geom="text",x=1.7,y=.26,label="t(5)",colour=baseColor,size=6) +
+  theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16, face = 'bold'))
   
 
 ```
-]]
+
 
 ???
-here, I'm only showing the right-hand side of each distribution, so that you can see the differences between different degrees of freedom
+here, I'= only showing the right-hand side of each distribution, so that you can see the differences between different degrees of freedom
 
 the distributions are, of course, symmetrical
 
 ---
-# Using the $t$ Distribution
+# Using the t Distribution
 
-- in part 2, we calculated the mean profit for the group as £`r pr` and the standard error as `r se`
+- In part 2, we calculated the mean hours of sleep for the group as `r sl` 
 
-- we used the formula $z=\bar{x}/\sigma$ to calculate $z$, and the standard normal curve to calculate probability
+- We used the formula $z=\frac{\bar{x} - \mu}{\sigma/\sqrt{n}}$ to calculate $z$, and the standard normal curve to calculate probability
 
 --
 
-- **the formula for $t$ is the same as the formula for $z$ **
+- **The formula for a one-sample $t$-test is the same as the formula for $z$ **
 
-  + what differs is the _distribution we are using to calculate probability_
+  + What differs is the _distribution we are using to calculate probability_
   
-  + we need to know the degrees of freedom (to get the right $t$-curve)
+  + We need to know the degrees of freedom (to get the right $t$-curve)
   
-- so $t(\textrm{df}) = \bar{x}/\sigma$  
-
-- **in this case $t(11) = \bar{x}/\sigma$, where $\sigma$ is the standard error**
+- so $t(\textrm{df}) = \frac{\bar{x} - \mu}{\sigma/\sqrt{n}}$
 
 ---
-# So What is the Probability of a £`r pr` Profit?
+# Probability According to t
 .pull-left[
-- for 12 people who made a mean profit of £`r pr` with an se of `r se`
+- for 12 people who got a mean `r sl` hours of sleep with a sd of `r sd(m$sleep)`
 
-- $t(11) = `r pr`/`r se` = `r pr/se`$
+
+- $t(11) = \frac{`r sl` - 8}{`r sdSl`/\sqrt{12}} = `r tVal`$
+]
+
+.pull-right[
+```{r, echo = FALSE, fig.asp=.6}
+df <- tibble(x=c(-4,4))
+ggplot(df, aes(x=x)) +
+  stat_function(fun=dt,n=151,args=list(df=11),size=2) +
+  xlab("Standard Deviations") + ylab("Density") +
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = tVal, colour = baseColor)  
+
+```
+]
+---
+count: false
+
+# Probability According to t
+.pull-left[
+- for 12 people who got a mean `r sl` hours of sleep with a sd of `r sd(m$sleep)`
+
+
+- $t(11) = \frac{`r sl` - 8}{`r sdSl`/\sqrt{12}} = `r tVal`$
+
+
+- instead of `pnorm()` we use `pt()` for the $t$ distribution
+
+]
+
+.pull-right[
+```{r, echo = FALSE, fig.asp=.6}
+ggplot(df, aes(x=x)) +
+  stat_function(fun=dt,n=151,args=list(df=11),size=2) +
+  xlab("Standard Deviations") + ylab("Density") +
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = tVal, colour = baseColor)  
+
+```
+]
+---
+count: false
+
+# Probability According to t
+.pull-left[
+- for 12 people who got a mean `r sl` hours of sleep with a sd of `r sd(m$sleep)`
+
+
+- $t(11) = \frac{`r sl` - 8}{`r sdSl`/\sqrt{12}} = `r tVal`$
+
 
 - instead of `pnorm()` we use `pt()` for the $t$ distribution
   
-- `pt()` requires the degrees of freedom
+
+- `pt()` requires the degrees of freedom:
   
-```{r pt1}
-pt(mean(profit)/se,df=11,lower.tail=FALSE)
+```{r}
+pt(-1.814, df=11, lower.tail = TRUE)
 ```
 ]
 
 
 .pull-right[
-```{r tgraph, echo=FALSE, fig.asp=.6}
-df <- tibble(x=c(-3.5,3.5))
-g <- df %>% ggplot(aes(x=x)) +
-  stat_function(fun=dt,n=151,args=list(df=11),size=2) +
-  xlab("standard deviations") + ylab("density")
 
-ld <- layer_data(g) %>% filter(x>= mean(profit)/se)
-g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+```{r, echo=FALSE, fig.asp=.6}
+ggplot(df, aes(x=x)) +
   stat_function(fun=dt,n=151,args=list(df=11),size=2) +
-  annotate(geom="text",x=2,y=.3,label="t(11)",size=8)
+  xlab("Standard Deviations") + ylab("Density") +
+  geom_vline(xintercept = tVal, colour = baseColor) + 
+  geom_hline(yintercept = 0) +
+  stat_function(fun = dt, args = list(df = 11), xlim = c(-4,tVal), geom = "area", fill = baseColor) 
 ```
-
 ]
 
 ---
 # Did We Have to Do All That Work?
 
+--
+No.
+
+--
+
 .flex.items-top[
 .w-70.pa2[
-```{r ttes1samp}
-head(profit)
+```{r}
+head(m$sleep)
 
-t.test(profit, mu=0, alternative = "greater")
+t.test(m$sleep, mu=8, alternative = "less")
 ```
 
 ]
 .w-30.pa2[
-- **one-sample** $t$-test
+- **One-sample** $t$-test
 
-- compares a single sample against a hypothetical mean (`mu`)
-
-- usually zero
+- Compares a single sample against a hypothetical mean (`mu`)
   
 ]]
 
@@ -638,75 +929,111 @@ we'll talk about that on the next slide.
 ---
 # Types of Hypothesis
 
-```{r ttt,eval=FALSE}
-t.test(profit, mu=0, alternative = "greater")
+```{r, eval=FALSE}
+t.test(m$sleep, mu=0, alternative = "less")
 ```
 
-- note the use of `alternative="greater"`
++ Note the use of `alternative="less"`
 
-- we've talked about the _null hypothesis_ (also **H<sub>0</sub>**)
-
-  + there is no profit (mean profit = 0)
++ This refers to the direction of our **alternative hypothesis, $H_{1}$**
+  + $H_{1}$ is that our students would be getting _less_ sleep than the average person.
   
-- the **alternative hypothesis** (**H<sub>1</sub>**, **experimental hypothesis**) is the hypothesis we're interested in
++ Can also have `alternative="greater"`...
 
-  + here, that the profit is reliably £`r pr` _or more_ (_one-tailed_ hypothesis)
-  
-  + could also use `alternative = "less"` or `alternative = "two.sided"`
+--
+
+  + Our students are getting _more_ sleep than the average person
+
+--
+
++ ...And `alternative="two.sided"`
+
+--
+  + Our students are getting _different_ amounts of sleep than the average person
 
 ---
 # Putting it Together
 
-- for $t(11)=`r mean(profit)/se`$, $p=`r pt(mean(profit/se),11,lower.tail=FALSE)`$
+For $t(11)=`r (sl-8)/se`$, $p =`r pt((sl-8)/se, 11,lower.tail=TRUE)`$:
 
-.br3.pa2.pt2.bg-gray.white.f3[
-If you picked 12 people at random from a population of investors who were making no profit, there would be a `r (pc=round(100*pt(mean(profit)/se,11,lower.tail=F),0))`% chance that their average profit would be £`r pr` or more.
+.br3.pa2.pt2.bg-gray.white.f4[
+If you picked 12 people at random from a population of people who get the recommended number of hours of sleep, there would be a `r (pc=round(100*pt((sl-8)/se, 11,lower.tail=T),0))`% chance that their average sleep would be `r round(mean(m$sleep), 2)` hours or less
 ]
 
-.pt2[
-- is `r pc`% low enough for you to believe that the mean profit probably wasn't due to chance?
+--
 
-- perhaps we'd better face up to this question!
+.pt2[
+- Is `r pc`% low enough for you to believe that the mean sleep probably wasn't due to chance?
+
+- Perhaps we'd better face up to this question!
 
 ]
 
 ---
-# Setting the Alpha Level
+
+# Making a Decision 
+
++ To make this decision, we use a cut-off value for $p$ called $\alpha$ 
+
+--
+
++ $\alpha$ is the probability of rejecting ${H_{0}}$ when it actually reflects the ground truth
+
+--
+
+  + If $p$ is less than $\alpha$, we can decide to _reject H<sub>0</sub>_ and _accept H<sub>1</sub>_
+
+  + If $p$ is greater than $\alpha$, we _fail to reject H<sub>0</sub>_ 
+
+--
+
++ Typically, in Psychology, ** $\alpha$ is set to .05**
+  + We're willing to take a 5% risk of incorrectly rejecting the null hypothesis. 
+
+--
+  
++ It's important to set $\alpha$ _before_ any statistical analysis
+
+
+---
+
+# Making a Decision
 
 .pull-left[
-- the $\alpha$ level is a criterion for $p$
-
-- if $p$ is lower than the $\alpha$ level
-
-  + we can (decide to) _reject H<sub>0</sub>_
-
-  + we can (implicitly) _accept H<sub>1</sub>_
-
-- what we set $\alpha$ to is a _matter of convention_
-
-- typically, in Psychology, $\color{red}{\alpha}$ .red[is set to .05]
-
-- important to set _before_ any statistical analysis
+.center[
+**One-Tailed**
 ]
-.pull-right[
-```{r twonorms, echo=F, fig.asp=.8}
-library(patchwork)
-p <- df %>% ggplot(aes(x=x)) +
-  xlab("") + ylab("density") +
-  stat_function(fun=dnorm,n=151)
-ld <- layer_data(p) %>% filter(x>=qnorm(.95))
-p1 <- p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
-  ggtitle("one-tailed") +
-  stat_function(fun=dnorm,n=151,size=1)
-ld1 <- layer_data(p) %>% filter(x>=qnorm(.975))
-ld2 <- layer_data(p) %>% filter(x<=qnorm(.025))
-p2 <- p + geom_area(data=ld1,aes(x=x,y=y),fill="red") +
-  geom_area(data=ld2,aes(x=x,y=y),fill="red") +
-  xlab("std devs") + ggtitle("two-tailed") +
-  stat_function(fun=dnorm,n=151,size=1)
-p1/p2
+```{r, echo = F, fig.height=4, fig.width = 6.5}
+df <- tibble(x=c(-4, 4))
+
+ggplot(df, aes(x=x)) +
+  labs(x = "Standard Deviation", y = "Density") +
+  stat_function(fun=dnorm,n=150, size = 1) + 
+  stat_function(fun = dnorm, xlim = c(1.65, 4), geom = "area", fill = baseColor) +
+  geom_hline(yintercept = 0) +
+  annotate(geom='text', label = 'alpha == 0.05', parse = T, x = 3, y = 0.05, size = 5)
 ```
 ]
+
+
+.pull-right[
+.center[
+**Two-Tailed**
+]
+```{r, echo=F, fig.height=4, fig.width = 6.5}
+ggplot(df, aes(x=x)) +
+  labs(x = "Standard Deviation", y = "Density") +
+  stat_function(fun=dnorm,n=150, size = 1) + 
+  stat_function(fun = dnorm, xlim = c(1.96, 4), geom = "area", fill = baseColor) +
+  stat_function(fun = dnorm, xlim = c(-4, -1.96), geom = "area", fill = baseColor) +
+  geom_hline(yintercept = 0) +
+  annotate(geom='text', label = 'alpha == 0.025', parse = T, x = 3, y = 0.05, size = 5) +
+  annotate(geom='text', label = 'alpha == 0.025', parse = T, x = -3, y = 0.05, size = 5)
+  
+
+```
+]
+
 ???
 I've shown you here on the normal curve because it's a more general distribution than the $t$ distribution, which requires degrees of freedom, but the graphs would look quite similar, as you know
 
@@ -721,7 +1048,7 @@ I've shown you here on the normal curve because it's a more general distribution
 ---
 # $p < .05$
 
-- the $p$-value is the probability of finding our results under H<sub>0</sub>, the null hypothesis
+- The $p$-value is the probability of finding our results under H<sub>0</sub>, the null hypothesis
 
 - H<sub>0</sub> is essentially "&#128169; happens"
   
@@ -733,73 +1060,57 @@ I've shown you here on the normal curve because it's a more general distribution
 ## there is a 5% probability of falsely rejecting H<sub>0</sub>
 ]
 
-- wrongly rejecting H<sub>0</sub> (false positive) is a **type 1 error**
+- Wrongly rejecting H<sub>0</sub> (false positive) is a **type 1 error**
 
-- wrongly accepting H<sub>0</sub> (false negative) is a **type 2 error**
+- Wrongly failing to reject H<sub>0</sub> (false negative) is a **type 2 error**
 
 ???
 
 ---
-# Most Experiments Involve Differences
+# Types of t-tests
 
-.pull-left[
-- but of course "profit" _is_ a difference between **paired samples**
++ All $t$-tests compare two means, but with different group constraints
 
-```{r table,echo=F}
-df <- tibble(before=runif(12,100,1000),after=before+profit,profit=profit)
-before=df$before
-after=df$after
-library(gt)
-df %>% head() %>% gt() %>% fmt_currency(columns=everything(),currency="GBP")
-```
-]
+--
 
-.pull-right[
-- doesn't matter whether _values_ are approx. normal as long as _differences_ are
++ **One-sample $t$-test**
 
-```{r hist, fig.asp=.6}
-hist(before)
-```
-]
+--
 
----
-# Equivalent $t$-tests
+  + Compares the mean from a range of scores to a specific value
+  
+--
+  
+  + Lets you examine whether the mean of your data is significantly different from a set value
+  
+--
+  
++ **Independent-samples $t$-test**
 
-.pull-left[
-```{r ttest1}
-t.test(profit, mu=0, 
-       alternative="greater")
-```
+--
 
-]
-.pull-right[
-```{r ttests}
-t.test(after, before, paired=TRUE,
-       alternative="greater")
-```
-]
-.flex.items-center[
-.w-5.pa1[
-![:scale 70%](lecture_1_files/img/danger.svg)
-]
-.w-95.pa1[
-- note that a paired-samples $t$-test is actually (kind of) _multivariate_ (>1 measure per person)
-]]
+  + Compares the means of two independent groups
+  
+--
+  
+  + Lets you examine whether two groups differ significantly from each other on the variable of interest
+
+--
+
++ **Paired-samples $t$-test**
+
+--
+
+  + Compares means that are paired in some way
+  
+--
+  
+  + Allows you to compare measures that come from the same individual, e.g.
 
 ???
-- note that the $t$-values have different signs
-
-- this is essentially irrelevant
-
-  + it just reflects which column was subtracted from which
-
+Bearing all that in mind, let's get ready to jump into the Live R
 
 ---
 class: inverse, center, middle, animated, rubberBand
 
 # End
-
----
-# Acknowledgements
-
-- icons by Diego Lavecchia from the [Noun Project](https://thenounproject.com/)
