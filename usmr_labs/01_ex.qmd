@@ -3,7 +3,7 @@ title: "Week 1 Exercises: Intro R"
 reference-location: margin
 citation-location: margin
 params: 
-    SHOW_SOLS: FALSE
+    SHOW_SOLS: TRUE
     TOGGLE: TRUE
 ---
 
@@ -56,6 +56,8 @@ __Hints:__ You'll need the `read.csv()` function. Remember to assign it a name t
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+We're going to call it `petdata`. Don't forget the quotation marks around the url (otherwise R will look for an object in your environment called `https://...`, which isn't there). 
 ```{r}
 petdata<-read.csv("https://uoepsy.github.io/data/pets_seattle.csv")
 dim(petdata)
@@ -89,6 +91,10 @@ petdata$animals_name[c(47,200)]
 #| echo: false
 petdata$animals_name[c(47,200)]
 ```
+In the last one, we use the `$` to access the `animals_name` variable. In this case, we don't need to specify `[rows, columns]` inside the square brackets, because it's a single variable - there are no columns.  
+
+- `dataframe[rows, columns]`  
+- `variable[entries]`  
 
 `r solend()`
 
@@ -101,6 +107,11 @@ __Hints:__ You'll want to think about how we access data via asking for those en
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+We can ask "which entries of species variable are equal to 'Dog'?" by using `pet$species=="Dog"`.  
+This will give us a TRUE for each dog, and a FALSE for each non-dog.   
+We can then use this set of TRUEs and FALSEs to access those rows for which it is TRUE in our data:
+
 ```{r}
 dogdata <- petdata[petdata$species=="Dog", ]
 catdata <- petdata[petdata$species=="Cat", ]
@@ -116,10 +127,18 @@ __Hints:__ You could do this using the original data you read in from question 1
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
-With our new objects:
+
+We can use `min()` and `max()` to return the minimum and maximum of a variable: 
 ```{r}
-dogdata[dogdata$weight_kg == min(dogdata$weight_kg), ]
+min(dogdata$weight_kg)
+max(catdata$weight_kg)
+```
+
+We could then ask for each entry "is this cat's weight the maximum cat's weight?" with `catdata$weight_kg == max(catdata$weight_kg)` and then use that condition to access the rows in our dataset where the `weight_kg` variable is at its maximum:
+
+```{r}
 catdata[catdata$weight_kg == max(catdata$weight_kg), ]
+dogdata[dogdata$weight_kg == min(dogdata$weight_kg), ]
 ```
 `r solend()`
 
@@ -143,9 +162,27 @@ __Hints:__ This is a slightly complex one. [1B #more-complex-conditions](01b_dat
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+We can ask if something is not a dog by using `petdata$species != "Dog"`. But we want the rows where the species is not a dog _and_ it's not a cat.  So it's two conditions:  
+
 ```{r}
 petdata[petdata$species != "Cat" & petdata$species != "Dog", ]
 ```
+
+We could also do this in other ways, such as asking for all the entries which are _either_ "Dog" _or_ "Cat", and then negating them: 
+
+```{r}
+#| eval: false
+petdata[!(petdata$species == "Cat" | petdata$species == "Dog"), ]
+```
+
+Another clever little operator is the `%in%` operator, which asks whether something is _in_ a set of things. Unfortunately, we can't use `!%in%` to mean "not in", so we need to put the `!` right at the start of the condition:  
+
+```{r}
+petdata[petdata$species %in% c("Cat","Dog"), ]
+```
+
+
 `r solend()`
 
 `r qbegin(7)`
@@ -156,6 +193,8 @@ __Hints__: Try looking up the help documentation for the function `round()`. Try
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+We're probably going to want this variable as a column of the data, so don't forget the `dataframe$newvariable <- ......` bit.  
 ```{r}
 petdata$weight_rounded <- round(petdata$weight_kg)
 ```
@@ -165,6 +204,7 @@ petdata$weight_rounded <- round(petdata$weight_kg)
 Try giving the dataset to the function `summary()`. You'll get out some information on each of the variables. It is likely that you'll get more useful information for the variables containing information on the animal's weights than for those containing their names, breeds etc because these variables are vectors of "characters". We'll start to look more about different types of data next week.  
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+Easy to do!  
 ```{r}
 summary(petdata)
 ```

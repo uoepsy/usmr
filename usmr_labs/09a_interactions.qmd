@@ -31,14 +31,60 @@ catcat <- tibble(
 ```
 
 
-
-
-
 # holding constant
 
-plot eff for x2 = -3, 0, 3
- - effect is the same
- 
+When we first learned about multiple linear regression, we talked about the idea of the coefficients as "holding constant" the other predictors in the model.  
+So when we fitted the model: 
+
+$$
+y = b_0 + b_1(x_1) + b_2(x_2) + \epsilon
+$$
+
+```{r}
+mydata <- read_csv("C:/Users/jking34/Desktop/uoepsy/data/usmr_mlr.csv")
+mymodel <- lm(y ~ x1 + x2, data = mydata)
+```
+```
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)   
+(Intercept) -2.39138    3.67735  -0.650  0.51867   
+x1           0.17570    0.06435   2.730  0.00888 **
+x2          -0.64756    0.19959  -3.244  0.00217 **
+```
+
+the coefficient we get out for $x_1$ tells us that the model estimates that $y$ will increase by 0.17 for every increase of 1 unit in $x_1$, _provided that we hold $x_2$ constant._  
+
+What this means is that it doesn't really matter at what value $x_2$ is, the slope of $x_1$ with $y$ is the same. 
+We can use `plot_model` to show us the how $y$ changes with $x_1$ _for some specific values of $x_2$. Below, the red line is the association between $y$ and $x_1$ when $x_2 = -1$, the blue is when $x_2 = 0$, and the green is when $x_2 = -1$. The slope is the same.  
+
+```{r}
+library(sjPlot)
+plot_model(mymodel, type = "eff", terms=c("x1", "x2 [-2, 0, 2]"))
+```
+
+However, the are lots of practical cases where we might think that the relationship between two variables _depends on_ the value of a third. 
+
+Below are some examples where the variables $x_1$ and $x_2$ are of different types: 
+
+:::panelset
+
+:::panel
+#### Example 1
+
+
+
+:::
+:::panel
+#### Example 2
+
+:::
+:::panel
+#### Example 3
+
+:::
+
+:::
+
 what if we think the y~x1 is different depending on x2
  - examples panelset: cont cont, cont cat, cat cat. 
  - switch to eg: x1 eff is bigger the more x2 you are. 
@@ -46,6 +92,30 @@ what if we think the y~x1 is different depending on x2
 
 
 
+
+
+
+# interactions
+  
+We can model the idea of "association of $x_1$ with $y$ _depends on_ the level of $x_2$" by including a product term between the two predictors. The model would take the form:
+
+$$
+y = b_0 + b_1(x_1) + b_2(x_2) + b_2(x_1 \cdot x_2) + \epsilon
+$$
+
+What this is doing is predicting $y$ by some amount of $x_1$, and some amount of $x_2$, and a little addition to each of those amounts depending on the value of of the other variable.   
+
+To provide a visual intuition and build on how we have been thinking of multiple regression upto this point, our regression surface is no longer flat, but _twists_. This is because the slope along values of $x_1$ _changes_ as we move up $x_2$:  
+
+
+:::panelset
+
+:::panel
+#### Example 1
+
+In this example, we can see that at lower values of TODO, the slope of TODO is 
+but as we move up TODO
+it becomes TODO
 ```{r}
 fit<-lm(y~x1*x2, data=contcont)
 steps=50
@@ -63,13 +133,30 @@ segments(obs$x, obs$y, pred$x, pred$y)
 
 ```
 
+
+:::
+:::panel
+#### Example 2
+
+This kind of interaction (where one predictor is continuous and the other is categorical), is sometimes the easiest to think about.  
+In contrast to modelling two lines as being parallel, the interaction allows them to be non-parallel. 
+
+TODO
+
 ```{r}
 plot(contcat$y~contcat$x1,col=ifelse(contcat$x2,"red","black"))
 abline(lm(y~x1,contcat[contcat$x2==0,]))
 abline(lm(y~x1,contcat[contcat$x2==1,]),col="red")
 ```
 
+:::
+:::panel
+#### Example 3
 
+Interactions between multiple categorical variables are often the more difficult ones. If it helps, you might think of this in the same way as a twisted surface, only there's no values in middle of the surface, only at the edges.  
+
+The basic premise remains the same, however: 
+TODO
 ```{r}
 library(scatterplot3d)
 plt <- with(catcat,scatterplot3d(x1,x2,y, scale.y=.8,angle=-30,
@@ -90,34 +177,32 @@ plt$points(pp3$x1,pp3$x2,pp3$y,type="l")
 plt$points(pp4$x1,pp4$x2,pp4$y,type="l")
 ```
 
+:::
 
+:::
 
+# fitting an interaction in R
 
+specifying the interaction term explicitly in R requires using the colon, as in `x1:x2`. So to specify the model we would use:  
 
+lm(y ~ x1 + x2 + x1:x2)
 
-# interactions
-  
-interaction as product term.  
-
-equation
-
-so we're saying we predict y by the amount of x1, and the amount of x2, and a little addition to eff of x1 depending on how far x2 you are. (and vice versa).  
-
-visual intuition: 
-
-surface >> twisty surface
-two parallel lines >> two non parallel lines
-cat * cat surface transp with lines at edges
 
 rtip in R
 interaction term is colon a:b
 a*b is a+b+a:b
 
-sticky
+So we can do the same by just writing
+
+lm(y ~ x1 * x2)
+
+
+:::stickyh
 don't fit model with a:b and not a + b in it. 
 think about the logic.
 a:b = "effect of a depends on b" 
 but by not including "a" in the first place, it's unclear what we're allowing to depend on b
+:::
 
 # interpretation 
 
@@ -132,16 +217,15 @@ example panelset interpretation
 
 
 
-# presentation
+# visualising  
 
-refer back to visual intuition plots
-we don't plot like that we
+Above, we again saw lots of 3-dimensional plots to try and help in building our intuition about how we model an interaction. As before, this isn't useful for presenting our findings when we use these types of models in real research (in part because our models often have more than 2 predictors, and so have more than 3 dimensions).  
 
-cont * cat : plot eff x1 at all levels of x2
+What we do is therefore find ways to represent the relationships in 2-dimensional plots. This is slightly different depending on the type of variables we are dealing with. 
 
-cont * cont : plot eff x1 at some judiciously chosen values of x2 (e.g. min, mean, max, or -1sd, mean, 1sd)
-
-cat * cat : plot the various group means, and add some dotted lines to show the non-parallelism
+- For a continuous $\times$ categorical interaction, we can plot the assocation of the continuous predictor with the outcome, for each level of the categorical variable. 
+- For a continuous $\times$ continuous interaction, we can plot the association of one predictor at some judiciously chosen values of the other (e.g. at the min, mean and max, or at -1 SD, mean, and +1SD).  
+- For a categorical $\times$ categoircal interaction, we can plot the various group means, with dotted lines to illustrate the non-parallelism 
 
 
 
