@@ -133,6 +133,7 @@ if(f.classList.contains('fa-hand-o-right')) {
 
 <script src="https://kit.fontawesome.com/120b08a6f5.js" crossorigin="anonymous"></script>
 
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 </head>
 
@@ -267,8 +268,9 @@ if(f.classList.contains('fa-hand-o-right')) {
   <ul>
   <li><a href="#holding-constant" id="toc-holding-constant" class="nav-link active" data-scroll-target="#holding-constant">holding constant</a></li>
   <li><a href="#interactions" id="toc-interactions" class="nav-link" data-scroll-target="#interactions">interactions</a></li>
+  <li><a href="#fitting-an-interaction-in-r" id="toc-fitting-an-interaction-in-r" class="nav-link" data-scroll-target="#fitting-an-interaction-in-r">fitting an interaction in R</a></li>
   <li><a href="#interpretation" id="toc-interpretation" class="nav-link" data-scroll-target="#interpretation">interpretation</a></li>
-  <li><a href="#presentation" id="toc-presentation" class="nav-link" data-scroll-target="#presentation">presentation</a></li>
+  <li><a href="#visualising" id="toc-visualising" class="nav-link" data-scroll-target="#visualising">visualising</a></li>
   </ul>
 </nav>
     </div>
@@ -324,66 +326,138 @@ if(f.classList.contains('fa-hand-o-right')) {
 </div>
 <section id="holding-constant" class="level1">
 <h1>holding constant</h1>
-<p>plot eff for x2 = -3, 0, 3 - effect is the same</p>
-<p>what if we think the y~x1 is different depending on x2 - examples panelset: cont cont, cont cat, cat cat. - switch to eg: x1 eff is bigger the more x2 you are. - how much bigger? we can model that</p>
+<p>When we first learned about multiple linear regression, we talked about the idea of the coefficients as “holding constant” the other predictors in the model.<br>
+So when we fitted the model:</p>
+<p><span class="math display">\[
+y = b_0 + b_1(x_1) + b_2(x_2) + \epsilon
+\]</span></p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>fit<span class="ot">&lt;-</span><span class="fu">lm</span>(y<span class="sc">~</span>x1<span class="sc">*</span>x2, <span class="at">data=</span>contcont)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>steps<span class="ot">=</span><span class="dv">50</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>x1 <span class="ot">&lt;-</span> <span class="fu">with</span>(contcont, <span class="fu">seq</span>(<span class="fu">min</span>(x1),<span class="fu">max</span>(x1),<span class="at">length=</span>steps))</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>x2 <span class="ot">&lt;-</span> <span class="fu">with</span>(contcont, <span class="fu">seq</span>(<span class="fu">min</span>(x2),<span class="fu">max</span>(x2),<span class="at">length=</span>steps))</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>newdat <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(<span class="at">x1=</span>x1, <span class="at">x2=</span>x2)</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">predict</span>(fit, newdat), steps, steps)</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">persp</span>(x1,x2,y, <span class="at">theta =</span> <span class="sc">-</span><span class="dv">60</span>,<span class="at">phi=</span><span class="dv">20</span>, <span class="at">col =</span> <span class="cn">NA</span>)</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>obs <span class="ot">&lt;-</span> <span class="fu">with</span>(contcont, <span class="fu">trans3d</span>(x1,x2, y, p))</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>pred <span class="ot">&lt;-</span> <span class="fu">with</span>(contcont, <span class="fu">trans3d</span>(x1, x2, <span class="fu">fitted</span>(fit), p))</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(obs, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">pch =</span> <span class="dv">16</span>)</span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co">#points(pred, col = "blue", pch = 16)</span></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="fu">segments</span>(obs<span class="sc">$</span>x, obs<span class="sc">$</span>y, pred<span class="sc">$</span>x, pred<span class="sc">$</span>y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="09a_interactions_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid" width="672"></p>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>mydata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"C:/Users/jking34/Desktop/uoepsy/data/usmr_mlr.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Rows: 50 Columns: 4
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+chr (1): x3
+dbl (3): x1, x2, y
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 </div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>mymodel <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2, <span class="at">data =</span> mydata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<pre><code>Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)   
+(Intercept) -2.39138    3.67735  -0.650  0.51867   
+x1           0.17570    0.06435   2.730  0.00888 **
+x2          -0.64756    0.19959  -3.244  0.00217 **</code></pre>
+<p>the coefficient we get out for <span class="math inline">\(x_1\)</span> tells us that the model estimates that <span class="math inline">\(y\)</span> will increase by 0.17 for every increase of 1 unit in <span class="math inline">\(x_1\)</span>, <em>provided that we hold <span class="math inline">\(x_2\)</span> constant.</em></p>
+<p>What this means is that it doesn’t really matter at what value <span class="math inline">\(x_2\)</span> is, the slope of <span class="math inline">\(x_1\)</span> with <span class="math inline">\(y\)</span> is the same. We can use <code>plot_model</code> to show us the how <span class="math inline">\(y\)</span> changes with <span class="math inline">\(x_1\)</span> _for some specific values of <span class="math inline">\(x_2\)</span>. Below, the red line is the association between <span class="math inline">\(y\)</span> and <span class="math inline">\(x_1\)</span> when <span class="math inline">\(x_2 = -1\)</span>, the blue is when <span class="math inline">\(x_2 = 0\)</span>, and the green is when <span class="math inline">\(x_2 = -1\)</span>. The slope is the same.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(contcat<span class="sc">$</span>y<span class="sc">~</span>contcat<span class="sc">$</span>x1,<span class="at">col=</span><span class="fu">ifelse</span>(contcat<span class="sc">$</span>x2,<span class="st">"red"</span>,<span class="st">"black"</span>))</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="fu">lm</span>(y<span class="sc">~</span>x1,contcat[contcat<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">0</span>,]))</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="fu">lm</span>(y<span class="sc">~</span>x1,contcat[contcat<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">1</span>,]),<span class="at">col=</span><span class="st">"red"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sjPlot)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_model</span>(mymodel, <span class="at">type =</span> <span class="st">"eff"</span>, <span class="at">terms=</span><span class="fu">c</span>(<span class="st">"x1"</span>, <span class="st">"x2 [-2, 0, 2]"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="09a_interactions_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
+<p>However, the are lots of practical cases where we might think that the relationship between two variables <em>depends on</em> the value of a third.</p>
+<p>Below are some examples where the variables <span class="math inline">\(x_1\)</span> and <span class="math inline">\(x_2\)</span> are of different types:</p>
+<div class="panelset">
+<section id="example-1" class="level4 panel">
+<h4 class="anchored" data-anchor-id="example-1">Example 1</h4>
+</section>
+<section id="example-2" class="level4 panel">
+<h4 class="anchored" data-anchor-id="example-2">Example 2</h4>
+</section>
+<section id="example-3" class="level4 panel">
+<h4 class="anchored" data-anchor-id="example-3">Example 3</h4>
+</section>
+</div>
+<p>what if we think the y~x1 is different depending on x2 - examples panelset: cont cont, cont cat, cat cat. - switch to eg: x1 eff is bigger the more x2 you are. - how much bigger? we can model that</p>
+</section>
+<section id="interactions" class="level1">
+<h1>interactions</h1>
+<p>We can model the idea of “association of <span class="math inline">\(x_1\)</span> with <span class="math inline">\(y\)</span> <em>depends on</em> the level of <span class="math inline">\(x_2\)</span>” by including a product term between the two predictors. The model would take the form:</p>
+<p><span class="math display">\[
+y = b_0 + b_1(x_1) + b_2(x_2) + b_2(x_1 \cdot x_2) + \epsilon
+\]</span></p>
+<p>What this is doing is predicting <span class="math inline">\(y\)</span> by some amount of <span class="math inline">\(x_1\)</span>, and some amount of <span class="math inline">\(x_2\)</span>, and a little addition to each of those amounts depending on the value of of the other variable.</p>
+<p>To provide a visual intuition and build on how we have been thinking of multiple regression upto this point, our regression surface is no longer flat, but <em>twists</em>. This is because the slope along values of <span class="math inline">\(x_1\)</span> <em>changes</em> as we move up <span class="math inline">\(x_2\)</span>:</p>
+<div class="panelset">
+<section id="example-1-1" class="level4 panel">
+<h4 class="anchored" data-anchor-id="example-1-1">Example 1</h4>
+<p>In this example, we can see that at lower values of TODO, the slope of TODO is but as we move up TODO it becomes TODO</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(scatterplot3d)</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>plt <span class="ot">&lt;-</span> <span class="fu">with</span>(catcat,<span class="fu">scatterplot3d</span>(x1,x2,y, <span class="at">scale.y=</span>.<span class="dv">8</span>,<span class="at">angle=</span><span class="sc">-</span><span class="dv">30</span>,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">x.ticklabs =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="dv">1</span>), </span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">y.ticklabs =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="dv">1</span>), </span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">main=</span><span class="st">"y~x1*x2</span><span class="sc">\n</span><span class="st">(x1 and x2 are categorical)"</span>))</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">=</span> <span class="fu">lm</span>(y<span class="sc">~</span>x1<span class="sc">*</span>x2,catcat)</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>pp <span class="ot">&lt;-</span> <span class="fu">expand_grid</span>(<span class="at">x1=</span><span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,.<span class="dv">1</span>), <span class="at">x2=</span><span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,.<span class="dv">1</span>))</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>pp<span class="sc">$</span>y <span class="ot">&lt;-</span> <span class="fu">predict</span>(fit, pp)</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>pp1 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">0</span>,]</span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>pp2 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">1</span>,]</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>pp3 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x1<span class="sc">==</span><span class="dv">0</span>,]</span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>pp4 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x1<span class="sc">==</span><span class="dv">1</span>,]</span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp1<span class="sc">$</span>x1,pp1<span class="sc">$</span>x2,pp1<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp2<span class="sc">$</span>x1,pp2<span class="sc">$</span>x2,pp2<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp3<span class="sc">$</span>x1,pp3<span class="sc">$</span>x2,pp3<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp4<span class="sc">$</span>x1,pp4<span class="sc">$</span>x2,pp4<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>fit<span class="ot">&lt;-</span><span class="fu">lm</span>(y<span class="sc">~</span>x1<span class="sc">*</span>x2, <span class="at">data=</span>contcont)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>steps<span class="ot">=</span><span class="dv">50</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>x1 <span class="ot">&lt;-</span> <span class="fu">with</span>(contcont, <span class="fu">seq</span>(<span class="fu">min</span>(x1),<span class="fu">max</span>(x1),<span class="at">length=</span>steps))</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>x2 <span class="ot">&lt;-</span> <span class="fu">with</span>(contcont, <span class="fu">seq</span>(<span class="fu">min</span>(x2),<span class="fu">max</span>(x2),<span class="at">length=</span>steps))</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>newdat <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(<span class="at">x1=</span>x1, <span class="at">x2=</span>x2)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">predict</span>(fit, newdat), steps, steps)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">persp</span>(x1,x2,y, <span class="at">theta =</span> <span class="sc">-</span><span class="dv">60</span>,<span class="at">phi=</span><span class="dv">20</span>, <span class="at">col =</span> <span class="cn">NA</span>)</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>obs <span class="ot">&lt;-</span> <span class="fu">with</span>(contcont, <span class="fu">trans3d</span>(x1,x2, y, p))</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>pred <span class="ot">&lt;-</span> <span class="fu">with</span>(contcont, <span class="fu">trans3d</span>(x1, x2, <span class="fu">fitted</span>(fit), p))</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(obs, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">pch =</span> <span class="dv">16</span>)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a><span class="co">#points(pred, col = "blue", pch = 16)</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="fu">segments</span>(obs<span class="sc">$</span>x, obs<span class="sc">$</span>y, pred<span class="sc">$</span>x, pred<span class="sc">$</span>y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="09a_interactions_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
-<section id="interactions" class="level1">
-<h1>interactions</h1>
-<p>interaction as product term.</p>
-<p>equation</p>
-<p>so we’re saying we predict y by the amount of x1, and the amount of x2, and a little addition to eff of x1 depending on how far x2 you are. (and vice versa).</p>
-<p>visual intuition:</p>
-<p>surface &gt;&gt; twisty surface two parallel lines &gt;&gt; two non parallel lines cat * cat surface transp with lines at edges</p>
+<section id="example-2-1" class="level4 panel">
+<h4 class="anchored" data-anchor-id="example-2-1">Example 2</h4>
+<p>This kind of interaction (where one predictor is continuous and the other is categorical), is sometimes the easiest to think about.<br>
+In contrast to modelling two lines as being parallel, the interaction allows them to be non-parallel.</p>
+<p>TODO</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(contcat<span class="sc">$</span>y<span class="sc">~</span>contcat<span class="sc">$</span>x1,<span class="at">col=</span><span class="fu">ifelse</span>(contcat<span class="sc">$</span>x2,<span class="st">"red"</span>,<span class="st">"black"</span>))</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="fu">lm</span>(y<span class="sc">~</span>x1,contcat[contcat<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">0</span>,]))</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="fu">lm</span>(y<span class="sc">~</span>x1,contcat[contcat<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">1</span>,]),<span class="at">col=</span><span class="st">"red"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="09a_interactions_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="example-3-1" class="level4 panel">
+<h4 class="anchored" data-anchor-id="example-3-1">Example 3</h4>
+<p>Interactions between multiple categorical variables are often the more difficult ones. If it helps, you might think of this in the same way as a twisted surface, only there’s no values in middle of the surface, only at the edges.</p>
+<p>The basic premise remains the same, however: TODO</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(scatterplot3d)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>plt <span class="ot">&lt;-</span> <span class="fu">with</span>(catcat,<span class="fu">scatterplot3d</span>(x1,x2,y, <span class="at">scale.y=</span>.<span class="dv">8</span>,<span class="at">angle=</span><span class="sc">-</span><span class="dv">30</span>,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">x.ticklabs =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="dv">1</span>), </span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">y.ticklabs =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="dv">1</span>), </span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">main=</span><span class="st">"y~x1*x2</span><span class="sc">\n</span><span class="st">(x1 and x2 are categorical)"</span>))</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">=</span> <span class="fu">lm</span>(y<span class="sc">~</span>x1<span class="sc">*</span>x2,catcat)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>pp <span class="ot">&lt;-</span> <span class="fu">expand_grid</span>(<span class="at">x1=</span><span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,.<span class="dv">1</span>), <span class="at">x2=</span><span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,.<span class="dv">1</span>))</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>pp<span class="sc">$</span>y <span class="ot">&lt;-</span> <span class="fu">predict</span>(fit, pp)</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>pp1 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">0</span>,]</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>pp2 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">1</span>,]</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>pp3 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x1<span class="sc">==</span><span class="dv">0</span>,]</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>pp4 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x1<span class="sc">==</span><span class="dv">1</span>,]</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp1<span class="sc">$</span>x1,pp1<span class="sc">$</span>x2,pp1<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp2<span class="sc">$</span>x1,pp2<span class="sc">$</span>x2,pp2<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp3<span class="sc">$</span>x1,pp3<span class="sc">$</span>x2,pp3<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp4<span class="sc">$</span>x1,pp4<span class="sc">$</span>x2,pp4<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="09a_interactions_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</div>
+</section>
+<section id="fitting-an-interaction-in-r" class="level1">
+<h1>fitting an interaction in R</h1>
+<p>specifying the interaction term explicitly in R requires using the colon, as in <code>x1:x2</code>. So to specify the model we would use:</p>
+<p>lm(y ~ x1 + x2 + x1:x2)</p>
 <p>rtip in R interaction term is colon a:b a*b is a+b+a:b</p>
-<p>sticky don’t fit model with a:b and not a + b in it. think about the logic. a:b = “effect of a depends on b” but by not including “a” in the first place, it’s unclear what we’re allowing to depend on b</p>
+<p>So we can do the same by just writing</p>
+<p>lm(y ~ x1 * x2)</p>
+<div class="stickyh">
+<p>don’t fit model with a:b and not a + b in it. think about the logic. a:b = “effect of a depends on b” but by not including “a” in the first place, it’s unclear what we’re allowing to depend on b</p>
+</div>
 </section>
 <section id="interpretation" class="level1">
 <h1>interpretation</h1>
@@ -392,38 +466,42 @@ consider y ~ x2*x2+x3+x4</p>
 <p>interpretation each mention predictors not interacting stay the same as prev mlr week.</p>
 <p>example panelset interpretation</p>
 </section>
-<section id="presentation" class="level1">
-<h1>presentation</h1>
-<p>refer back to visual intuition plots we don’t plot like that we</p>
-<p>cont * cat : plot eff x1 at all levels of x2</p>
-<p>cont * cont : plot eff x1 at some judiciously chosen values of x2 (e.g.&nbsp;min, mean, max, or -1sd, mean, 1sd)</p>
-<p>cat * cat : plot the various group means, and add some dotted lines to show the non-parallelism</p>
+<section id="visualising" class="level1">
+<h1>visualising</h1>
+<p>Above, we again saw lots of 3-dimensional plots to try and help in building our intuition about how we model an interaction. As before, this isn’t useful for presenting our findings when we use these types of models in real research (in part because our models often have more than 2 predictors, and so have more than 3 dimensions).</p>
+<p>What we do is therefore find ways to represent the relationships in 2-dimensional plots. This is slightly different depending on the type of variables we are dealing with.</p>
+<ul>
+<li>For a continuous <span class="math inline">\(\times\)</span> categorical interaction, we can plot the assocation of the continuous predictor with the outcome, for each level of the categorical variable.</li>
+<li>For a continuous <span class="math inline">\(\times\)</span> continuous interaction, we can plot the association of one predictor at some judiciously chosen values of the other (e.g.&nbsp;at the min, mean and max, or at -1 SD, mean, and +1SD).<br>
+</li>
+<li>For a categorical <span class="math inline">\(\times\)</span> categoircal interaction, we can plot the various group means, with dotted lines to illustrate the non-parallelism</li>
+</ul>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">=</span> <span class="fu">lm</span>(y<span class="sc">~</span>x1<span class="sc">*</span>x2,catcat <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="fu">across</span>(x1<span class="sc">:</span>x2,factor)))</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>sjPlot<span class="sc">::</span><span class="fu">plot_model</span>(fit, <span class="at">type=</span><span class="st">"int"</span>,<span class="at">show.data=</span>T)<span class="sc">+</span><span class="fu">geom_line</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">=</span> <span class="fu">lm</span>(y<span class="sc">~</span>x1<span class="sc">*</span>x2,catcat <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="fu">across</span>(x1<span class="sc">:</span>x2,factor)))</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>sjPlot<span class="sc">::</span><span class="fu">plot_model</span>(fit, <span class="at">type=</span><span class="st">"int"</span>,<span class="at">show.data=</span>T)<span class="sc">+</span><span class="fu">geom_line</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="09a_interactions_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="672"></p>
+<p><img src="09a_interactions_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
 </div>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># it's just viewing that cube from one side </span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(scatterplot3d)</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>plt <span class="ot">&lt;-</span> <span class="fu">with</span>(catcat,<span class="fu">scatterplot3d</span>(x1,x2,y, <span class="at">scale.y=</span><span class="dv">0</span>,<span class="at">angle=</span><span class="dv">90</span>,</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">x.ticklabs =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="dv">1</span>), </span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">y.ticklabs =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="dv">1</span>), </span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">main=</span><span class="st">"y~x1*x2</span><span class="sc">\n</span><span class="st">(x1 and x2 are categorical)"</span>))</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">=</span> <span class="fu">lm</span>(y<span class="sc">~</span>x1<span class="sc">*</span>x2,catcat)</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>pp <span class="ot">&lt;-</span> <span class="fu">expand_grid</span>(<span class="at">x1=</span><span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,.<span class="dv">1</span>), <span class="at">x2=</span><span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,.<span class="dv">1</span>))</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>pp<span class="sc">$</span>y <span class="ot">&lt;-</span> <span class="fu">predict</span>(fit, pp)</span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>pp1 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">0</span>,]</span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>pp2 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">1</span>,]</span>
-<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>pp3 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x1<span class="sc">==</span><span class="dv">0</span>,]</span>
-<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>pp4 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x1<span class="sc">==</span><span class="dv">1</span>,]</span>
-<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp1<span class="sc">$</span>x1,pp1<span class="sc">$</span>x2,pp1<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
-<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp2<span class="sc">$</span>x1,pp2<span class="sc">$</span>x2,pp2<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
-<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp3<span class="sc">$</span>x1,pp3<span class="sc">$</span>x2,pp3<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
-<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp4<span class="sc">$</span>x1,pp4<span class="sc">$</span>x2,pp4<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># it's just viewing that cube from one side </span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(scatterplot3d)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>plt <span class="ot">&lt;-</span> <span class="fu">with</span>(catcat,<span class="fu">scatterplot3d</span>(x1,x2,y, <span class="at">scale.y=</span><span class="dv">0</span>,<span class="at">angle=</span><span class="dv">90</span>,</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">x.ticklabs =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="dv">1</span>), </span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">y.ticklabs =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="cn">NA</span>,<span class="dv">1</span>), </span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">main=</span><span class="st">"y~x1*x2</span><span class="sc">\n</span><span class="st">(x1 and x2 are categorical)"</span>))</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>fit <span class="ot">=</span> <span class="fu">lm</span>(y<span class="sc">~</span>x1<span class="sc">*</span>x2,catcat)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>pp <span class="ot">&lt;-</span> <span class="fu">expand_grid</span>(<span class="at">x1=</span><span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,.<span class="dv">1</span>), <span class="at">x2=</span><span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">1</span>,.<span class="dv">1</span>))</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>pp<span class="sc">$</span>y <span class="ot">&lt;-</span> <span class="fu">predict</span>(fit, pp)</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>pp1 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">0</span>,]</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>pp2 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x2<span class="sc">==</span><span class="dv">1</span>,]</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>pp3 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x1<span class="sc">==</span><span class="dv">0</span>,]</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>pp4 <span class="ot">&lt;-</span> pp[pp<span class="sc">$</span>x1<span class="sc">==</span><span class="dv">1</span>,]</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp1<span class="sc">$</span>x1,pp1<span class="sc">$</span>x2,pp1<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp2<span class="sc">$</span>x1,pp2<span class="sc">$</span>x2,pp2<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp3<span class="sc">$</span>x1,pp3<span class="sc">$</span>x2,pp3<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>plt<span class="sc">$</span><span class="fu">points</span>(pp4<span class="sc">$</span>x1,pp4<span class="sc">$</span>x2,pp4<span class="sc">$</span>y,<span class="at">type=</span><span class="st">"l"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="09a_interactions_files/figure-html/unnamed-chunk-5-2.png" class="img-fluid" width="672"></p>
+<p><img src="09a_interactions_files/figure-html/unnamed-chunk-7-2.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 

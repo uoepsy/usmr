@@ -12,6 +12,8 @@ ipip$rev = ifelse(grepl("-",ipip$scoring),1,0)
 names(newsurv)[16:65]<-ipip$q
 names(newsurv)[66:71]<-paste0("loc",1:6)
 
+which(rowSums(is.na(newsurv[,16:71]))==1)
+
 newsurv <- newsurv %>% mutate(across(16:71,
                           ~as.numeric(case_when(
                             . == "Very Inaccurate" ~ "1",
