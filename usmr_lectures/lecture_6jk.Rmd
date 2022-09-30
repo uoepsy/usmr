@@ -60,26 +60,29 @@ class: inverse, center, middle
 # Part 1:  Correlation++
 
 ```{r recreate,include=FALSE}
-library(faux)
-set.seed(29)
-dat <- rnorm_multi(n=50,
-                   mu=c(0.1,650),
-                   sd=c(.009,60),
-                   r=.4,
-                   varnames=c('BloodAlc','RT'))
-d20 <- dat %>% sample_n(20) # FIXME
+set.seed(993)
+give_me_a_sample <- function(size = 50){
+  dat = as.data.frame(MASS::mvrnorm(size, mu=c(90,13), matrix(c(13,7,7,8),nrow=2)) )
+  names(dat) = c("brain_vol","weekly_actv")
+  dat %>% 
+    mutate(
+      brain_vol = pmax(0,pmin(100,round(brain_vol, 2))), 
+      weekly_actv = pmax(0, round(weekly_actv))
+    )
+}
+dat <- give_me_a_sample(20)
 ```
 
 ---
-# Back on the Road
+# Exercising our brains
 
 .pull-left[
 ```{r frecap,fig.asp=.6,echo=FALSE}
-p1 <- dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+p1 <- dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
+  xlab("Weekly Activity (hours)") + ylab("Brain Volume\n(% of intracranial space)") +
   geom_point(size=3)
 p1
-  rd <- cor.test(dat$BloodAlc,dat$RT)
+rd <- cor.test(dat$brain_vol,dat$weekly_actv)
 ```
 
 .center[
@@ -87,36 +90,36 @@ $r= `r rd$estimate`$, $p = `r rd$p.value`$
 ]
 ]
 .pull-right[
-![](lecture_6_files/img/playmo_police.jpg)
+![](lecture_6_files/img/playmo_brain.jpg)
 ]
 ???
-- is there anything more the police' data about blood alcohol and reaction time can tell us?
+- is there anything more the data about exercise and brain volume can tell us?
 
-- so far we know they're correlated, but it would be good if we could something about _how bad_ blood alcohol is
+- so far we know they're correlated, but it would be good if we could something about _how good/bad_ exercise is
 
-  + how much worse does drinking more make things?
+  + how much better does exercise make things?  
   
 ---
-# Back on the Road (2)
+# Exercising our brains (2)
 
 .pull-left[
 ```{r frecap2,fig.asp=.6,echo=FALSE}
 p1 + geom_smooth(method="lm")
-m1 <- lm(RT~BloodAlc, data=dat)
+m1 <- lm(brain_vol ~ weekly_actv, data=dat)
 ```
 
 .tc[
-"for every extra 0.01% blood alcohol, reaction time slows down by around `r round(coef(m1)[2]*0.01,0)` ms"
+"for every extra 1 hour more weekly activity, brain volume increases by `r round(coef(m1)[2],2)` (% of intracranial space)"
 ]
 ]
 .pull-right[
-![](lecture_6_files/img/playmo_police.jpg)
+![](lecture_6_files/img/playmo_brain.jpg)
 
 ]
 ???
-- this kind of information is based on the assumption that the relationship between blood alcohol and RT is _linear_
+- this kind of information is based on the assumption that the relationship between activity and brain volume is _linear_
 
-- that is, that each additional unit of blood alcohol affects reaction time by the same amount
+- that is, that each additional minute of activity affects brain volume by the same amount
 
 
 ---
@@ -271,61 +274,22 @@ p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 
   + for one thing, the model can predict $\hat{y}$ for values of $x$ that we have never observed
 
----
-# Simplifying the Data
-
-.pull-left[
-- **NB** we're doing this for illustrative purposes only
-
-
-```{r simple, echo=c(2:6)}
-set.seed(5234)
-ourPop <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv") %>%
-  filter(course == "usmr", year == 2022)
-nrow(ourPop)
-ourDat <- ourPop %>% sample_n(20)
-  # take 20 data points
-```
-
-```{r s2,include=FALSE}
-lmp <- function(x) {
-  m <- lm(emot_stability ~ loc,data=x)
-  summary(m)$coefficients[2,4]
-}
-while(lmp(ourDat) > .05) {
- ourDat <- ourPop %>% sample_n(20)
-}
-```
-
-]
-.pull-right[
-```{r plot1, fig.asp=.6, echo=F}
-ourDat %>% ggplot(aes(x=loc, y = emot_stability)) +
-  geom_point(size=3)
-```
-]
-
 
 ---
-count: false
-# Simplifying the Data
-.pull-left[
-- **NB** we're doing this for illustrative purposes only
+# More Brain Exercises 
 
-```{r simple1a, eval=F}
-ourDat <- ourPop %>% sample_n(20)
-  # take 20 data points
-```
+.pull-left[
 
 .center[
-"for every extra unit blood alcohol, reaction time slows down by around `r round(coef(m1)[2],0)` ms"
+"for every extra 1 hour more weekly activity, brain volume increases by `r round(coef(m1)[2],2)` (% of intracranial space)"
 ]
 
 ]
 .pull-right[
 ```{r plot2, fig.asp=.6, echo=F}
-ourDat %>% ggplot(aes(x=loc, y = emot_stability)) +
-  geom_point(size=3) +
+dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
+  xlab("Weekly Activity (hours)") + ylab("Brain Volume\n(% of intracranial space)") +
+  geom_point(size=3) + 
   geom_smooth(method="lm")
 
 ```
@@ -341,7 +305,7 @@ but how can we evaluate our model?
 # Linear Models in R
 
 ```{r lm1, eval=F}
-mod <- lm(emot_stability ~ loc, data=ourDat)
+mod <- lm(brain_vol ~ weekly_actv, data=dat)
 ```
 
 ---
@@ -349,7 +313,7 @@ count: false
 # Linear Models in R
 
 ```{r lm2, highlight.output=c(11,12)}
-mod <- lm(emot_stability ~ loc, data=ourDat)
+mod <- lm(brain_vol ~ weekly_actv, data=dat)
 summary(mod)
 ```
 
@@ -359,12 +323,15 @@ summary(mod)
 $$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
 .center[
 ```{r git,echo=F,fig.asp=.6}
-p1 <- ourPop %>% ggplot(aes(x=loc, y = emot_stability)) +
-  xlim(c(-1,12)) + ylim(0,20) +
-  geom_segment(aes(x=0,y=0,xend=0,yend=coef(mod)[1]),colour="red") +
-  annotate("text",x=.3,y=coef(mod)[1]-1,label=expression(b[0]),size=5,colour="red")
+p1 <- dat %>% ggplot(aes(x=weekly_actv, y = brain_vol)) +
+  xlab("Weekly Activity (hours)") + ylab("Brain Volume\n(% of intracranial space)") +
+  xlim(c(-1, 20)) + ylim(50,100) +
+  scale_x_continuous(limits=c(-1,20),breaks=seq(0,20,2)) +
+  geom_segment(aes(x=0,y=50,xend=0,yend=coef(mod)[1]),colour="red") +
+  annotate("text",x=.5,y=coef(mod)[1]-1,label=expression(b[0]),size=5,colour="red")
 p1
 ```
+TODO add dotted line below intercept
 ]
 ???
 - $b_0$ is the the predicted value, $\bar{y}$, when $x=0$.  Here I've represented it as a line, so where the top is the intercept value of `r coef(mod)[1]`
@@ -380,17 +347,17 @@ lmf <- function(x) {
   coef(mod)[1]+coef(mod)[2]*x
 }
 p2 <- p1 +
-  geom_segment(aes(x=7,xend=8,y=lmf(7),yend=lmf(7)),
-               arrow=arrow(ends = "both",length = unit(.03,"native"))) +
-  annotate("text",x=7.5,y=lmf(6),label="1",size=5) +
-  geom_segment(aes(x=8,xend=8,y=lmf(7),yend=lmf(8)),
+  geom_segment(aes(x=4,xend=5,y=lmf(4),yend=lmf(4)),
+               arrow=arrow(ends = "both",length = unit(.015,"native"))) +
+  annotate("text",x=4.5,y=lmf(3.5),label="1",size=5) +
+  geom_segment(aes(x=5,xend=5,y=lmf(4),yend=lmf(5)),
                colour="red") +
-  annotate("text",x=8.4,y=lmf(7.5),label=expression(b[1]),colour="red",size=5) +
+  annotate("text",x=5.4,y=lmf(4.5),label=expression(b[1]),colour="red",size=5) +
   geom_segment(aes(x=0,xend=1,y=lmf(0),yend=lmf(0)),
-                arrow=arrow(ends = "both",length = unit(.03,"native"))) +
+                arrow=arrow(ends = "both",length = unit(.015,"native"))) +
   geom_segment(aes(x=1,xend=1,y=lmf(0),yend=lmf(1)),
                 colour="red") +
-  annotate("text",x=1.4,y=lmf(0),label=expression(b[1]),colour="red",size=5)
+  annotate("text",x=1.4,y=lmf(0.5),label=expression(b[1]),colour="red",size=5)
 p2  
 ```
 ]
@@ -402,7 +369,7 @@ count: false
 $$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
 .center[
 ```{r git3, echo=FALSE, fig.asp=.6}
-p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2)
+p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=1)
 ```
 ]
 
@@ -414,13 +381,14 @@ $$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
 .center[
 ```{r git4, echo=FALSE, fig.asp=.6}
 p2 +
-  geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2) + geom_point(size=3)
+  geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2) + 
+  geom_point(size=3)
 ```
 ]
 ???
 - note that the intercept is really very far from the data we're interested in.
 
-- it may be pretty meaningless to talk about the reaction time of someone with zero blood alcohol
+- it may be pretty meaningless to talk about the brain volume of someone who does zero hours activity
 
 ---
 class: inverse, center, middle, animated, fadeInDownBig
@@ -467,16 +435,16 @@ how likely would we have been to find these parameters under the null hypothesis
 .center[
 ```{r chanceg,echo=F, fig.asp=.6, fig.width=5.5}
 iS <- function(size) {
-  tt <- ourPop %>% sample_n(size)
-  m <- lm(emot_stability ~ loc,data=tt)
+  tt <- give_me_a_sample(20)
+  m <- lm(brain_vol ~ weekly_actv,data=tt)
   return(coef(m))
 }
 
-cS <- as_tibble(t(replicate(100,iS(20)))) 
+cS <- as_tibble(t(replicate(1e3,iS(20)))) 
 
-ourPop %>% ggplot(aes(x=loc,y=emot_stability)) +
-  xlim(c(0,40)) + ylim(c(0,40))+
-  geom_abline(data=cS,aes(intercept=`(Intercept)`,slope=loc),alpha=.1,colour="blue")
+dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
+  xlim(c(-1, 20)) + ylim(50,100) +
+  geom_abline(data=cS,aes(intercept=`(Intercept)`,slope=weekly_actv),alpha=.1,colour="blue")
 ```
 ]
 
@@ -490,9 +458,10 @@ ourPop %>% ggplot(aes(x=loc,y=emot_stability)) +
 
 .center[
 ```{r figfig,fig.asp=.6,fig.width=5.5,echo=F}
-ourDat %>% ggplot(aes(x=loc,y=emot_stability)) +
+dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
+  xlim(c(-1, 20)) + ylim(50,100) +
   geom_point(size=3) +
-  geom_smooth(method="lm")
+  geom_smooth(method="lm", fullrange = TRUE)
 ```
 ]
 - shaded area represents "95% confidence interval"
@@ -666,11 +635,11 @@ $$ \textrm{total SS}=\sum{(y - \bar{y})^2} $$
 ]
 .pull-right[
 ```{r totss,echo=F,fig.asp=.6}
-ourDat <- ourDat %>% mutate(pred=predict(m1),mES=mean(emot_stability))
-p1 <- ourDat %>% ggplot(aes(x=loc,y=emot_stability,yend=pred))
+dat <- dat %>% mutate(pred=predict(m1),mWA=mean(brain_vol))
+p1 <- dat %>% ggplot(aes(x=weekly_actv,y=brain_vol,yend=pred))
 
-pTot <- p1 + geom_abline(intercept=mean(ourDat$emot_stability),slope=0,size=1) +
-  geom_segment(aes(yend=mean(mES),xend=loc),linetype="dotted",colour="red",size=1) +
+pTot <- p1 + geom_abline(intercept=mean(dat$brain_vol),slope=0,size=1) +
+  geom_segment(aes(yend=mean(mWA),xend=weekly_actv),linetype="dotted",colour="red",size=1) +
   geom_point(size=3)
 pTot
 ```
@@ -690,7 +659,7 @@ $$ \textrm{residual SS} = \sum{(y - \hat{y})^2} $$
 ]
 .pull-right[
 ```{r residp,echo=F,fig.asp=.6}
-pRes<- p1 + geom_segment(aes(xend=loc),linetype="dotted",colour="red",size=1) +
+pRes<- p1 + geom_segment(aes(xend=weekly_actv),linetype="dotted",colour="red",size=1) +
   geom_smooth(method="lm",se=FALSE) +
   geom_point(size=3)
 pRes
@@ -709,8 +678,8 @@ $$ \textrm{model SS} = \sum{(\hat{y} - \bar{y})^2} $$
 ]
 .pull-right[
 ```{r modp,echo=F,fig.asp=.6}
-pMod <- p1 + geom_segment(aes(y=mES,xend=loc),colour="red",linetype="dotted",size=1) +
-  geom_hline(yintercept = mean(ourDat$emot_stability),size=1) +
+pMod <- p1 + geom_segment(aes(y=mWA,xend=weekly_actv),colour="red",linetype="dotted",size=1) +
+  geom_hline(yintercept = mean(dat$brain_vol),size=1) +
   geom_smooth(method="lm",se=FALSE) +
   geom_point(size=3)
 pMod
