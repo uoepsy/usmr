@@ -9,7 +9,12 @@ editor_options:
 ---
 
 ```{r}
+#| include: false
+source('assets/setup.R')
 library(tidyverse)
+library(patchwork)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
 set.seed(993)
 contcont <- tibble(
   x1 = rnorm(60),
@@ -31,14 +36,16 @@ catcat <- tibble(
 ```
 
 
-# holding constant
+# "Holding Constant"
 
 When we first learned about multiple linear regression, we talked about the idea of the coefficients as "holding constant" the other predictors in the model.  
-So when we fitted the model: 
+When considering a model with the following structure:    
 
 $$
 y = b_0 + b_1(x_1) + b_2(x_2) + \epsilon
 $$
+
+When we _fit_ this model to our data, what we get out is some _estimated_ values for the coefficients $b_0$, $b_1$, and $b_2$:  
 
 ```{r}
 mydata <- read_csv("C:/Users/jking34/Desktop/uoepsy/data/usmr_mlr.csv")
@@ -52,15 +59,64 @@ x1           0.17570    0.06435   2.730  0.00888 **
 x2          -0.64756    0.19959  -3.244  0.00217 **
 ```
 
-the coefficient we get out for $x_1$ tells us that the model estimates that $y$ will increase by 0.17 for every increase of 1 unit in $x_1$, _provided that we hold $x_2$ constant._  
+The coefficient we get out for $x_1$ tells us that the model estimates that $y$ will increase by 0.17 for every increase of 1 unit in $x_1$, _provided that we hold $x_2$ constant._  
 
-What this means is that it doesn't really matter at what value $x_2$ is, the slope of $x_1$ with $y$ is the same. 
-We can use `plot_model` to show us the how $y$ changes with $x_1$ _for some specific values of $x_2$. Below, the red line is the association between $y$ and $x_1$ when $x_2 = -1$, the blue is when $x_2 = 0$, and the green is when $x_2 = -1$. The slope is the same.  
+What this means is that it doesn't really matter at what value $x_2$ we consider, the association between $x_1$ with $y$ is the same.  
+
+As it happens, we can use `plot_model` to show us the how $y$ changes with $x_1$ _for some specific values of $x_2$_. Below, the red line is the association between $y$ and $x_1$ when $x_2 = -1$, the blue is when $x_2 = 0$, and the green is when $x_2 = -1$. As we can see, the slope of $y$ on $x_1$ is the same.  
 
 ```{r}
 library(sjPlot)
 plot_model(mymodel, type = "eff", terms=c("x1", "x2 [-2, 0, 2]"))
 ```
+
+
+:::frame
+__Example__
+
+We're interested in estimating the association between cognition and BMI, after controlling for differences due to age.  
+
+$$
+\text{score on test of cognition} = b_0 + b_1(\text{age}) + b_2(\text{BMI}) + \epsilon
+$$
+We would fit the model using `lm()`:  
+```{r}
+#| eval: false
+lm(score ~ 1 + age + BMI, data = ourdata)
+```
+and we might get some coefficients (estimates for the $b_?$ values) such as those below:  
+_(I've just made up some nice round numbers to make it easier to think about)_  
+
+```
+Coefficients:
+            Estimate    ...   ...
+(Intercept)  160.000    ...   ...
+age         -1.50000    ...   ...
+BMI         -2.50000    ...   ...
+```
+
+The coefficient of interest, the one for BMI, is telling us that "a 1 unit increase in BMI is associated with a -2.5 decrease in Scores on the cognitive test, _holding age constant_".  
+
+Consider 3 people: 
+
+- Person A = 50 years old with a BMI of 22  
+- Person B = 50 years old with a BMI of 23
+- Person C = 60 years old with a BMI of 23
+
+The coefficient for BMI represents the difference in cognitive scores we would expect between Person A and Person B.  
+Think about why this is. For a random person $i$, their model predicted score is:  
+$\hat{score_i} = b_0 + b_1(age_i) + b2(BMI_i)$. 
+Which from our model estimates is:  
+$\hat{score_i} = 160 - 1.5(age_i) - 2.5(BMI_i)$. 
+
+- Person A's score = $160 - (1.5*50) - (2.5*22) = 30$
+- Person B's score = $160 - (1.5*50) - (2.5*23) = 27.5$
+- Person B's score = $160 - (1.5*60) - (2.5*23) = 12.5$
+
+The difference in model estimated Score between Person A and Person B is the coefficient of BMI, because those two people _only differ_ on BMI. Person A and Person C _also differ_ on age. This is how the coefficient of BMI is interpreted as "holding age constant" - it is a comparison between two hypothetical people who differ on BMI but are identical with respect to the other predictors in the model.  
+:::
+
+# "It Depends..."  
 
 However, the are lots of practical cases where we might think that the relationship between two variables _depends on_ the value of a third. 
 
@@ -77,9 +133,11 @@ Below are some examples where the variables $x_1$ and $x_2$ are of different typ
 :::panel
 #### Example 2
 
+
 :::
 :::panel
 #### Example 3
+
 
 :::
 
@@ -95,7 +153,7 @@ what if we think the y~x1 is different depending on x2
 
 
 
-# interactions
+# Interactions
   
 We can model the idea of "association of $x_1$ with $y$ _depends on_ the level of $x_2$" by including a product term between the two predictors. The model would take the form:
 
@@ -204,7 +262,7 @@ a:b = "effect of a depends on b"
 but by not including "a" in the first place, it's unclear what we're allowing to depend on b
 :::
 
-# interpretation 
+# Interpretation
 
 including the a:b means a and b become interpreted _at some specific value_.  
 consider y ~ x2*x2+x3+x4
@@ -215,15 +273,13 @@ mention predictors not interacting stay the same as prev mlr week.
 example panelset interpretation
 
 
-
-
-# visualising  
+# Visualisation  
 
 Above, we again saw lots of 3-dimensional plots to try and help in building our intuition about how we model an interaction. As before, this isn't useful for presenting our findings when we use these types of models in real research (in part because our models often have more than 2 predictors, and so have more than 3 dimensions).  
 
 What we do is therefore find ways to represent the relationships in 2-dimensional plots. This is slightly different depending on the type of variables we are dealing with. 
 
-- For a continuous $\times$ categorical interaction, we can plot the assocation of the continuous predictor with the outcome, for each level of the categorical variable. 
+- For a continuous $\times$ categorical interaction, we can plot the association of the continuous predictor with the outcome, for each level of the categorical variable. 
 - For a continuous $\times$ continuous interaction, we can plot the association of one predictor at some judiciously chosen values of the other (e.g. at the min, mean and max, or at -1 SD, mean, and +1SD).  
 - For a categorical $\times$ categoircal interaction, we can plot the various group means, with dotted lines to illustrate the non-parallelism 
 
@@ -255,6 +311,19 @@ plt$points(pp4$x1,pp4$x2,pp4$y,type="l")
 ```
 
 
+# Optional: further exploration
+
+## Simple Slopes
+
+we've kind of already done it visually.  
+plot the slope of y~x1 for certain values of x2.  
+
+we've done this visually, but it would be nice to get out a "is y~x1 significant when x2 = ?"  
+
+
+
+
+## Johnson Neyman
 
 
 
