@@ -4,8 +4,15 @@
 # in practice, we only have one sample. 
 
 movies <- read.csv("https://uoepsy.github.io/data/hollywoodsample2.csv")
+
+movies$Genre <- as.factor(movies$Genre)
+movies$Movie <- as.factor(movies$Movie)
+
 # it might contain higher than population average ratings, it might contain lower than population average ratings
 # what do we do?
+
+summary(movies)
+view(movies)
 
 mean(movies$RottenTomatoes)
 sd(movies$RottenTomatoes)/sqrt(nrow(movies))
@@ -20,7 +27,9 @@ movies %>%
     se = sRT / sqrt(n_obs)
   )
 
-curve(dnorm(x, mean = 47.04, sd = 3.69), from = 30, to = 70)
+ggplot(movies, aes(RottenTomatoes)) + geom_histogram(colour='black', binwidth=5)
+
+
 
 ## Normal distributions 
 # 68% of values lie within 1 standard deviation of the mean.
