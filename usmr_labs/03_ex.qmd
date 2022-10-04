@@ -235,12 +235,13 @@ usmr_data %>%
 ```
 __Assumptions:__  
 
-The `shapiro.test()` suggests that our assumption of normality may be violated!! oh no!
+The `shapiro.test()` suggests that our assumption of normality is okay!  
+(the p-value is $>.05$, suggesting that we do _not_ reject the hypothesis that the data are drawn from a normally distributed population)  
 ```{r}
 shapiro.test(usmr_data$height)
 ```
 
-However, visualisations are vital here. The histogram below does not look too bad to me. 
+However, as always, visualisations are vital here. The histogram below does not look too bad to me. 
 ```{r}
 ggplot(data = usmr_data, aes(x = height)) + 
   geom_histogram(bins=15) +
@@ -248,14 +249,13 @@ ggplot(data = usmr_data, aes(x = height)) +
   geom_vline(xintercept = 165)
 ```
 
-The t.test is quite robust against slight violations of normality, and our data here doesn't look *too* non-normal (this is a judgement call here - over time you will start to get a sense of what you might deem worrisome in these plots!).
+In fact, the t.test is quite robust against slight violations of normality, especially as sample sizes increase beyond 30, and our data here doesn't look *too* non-normal (this is a judgement call here - over time you will start to get a sense of what you might deem worrisome in these plots!).
 
 __Conduct test__ 
 
 ```{r}
 t.test(usmr_data$height, mu = 165, alternative = "two.sided")
 ```
-
 
 
 `r solend()`
@@ -361,24 +361,59 @@ Here are a few extra questions for you to practice performing tests and making p
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
+__Cats v Dogs__  
+
 ```{r}
 pets <- read.csv("https://uoepsy.github.io/data/pets_seattle.csv")
+catsndogs <- pets[pets$species != "Goat", ]
+```
 
-t.test(weight_kg ~ species, pets[pets$species != "Goat", ])
+In this case, we want to test whether $dogs > cats$. What we are testing then, whether $dogs - cats > 0$ or $cats - dogs < 0$.  
+By default, as the `species` variable is a character, it will use alphabetical ordering, and `t.test()` will test $cats - dogs$. So we want our alternative hypothesis to be "less":  
+```{r}
+#| eval: false
+t.test(weight_kg ~ species, catsndogs,
+       alternative = "less")
+```
 
-pets %>% 
-  filter(species != "Goat") %>%
+An alternative is to set it as a factor, and specify the levels in the order we want:  
+```{r}
+catsndogs$species2 <- factor(catsndogs$species, levels = c("Dog","Cat"))
+```
+Which would then allow us to shove that into the `t.test()` and perform the same test, but using $dogs - cats$ instead. 
+
+```{r}
+t.test(weight_kg ~ species2, catsndogs,
+       alternative = "greater")
+```
+
+```{r}
+catsndogs %>%
   ggplot(aes(x=species,y=weight_kg)) + 
   geom_boxplot()
 ```
 
 
-```{r}
-cbt <- read.csv("https://uoepsy.github.io/data/dapr1_2122_report_data.csv")
+__CBT & Anxiety__  
 
-cbt <- cbt %>% mutate(reduction = anx_t1 - anx_t2)
+Because we're testing the _reduction_ in anxiety, we need to calculate it. By subtracting anxiety at time 2 from anxiety at time 1, we create a variable for which bigger values represent more reduction in anxiety  
+```{r}
+cbtanx <- read.csv("https://uoepsy.github.io/data/dapr1_2122_report_data.csv")
+
+cbtanx <- cbtanx %>% mutate(reduction = anx_t1 - anx_t2)
 ```
 
+And we can then test whether $cbt - control > 0$:  
+```{r}
+t.test(reduction ~ cbt, data = cbtanx, 
+       alternative = "greater")
+```
+And to make sure we're getting things the right way around, make a plot:
+```{r}
+ggplot(cbtanx, aes(x=cbt, y=reduction))+
+  geom_boxplot() + 
+  labs(x="Experimental Group",y="Reduction in Anxiety across study")
+```
 
 
 `r solend()`

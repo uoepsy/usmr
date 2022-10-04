@@ -586,7 +586,8 @@ Well, we should bear a couple of things in mind.
 </div>
 </div>
 <p><strong>Assumptions:</strong></p>
-<p>The <code>shapiro.test()</code> suggests that our assumption of normality may be violated!! oh no!</p>
+<p>The <code>shapiro.test()</code> suggests that our assumption of normality is okay!<br>
+(the p-value is <span class="math inline">\(&gt;.05\)</span>, suggesting that we do <em>not</em> reject the hypothesis that the data are drawn from a normally distributed population)</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">shapiro.test</span>(usmr_data<span class="sc">$</span>height)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -597,7 +598,7 @@ data:  usmr_data$height
 W = 0.96628, p-value = 0.06591</code></pre>
 </div>
 </div>
-<p>However, visualisations are vital here. The histogram below does not look too bad to me.</p>
+<p>However, as always, visualisations are vital here. The histogram below does not look too bad to me.</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> usmr_data, <span class="fu">aes</span>(<span class="at">x =</span> height)) <span class="sc">+</span> </span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">15</span>) <span class="sc">+</span></span>
@@ -611,7 +612,7 @@ W = 0.96628, p-value = 0.06591</code></pre>
 </div>
 </div>
 </div>
-<p>The t.test is quite robust against slight violations of normality, and our data here doesn’t look <em>too</em> non-normal (this is a judgement call here - over time you will start to get a sense of what you might deem worrisome in these plots!).</p>
+<p>In fact, the t.test is quite robust against slight violations of normality, especially as sample sizes increase beyond 30, and our data here doesn’t look <em>too</em> non-normal (this is a judgement call here - over time you will start to get a sense of what you might deem worrisome in these plots!).</p>
 <p><strong>Conduct test</strong></p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(usmr_data<span class="sc">$</span>height, <span class="at">mu =</span> <span class="dv">165</span>, <span class="at">alternative =</span> <span class="st">"two.sided"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -784,39 +785,88 @@ Question Extra
 <p class="question-end">
 </p>
 <div style="display:none;">
+<p><strong>Cats v Dogs</strong></p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>pets <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"https://uoepsy.github.io/data/pets_seattle.csv"</span>)</span>
-<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(weight_kg <span class="sc">~</span> species, pets[pets<span class="sc">$</span>species <span class="sc">!=</span> <span class="st">"Goat"</span>, ])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>catsndogs <span class="ot">&lt;-</span> pets[pets<span class="sc">$</span>species <span class="sc">!=</span> <span class="st">"Goat"</span>, ]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>In this case, we want to test whether <span class="math inline">\(dogs &gt; cats\)</span>. What we are testing then, whether <span class="math inline">\(dogs - cats &gt; 0\)</span> or <span class="math inline">\(cats - dogs &lt; 0\)</span>.<br>
+By default, as the <code>species</code> variable is a character, it will use alphabetical ordering, and <code>t.test()</code> will test <span class="math inline">\(cats - dogs\)</span>. So we want our alternative hypothesis to be “less”:</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(weight_kg <span class="sc">~</span> species, catsndogs,</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>       <span class="at">alternative =</span> <span class="st">"less"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>An alternative is to set it as a factor, and specify the levels in the order we want:</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>catsndogs<span class="sc">$</span>species2 <span class="ot">&lt;-</span> <span class="fu">factor</span>(catsndogs<span class="sc">$</span>species, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Dog"</span>,<span class="st">"Cat"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Which would then allow us to shove that into the <code>t.test()</code> and perform the same test, but using <span class="math inline">\(dogs - cats\)</span> instead.</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(weight_kg <span class="sc">~</span> species2, catsndogs,</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>       <span class="at">alternative =</span> <span class="st">"greater"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
     Welch Two Sample t-test
 
-data:  weight_kg by species
-t = -92.4, df = 1335.2, p-value &lt; 2.2e-16
-alternative hypothesis: true difference in means between group Cat and group Dog is not equal to 0
+data:  weight_kg by species2
+t = 92.4, df = 1335.2, p-value &lt; 2.2e-16
+alternative hypothesis: true difference in means between group Dog and group Cat is greater than 0
 95 percent confidence interval:
- -16.23018 -15.55534
+ 15.60965      Inf
 sample estimates:
-mean in group Cat mean in group Dog 
-         4.484731         20.377489 </code></pre>
+mean in group Dog mean in group Cat 
+        20.377489          4.484731 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>pets <span class="sc">%&gt;%</span> </span>
-<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(species <span class="sc">!=</span> <span class="st">"Goat"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x=</span>species,<span class="at">y=</span>weight_kg)) <span class="sc">+</span> </span>
-<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>catsndogs <span class="sc">%&gt;%</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x=</span>species,<span class="at">y=</span>weight_kg)) <span class="sc">+</span> </span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="03_ex_files/figure-html/unnamed-chunk-22-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="03_ex_files/figure-html/unnamed-chunk-26-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
 </div>
+<p><strong>CBT &amp; Anxiety</strong></p>
+<p>Because we’re testing the <em>reduction</em> in anxiety, we need to calculate it. By subtracting anxiety at time 2 from anxiety at time 1, we create a variable for which bigger values represent more reduction in anxiety</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>cbt <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"https://uoepsy.github.io/data/dapr1_2122_report_data.csv"</span>)</span>
-<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>cbt <span class="ot">&lt;-</span> cbt <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">reduction =</span> anx_t1 <span class="sc">-</span> anx_t2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>cbtanx <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"https://uoepsy.github.io/data/dapr1_2122_report_data.csv"</span>)</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>cbtanx <span class="ot">&lt;-</span> cbtanx <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">reduction =</span> anx_t1 <span class="sc">-</span> anx_t2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>And we can then test whether <span class="math inline">\(cbt - control &gt; 0\)</span>:</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(reduction <span class="sc">~</span> cbt, <span class="at">data =</span> cbtanx, </span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>       <span class="at">alternative =</span> <span class="st">"greater"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Welch Two Sample t-test
+
+data:  reduction by cbt
+t = 2.5953, df = 56.621, p-value = 0.006007
+alternative hypothesis: true difference in means between group cbt and group control is greater than 0
+95 percent confidence interval:
+ 0.2744051       Inf
+sample estimates:
+    mean in group cbt mean in group control 
+            1.0266667             0.2551724 </code></pre>
+</div>
+</div>
+<p>And to make sure we’re getting things the right way around, make a plot:</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(cbtanx, <span class="fu">aes</span>(<span class="at">x=</span>cbt, <span class="at">y=</span>reduction))<span class="sc">+</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>() <span class="sc">+</span> </span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x=</span><span class="st">"Experimental Group"</span>,<span class="at">y=</span><span class="st">"Reduction in Anxiety across study"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="03_ex_files/figure-html/unnamed-chunk-29-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+</figure>
+</div>
+</div>
 </div>
 </div>
 <p class="solution-end">
