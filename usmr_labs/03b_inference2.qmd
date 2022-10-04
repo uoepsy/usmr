@@ -275,33 +275,83 @@ It's __that__ easy!
 
 These sort of tests often require us to meet a set of conditions in order for our inferences to be valid. When we perform tests like these that involve estimating a mean, a common requirement is that the deviations from that mean are close to normally distributed.  
 
-We can evaluate how close to normal a distribution is by visualising it and making a judgment call, but this can sometimes be hard:  
+:::frame
+__Assumption Plots__  
+
+We can evaluate how close to normal a distribution is by visualising it via histograms and density plots and making a judgment call, but this can sometimes be hard:  
 ```{r}
 #| label: fig-normalquestion
 #| fig-cap: "Am I normal?"
 #| fig-height: 2.5
-#| echo: false
+#| code-fold: true
 data <- tibble(mysample = mysample)
-ggplot(data,aes(x=mysample))+geom_histogram(bins=14)
+ggplot(data,aes(x=mysample))+geom_histogram(bins=14) +
+ggplot(data,aes(x=mysample))+geom_density()
 ```
-A useful visualisation tool is the __QQplot__. The closer to the diagonal line, the closer our data is to being normally distributed: 
+Another useful visualisation tool is the __QQplot__. The closer to the diagonal line, the closer our data is to being normally distributed: 
 
 ```{r}
 #| label: fig-normalqq
 #| fig-cap: "A QQplot"
-#| fig-height: 2.5
-#| echo: false
-ggplot(data = NULL, aes(sample = mysample)) + 
-  geom_qq()+
-  geom_qq_line()
+#| fig-height: 3.5
+qqnorm(data$mysample) # make the plot
+qqline(data$mysample) # add the line
 ```
 
-There are also, if we wish to make use of them, specific hypothesis tests that assess normality, such as the 'Shapiro-Wilks' Test. The null hypothesis for this test is that the data we give it are drawn from a normal distribution. This means that __we want a p-value *greater* than .05__. So in the example below we are okay, and it is not inappropriate for us to conduct the t-test.  
+`r optbegin("Optional: What are the 'theoretical quantiles'?", olabel=FALSE)`
+The theoretical quantiles are the equivalent quantiles of the _standard normal distribution_ (see [#2B standard-normal-distribution](02b_sampling.html#the-standard-normal-distribution){target="_blank"}).  
+In the `data$mysample` example above, we have 10 datapoints. If we cut the standard normal distribution into 10 sections of equal area (see @fig-qqnormcurve), it is the points on the x-axis at the center of each area that we are plotting our data against.  
+
+```{r}
+#| echo: false
+#| fig.cap: "10 quantiles of the normal distribution"  
+#| label: fig-qqnormcurve
+#| fig-height: 3.5
+
+df <- tibble(x=seq(-3,3,.0001))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=0,sd=1),size=1) +
+  xlab("Standard Normal Distribution") + ylab("density")
+
+ld1 <- layer_data(g) %>% filter((x >= qnorm(0)  & x < qnorm(.11)))
+ld2 <- layer_data(g) %>% filter((x >= qnorm(.1) & x < qnorm(.21)))
+ld3 <- layer_data(g) %>% filter((x >= qnorm(.2) & x < qnorm(.32)))
+ld4 <- layer_data(g) %>% filter((x >= qnorm(.3) & x < qnorm(.41)))
+ld5 <- layer_data(g) %>% filter((x >= qnorm(.4) & x < qnorm(.51)))
+ld6 <- layer_data(g) %>% filter((x >= qnorm(.5) & x < qnorm(.61)))
+ld7 <- layer_data(g) %>% filter((x >= qnorm(.58) & x < qnorm(.71)))
+ld8 <- layer_data(g) %>% filter((x >= qnorm(.68) & x < qnorm(.81)))
+ld9 <- layer_data(g) %>% filter((x >= qnorm(.79) & x < qnorm(.91)))
+ld10 <- layer_data(g) %>% filter((x >= qnorm(.9) & x < qnorm(1)))
+
+g + 
+  geom_area(data=ld1,aes(x=x,y=y,fill="1st")) +
+  geom_area(data=ld2,aes(x=x,y=y,fill="2nd")) +
+  geom_area(data=ld3,aes(x=x,y=y,fill="3rd")) +
+  geom_area(data=ld4,aes(x=x,y=y,fill="4th")) +
+  geom_area(data=ld5,aes(x=x,y=y,fill="5th")) +
+  geom_area(data=ld6,aes(x=x,y=y,fill="6th")) +
+  geom_area(data=ld7,aes(x=x,y=y,fill="7th")) +
+  geom_area(data=ld8,aes(x=x,y=y,fill="8th")) +
+  geom_area(data=ld9,aes(x=x,y=y,fill="9th")) +
+  geom_area(data=ld10,aes(x=x,y=y,fill="10th")) +
+  guides(fill="none")+
+  scale_x_continuous(breaks=round(map_dbl((seq(.1,1,.1)-.05), ~qnorm(.)),1))
+```
+
+`r optend()`
+
+:::
+
+:::frame
+__Assumption Tests__  
+
+There are also, if we wish to make use of them, specific hypothesis tests that assess normality, such as the 'Shapiro-Wilks' Test. The null hypothesis for this test is that the data we give it are drawn from a normal distribution. This means that __we want a p-value *greater* than .05__. So in the example below, we have no reason to reject the hypothesis that our data are drawn from a normal distribution. This means we can continue to conduct a t-test.  
 
 ```{r}
 shapiro.test(mysample)
 ```
-
+:::
 <div class="divider div-transparent div-dot"></div>
 
 # Basic Tests  
@@ -674,7 +724,7 @@ The paired sample t-test is used to test whether the mean difference between two
 __Assumptions:__
 
 - The data are continuous (not discrete)
-- The data are independent (i.e. the value of a datapoint does not depend on the value of another datapoint in any way)
+- The _differences_ are independent (i.e. the value of a the difference for one pair does not depend on the values of another pair in any way)
 - The _differences_ are normally distributed _OR_ the sample size is large enough (rule-of-thumb n = 30) and the data are not strongly skewed
   
 :::
