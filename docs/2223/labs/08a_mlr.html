@@ -207,9 +207,18 @@ if(f.classList.contains('fa-hand-o-right')) {
   <li class="nav-item dropdown ">
     <a class="nav-link dropdown-toggle" href="#" id="nav-menu-week-4" role="button" data-bs-toggle="dropdown" aria-expanded="false">Week 4</a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-week-4">    
-        <li class="dropdown-header">4A: Chi-Square Tests</li>
-        <li class="dropdown-header">4B: Revisiting NHST</li>
-        <li class="dropdown-header">Exercises: Chi-Square Tests</li>
+        <li>
+    <a class="dropdown-item" href="./04a_chisq.html">
+ <span class="dropdown-text">4A: Chi-Square Tests</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./04b_revisitnhst.html">
+ <span class="dropdown-text">4B: Revisiting NHST</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./04_ex.html">
+ <span class="dropdown-text">Exercises: Chi-Square Tests</span></a>
+  </li>  
     </ul>
   </li>
   <li class="nav-item dropdown ">
@@ -287,6 +296,7 @@ if(f.classList.contains('fa-hand-o-right')) {
   </ul></li>
   <li><a href="#model-comparisons" id="toc-model-comparisons" class="nav-link" data-scroll-target="#model-comparisons">Model Comparisons</a></li>
   <li><a href="#analysis-of-variance" id="toc-analysis-of-variance" class="nav-link" data-scroll-target="#analysis-of-variance">Analysis of Variance</a></li>
+  <li><a href="#correlation-vs-causation-again" id="toc-correlation-vs-causation-again" class="nav-link" data-scroll-target="#correlation-vs-causation-again">Correlation vs Causation, Again!</a></li>
   </ul>
 </nav>
     </div>
@@ -507,7 +517,7 @@ F-statistic: 8.443 on 2 and 47 DF,  p-value: 0.0007369</code></pre>
 <li><strong>outcome/response/dependent variable</strong>: variable on the left hand side of the model equation</li>
 <li><strong>predictor:</strong> any variable on the right hand side of the model equation</li>
 <li><strong>focal predictor/independent variable:</strong> the predictor of interest</li>
-<li><strong>covariates/confounders/control variables:</strong> other variables that we are less interested in but believe to relevant to how the data comes about</li>
+<li><strong>covariates/confounders/control variables:</strong> other variables that we are less interested in but believe to relevant to how the data comes about, and that may influence both the outcome and the focal predictor.</li>
 </ul>
 </div>
 <p>A common way to build this intuition is to consider a Venn diagram with a circle showing the variance in each variable. <a href="#fig-vennslr">Figure&nbsp;2</a> shows a simple linear regression with one predictor (i.e.&nbsp;<code>lm(y ~ x1)</code>). The circle for <span class="math inline">\(y\)</span> shows the total variance in <span class="math inline">\(y\)</span> (the same for the <span class="math inline">\(x_1\)</span> circle). The overlap between circles (labelled “A”) shows the variance in <span class="math inline">\(y\)</span> that is explained by <span class="math inline">\(x_1\)</span> (i.e.&nbsp;the covariance).</p>
@@ -889,6 +899,7 @@ speciesRhesus monkey -0.15261    0.04257  -3.585   0.0011 ** </code></pre>
 </section>
 <section id="model-evaluation" class="level1">
 <h1>Model Evaluation</h1>
+<p>Alongside the estimation of specific parameters of interest (i.e.&nbsp;the coefficients from our model), we may well want to ask how good our model is as a whole. There are lots of ways to do this, but in this course we’re going to just focus on the ones which R will automatically show us at the bottom of the <code>summary(model)</code> output. These are the same <span class="math inline">\(R^2\)</span> and the <span class="math inline">\(F\)</span>-test that we saw in the simple regression model (<a href="07a_slr.html#model-evaluation" target="_blank">7A#model-evaluation</a>), only it’s a little different when we have multiple predictors.</p>
 <section id="adjusted-r2" class="level2">
 <h2 class="anchored" data-anchor-id="adjusted-r2">Adjusted <span class="math inline">\(R^2\)</span></h2>
 <p>We know from our work on simple linear regression that the R-squared can be obtained as:</p>
@@ -1129,6 +1140,23 @@ x3level3    11.62405    3.22863   3.600 0.000789 ***</code></pre>
 <li>Analysis of Variance: “are there group differences in <span class="math inline">\(y\)</span>?”</li>
 <li>Coefficients: “what are the differences in <span class="math inline">\(y\)</span> when comparing specific groups?”</li>
 </ul>
+</section>
+<section id="correlation-vs-causation-again" class="level1">
+<h1>Correlation vs Causation, Again!</h1>
+<p>It’s very important to remember that all of this extra “control” we are able to exert on our model estimates doesn’t just allow us to start talking about causal effects. The coefficients we get from a multiple regression model are <em>still</em> just associations (i.e.&nbsp;correlations), it is simply that they are now <em>conditional</em> upon holding constant some other variable.</p>
+<p>To make the point, we could fit a model such as:</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(birthweight <span class="sc">~</span> IQ_age11 <span class="sc">+</span> bilingual, <span class="at">data =</span> ...)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>And get some coefficients:</p>
+<pre><code>Coefficients:
+            Estimate    ...   ...
+(Intercept)  600.000    ...   ...
+IQ_age11     10.0000    ...   ...
+bilingualYes 5.00000    ...   ...</code></pre>
+<p>Now imagine that you have a newborn baby who weighs 700 grams. Are we to say that “If I raise this child to be bilingual, her birthweight will increase by 5 grams (assuming her IQ at age 11 remains the same)”?<br>
+This is obviously nonsense - the baby weighs 700 grams and that’s not something that will change.</p>
+<p>To talk about causal effects we need a lot of careful thought about our theoretical model of the world (i.e.&nbsp;what causes what) combined with a model that isolates the relevant effect of interest by controlling for the appropriate possible confounds (either through statistical control or control by design).</p>
 
 
 </section>
