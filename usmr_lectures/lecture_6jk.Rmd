@@ -36,7 +36,7 @@ knitr::opts_chunk$set(
   dev = "svg",
   warning = FALSE,
   message = FALSE,
-  cache = TRUE
+  cache = FALSE
 )
 source('R/myfuncs.R')
 
@@ -80,7 +80,8 @@ dat <- give_me_a_sample(20)
 ```{r frecap,fig.asp=.6,echo=FALSE}
 p1 <- dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
   xlab("Weekly Activity (hours)") + ylab("Brain Volume\n(% of intracranial space)") +
-  geom_point(size=3)
+  geom_point(size=3)+
+  ylim(80,100)
 p1
 rd <- cor.test(dat$brain_vol,dat$weekly_actv)
 ```
@@ -290,6 +291,7 @@ p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
   xlab("Weekly Activity (hours)") + ylab("Brain Volume\n(% of intracranial space)") +
   geom_point(size=3) + 
+  ylim(80,100) + 
   geom_smooth(method="lm")
 
 ```
@@ -325,13 +327,15 @@ $$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
 ```{r git,echo=F,fig.asp=.6}
 p1 <- dat %>% ggplot(aes(x=weekly_actv, y = brain_vol)) +
   xlab("Weekly Activity (hours)") + ylab("Brain Volume\n(% of intracranial space)") +
-  xlim(c(-1, 20)) + ylim(50,100) +
-  scale_x_continuous(limits=c(-1,20),breaks=seq(0,20,2)) +
-  geom_segment(aes(x=0,y=50,xend=0,yend=coef(mod)[1]),colour="red") +
-  annotate("text",x=.5,y=coef(mod)[1]-1,label=expression(b[0]),size=5,colour="red")
+  ylim(67.5,100) +
+  scale_x_continuous(limits=c(-.5,18.5),breaks=seq(0,20,2)) +
+  geom_segment(aes(x=0,y=70,xend=0,yend=coef(mod)[1]),colour="red") +
+  geom_segment(x=0,y=67.5,xend=0,yend=70,col="red",lty="dashed")+
+  annotate("text",x=.5,y=coef(mod)[1]-1,label=expression(b[0]),size=5,colour="red") + 
+  NULL
+
 p1
 ```
-TODO add dotted line below intercept
 ]
 ???
 - $b_0$ is the the predicted value, $\bar{y}$, when $x=0$.  Here I've represented it as a line, so where the top is the intercept value of `r coef(mod)[1]`
@@ -340,7 +344,7 @@ TODO add dotted line below intercept
 count: false
 # Intercept and Slope Again
 
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],2)` $$
 .center[
 ```{r git2,echo=F,fig.asp=.6}
 lmf <- function(x) {
@@ -349,7 +353,7 @@ lmf <- function(x) {
 p2 <- p1 +
   geom_segment(aes(x=4,xend=5,y=lmf(4),yend=lmf(4)),
                arrow=arrow(ends = "both",length = unit(.015,"native"))) +
-  annotate("text",x=4.5,y=lmf(3.5),label="1",size=5) +
+  annotate("text",x=4.5,y=lmf(3.2),label="1",size=5) +
   geom_segment(aes(x=5,xend=5,y=lmf(4),yend=lmf(5)),
                colour="red") +
   annotate("text",x=5.4,y=lmf(4.5),label=expression(b[1]),colour="red",size=5) +
@@ -366,10 +370,10 @@ p2
 count: false
 # Intercept and Slope Again
 
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],2)` $$
 .center[
 ```{r git3, echo=FALSE, fig.asp=.6}
-p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=1)
+p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=.7)
 ```
 ]
 
@@ -377,11 +381,11 @@ p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=1)
 count: false
 # Intercept and Slope Again
 
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],2)` $$
 .center[
 ```{r git4, echo=FALSE, fig.asp=.6}
 p2 +
-  geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2) + 
+  geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=.7) + 
   geom_point(size=3)
 ```
 ]
@@ -412,7 +416,7 @@ class: inverse, center, middle
 
 ```{r getvals,include=FALSE}
 m.i <- round(coef(mod)[1],1)
-m.s <- round(coef(mod)[2],1)
+m.s <- round(coef(mod)[2],2)
 ```
 
 - we have an intercept of `r m.i` and a slope of `r m.s`
@@ -442,8 +446,11 @@ iS <- function(size) {
 
 cS <- as_tibble(t(replicate(1e3,iS(20)))) 
 
+#cS = MASS::mvrnorm(n=1e3,mu=coef(mod),Sigma=vcov(mod)) %>% as.data.frame
+
 dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
-  xlim(c(-1, 20)) + ylim(50,100) +
+  ylim(67.5,100) +
+  scale_x_continuous(limits=c(-.5,18.5),breaks=seq(0,20,2)) +
   geom_abline(data=cS,aes(intercept=`(Intercept)`,slope=weekly_actv),alpha=.1,colour="blue")
 ```
 ]
@@ -459,7 +466,8 @@ dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
 .center[
 ```{r figfig,fig.asp=.6,fig.width=5.5,echo=F}
 dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
-  xlim(c(-1, 20)) + ylim(50,100) +
+  ylim(67.5,100) +
+  scale_x_continuous(limits=c(-.5,18.5),breaks=seq(0,20,2)) +
   geom_point(size=3) +
   geom_smooth(method="lm", fullrange = TRUE)
 ```
@@ -750,7 +758,7 @@ pMod/pRes
 
 
 ---
-# A Linear Model for 20 Drinkers
+# A Linear Model for 20 Brains
 
 .center[
 ```{r mod,fig.asp=.55,echo=FALSE,fig.width=6}
