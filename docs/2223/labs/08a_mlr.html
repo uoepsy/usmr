@@ -288,6 +288,7 @@ if(f.classList.contains('fa-hand-o-right')) {
   <ul>
   <li><a href="#the-multiple-regression-model" id="toc-the-multiple-regression-model" class="nav-link active" data-scroll-target="#the-multiple-regression-model">The Multiple Regression Model</a></li>
   <li><a href="#multiple-regression-coefficients" id="toc-multiple-regression-coefficients" class="nav-link" data-scroll-target="#multiple-regression-coefficients">Multiple Regression Coefficients</a></li>
+  <li><a href="#correlation-vs-causation-again" id="toc-correlation-vs-causation-again" class="nav-link" data-scroll-target="#correlation-vs-causation-again">Correlation vs Causation, Again!</a></li>
   <li><a href="#multiple-categories-multiple-regression" id="toc-multiple-categories-multiple-regression" class="nav-link" data-scroll-target="#multiple-categories-multiple-regression">Multiple Categories = Multiple Regression</a></li>
   <li><a href="#model-evaluation" id="toc-model-evaluation" class="nav-link" data-scroll-target="#model-evaluation">Model Evaluation</a>
   <ul class="collapse">
@@ -296,7 +297,6 @@ if(f.classList.contains('fa-hand-o-right')) {
   </ul></li>
   <li><a href="#model-comparisons" id="toc-model-comparisons" class="nav-link" data-scroll-target="#model-comparisons">Model Comparisons</a></li>
   <li><a href="#analysis-of-variance" id="toc-analysis-of-variance" class="nav-link" data-scroll-target="#analysis-of-variance">Analysis of Variance</a></li>
-  <li><a href="#correlation-vs-causation-again" id="toc-correlation-vs-causation-again" class="nav-link" data-scroll-target="#correlation-vs-causation-again">Correlation vs Causation, Again!</a></li>
   </ul>
 </nav>
     </div>
@@ -766,6 +766,27 @@ caffeine      0.0933     0.1030   0.906 0.367398  </code></pre>
 
 </div>
 </section>
+<section id="correlation-vs-causation-again" class="level1">
+<h1>Correlation vs Causation, Again!</h1>
+<p>It’s very important to remember that all of this extra “control” we are able to exert on our model estimates doesn’t just allow us to start talking about causal effects. The coefficients we get from a multiple regression model are <em>still</em> just associations (i.e.&nbsp;correlations), it is simply that they are now <em>conditional</em> upon holding constant some other variable.</p>
+<p>To make the point, we could fit a model such as:</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(birthweight <span class="sc">~</span> IQ_age11 <span class="sc">+</span> bilingual, <span class="at">data =</span> ...)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>And get some coefficients:</p>
+<pre><code>Coefficients:
+            Estimate    ...   ...
+(Intercept)  600.000    ...   ...
+IQ_age11     10.0000    ...   ...
+bilingualYes 5.00000    ...   ...</code></pre>
+<p>Now imagine that you have a newborn baby who weighs 700 grams. Are we to say that “If I raise this child to be bilingual, her birthweight will increase by 5 grams (assuming her IQ at age 11 remains the same)”?<br>
+This is obviously nonsense - the baby weighs 700 grams and that’s not something that will change.</p>
+<p>To talk about causal effects we need a lot of careful thought about our theoretical model of the world (i.e.&nbsp;what causes what) combined with a model that isolates the relevant effect of interest by controlling for the appropriate possible confounds (either through statistical control or control by design).</p>
+<p>TODO good bad control</p>
+<div class="divider div-transparent div-dot">
+
+</div>
+</section>
 <section id="multiple-categories-multiple-regression" class="level1">
 <h1>Multiple Categories = Multiple Regression</h1>
 <p>We saw last week how to interpret simple regression models when there is a binary predictor (see <a href="07a_slr.html#binary-predictors">7A#binary-predictors</a>). The addition of binary predictors in multiple regression models is pretty much the same - the coefficient will give us the estimated change in <span class="math inline">\(y\)</span> when moving from one level to the other<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>, <em>holding other predictors constant.</em></p>
@@ -774,7 +795,7 @@ caffeine      0.0933     0.1030   0.906 0.367398  </code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="08a_mlr_files/figure-html/unnamed-chunk-24-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="08a_mlr_files/figure-html/unnamed-chunk-25-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
@@ -782,8 +803,8 @@ caffeine      0.0933     0.1030   0.906 0.367398  </code></pre>
 <p>What about when we have a predictor with more than two categories? We might have lots of different conditions in our experiment, or we might have observations from lots of different distinct groups of people.</p>
 <p>Consider an example where we are investigating the brain mass of different species of animals. We might have a datset which looks like this:</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>braindata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"https://uoepsy.github.io/data/usmr_braindata.csv"</span>)</span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(braindata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>braindata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"https://uoepsy.github.io/data/usmr_braindata.csv"</span>)</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(braindata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell" data-layout-align="center">
 <div class="cell-output-display">
@@ -885,7 +906,7 @@ speciesRhesus monkey -0.15261    0.04257  -3.585   0.0011 ** </code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="08a_mlr_files/figure-html/unnamed-chunk-30-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="08a_mlr_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
@@ -930,9 +951,9 @@ R^2 = \frac{SS_{Model}}{SS_{Total}} = 1 - \frac{SS_{Residual}}{SS_{Total}}
 \]</span></p>
 <p><strong>In R,</strong> you can view the mutiple and adjusted <span class="math inline">\(R^2\)</span> at the bottom of the output of <code>summary(&lt;modelname&gt;)</code>:</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>mydata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"https://uoepsy.github.io/data/usmr_mlr.csv"</span>)</span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>eg_model <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2, <span class="at">data =</span> mydata)</span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(eg_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>mydata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"https://uoepsy.github.io/data/usmr_mlr.csv"</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>eg_model <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2, <span class="at">data =</span> mydata)</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(eg_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell" data-layout-align="center">
 <div class="cell-output-display">
@@ -970,9 +991,9 @@ H_1: &amp;\text{the model is effective, } \\
 \]</span></p>
 <p><strong>In R,</strong> at the bottom of the output of <code>summary(&lt;modelname&gt;)</code>, you can view the F ratio, along with an hypothesis test against the alternative hypothesis that the at least one of the coefficients <span class="math inline">\(\neq 0\)</span> (under the null hypothesis that all coefficients = 0, the ratio of explained:unexplained variance should be approximately 1):</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>mydata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"https://uoepsy.github.io/data/usmr_mlr.csv"</span>)</span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>eg_model <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2, <span class="at">data =</span> mydata)</span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(eg_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>mydata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"https://uoepsy.github.io/data/usmr_mlr.csv"</span>)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>eg_model <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2, <span class="at">data =</span> mydata)</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(eg_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell" data-layout-align="center">
 <div class="cell-output-display">
@@ -1004,9 +1025,9 @@ Formally this is the test of:</p>
 <div class="rtip">
 <p><strong>In R,</strong> we can conduct an incremental F-test by constructing two models, and passing them to the <code>anova()</code> function:</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>model1 <span class="ot">&lt;-</span> <span class="fu">lm</span>( ... </span>
-<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>model2 <span class="ot">&lt;-</span> <span class="fu">lm</span>( ... </span>
-<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(model1, model2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>model1 <span class="ot">&lt;-</span> <span class="fu">lm</span>( ... )</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>model2 <span class="ot">&lt;-</span> <span class="fu">lm</span>( ... )</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(model1, model2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </div>
 </div>
@@ -1031,10 +1052,10 @@ Formally this is the test of:</p>
 </p>
 <p>For example, we might compare a model with just one predictor, <span class="math inline">\(x_1\)</span>, to a model with 3 predictors: <span class="math inline">\(x_1,\ x_2,\ x_3\)</span>, thereby assessing the extent to which the variables <span class="math inline">\(x_2\)</span> and <span class="math inline">\(x_3\)</span> jointly improve model fit:</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>mydata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"https://uoepsy.github.io/data/usmr_mlr.csv"</span>)</span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>eg_model1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1, <span class="at">data =</span> mydata)</span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>eg_model2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2 <span class="sc">+</span> x3, <span class="at">data =</span> mydata)</span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(eg_model1, eg_model2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>mydata <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"https://uoepsy.github.io/data/usmr_mlr.csv"</span>)</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>eg_model1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1, <span class="at">data =</span> mydata)</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>eg_model2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2 <span class="sc">+</span> x3, <span class="at">data =</span> mydata)</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(eg_model1, eg_model2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Analysis of Variance Table
 
@@ -1053,16 +1074,20 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 </section>
 <section id="analysis-of-variance" class="level1">
 <h1>Analysis of Variance</h1>
+<p>TODO what we are actually doing in model comp is analysing variance explained by set of predictors (hence anova function).</p>
+<p>analysis of variance = coefficients =</p>
+<p>sums squares brief.</p>
+<p>apply this logic to a single model</p>
 <p>Another thing we can do is take a single model and partition out variance explained by the <em><strong>incremental addition</strong> of each predictor.</em> We can do that by building a model with <code>lm()</code> and then giving the <code>anova()</code> function that model.</p>
 <p>It’s very important to note that the <strong>order matters</strong> here, because it will assess the improvement in model fit due to each predictor in turn:</p>
 <ol type="1">
 <li><span class="math inline">\(x_1\)</span> vs no predictors</li>
-<li>then the addition of <span class="math inline">\(x_2\)</span> to the model with <span class="math inline">\(x_1\)</span></li>
-<li>then the addition of <span class="math inline">\(x_3\)</span> to the model with <span class="math inline">\(x_1\)</span> and <span class="math inline">\(x_2\)</span>)</li>
+<li>the addition of <span class="math inline">\(x_2\)</span> vs the model with <em>just</em> <span class="math inline">\(x_1\)</span></li>
+<li>the addition of <span class="math inline">\(x_3\)</span> vs the model with <em>just</em> <span class="math inline">\(x_1\)</span> and <span class="math inline">\(x_2\)</span></li>
 </ol>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>eg_model2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2 <span class="sc">+</span> x3, <span class="at">data =</span> mydata)</span>
-<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(eg_model2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>eg_model2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2 <span class="sc">+</span> x3, <span class="at">data =</span> mydata)</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(eg_model2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Analysis of Variance Table
 
@@ -1089,11 +1114,11 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 </div>
 <p>And this is really just a big set of model comparisons:</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>eg_model0 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> <span class="dv">1</span>, <span class="at">data =</span> mydata)</span>
-<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>eg_model1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1, <span class="at">data =</span> mydata)</span>
-<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>eg_model2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2, <span class="at">data =</span> mydata)</span>
-<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>eg_model3 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2 <span class="sc">+</span> x3, <span class="at">data =</span> mydata)</span>
-<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(eg_model0, eg_model1, eg_model2, eg_model3)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>eg_model0 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> <span class="dv">1</span>, <span class="at">data =</span> mydata)</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>eg_model1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1, <span class="at">data =</span> mydata)</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>eg_model2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2, <span class="at">data =</span> mydata)</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>eg_model3 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2 <span class="sc">+</span> x3, <span class="at">data =</span> mydata)</span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(eg_model0, eg_model1, eg_model2, eg_model3)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Note that this is a very different thing from what we have been doing previously, which was examining the effect of all predictors <strong>after</strong> considering all others (see <a href="#fig-vennss3">Figure&nbsp;9</a>). The area <span class="math inline">\(C\)</span> is the same in both <a href="#fig-vennss1">Figure&nbsp;8</a> and <a href="#fig-vennss3">Figure&nbsp;9</a>, demonstrating that this approach is like considering each predictor as if it were the “last one in” in the incremental approach.</p>
 <div class="cell" data-layout-align="center">
@@ -1108,8 +1133,8 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 </div>
 <p>Our interpretation of our regression coefficients matches the “last one in” approach shown in <a href="#fig-vennss1">Figure&nbsp;8</a>, but the hypothesis tests of coefficients are technically tests against the null hypothesis that that the coefficient is zero. The <code>drop1()</code> function allows us to conduct an analysis of variance using the “last one in” approach:</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>eg_model2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2 <span class="sc">+</span> x3, mydata)</span>
-<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="fu">drop1</span>(eg_model2, <span class="at">test =</span> <span class="st">"F"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>eg_model2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2 <span class="sc">+</span> x3, mydata)</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="fu">drop1</span>(eg_model2, <span class="at">test =</span> <span class="st">"F"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Single term deletions
 
@@ -1126,37 +1151,20 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 </div>
 <p>It might seem pointless to do this, given we can just look at our regression coefficients. In fact, the p-values for <span class="math inline">\(x_1\)</span> and <span class="math inline">\(x_2\)</span> are just the same as the p-values for our coefficients:</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(eg_model2)<span class="sc">$</span>coefficients</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(eg_model2)<span class="sc">$</span>coefficients</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<pre><code>            Estimate Std. Error t value Pr(&gt;|t|)    
-(Intercept) -8.66876    4.77570  -1.815 0.076164 .  
-x1           0.12176    0.07469   1.630 0.110026    
-x2          -0.60298    0.23596  -2.555 0.014054 *  
-x3level2     7.59135    2.80859   2.703 0.009663 ** 
-x3level3    11.62405    3.22863   3.600 0.000789 ***</code></pre>
+<pre><code>            Estimate Std. Error t value Pr(&gt;|t|)   
+(Intercept) -1.84331    3.86271  -0.477  0.63552   
+x1           0.19045    0.06666   2.857  0.00645 **
+x2          -0.60701    0.20544  -2.955  0.00497 **
+x3level2    -1.95195    2.43897  -0.800  0.42773   
+x3level3    -3.19862    3.24037  -0.987  0.32886   </code></pre>
 <p>But note that <span class="math inline">\(x_3\)</span> is a categorical variable that has three levels: “level1”, “level2”, “level3”, which means we get out <em>two</em> coefficients that test <em>two</em> specific differences (level2 vs level1; level3 vs level1). The analysis of variance approach (above) allows us to perform one single test of whether the entire grouping (of observations into the three levels) explains variance in the outcome variable.</p>
 <p>The very big picture could be taken as:</p>
 <ul>
 <li>Analysis of Variance: “are there group differences in <span class="math inline">\(y\)</span>?”</li>
 <li>Coefficients: “what are the differences in <span class="math inline">\(y\)</span> when comparing specific groups?”</li>
 </ul>
-</section>
-<section id="correlation-vs-causation-again" class="level1">
-<h1>Correlation vs Causation, Again!</h1>
-<p>It’s very important to remember that all of this extra “control” we are able to exert on our model estimates doesn’t just allow us to start talking about causal effects. The coefficients we get from a multiple regression model are <em>still</em> just associations (i.e.&nbsp;correlations), it is simply that they are now <em>conditional</em> upon holding constant some other variable.</p>
-<p>To make the point, we could fit a model such as:</p>
-<div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(birthweight <span class="sc">~</span> IQ_age11 <span class="sc">+</span> bilingual, <span class="at">data =</span> ...)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>And get some coefficients:</p>
-<pre><code>Coefficients:
-            Estimate    ...   ...
-(Intercept)  600.000    ...   ...
-IQ_age11     10.0000    ...   ...
-bilingualYes 5.00000    ...   ...</code></pre>
-<p>Now imagine that you have a newborn baby who weighs 700 grams. Are we to say that “If I raise this child to be bilingual, her birthweight will increase by 5 grams (assuming her IQ at age 11 remains the same)”?<br>
-This is obviously nonsense - the baby weighs 700 grams and that’s not something that will change.</p>
-<p>To talk about causal effects we need a lot of careful thought about our theoretical model of the world (i.e.&nbsp;what causes what) combined with a model that isolates the relevant effect of interest by controlling for the appropriate possible confounds (either through statistical control or control by design).</p>
 
 
 </section>

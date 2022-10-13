@@ -27,7 +27,7 @@ __Q1:__ Go to [http://guessthecorrelation.com/](http://guessthecorrelation.com/)
 __Data: Sleep levels and daytime functioning__  
 
 A researcher is interested in the relationship between hours slept per night and self-rated effects of sleep on daytime functioning. She recruited 50 healthy adults, and collected data on the Total Sleep Time (TST) over the course of a seven day period via sleep-tracking devices.  
-At the end of the seven day period, participants completed a Daytime Functioning (DTF) questionnaire. This involved participants rating their agreement with ten statements (see @tab-sleepitems). Agreement was measured on a scale from 1-5. An overall score of daytime functioning can be calculated by:  
+At the end of the seven day period, participants completed a Daytime Functioning (DTF) questionnaire. This involved participants rating their agreement with ten statements (see @tbl-sleepitems). Agreement was measured on a scale from 1-5. An overall score of daytime functioning can be calculated by:  
 
 1. reversing the scores for items 4,5 and 6 (because those items reflect agreement with _positive_ statements, whereas the other ones are agreement with _negative_ statement);
 2. summing the scores on each item; and 
@@ -36,13 +36,13 @@ At the end of the seven day period, participants completed a Daytime Functioning
 The data is available at https://uoepsy.github.io/data/sleepdtf.csv. 
   
 ```{r}
-#| label: tab-sleepitems
+#| label: tbl-sleepitems
 #| echo: false
 #| tbl-cap: Daytime Functioning Questionnaire
 tibble(
   Item = paste0("Item_",1:10),
   Statement = c("I often felt an inability to concentrate","I frequently forgot things","I found thinking clearly required a lot of effort","I often felt happy","I had lots of energy","I worked efficiently","I often felt irritable" ,"I often felt stressed","I often felt sleepy", "I often felt fatigued")
-)
+) %>% gt::gt()
 ```
 :::
 
@@ -135,12 +135,145 @@ Things to think about:
 
 <div class="divider div-transparent div-dot"></div>
 
-# Functions and Models
+# Attendance and Attainment
+
+:::frame
+__Data: Education SIMD Indicators__  
+
+The Scottish Government regularly collates data across a wide range of societal, geographic, and health indicators for every "datazone" (small area) in Scotland.  
+
+The dataset at [https://uoepsy.github.io/data/simd20_educ.csv](https://uoepsy.github.io/data/simd20_educ.csv){target="_blank"} contains some of the education indicators (see @tbl-simd).  
+
+```{r}
+#| label: tbl-simd
+#| echo: false
+#| tbl-cap: "Education indicators from the 2020 SIMD data"  
+tibble(
+  variable=names(read_csv("../../data/simd20_educ.csv")),
+  description=c("Areas of scotland containing populations of between 2.5k-6k household residents", 
+                "Average School pupil attendance",
+                "Average attainment score of School leavers (based on Scottish Credit and Qualifications Framework (SCQF))",
+                "Proportion of 17-21 year olds entering university")
+) %>% gt::gt()
+```
+
+:::
 
 `r qbegin(5)`
+Conduct a test of whether there is a correlation between school attendance and school attainment in Scotland.  
+
+Present and write up the results.  
+
+:::hints
+__Hints:__  
+
+The readings have _not_ included an example write-up for you to follow. Try to follow the logic of those for t-tests and $\chi^2$-tests. 
+
+  - describe the relevant data
+  - explain what test was conducted and why
+  - present the relevant statistic, degrees of freedom (if applicable), statement on p-value, etc. 
+  - state the conclusion.  
+ 
+Be careful figuring out how many observations your test is conducted on. `cor.test()` includes only the _complete_ observations. 
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+simd <- read_csv("https://uoepsy.github.io/data/simd20_educ.csv")
+```
+
+Here are the means of the two variables. We should remember that these calculations will include some observations which have missing data on the other variable.  
+```{r}
+simd %>% 
+  summarise(
+    m_attendance = mean(attendance, na.rm = TRUE),
+    m_attainment = mean(attainment, na.rm = TRUE)
+)
+```
+Instead, to match with out analysis, we might be inclined to filter our data to complete data:  
+```{r}
+simd_comp <- simd %>% 
+  filter(!is.na(attendance) & !is.na(attainment))
+
+simd_comp %>%
+  summarise(
+    m_attendance = mean(attendance),
+    m_attainment = mean(attainment),
+    sd_attendance = sd(attendance),
+    sd_attainment = sd(attainment)
+)
+```
+
+```{r}
+cor.test(simd_comp$attendance, simd_comp$attainment)
+```
+
+
+
+:::int
+```{r}
+#| echo: false
+res = cor.test(simd_comp$attendance, simd_comp$attainment)
+```
+
+A correlation test was conducted to assess whether there is a relationship between an area's average school attendance, and its average school attainment level. A total of `r nrow(simd_comp)` geographical areas were included in the analysis, with a mean school attendance of `r round(mean(simd_comp$attendance),2)` (SD = `r round(sd(simd_comp$attendance),2)`) and a mean school attainment score of `r round(mean(simd_comp$attainment),2)` (SD = `r round(sd(simd_comp$attainment),2)`).  
+There was a strong positive correlation between a geographical area's level of school attendance and its school attainment ($r$ = `r round(res$estimate,2)`, $t(`r res$parameter`$ = `r round(res$statistic,2)`, $p `r format.pval(res$p.value,eps = .001)`$). We therefore reject the null hypothesis that there is no correlation between an area's school attendance and attainment. @fig-simdplot provides a visualisation of the relationship.  
+
+```{r}
+#| code-fold: true
+ggplot(simd_comp, aes(x=attendance, y=attainment)) + 
+  geom_point() + 
+  labs(x = "Average school attendance",
+       y = "Average school attainment")
+```
+
+:::
+
+
+`r optbegin("Optional: some extra plotting bits")`
+
+Sometimes we may want to highlight certain parts of a plot. We can do that using the __gghighlight__ package, and giving it a set of conditions (like we do for `filter()`) in order for it to decide which points to highlight.  
+You can see an example below.  
+We have also created the title by referring to the `cor()` function, and 'paste'ing it together to "r = " 
+
+```{r}
+library(gghighlight)
+
+ggplot(simd_comp, aes(x=attendance, y=attainment)) + 
+  geom_point() + 
+  gghighlight( (attainment>6 & attendance<.75) | 
+               attendance > .95 | 
+               (attendance > .82 & attainment<5),
+               label_key = intermediate_zone) + 
+  labs(x = "Average school attendance",
+       y = "Average school attainment",
+       title = paste0("r = ",
+                       round(
+                         cor(simd_comp$attendance,
+                                  simd_comp$attainment),
+                         2)
+                       ))
+```
+`r optend()`
+
+
+`r solend()`
+
+
+<div class="divider div-transparent div-dot"></div>
+
+
+
+# Functions and Models
+
+`r qbegin(6)`
 The Scottish National Gallery kindly provided us with measurements of side and perimeter (in metres) for a sample of 10 square paintings.
 
-The data are provided below:
+The data are provided below:  
+_Note: this is a way of creating a "tibble" (a dataframe in 'tidyverse-style' language) in R, rather than reading one in from an external file._  
 ```{r eval=FALSE}
 sng <- tibble(
   side = c(1.3, 0.75, 2, 0.5, 0.3, 1.1, 2.3, 0.85, 1.1, 0.2),
@@ -175,7 +308,7 @@ ggplot(data = sng, aes(x = side, y = perimeter)) +
 The above plot shows perfect agreement between the observed data and the model.
 `r solend()`
 
-`r qbegin(6)`
+`r qbegin(7)`
 Use our mathematical model to predict the perimeter of a painting with a side of 1.5 metres.  
 
 :::hints
@@ -241,7 +374,7 @@ The data are available at [https://uoepsy.github.io/data/handheight.csv](https:/
 
 :::
 
-`r qbegin(7)`
+`r qbegin(8)`
 Consider the relationship between height (in inches) and handspan (in cm).  
 
 Read the handheight data into R, and investigate (visually) how handspan varies as a function of height for the students in the sample.
@@ -286,7 +419,7 @@ In fact, the data from the Scottish National Gallery include two squared paintin
 fig-handheight-scatterplot, instead, displays the relationship between height and handspan of a sample of students. The first thing that grabs our attention is the fact that students having the same height do not necessarily have the same handspan. Rather, we clearly see a variety of handspan values for students all having a height of, for example, 70in. To be more precise, the seven students who are 70 in. tall all have differing handspans.
 `r solend()`
 
-`r qbegin(8)`
+`r qbegin(9)`
 Hopefully, as part of the previous question, you created a scatterplot of handspans against heights. If not, make one now.  
 
 Try adding the following line of code to the scatterplot. It will add a best-fit line describing how handspan varies as a function of height.
@@ -296,7 +429,7 @@ For the moment, the argument `se = FALSE` tells R to not display uncertainty ban
 geom_smooth(method = lm, se = FALSE)
 ```
 
-Think about the differences you notice with between this and @fig-squares-scatterplot.  
+Think about the differences you notice with between this and the figure you made in Question 6.  
 `r qend()`
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
 ```{r}
@@ -331,7 +464,7 @@ The deterministic function $f(x)$ need not be linear if the scatterplot displays
 In the equation above, the terms $\beta_0$ and $\beta_1$ are numbers specifying where the line going through the data meets the y-axis and its slope (rate of increase/decrease). 
 :::
 
-`r qbegin(9)`
+`r qbegin(10)`
 ```{r eval=FALSE, echo=FALSE}
 mdl <- lm(handspan ~ 1 + height, data = handheight)
 equatiomatic::extract_eq(mdl, ital_vars = TRUE, use_coefs = TRUE)

@@ -3,7 +3,9 @@ title: "Week 7 Exercises: Linear Regression"
 link-citations: yes
 params: 
     SHOW_SOLS: FALSE
-    TOGGLE: TRUE
+    TOGGLE: FALSE
+editor_options: 
+  chunk_output_type: console
 ---
 
 
@@ -49,20 +51,9 @@ The data is available at [https://uoepsy.github.io/data/riverview.csv.](https://
 :::
 
 
-`r qbegin(1)` 
-Load the required libraries (probably just __tidyverse__ for now), and read in the riverview data to your R session.  
-`r qend()`
+`r qbegin(1)`  
+Load the required libraries (probably just __tidyverse__ for now), and read in the riverview data to your R session.   
 
-`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
-```{r, warning=FALSE, message=FALSE}
-library(tidyverse)
-
-riverview <- read_csv("https://uoepsy.github.io/data/riverview.csv")
-head(riverview)
-```
-`r solend()`
-
-`r qbegin(2)`  
 Let us first visualise and describe the *marginal distributions* of those variables which are of interest to us. 
 These are the distribution of each variable (employee incomes and education levels) *without* reference to the values of the other variables.
 
@@ -77,6 +68,15 @@ __Hints:__
 `r qend()`
 
 `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+
+riverview <- read_csv("https://uoepsy.github.io/data/riverview.csv")
+head(riverview)
+```
+
+
 We can plot the marginal distribution of employee incomes as a density curve, and add a boxplot underneath to check for the presence of outliers. The `width` of the geom_boxplot() is always quite wide, so I want to make it narrower so that we can see it at the same time as the density plot. Deciding on the exact value for the width here is just trial and error:
 
 ```{r}
@@ -101,12 +101,14 @@ ggplot(data = riverview, aes(x = education)) +
 
 The plots suggests that the distributions of employee incomes and education levels are both unimodal. Most of the incomes are between roughly \$45,000 and \$70,000, and most people have between 12 and 20 years of education. Furthermore, the boxplot does not highlight any outliers in either variable.  
 
-To further summarize a distribution, it is typical to compute and report numerical summary statistics such as the mean and standard deviation. One way to compute these values is to use the `summarise()/summarize()` function from the `tidyverse` library:
+To further summarize a distribution, it is typical to compute and report numerical summary statistics such as the mean and standard deviation.  
+
+As we have seen, in earlier weeks, one way to compute these values is to use the `summarise()/summarize()` function from the `tidyverse` library:
 
 ```{r}
 riverview %>% 
   summarize(
-    e = mean(income), 
+    mean_income = mean(income), 
     sd_income = sd(income),
     mean_edu = mean(education),
     sd_edu = sd(education)
@@ -119,7 +121,7 @@ The marginal distribution of education is unimodal with a mean of 16 years. Ther
 :::
 `r solend()`
 
-`r qbegin(3)`  
+`r qbegin(2)`  
 After we've looked at the marginal distributions of the variables of interest in the analysis, we typically move on to examining *relationships* between the variables.  
   
 Visualise and describe the relationship between income and level of education among the employees in the sample.  
@@ -147,11 +149,9 @@ ggplot(data = riverview, aes(x = education, y = income)) +
        y = "Income (in thousands of U.S. dollars)")
 ```
 
-:::int
-There is a strong positive linear relationship between education level and income for the employees in the sample.
+There appears to be a strong positive linear relationship between education level and income for the employees in the sample.
 High incomes tend to be observed, on average, with more years of formal education.
 The scatterplot does not highlight any outliers.
-:::
 
 To comment numerically on the strength of the linear association we might compute the correlation coefficient that we were introduced to in [5A: Covariance & Correlation](05a_covcor.html)
 ```{r}
@@ -164,7 +164,7 @@ that is, $r_{\text{education, income}} = 0.79$
 
 `r solend()`
 
-`r qbegin(4)`
+`r qbegin(3)`
 Using the `lm()` function, fit a linear model to the sample data, in which employee income is explained by education level. Assign it to a name to store it in your environment.  
 
 :::hints
@@ -181,7 +181,7 @@ model1 <- lm(income ~ 1 + education, data = riverview)
 ```
 `r solend()`
 
-`r qbegin(5)`
+`r qbegin(4)`
 Interpret the estimated intercept and slope in the context of the question of interest.  
 
 :::hints
@@ -189,6 +189,7 @@ __Hints:__
 We saw how to extract lots of information on our model using `summary()` (see [7A #model-summary](07a_slr.html#model-summary){target="_blank"}), but there are lots of other functions too.  
 
 If we called our linear model object "model1" in the environment, then we can use:  
+
 - type `model1`, i.e. simply invoke the name of the fitted model;
 - type `model1$coefficients`;
 - use the `coef(model1)` function;
@@ -221,7 +222,106 @@ The estimated increase in average income associated with a one year increase in 
 :::
 `r solend()`
 
+
+`r qbegin(5)`
+Test the hypothesis that the population slope is zero --- that is, that there is no linear association between income and education level in the population.  
+
+:::hints
+__Hints:__ you don't need to *do* anything for this, you can find all the necessary information in `summary()` of your model.  
+See [7A #inference-for-regression-coefficients](07a_slr.html#inference-for-regression-coefficients){target="_blank"}.
+:::
+
+`r qend()`
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+The information is already contained in the row corresponding to the variable "education" in the output of `summary()`, which reports the t-statistic under `t value` and the p-value under `Pr(>|t|)`:
+```{r}
+summary(model1)
+```
+
+Recall that the p-value `5.56e-08` in the `Pr(>|t|)` column simply means $5.56 \times 10^{-8}$. This is a very small value, hence we will report it as <.001 following the APA guidelines.
+
+:::int
+A significant association was found between level of education (in years) and income, with income increasing by on average \$2,651 for every additional year of education ($b = 2.65$, $SE = 0.37$, $t(30)=7.17$, $p<.001$). 
+:::
+
+`r solend()`
+
+
+
 `r qbegin(6)`
+What is the proportion of the total variability in incomes explained by the linear relationship with education level?
+
+:::hints
+**Hints:**  
+- The question asks to compute the value of $R^2$, but you might be able to find it already computed somewhere (so much stuff is already in `summary()` of the model.
+- See [7A #r2](07a_slr.html#r2){target="_blank"} if you're unsure about what $R^2$ is.    
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+For the moment, ignore "Adjusted R-squared". We will come back to this later on. 
+```{r}
+summary(model1)
+```
+
+:::int
+Approximately 63\% of the total variability in employee incomes is explained by the linear association with education level.
+:::
+
+`r solend()`
+
+`r qbegin(7)`
+Look at the output of `summary()` of your model. Identify the relevant information to conduct an F-test against the null hypothesis that the model is ineffective at predicting income using education level.  
+
+:::hints
+__Hints:__  
+- [7A #the-f-statistic](http://localhost:3288/07a_slr.html#the-f-statistic){target="_blank"} will help.  
+:::
+
+`r qend()`
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+```{r}
+summary(model1)
+```
+
+From the `summary(model1`), the relevant row is just below the $R^2$, where it states: 
+
+```
+F-statistic: 51.45 on 1 and 30 DF,  p-value: 5.562e-08
+```
+
+:::int
+The overall test of model utility was significant $F(1, 30) = 51.45, p < .001$, indicating evidence against the null hypothesis that the model is ineffective (that education is not a useful predictor of income). 
+:::
+
+`r solend()`
+
+
+`r qbegin(8)`
+Create a visualisation of the estimated association between income and education.  
+
+
+:::hints
+__Hints:__
+
+- Check [7A#example](07a_slr.html#example){target="_blank"}, which shows an example of using the __sjPlot__ package to create a plot.  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+#| message: false
+#| warning: false
+library(sjPlot)
+plot_model(model1, type="eff")
+```
+
+`r solend()`
+
+
+`r qbegin("Optional: Question 9A", qlabel = FALSE)`
 Consider the following:  
 
 1. In fitting a linear regression model, we make the assumption that the errors around the line are normally distributed around zero (this is the $\epsilon \sim N(0, \sigma)$ bit.)  
@@ -249,12 +349,12 @@ Since $2 \hat \sigma = 2 (8.98) = 17.96$, we expect most (about 95\%) of the emp
 
 `r solend()`
 
-`r qbegin(7)`
+`r qbegin("Optional: Question 9B", qlabel=FALSE)`
 Compute the model-predicted income for someone with 1 year of education.  
 
 :::hints
 __Hints:__ 
-Given that you know the intercept and slope, you can calculate this algebraically. However, try to also use the `predict()` function.  
+Given that you know the intercept and slope, you can calculate this algebraically. However, try to also use the `predict()` function (see [7A#model-predictions](07a_slr.html#model-predictions){target="_blank}). 
 :::
 
 `r qend()`
@@ -283,104 +383,11 @@ $$
 
 `r solend()`
 
-`r qbegin(8)`
-Test the hypothesis that the population slope is zero --- that is, that there is no linear association between income and education level in the population.  
-
-:::hints
-__Hints:__ you don't need to *do* anything for this, you can find all the necessary information in `summary()` of your model.  
-See [7A #inference-for-regression-coefficients](07a_slr.html#inference-for-regression-coefficients){target="_blank"}.
-:::
-
-`r qend()`
-`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
-The information is already contained in the row corresponding to the variable "education" in the output of `summary()`, which reports the t-statistic under `t value` and the p-value under `Pr(>|t|)`:
-```{r}
-summary(model1)
-```
-
-Recall that the p-value `5.56e-08` in the `Pr(>|t|)` column simply means $5.56 \times 10^{-8}$. This is a very small value, hence we will report it as <.001 following the APA guidelines.
-
-:::int
-A significant association was found between level of education (in years) and income, with income increasing by on average \$2,651 for every additional year of education ($b = 2.65$, $SE = 0.37$, $t(30)=7.17$, $p<.001$). 
-:::
-
-`r solend()`
-
-`r qbegin(9)`
-What is the proportion of the total variability in incomes explained by the linear relationship with education level?
-
-:::hints
-**Hints:**  
-- The question asks to compute the value of $R^2$, but you might be able to find it already computed somewhere (so much stuff is already in `summary()` of the model.
-- See [7A #r2](07a_slr.html#r2){target="_blank"} if you're unsure about what $R^2$ is.    
-:::
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-For the moment, ignore "Adjusted R-squared". We will come back to this later on. 
-```{r}
-summary(model1)
-```
-
-:::int
-Approximately 63\% of the total variability in employee incomes is explained by the linear association with education level.
-:::
-
-`r solend()`
-
-`r qbegin(10)`
-Look at the output of `summary()` of your model. Identify the relevant information to conduct an F-test against the null hypothesis that the model is ineffective at predicting income using education level.  
-
-:::hints
-__Hints:__  
-- [7A #the-f-statistic](http://localhost:3288/07a_slr.html#the-f-statistic){target="_blank"} will help.  
-:::
-
-`r qend()`
-`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
-```{r}
-summary(model1)
-```
-
-From the `summary(model1`), the relevant row is just below the $R^2$, where it states: 
-
-```
-F-statistic: 51.45 on 1 and 30 DF,  p-value: 5.562e-08
-```
-
-:::int
-The overall test of model utility was significant $F(1, 30) = 51.45, p < .001$, indicating evidence against the null hypothesis that the model is ineffective (that education is not a useful predictor of income). 
-:::
-
-`r solend()`
+<div class="divider div-transparent div-dot"></div>
 
 
-`r qbegin(11)`
-Create a visualisation of the estimated association between income and education.  
+# Income and Degree Status
 
-
-:::hints
-__Hints:__
-
-- Check [7A#example](07a_slr.html#example){target="_blank"}, which shows an example of using the __sjPlot__ package to create a plot.  
-
-:::
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-```{r}
-#| message: false
-#| warning: false
-library(sjPlot)
-plot_model(model1, type="eff")
-```
-
-`r solend()`
-
-
-
-`r qbegin(12)`
 Let's suppose instead of having measured education in years, researchers simply asked "have you had more than 18 years of education?", assuming this to be indicative of having a degree.  
 The code below creates a this new variable for us:  
 ```{r}
@@ -389,6 +396,8 @@ riverview <- riverview %>%
     degree = ifelse(education >= 18, "yes","no")
   )
 ```
+
+`r qbegin(10)`
 
 Fit the following model, and interpret the coefficients.  
 
@@ -416,9 +425,7 @@ ggplot(riverview, aes(x = degree, y = income)) +
 ```
 `r solend()`
 
-# Basic Tests are Linear Models!
-
-`r qbegin(13)`
+`r qbegin(11)`
 We've actually already seen a way to analyse questions of this sort ("is the average income different between those with and those without a degree?")  
 
 Run the following t-test, and consider the statistic, p value etc. How does it compare to the model in the previous question?  
@@ -440,6 +447,112 @@ summary(interceptonly_model)$coefficients
 
 
 `r solend()`
+
+<div class="divider div-transparent div-dot"></div>
+
+# Locus of Control  
+
+:::frame
+
+In the survey that many of you completed at the start of term (thank you to those that did!), we had a long set of items that were from various personality and psychometric scales. 
+
+One of these was a set of items that measure a persons' "locus of control" (belief that you have control over your life, as opposed to it being decided by external forces such as fate/luck/destiny/god/the flying spaghetti monstor). We also asked you to rate your average sleep quality from 0 to 100.  
+
+You can read in the data for your 2022 USMR cohort using the following code:  
+```{r}
+usmrdata <- 
+  read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv") %>%
+  filter(course == "usmr", year == 2022)
+```
+
+The relevant variables are:  
+
+```{r}
+#| echo: false
+tibble(
+  variable = c("pseudonym","loc","sleeprating","...","..."),
+  description = c("User provided pseudonym to enable lookup",
+                  "Locus of Control Score. Minimum score = 6, maximum score = 30. Higher scores indicate more perceived self-control over life", "Rating of average quality of sleep. Higher values indicate better sleep quality.", "...","...")
+) %>% knitr::kable() %>%
+  kableExtra::row_spec(2:3,bold=TRUE)
+```
+
+
+:::
+
+`r qbegin()`
+My pet theory is that people who believe they have more control over life are more inclined to have a better sleep routine, and so will rate their sleep quality as being better than those who believe that life is out of their control.  
+
+```{r}
+#| echo: false
+library(dagitty)
+# in our example above, this was what we theorised:
+g1 <- dagitty( "dag {
+    Locus_of_Control -> Sleep_Quality
+}")
+plot(graphLayout(g1))
+```
+
+
+Fit a linear regression model to test this association. 
+
+:::hints
+__Hints:__  
+
+Try to do the following steps: 
+
+1. Explore the data
+2. Fit the model
+3. Take a look at the assumption plots (see [7A#assumptions](07a_slr.html#assumptions){target="_blank"}).  
+4. Create a plot and/or table (see [7A#example](07a_slr.html#example){target="_blank"}).  
+5. Write it up! 
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+usmrdata <- 
+  read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv") %>%
+  filter(course == "usmr", year == 2022)
+```
+
+```{r}
+set.seed(993)
+#usmrdata$loc[usmrdata$pseudonym%in%"Josiah"]<-14
+
+usmrdata$loc[usmrdata$pseudonym%in%"Definitely not Ian"]<-14
+new <- sample_n(usmrdata, 4)
+new$threewords<-NA
+new$pseudonym<-c("Albert",NA,"Vincent Noone",NA)
+new$loc <- c(17,16,14,14)
+new$sleeprating<-c(25,10,30,25)
+new$emot_stability<-round(new$loc*-1+32+rnorm(4,0,3))
+
+usmrdata<-bind_rows(usmrdata,new)
+
+```
+
+```{r}
+p1 <- ggplot(usmrdata, aes(x=loc))+
+  geom_histogram()
+p2 <- ggplot(usmrdata, aes(x=sleeprating))+
+  geom_histogram() 
+p3 <- ggplot(usmrdata, aes(x=loc, y=sleeprating))+
+  geom_point()
+# remember, to make this plot arranging work,
+# we need to load the patchwork package
+p3 / (p1 + p2)
+```
+
+
+TODO
+
+`r solend()`
+
+
+
+
 
 
 

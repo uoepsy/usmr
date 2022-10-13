@@ -2,7 +2,7 @@
 title: "8A: Multiple Linear Regression"
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
@@ -503,8 +503,36 @@ Alternatively, we could do achieve it by __"case-matching"__. This involves find
 
 `r optend()`
 
+<div class="divider div-transparent div-dot"></div>
+
+# Correlation vs Causation, Again!
+
+It's very important to remember that all of this extra "control" we are able to exert on our model estimates doesn't just allow us to start talking about causal effects. The coefficients we get from a multiple regression model are _still_ just associations (i.e. correlations), it is simply that they are now _conditional_ upon holding constant some other variable.  
+
+To make the point, we could fit a model such as:
+
+```{r}
+#| eval: false
+lm(birthweight ~ IQ_age11 + bilingual, data = ...)
+```
+And get some coefficients:  
+```
+Coefficients:
+            Estimate    ...   ...
+(Intercept)  600.000    ...   ...
+IQ_age11     10.0000    ...   ...
+bilingualYes 5.00000    ...   ...
+```
+
+Now imagine that you have a newborn baby who weighs 700 grams. Are we to say that "If I raise this child to be bilingual, her birthweight will increase by 5 grams (assuming her IQ at age 11 remains the same)"?  
+This is obviously nonsense - the baby weighs 700 grams and that's not something that will change.  
+
+To talk about causal effects we need a lot of careful thought about our theoretical model of the world (i.e. what causes what) combined with a model that isolates the relevant effect of interest by controlling for the appropriate possible confounds (either through statistical control or control by design).  
+
+TODO good bad control  
 
 <div class="divider div-transparent div-dot"></div>
+
 # Multiple Categories = Multiple Regression
 
 We saw last week how to interpret simple regression models when there is a binary predictor (see [7A#binary-predictors](07a_slr.html#binary-predictors)). The addition of binary predictors in multiple regression models is pretty much the same - the coefficient will give us the estimated change in $y$ when moving from one level to the other^[and the intercept will be the estimated $y$ when all predictors are zero, where "zero" is the reference category of the binary predictor], _holding other predictors constant._  
@@ -679,6 +707,8 @@ R will default to using alphabetical ordering, hence the reference level being s
 :::
 
 <div class="divider div-transparent div-dot"></div>
+
+
 # Model Evaluation
 
 Alongside the estimation of specific parameters of interest (i.e. the coefficients from our model), we may well want to ask how good our model is as a whole. There are lots of ways to do this, but in this course we're going to just focus on the ones which R will automatically show us at the bottom of the `summary(model)` output. These are the same $R^2$ and the $F$-test that we saw in the simple regression model ([7A#model-evaluation](07a_slr.html#model-evaluation){target="_blank"}), only it's a little different when we have multiple predictors.    
@@ -796,8 +826,8 @@ Formally this is the test of:
 **In R,** we can conduct an incremental F-test by constructing two models, and passing them to the `anova()` function: 
 ```{r}
 #| eval: false
-model1 <- lm( ... 
-model2 <- lm( ... 
+model1 <- lm( ... )
+model2 <- lm( ... )
 anova(model1, model2)
 ```
 
@@ -830,16 +860,29 @@ eg_model2 <- lm(y ~ x1 + x2 + x3, data = mydata)
 anova(eg_model1, eg_model2)
 ```
 
+
 <div class="divider div-transparent div-dot"></div>
 # Analysis of Variance
+
+TODO
+what we are actually doing in model comp is
+analysing variance explained by set of predictors
+(hence anova function).  
+
+analysis of variance = 
+coefficients = 
+
+sums squares brief. 
+
+apply this logic to a single model
 
 Another thing we can do is take a single model and partition out variance explained by the _**incremental addition** of each predictor._ We can do that by building a model with `lm()` and then giving the `anova()` function that model.  
 
 It's very important to note that the __order matters__ here, because it will assess the improvement in model fit due to each predictor in turn: 
 
 1. $x_1$ vs no predictors
-2. then the addition of $x_2$ to the model with $x_1$
-3. then the addition of $x_3$ to the model with $x_1$ and $x_2$)  
+2. the addition of $x_2$ vs the model with _just_ $x_1$
+3. the addition of $x_3$ vs the model with _just_ $x_1$ and $x_2$  
 
 ```{r}
 eg_model2 <- lm(y ~ x1 + x2 + x3, data = mydata)
@@ -864,7 +907,6 @@ eg_model3 <- lm(y ~ x1 + x2 + x3, data = mydata)
 anova(eg_model0, eg_model1, eg_model2, eg_model3)
 ```
 
-
 Note that this is a very different thing from what we have been doing previously, which was examining the effect of all predictors __after__ considering all others (see @fig-vennss3). The area $C$ is the same in both @fig-vennss1 and @fig-vennss3, demonstrating that this approach is like considering each predictor as if it were the "last one in" in the incremental approach.  
 ```{r}
 #| label: fig-vennss3
@@ -887,12 +929,12 @@ It might seem pointless to do this, given we can just look at our regression coe
 summary(eg_model2)$coefficients
 ```
 ```
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept) -8.66876    4.77570  -1.815 0.076164 .  
-x1           0.12176    0.07469   1.630 0.110026    
-x2          -0.60298    0.23596  -2.555 0.014054 *  
-x3level2     7.59135    2.80859   2.703 0.009663 ** 
-x3level3    11.62405    3.22863   3.600 0.000789 ***
+            Estimate Std. Error t value Pr(>|t|)   
+(Intercept) -1.84331    3.86271  -0.477  0.63552   
+x1           0.19045    0.06666   2.857  0.00645 **
+x2          -0.60701    0.20544  -2.955  0.00497 **
+x3level2    -1.95195    2.43897  -0.800  0.42773   
+x3level3    -3.19862    3.24037  -0.987  0.32886   
 ```
 
 But note that $x_3$ is a categorical variable that has three levels: "level1", "level2", "level3", which means we get out _two_ coefficients that test _two_ specific differences (level2 vs level1; level3 vs level1). The analysis of variance approach (above) allows us to perform one single test of whether the entire grouping (of observations into the three levels) explains variance in the outcome variable.  
@@ -903,29 +945,6 @@ The very big picture could be taken as:
 - Coefficients: "what are the differences in $y$ when comparing specific groups?"
 
 
-# Correlation vs Causation, Again!
-
-It's very important to remember that all of this extra "control" we are able to exert on our model estimates doesn't just allow us to start talking about causal effects. The coefficients we get from a multiple regression model are _still_ just associations (i.e. correlations), it is simply that they are now _conditional_ upon holding constant some other variable.  
-
-To make the point, we could fit a model such as:
-
-```{r}
-#| eval: false
-lm(birthweight ~ IQ_age11 + bilingual, data = ...)
-```
-And get some coefficients:  
-```
-Coefficients:
-            Estimate    ...   ...
-(Intercept)  600.000    ...   ...
-IQ_age11     10.0000    ...   ...
-bilingualYes 5.00000    ...   ...
-```
-
-Now imagine that you have a newborn baby who weighs 700 grams. Are we to say that "If I raise this child to be bilingual, her birthweight will increase by 5 grams (assuming her IQ at age 11 remains the same)"?  
-This is obviously nonsense - the baby weighs 700 grams and that's not something that will change.  
-
-To talk about causal effects we need a lot of careful thought about our theoretical model of the world (i.e. what causes what) combined with a model that isolates the relevant effect of interest by controlling for the appropriate possible confounds (either through statistical control or control by design).  
 
 
 
