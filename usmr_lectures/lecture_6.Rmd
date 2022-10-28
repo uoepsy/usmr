@@ -36,12 +36,10 @@ knitr::opts_chunk$set(
   dev = "svg",
   warning = FALSE,
   message = FALSE,
-  cache = TRUE
+  cache = FALSE
 )
 source('R/myfuncs.R')
-```
 
-```{r xaringan-themer, include = FALSE}
 library(xaringanthemer)
 style_mono_accent(
   #base_color = "#0F4C81", # DAPR1
@@ -62,25 +60,30 @@ class: inverse, center, middle
 # Part 1:  Correlation++
 
 ```{r recreate,include=FALSE}
-library(faux)
-set.seed(29)
-dat <- rnorm_multi(n=50,
-                   mu=c(0.1,650),
-                   sd=c(.009,60),
-                   r=.4,
-                   varnames=c('BloodAlc','RT'))
-d20 <- dat %>% sample_n(20) # FIXME
+set.seed(993)
+give_me_a_sample <- function(size = 50){
+  dat = as.data.frame(MASS::mvrnorm(size, mu=c(90,13), matrix(c(13,7,7,8),nrow=2)) )
+  names(dat) = c("brain_vol","weekly_actv")
+  dat %>% 
+    mutate(
+      brain_vol = pmax(0,pmin(100,round(brain_vol, 2))), 
+      weekly_actv = pmax(0, round(weekly_actv))
+    )
+}
+dat <- give_me_a_sample(20)
 ```
+
 ---
-# Back on the Road
+# Exercising our brains
 
 .pull-left[
 ```{r frecap,fig.asp=.6,echo=FALSE}
-p1 <- dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
-  geom_point(size=3)
+p1 <- dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
+  xlab("Weekly Activity (hours)") + ylab("Brain Volume\n(% of intracranial space)") +
+  geom_point(size=3)+
+  ylim(80,100)
 p1
-  rd <- cor.test(dat$BloodAlc,dat$RT)
+rd <- cor.test(dat$brain_vol,dat$weekly_actv)
 ```
 
 .center[
@@ -88,35 +91,36 @@ $r= `r rd$estimate`$, $p = `r rd$p.value`$
 ]
 ]
 .pull-right[
-![](lecture_6_files/img/playmo_police.jpg)
+![:scale 70%](lecture_6_files/img/playmo_brain.jpg)
 ]
 ???
-- is there anything more the police' data about blood alcohol and reaction time can tell us?
+- is there anything more the data about exercise and brain volume can tell us?
 
-- so far we know they're correlated, but it would be good if we could something about _how bad_ blood alcohol is
+- so far we know they're correlated, but it would be good if we could something about _how good/bad_ exercise is
 
-  + how much worse does drinking more make things?
+  + how much better does exercise make things?  
+  
 ---
-# Back on the Road (2)
+# Exercising our brains (2)
 
 .pull-left[
 ```{r frecap2,fig.asp=.6,echo=FALSE}
 p1 + geom_smooth(method="lm")
-m1 <- lm(RT~BloodAlc, data=dat)
+m1 <- lm(brain_vol ~ weekly_actv, data=dat)
 ```
 
 .tc[
-"for every extra 0.01% blood alcohol, reaction time slows down by around `r round(coef(m1)[2]*0.01,0)` ms"
+"for every extra 1 hour more weekly activity, brain volume increases by `r round(coef(m1)[2],2)` (% of intracranial space)"
 ]
 ]
 .pull-right[
-![](lecture_6_files/img/playmo_police.jpg)
+![:scale 70%](lecture_6_files/img/playmo_brain.jpg)
 
 ]
 ???
-- this kind of information is based on the assumption that the relationship between blood alcohol and RT is _linear_
+- this kind of information is based on the assumption that the relationship between activity and brain volume is _linear_
 
-- that is, that each additional unit of blood alcohol affects reaction time by the same amount
+- that is, that each additional minute of activity affects brain volume by the same amount
 
 
 ---
@@ -161,12 +165,13 @@ so the linear model itself is...
 
 $$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
 .center[
-![:scale 30%](lecture_6_files/img/formula.svg)
+![:scale 40%](lecture_6_files/img/formula.svg)
 ]
 ]
 .w-60[
 &nbsp;
 ]]
+
 ---
 count: false
 # A Linear Model
@@ -180,9 +185,11 @@ so the linear model itself is...
 ]
 
 $$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
+
 .center[
-![:scale 30%](lecture_6_files/img/formula.svg)
+![:scale 40%](lecture_6_files/img/formula.svg)
 ]]
+
 .w-60.pa2[
 ```{r bb,echo=F, fig.asp=.6}
 x <- tibble(x=c(-1,4))
@@ -203,6 +210,7 @@ p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 ```
 
 ]]
+
 ---
 count: false
 # A Linear Model
@@ -217,21 +225,23 @@ so the linear model itself is...
 
 $$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
 .center[
-![:scale 30%](lecture_6_files/img/formula.svg)
+![:scale 40%](lecture_6_files/img/formula.svg)
 ]
+
 .br3.pa3.bg-light-yellow[
 $$ \hat{y} = \color{blue}{b_0 + b_1 \cdot{} x_i} $$
 .center[
-![:scale 30%](lecture_6_files/img/formula2.svg)
+![:scale 50%](lecture_6_files/img/formula2.svg)
 ]]
 ]
 .w-60.pa2[
 ```{r bb2,fig.asp=.6,echo=F}
-p1 + ylab(expression(paste(hat(y)," = ",5 + 2 %.% x))) +
+p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
   theme(axis.title.y = element_text(colour = "blue"))
 ```
 
 ]]
+
 ---
 # Take An Observation
 
@@ -268,85 +278,23 @@ p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 
   + for one thing, the model can predict $\hat{y}$ for values of $x$ that we have never observed
 
----
-# Simplifying the Data
-
-.pull-left[
-- **NB** we're doing this for illustrative purposes only
-
-```{r simple}
-ourDat <- dat %>% sample_n(20)
-  # take 20 data points
-```
-
-```{r s2,include=FALSE}
-lmp <- function(x) {
-  m <- lm(RT~BloodAlc,data=x)
-  summary(m)$coefficients[2,4]
-}
-while(lmp(ourDat) > .05) {
- ourDat <- dat %>% sample_n(20)
-}
-```
-
-]
-.pull-right[
-```{r plot1, fig.asp=.6, echo=F}
-ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  geom_point(size=3)
-```
-]
 
 ---
-count: false
-# Simplifying the Data
+# More Brain Exercises 
+
 .pull-left[
-- **NB** we're doing this for illustrative purposes only
 
-```{r simple1, eval=F}
-ourDat <- dat %>% sample_n(20)
-  # take 20 data points
-```
-```{r simple2}
-ourDat <- ourDat %>% 
-  mutate(BloodAlc = BloodAlc*100)
-```
-
-```{r modh,include=FALSE}
-m1 <- lm(RT ~ BloodAlc,data=ourDat)
-```
-
-]
-.pull-right[
-```{r plot3, fig.asp=.6, echo=F}
-ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  geom_point(size=3) +
-  theme(axis.text.x = element_text(colour = "red"))
-```
-]
----
-count: false
-# Simplifying the Data
-.pull-left[
-- **NB** we're doing this for illustrative purposes only
-
-```{r simple1a, eval=F}
-ourDat <- dat %>% sample_n(20)
-  # take 20 data points
-```
-```{r simple2a,eval=F}
-ourDat <- ourDat %>% 
-  mutate(BloodAlc = BloodAlc*100)
-```
 .center[
-"for every extra unit blood alcohol, reaction time slows down by around `r round(coef(m1)[2],0)` ms"
+"for every extra 1 hour more weekly activity, brain volume increases by `r round(coef(m1)[2],2)` (% of intracranial space)"
 ]
 
 ]
 .pull-right[
 ```{r plot2, fig.asp=.6, echo=F}
-ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  geom_point(size=3) +
+dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
+  xlab("Weekly Activity (hours)") + ylab("Brain Volume\n(% of intracranial space)") +
+  geom_point(size=3) + 
+  ylim(80,100) + 
   geom_smooth(method="lm")
 
 ```
@@ -357,11 +305,12 @@ ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
 .center.f3.pt3[
 but how can we evaluate our model?
 ]
+
 ---
 # Linear Models in R
 
 ```{r lm1, eval=F}
-mod <- lm(RT ~ BloodAlc, data=ourDat)
+mod <- lm(brain_vol ~ weekly_actv, data=dat)
 ```
 
 ---
@@ -369,30 +318,36 @@ count: false
 # Linear Models in R
 
 ```{r lm2, highlight.output=c(11,12)}
-mod <- lm(RT ~ BloodAlc, data=ourDat)
+mod <- lm(brain_vol ~ weekly_actv, data=dat)
 summary(mod)
 ```
 
 ---
 # Intercept and Slope Again
 
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],2)` $$
 .center[
 ```{r git,echo=F,fig.asp=.6}
-p1 <- ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  xlim(c(-1,12)) + ylim(300,800) +
-  geom_segment(aes(x=0,y=300,xend=0,yend=coef(mod)[1]),colour="red") +
-  annotate("text",x=.4,y=310,label=expression(b[0]),size=5,colour="red")
+p1 <- dat %>% ggplot(aes(x=weekly_actv, y = brain_vol)) +
+  xlab("Weekly Activity (hours)") + ylab("Brain Volume\n(% of intracranial space)") +
+  ylim(67.5,100) +
+  scale_x_continuous(limits=c(-.5,18.5),breaks=seq(0,20,2)) +
+  geom_segment(aes(x=0,y=70,xend=0,yend=coef(mod)[1]),colour="red") +
+  geom_segment(x=0,y=67.5,xend=0,yend=70,col="red",lty="dashed")+
+  annotate("text",x=.5,y=coef(mod)[1]-1,label=expression(b[0]),size=5,colour="red") + 
+  NULL
+
 p1
 ```
 ]
 ???
 - $b_0$ is the the predicted value, $\bar{y}$, when $x=0$.  Here I've represented it as a line, so where the top is the intercept value of `r coef(mod)[1]`
+
 ---
 count: false
 # Intercept and Slope Again
 
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],2)` $$
 .center[
 ```{r git2,echo=F,fig.asp=.6}
 lmf <- function(x) {
@@ -400,43 +355,48 @@ lmf <- function(x) {
 }
 p2 <- p1 +
   geom_segment(aes(x=4,xend=5,y=lmf(4),yend=lmf(4)),
-               arrow=arrow(ends = "both",length = unit(.03,"native"))) +
-  annotate("text",x=4.5,y=435,label="1",size=5) +
+               arrow=arrow(ends = "both",length = unit(.015,"native"))) +
+  annotate("text",x=4.5,y=lmf(3.2),label="1",size=5) +
   geom_segment(aes(x=5,xend=5,y=lmf(4),yend=lmf(5)),
                colour="red") +
-  annotate("text",x=5.4,y=475,label=expression(b[1]),colour="red",size=5) +  geom_segment(aes(x=0,xend=1,y=lmf(0),yend=lmf(0)),
-               arrow=arrow(ends = "both",length = unit(.03,"native"))) +
+  annotate("text",x=5.4,y=lmf(4.5),label=expression(b[1]),colour="red",size=5) +
+  geom_segment(aes(x=0,xend=1,y=lmf(0),yend=lmf(0)),
+                arrow=arrow(ends = "both",length = unit(.015,"native"))) +
   geom_segment(aes(x=1,xend=1,y=lmf(0),yend=lmf(1)),
-               colour="red") +
-  annotate("text",x=1.4,y=335,label=expression(b[1]),colour="red",size=5)
+                colour="red") +
+  annotate("text",x=1.4,y=lmf(0.5),label=expression(b[1]),colour="red",size=5)
 p2  
 ```
 ]
+
 ---
 count: false
 # Intercept and Slope Again
 
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],2)` $$
 .center[
 ```{r git3, echo=FALSE, fig.asp=.6}
-p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2)
+p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=.7)
 ```
 ]
+
 ---
 count: false
 # Intercept and Slope Again
 
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],2)` $$
 .center[
 ```{r git4, echo=FALSE, fig.asp=.6}
 p2 +
-  geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2) + geom_point(size=3)
+  geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=.7) + 
+  geom_point(size=3)
 ```
 ]
 ???
 - note that the intercept is really very far from the data we're interested in.
 
-- it may be pretty meaningless to talk about the reaction time of someone with zero blood alcohol
+- it may be pretty meaningless to talk about the brain volume of someone who does zero hours activity
+
 ---
 class: inverse, center, middle, animated, fadeInDownBig
 # End of Part 1
@@ -446,6 +406,7 @@ class: inverse, center, middle
 
 # Part 2
 ## Significance
+
 ---
 # Intercept and Slope
 
@@ -458,7 +419,7 @@ class: inverse, center, middle
 
 ```{r getvals,include=FALSE}
 m.i <- round(coef(mod)[1],1)
-m.s <- round(coef(mod)[2],1)
+m.s <- round(coef(mod)[2],2)
 ```
 
 - we have an intercept of `r m.i` and a slope of `r m.s`
@@ -481,16 +442,19 @@ how likely would we have been to find these parameters under the null hypothesis
 .center[
 ```{r chanceg,echo=F, fig.asp=.6, fig.width=5.5}
 iS <- function(size) {
-  tt <- dat %>% sample_n(size) %>% mutate(BloodAlc = BloodAlc * 100)
-  m <- lm(RT~BloodAlc,data=tt)
+  tt <- give_me_a_sample(20)
+  m <- lm(brain_vol ~ weekly_actv,data=tt)
   return(coef(m))
 }
 
-cS <- as_tibble(t(replicate(10000,iS(20)))) 
+cS <- as_tibble(t(replicate(1e3,iS(20)))) 
 
-dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  xlim(c(8.5,12)) + ylim(c(500,800)) +
-  geom_abline(data=cS,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.01,colour="blue")
+#cS = MASS::mvrnorm(n=1e3,mu=coef(mod),Sigma=vcov(mod)) %>% as.data.frame
+
+dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
+  ylim(67.5,100) +
+  scale_x_continuous(limits=c(-.5,18.5),breaks=seq(0,20,2)) +
+  geom_abline(data=cS,aes(intercept=`(Intercept)`,slope=weekly_actv),alpha=.1,colour="blue")
 ```
 ]
 
@@ -498,14 +462,17 @@ dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
 
   + variability in _height_ of line = variability in intercept ( $b_0$ )
   + variability in _angle_ of line = variability in slope ( $b_1$ )
+  
 ---
 # We've Seen This Before
 
 .center[
 ```{r figfig,fig.asp=.6,fig.width=5.5,echo=F}
-ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
+  ylim(67.5,100) +
+  scale_x_continuous(limits=c(-.5,18.5),breaks=seq(0,20,2)) +
   geom_point(size=3) +
-  geom_smooth(method="lm")
+  geom_smooth(method="lm", fullrange = TRUE)
 ```
 ]
 - shaded area represents "95% confidence interval"
@@ -605,6 +572,7 @@ p4 <- do_p(pd4)
 ( p1 + p2 ) / ( p3 + p4 )
 ```
 ]
+
 ---
 count: false
 # Degrees of Freedom
@@ -633,6 +601,7 @@ p4 <- do_p(pd4)
 ???
 - we can always add in two points to make the straight line that we want to see
 - this is one way of showing that for $n$ data points, there are $n-2$ degrees of freedom
+
 ---
 # Degrees of Freedom
 
@@ -655,6 +624,7 @@ the models we have been looking at have 20 observations and 1 predictor
 
 **(1, 18)** degrees of freedom
 ]  
+
 ---
 # Linear Models in R
 
@@ -676,16 +646,17 @@ $$ \textrm{total SS}=\sum{(y - \bar{y})^2} $$
 ]
 .pull-right[
 ```{r totss,echo=F,fig.asp=.6}
-ourDat <- ourDat %>% mutate(pred=predict(m1),mRT=mean(RT))
-p1 <- ourDat %>% ggplot(aes(x=BloodAlc,y=RT,yend=pred))
+dat <- dat %>% mutate(pred=predict(m1),mWA=mean(brain_vol))
+p1 <- dat %>% ggplot(aes(x=weekly_actv,y=brain_vol,yend=pred))
 
-pTot <- p1 + geom_abline(intercept=mean(ourDat$RT),slope=0,size=1) +
-  geom_segment(aes(yend=mean(mRT),xend=BloodAlc),linetype="dotted",colour="red",size=1) +
+pTot <- p1 + geom_abline(intercept=mean(dat$brain_vol),slope=0,size=1) +
+  geom_segment(aes(yend=mean(mWA),xend=weekly_actv),linetype="dotted",colour="red",size=1) +
   geom_point(size=3)
 pTot
 ```
 
 ]
+
 ---
 # Residual Sum of Squares
 
@@ -699,12 +670,13 @@ $$ \textrm{residual SS} = \sum{(y - \hat{y})^2} $$
 ]
 .pull-right[
 ```{r residp,echo=F,fig.asp=.6}
-pRes<- p1 + geom_segment(aes(xend=BloodAlc),linetype="dotted",colour="red",size=1) +
+pRes<- p1 + geom_segment(aes(xend=weekly_actv),linetype="dotted",colour="red",size=1) +
   geom_smooth(method="lm",se=FALSE) +
   geom_point(size=3)
 pRes
 ```
 ]
+
 ---
 # Model Sum of Squares
 
@@ -717,8 +689,8 @@ $$ \textrm{model SS} = \sum{(\hat{y} - \bar{y})^2} $$
 ]
 .pull-right[
 ```{r modp,echo=F,fig.asp=.6}
-pMod <- p1 + geom_segment(aes(y=mRT,xend=BloodAlc),colour="red",linetype="dotted",size=1) +
-  geom_hline(yintercept = mean(ourDat$RT),size=1) +
+pMod <- p1 + geom_segment(aes(y=mWA,xend=weekly_actv),colour="red",linetype="dotted",size=1) +
+  geom_hline(yintercept = mean(dat$brain_vol),size=1) +
   geom_smooth(method="lm",se=FALSE) +
   geom_point(size=3)
 pMod
@@ -753,6 +725,7 @@ pMod/pTot
 ```
 
 ]
+
 ---
 # Testing the Model: _F_
 
@@ -788,7 +761,7 @@ pMod/pRes
 
 
 ---
-# A Linear Model for 20 Drinkers
+# A Linear Model for 20 Brains
 
 .center[
 ```{r mod,fig.asp=.55,echo=FALSE,fig.width=6}
@@ -799,12 +772,14 @@ pRes
 - a linear model describes the **best-fit line** through the data
 
 - minimises the error terms $\epsilon$ or **residuals**
+
 ---
 # Two Types of Significance
 
 ```{r lmlm,highlight.output=c(11,12,17,18)}
 <<lm2>>
 ```
+
 ---
 # The Good, the Bad, and the Ugly
 

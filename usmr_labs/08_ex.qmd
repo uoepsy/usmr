@@ -2,8 +2,8 @@
 title: "Week 8 Exercises: Multiple Regression"
 link-citations: yes
 params: 
-    SHOW_SOLS: FALSE
-    TOGGLE: TRUE
+    SHOW_SOLS: TRUE
+    TOGGLE: FALSE
 editor_options: 
   chunk_output_type: console
 ---
@@ -137,6 +137,8 @@ There is also a weak positive correlation between weekly outdoor time and the we
 `r solend()`
 
 `r qbegin(2)`
+> **Research Question:** *after* taking into account differences due to people's level of social interactions, to what extent is well-being associated with the time people spend outdoors?  
+
 Fit a regression model that you can use to answer the research question (make sure to give it a name to store it in your environment).   
 
 :::hints
@@ -222,7 +224,7 @@ Weekly social interactions and outdoor time explained `r paste0(round(summary(md
 
 `r solend()`
 
-`r qbegin(6)`
+`r qbegin("Optional Question 6", qlabel=FALSE)`
 Just to prove it to ourselves, conduct a model comparison between your model and the "null model", and check that the $F$-statistic from the `summary()` of your model matches that from the comparison.
 
 :::hints
@@ -255,7 +257,8 @@ Check the assumptions of your model.
 __Hints:__  
 
 - See [8B#assumptions](08b_assumptdiag.html){target="_blank"}  
-- You don't necessarily have to perform statistical tests of assumptions, but check the plots at the very least!
+- You don't necessarily have to perform statistical tests of assumptions, but check the plots at the very least!  
+- Interpreting these plots is ultimately a judgement call, and comes with experience.  
 
 :::
 
@@ -306,7 +309,6 @@ hist(covratio(wbmodel), breaks=20)
 `r solend()`
 
 
-
 `r qbegin(9)`
 Create a visualisation of the relationship between wellbeing and outdoor time, after accounting for social interactions.  
 
@@ -349,6 +351,79 @@ tab_model(wbmodel)
 
 `r solend()`
 
+# Student Sleep Quality
+
+TODO 
+
+`r qbegin()`
+
+dag
+emot_stability confound
+
+how does loc influence sleeprating _after_ accounting for emot_stability?  
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+usmrdata <- 
+  read_csv("../../data/surveydata_allcourse22.csv") %>%
+  filter(course == "usmr", year == 2022) %>%
+  filter(!(pseudonym %in% "Definitely not Ian"))
+set.seed(993)
+#usmrdata$loc[usmrdata$pseudonym%in%"Josiah"]<-14
+
+#usmrdata$loc[usmrdata$pseudonym%in%"Definitely not Ian"]<-14
+new <- sample_n(usmrdata, 4)
+new$threewords<-NA
+new$pseudonym<-c("Albert",NA,"Vincent Noone",NA)
+new$loc <- c(17,16,14,14)
+new$sleeprating<-c(25,10,30,25)
+new$emot_stability<-round(new$loc*-1+32+rnorm(4,0,3))
+
+usmrdata<-bind_rows(usmrdata,new)
+
+m <- lm(sleeprating ~ emot_stability + loc, usmrdata)
+
+
+```
+
+`r solend()`
+
+`r qbegin()`
+assumptions
+
+bootstrap or transform
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+`r solend()`
+
+
+# Conscientiousness
+
+`r qbegin()`
+
+is birth month associated with conscientiousness?  
+
+hint 
+note the question is more a matter of "is"/"does", and not "what is"/"how does". 
+to answer this question, we might be more inclined to conduct a 
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+m <- lm(conscientiousness ~ birthmonth, usmrdata)
+anova(m)
+```
+
+`r solend()`
+
+
+
 # Rmd
 
 `r qbegin(11)`
@@ -369,4 +444,5 @@ __Hints:__
 
 `r qend()`
 
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
 

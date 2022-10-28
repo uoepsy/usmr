@@ -406,7 +406,7 @@ ggplot(plotdata, aes(x = x1, y = predy,
 
 
 :::statbox
-__Example: Caffeine Heart Rates__
+__Example: Caffeinated Heart Rates__
 
 We have a sample of 100 people, and we measure their resting heart rate and their caffeine consumption. We're interested in estimating how caffeine consumption is associated with differences in resting heart rate. However, we also know that heart rate increases with age _and_ we think that older people tend to drink less caffeine. So we want to isolate the differences in heart rate due to caffeine from those due to age.  
 
@@ -528,7 +528,34 @@ This is obviously nonsense - the baby weighs 700 grams and that's not something 
 
 To talk about causal effects we need a lot of careful thought about our theoretical model of the world (i.e. what causes what) combined with a model that isolates the relevant effect of interest by controlling for the appropriate possible confounds (either through statistical control or control by design).  
 
-TODO good bad control  
+`r optbegin("Optional: Good Controls, Bad Controls", olabel=FALSE)`
+
+When you first learn about multiple regression and the idea of "controlling for ....", it's tempting to shove _EVERY_ variable that you have into your model. That way you've controlled for everything, right?  
+
+Unfortunately, it doesn't really work like that. Instead, we need to think carefully about our theory of the world.  
+
+Let's suppose that what we are interested in is "the effect of caffeine consumption on resting heart rate". We think that age influences both of these things, so we could draw something like @fig-confounddag.  
+
+```{r}
+#| fig-cap: Age is a confounder of Caffeine and RHR
+#| label: fig-confounddag
+#| echo: false
+knitr::include_graphics("images/mlr/dagconfound.png")
+```
+
+If we are correct in our thinking, then we _do_ want to control for Age. If we don't control for Age, then the effect of Age on RHR has to go via Caffeine consumption (i.e. because we don't let our model have the arrow **b**, Age influences RHR by going through arrows **a** and **c**. But this means the our estimate of arrow **c** includes _both_ age effects _and_ caffeine effects). This is what we have just seen earlier in this reading.  
+
+Let's now think about a different example. Suppose we are interested in "the influence of Age on consumption of Alcohol", and we are trying to decide on whether or not we should control for 'Sleep Quality' (@fig-collidedag). In this example, if we include Sleep Quality in our model, then some of the association between Age and Alcohol will go via paths **a** and **b**, when we don't actually want it to. So in this case we might _**not** want_ to control for Sleep Quality. 
+One thing to learn here is that in our model, information flow doesn't care about which end we have drawn an arrow - the associations we are using our model to look at don't actually have directions - it is only our theory that adds the arrows.  
+
+```{r}
+#| fig-cap: "Sleep Quality as a 'collider'"
+#| label: fig-collidedag
+#| echo: false
+knitr::include_graphics("images/mlr/dagcollider.png")
+```
+
+`r optend()`
 
 <div class="divider div-transparent div-dot"></div>
 
@@ -863,25 +890,31 @@ anova(eg_model1, eg_model2)
 <div class="divider div-transparent div-dot"></div>
 # Analysis of Variance
 
-TODO
-what we are actually doing in model comp is
-analysing variance explained by set of predictors
-(hence anova function).  
+What we are actually doing when we conduct a model comparison is asking "is there a reduction in residual sums of squares?".  
 
-analysis of variance = 
-coefficients = 
+:::statbox
+__Refresher: Residual Sums of Squares__ 
 
-sums squares brief. 
+The residuals are the distances from the actual observed values to the model predicted values. If we square those distances (to make them all positive), and sum them up, we get the "residual sums of squares".  
 
-apply this logic to a single model
+:::
 
-Another thing we can do is take a single model and partition out variance explained by the _**incremental addition** of each predictor._ We can do that by building a model with `lm()` and then giving the `anova()` function that model.  
+Another way of phrasing "is there are reduction in residual sums of squares?" is to say "is more variance explained?", and this is matches with the fact that we are using the function `anova()` - it stands for "analysis of variance".  
 
-It's very important to note that the __order matters__ here, because it will assess the improvement in model fit due to each predictor in turn: 
+There's a subtle distinction here: 
+
+:::sticky
+
+- Analysis of variance: __does__ [predictor(s)] explain variance in y?  
+- Coefficient: *__how__* __does__ [predictor] influence y?  
+
+:::
+
+We can apply the idea of 'analysing variance explained' to a single model, partitioning out variance explained by the _**incremental addition** of each predictor._ This is done by simply passing a single model (built with `lm()`) to the `anova()` function. It's very important to note that the __order matters__ here, because it will assess the improvement in model fit due to each predictor in turn: 
 
 1. $x_1$ vs no predictors
-2. the addition of $x_2$ vs the model with _just_ $x_1$
-3. the addition of $x_3$ vs the model with _just_ $x_1$ and $x_2$  
+2. the addition of $x_2$ to the model with _just_ $x_1$
+3. the addition of $x_3$ to the model with _just_ $x_1$ and $x_2$  
 
 ```{r}
 eg_model2 <- lm(y ~ x1 + x2 + x3, data = mydata)
@@ -896,7 +929,7 @@ If it helps, we might think of this again in terms of a Venn diagram. Each line 
 knitr::include_graphics("images/mlr/venn_ss_type1.png")
 ```
 
-And this is really just a big set of model comparisons:
+And we can really just think of this as a big set of model comparisons:
 ```{r}
 #| eval: false
 eg_model0 <- lm(y ~ 1, data = mydata)
@@ -906,7 +939,49 @@ eg_model3 <- lm(y ~ x1 + x2 + x3, data = mydata)
 anova(eg_model0, eg_model1, eg_model2, eg_model3)
 ```
 
-Note that this is a very different thing from what we have been doing previously, which was examining the effect of all predictors __after__ considering all others (see @fig-vennss3). The area $C$ is the same in both @fig-vennss1 and @fig-vennss3, demonstrating that this approach is like considering each predictor as if it were the "last one in" in the incremental approach.  
+## What's the point?  
+
+It might feel pointless to bother asking "__does__ [predictor(s)] explain variance in y?" when we can look at the coefficients to ask "*__how__* __does__ [predictor] influence y?"  
+
+The main utility in this approach comes in when we want to assess _overall group differences_, rather than testing differences between specific groups.  
+
+:::statbox
+__Example__  
+
+> Question A: Do species have different brain mass? 
+
+If we fit our linear model, we can examine our coefficients (remember, the reference level for species here is "Humans":  
+```{r}
+#| eval: false
+braindata <- read_csv("https://uoepsy.github.io/data/usmr_braindata.csv")
+fit <- lm(mass_brain ~ species, data = braindata)
+summary(fit)
+```
+
+```
+Coefficients:
+                      Estimate Std. Error t value Pr(>|t|)
+(Intercept)           0.415308   0.263731   1.575    0.125
+mass_body             0.002941   0.004116   0.715    0.480
+speciesPotar monkey  -0.217808   0.199699  -1.091    0.284
+speciesRhesus monkey -0.014035   0.198628  -0.071    0.944
+```
+
+But these actually answer the questions:  
+
+- Question B: Do Potar monkeys have different brain mass from Humans? 
+- Question C: Do Rhesus monkeys have different brain mass from Humans?  
+
+And these are not the same as our original question. However, we _can_ answer it with an analysis of variance, which tests the variance explained by `species` grouping as a whole!  
+```{r}
+anova(fit)
+```
+
+
+## Types of Sums of Squares
+
+The logic seen in @fig-vennss1 is to think of the "incremental addition" of each predictor. We don't have to use this approach, however. We can, for instance, choose to analyse the variance explained by each predictor _as if it were the last one_ entered in the model. This is equivalent to examining the effect of all predictors __after__ considering all others (see @fig-vennss3). The area $C$ is the same in both @fig-vennss1 and @fig-vennss3, demonstrating that this approach is like considering each predictor as if it were the "last one in" in the incremental approach.  
+
 ```{r}
 #| label: fig-vennss3
 #| fig-cap: "Venn Diagram showing partial ('last one in') sums of squares"
@@ -914,39 +989,28 @@ Note that this is a very different thing from what we have been doing previously
 knitr::include_graphics("images/mlr/venn_ss_type3.png")
 ```
 
-Our interpretation of our regression coefficients matches the "last one in" approach shown in @fig-vennss1, but the hypothesis tests of coefficients are technically tests against the null hypothesis that that the coefficient is zero. The `drop1()` function allows us to conduct an analysis of variance using the "last one in" approach: 
+The `drop1()` function allows us to conduct an analysis of variance using the “last one in” approach:
 
 ```{r}
 eg_model2 <- lm(y ~ x1 + x2 + x3, mydata)
 drop1(eg_model2, test = "F")
 ```
 
-It might seem pointless to do this, given we can just look at our regression coefficients. In fact, the p-values for $x_1$ and $x_2$ are just the same as the p-values for our coefficients:
+`r optbegin("Optional: F and t and the last one in", olabel=FALSE)`
+
+Our interpretation of the regression _coefficients_ matches the "last one in" approach shown in @fig-vennss3.  
+In fact, the $p-values$ from `drop1()` (for `x1` and `x2` at least) will match those from the coefficient tests: 
 
 ```{r}
 #| eval: false
 summary(eg_model2)$coefficients
 ```
-```
-            Estimate Std. Error t value Pr(>|t|)   
-(Intercept) -1.84331    3.86271  -0.477  0.63552   
-x1           0.19045    0.06666   2.857  0.00645 **
-x2          -0.60701    0.20544  -2.955  0.00497 **
-x3level2    -1.95195    2.43897  -0.800  0.42773   
-x3level3    -3.19862    3.24037  -0.987  0.32886   
-```
 
-But note that $x_3$ is a categorical variable that has three levels: "level1", "level2", "level3", which means we get out _two_ coefficients that test _two_ specific differences (level2 vs level1; level3 vs level1). The analysis of variance approach (above) allows us to perform one single test of whether the entire grouping (of observations into the three levels) explains variance in the outcome variable.  
+These are equivalent in this specific case, but when we more to more general forms of the model, it does not hold. The key reason being is that the `anova()` and `drop1()` are examining variance explained, or "improvements in fit" to the model, whereas the tests of the coefficients are against the null hypothesis that the coefficient is zero. When we move to more general models, the way we assess "improvements in fit" is not always about reduction in residual sums of squares.
 
-The very big picture could be taken as:
-
-- Analysis of Variance: "are there group differences in $y$?" 
-- Coefficients: "what are the differences in $y$ when comparing specific groups?"
+`r optend()`
 
 
-
-
-
-
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
 
 

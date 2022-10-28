@@ -3,7 +3,7 @@ title: "Week 7 Exercises: Linear Regression"
 link-citations: yes
 params: 
     SHOW_SOLS: FALSE
-    TOGGLE: FALSE
+    TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
 ---
@@ -450,13 +450,14 @@ summary(interceptonly_model)$coefficients
 
 <div class="divider div-transparent div-dot"></div>
 
-# Locus of Control  
+# Student Sleep Quality
 
 :::frame
-
 In the survey that many of you completed at the start of term (thank you to those that did!), we had a long set of items that were from various personality and psychometric scales. 
 
-One of these was a set of items that measure a persons' "locus of control" (belief that you have control over your life, as opposed to it being decided by external forces such as fate/luck/destiny/god/the flying spaghetti monstor). We also asked you to rate your average sleep quality from 0 to 100.  
+One of these was a set of items that measure a persons' "locus of control" (belief that you have control over your life, as opposed to it being decided by external forces such as fate/luck/destiny/god/the flying spaghetti monster). We also asked you to rate your average sleep quality from 0 to 100.  
+
+My pet theory is that people who believe they have more control over life are more inclined to have a better sleep routine, and so will rate their sleep quality as being better than those who believe that life is out of their control.  
 
 You can read in the data for your 2022 USMR cohort using the following code:  
 ```{r}
@@ -477,24 +478,10 @@ tibble(
   kableExtra::row_spec(2:3,bold=TRUE)
 ```
 
-
 :::
 
-`r qbegin()`
-My pet theory is that people who believe they have more control over life are more inclined to have a better sleep routine, and so will rate their sleep quality as being better than those who believe that life is out of their control.  
-
-```{r}
-#| echo: false
-library(dagitty)
-# in our example above, this was what we theorised:
-g1 <- dagitty( "dag {
-    Locus_of_Control -> Sleep_Quality
-}")
-plot(graphLayout(g1))
-```
-
-
-Fit a linear regression model to test this association. 
+`r qbegin(12)`
+Fit a linear regression model to test the association. 
 
 :::hints
 __Hints:__  
@@ -504,16 +491,20 @@ Try to do the following steps:
 1. Explore the data
 2. Fit the model
 3. Take a look at the assumption plots (see [7A#assumptions](07a_slr.html#assumptions){target="_blank"}).  
-4. Create a plot and/or table (see [7A#example](07a_slr.html#example){target="_blank"}).  
-5. Write it up! 
+4. Check for influential people. It's possible that one [really weird person](https://ianhajnosz.com/wp-content/uploads/2018/08/IMGP4662-3-724x1024.jpg){target="_blank"} could be skewing all our results.  
+  - If this is the case, it might be worth conducting a 'sensitivity analysis'. Fit the model without this person (or people) - do your conclusions change?  
+5. Create a plot and/or table (see [7A#example](07a_slr.html#example){target="_blank"}).  
+
 
 :::
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
+TODO
+
 ```{r}
 usmrdata <- 
-  read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv") %>%
+  read_csv("../../data/surveydata_allcourse22.csv") %>%
   filter(course == "usmr", year == 2022)
 ```
 
@@ -521,7 +512,7 @@ usmrdata <-
 set.seed(993)
 #usmrdata$loc[usmrdata$pseudonym%in%"Josiah"]<-14
 
-usmrdata$loc[usmrdata$pseudonym%in%"Definitely not Ian"]<-14
+#usmrdata$loc[usmrdata$pseudonym%in%"Definitely not Ian"]<-14
 new <- sample_n(usmrdata, 4)
 new$threewords<-NA
 new$pseudonym<-c("Albert",NA,"Vincent Noone",NA)
@@ -533,6 +524,7 @@ usmrdata<-bind_rows(usmrdata,new)
 
 ```
 
+Let's just take a look at the relevant variables and relationship:  
 ```{r}
 p1 <- ggplot(usmrdata, aes(x=loc))+
   geom_histogram()
@@ -545,16 +537,60 @@ p3 <- ggplot(usmrdata, aes(x=loc, y=sleeprating))+
 p3 / (p1 + p2)
 ```
 
+And go straight ahead and fit our model
+```{r}
+sleepmod <- lm(sleeprating ~ loc, usmrdata)
+summary(sleepmod)
+```
 
-TODO
+Wooh, looks like we were right! People with greater perceived control tend to report better sleep quality.  
+
+Our assumptions don't look all that great though.. 
+```{r echo=2}
+par(mfrow=c(2,2))
+plot(sleepmod)
+par(mfrow=c(1,1))
+```
+
+From the bottom right plot above, we can see that the 65th observation is looking a bit influential..  
+I wonder who that is..  
+```{r}
+usmrdata$pseudonym[65]
+```
+
+Ah, it's Ian! He did tell me that he didn't really pay any attention when he was filling this out. I think it might be wise to remove him.  
+
+```{r}
+sleepmod_noian <- lm(sleeprating ~ loc, usmrdata[-65, ])
+summary(sleepmod_noian)
+```
+
+Our conclusions haven't changed - we still have a significant association.  
+We now have a decision to make. Do we continue with Ian removed, or do we keep him in? There's not really a right answer here, but because of what we know about Ian not taking the survey seriously(!!!), I think it makes sense that we would exclude him right from the outset.  
+
+```{r}
+#| echo: false
+#| out-height: 3.5
+
+
+ggplot(usmrdata, aes(x=loc,y=sleeprating))+
+  geom_point()+
+  geom_smooth(method=lm, fullrange=TRUE)+
+  xlim(5,30)+
+  labs(title="With Ian") +
+
+ggplot(usmrdata[-65, ], aes(x=loc,y=sleeprating))+
+  geom_point()+
+  geom_smooth(method=lm, fullrange=TRUE)+
+  xlim(5,30)+
+  labs(title="Without Ian")
+```
+
+
+
+
 
 `r solend()`
-
-
-
-
-
-
 
 
 

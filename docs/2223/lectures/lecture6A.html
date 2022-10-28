@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Week 7: Recap</title>
+    <meta charset="utf-8" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/tile-view/tile-view.css" rel="stylesheet" />
+    <script src="libs/tile-view/tile-view.js"></script>
+    <link href="libs/animate.css/animate.xaringan.css" rel="stylesheet" />
+    <link href="libs/tachyons/tachyons.min.css" rel="stylesheet" />
+    <link href="libs/xaringanExtra-extra-styles/xaringanExtra-extra-styles.css" rel="stylesheet" />
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+    <link rel="stylesheet" href="mc_libs/tweaks.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# <b>Week 7: Recap</b>
+]
+.subtitle[
+## Univariate Statistics and Methodology using R
+]
+.author[
+### 
+]
+.institute[
+### Department of Psychology<br/>The University of Edinburgh
+]
+
+---
+
+
+
+
+
+class: inverse, center, middle
+
+# Week 1: R
+
+---
+# Week 1: R
+
+![:scale 70%](lecture_6_files/img/rstudio_zones.png)
+
+---
+class: inverse, center, middle
+# Week 2: Distributions and Repeated Sampling
+
+---
+# We collect data
+
+.pull-left[
+![:scale 70%](lecture_6_files/img/collect.png)
+]
+.pull-right[
+
+```r
+library(tidyverse)
+demo &lt;- read_csv("../../data/surveydata_allcourse22.csv") %&gt;%
+  filter(course=="usmr") %&gt;%
+  select(height, eyecolour) %&gt;% 
+  na.omit()
+
+dim(demo)
+```
+
+```
+## [1] 227   2
+```
+
+```r
+head(demo)
+```
+
+```
+## # A tibble: 6 × 2
+##   height eyecolour
+##    &lt;dbl&gt; &lt;chr&gt;    
+## 1   180  brown    
+## 2   162  brown    
+## 3   175  brown    
+## 4   175  brown    
+## 5   168. brown    
+## 6   157. brown
+```
+]
+
+---
+# We can describe data 
+
+.pull-left[
+![](lecture6A_files/figure-html/unnamed-chunk-2-1.svg)&lt;!-- --&gt;
+
+]
+.pull-right[
+
+```r
+demo %&gt;% summarise(
+  mean_height = mean(height),
+  sd_height = sd(height)
+)
+```
+
+```
+## # A tibble: 1 × 2
+##   mean_height sd_height
+##         &lt;dbl&gt;     &lt;dbl&gt;
+## 1        168.      9.10
+```
+
+```r
+demo %&gt;% count(eyecolour) %&gt;%
+  mutate(prop = n/sum(n))
+```
+
+```
+## # A tibble: 6 × 3
+##   eyecolour     n   prop
+##   &lt;chr&gt;     &lt;int&gt;  &lt;dbl&gt;
+## 1 blue         47 0.207 
+## 2 brown       119 0.524 
+## 3 green        26 0.115 
+## 4 grey          4 0.0176
+## 5 hazel        22 0.0969
+## 6 other         9 0.0396
+```
+
+]
+
+---
+# _what if..._ we had collected different data?  
+
+.pull-left[
+- Statistics we have observed: 
+  - mean height: 168
+  - standard deviation of heights: 9.1
+  - proportion of people with brown eyes: 52%
+
+- Statistics that we _might have_ computed would be different.  
+
+{{content}}
+]
+
+--
+
+- Demonstration: [lecture6_demo.R](./lecture6_demo.R)  
+
+
+
+
+---
+# _what if..._ we had collected different data?  
+
+.pull-left[
+- Statistics we have observed: 
+  - mean height: 168
+  - standard deviation of heights: 9.1
+  - proportion of people with brown eyes: 52%
+
+- Statistics that we _might have_ computed would be different.  
+
+- Demonstration: [lecture6_demo.R](./lecture6_demo.R)  
+]
+
+.pull-right[
+![](lecture6A_files/figure-html/unnamed-chunk-5-1.svg)&lt;!-- --&gt;
+]
+
+
+
+---
+# quantifying sampling variation 
+
+.pull-left[
+__Simulations__  
+![](lecture6A_files/figure-html/unnamed-chunk-7-1.svg)&lt;!-- --&gt;
+
+
+```r
+mheights &lt;- replicate(1000, mean(rnorm(n = 227, mean = 168, sd = 9.1)))
+sd(mheights)
+```
+
+```
+## [1] 0.6037
+```
+
+]
+
+---
+count: false
+# quantifying sampling variation (2)
+
+.pull-left[
+__Simulations__  
+![](lecture6A_files/figure-html/unnamed-chunk-9-1.svg)&lt;!-- --&gt;
+
+
+
+```r
+mheights &lt;- replicate(1000, mean(rnorm(n = 227, mean = 168, sd = 9.1)))
+sd(mheights)
+```
+
+```
+## [1] 0.6037
+```
+
+]
+
+.pull-right[
+__Maths__  
+sampling distribution is normally distributed with a standard deviation of:  
+
+$$
+`\begin{align}
+&amp; \frac{\sigma}{\sqrt{n}} \\
+\\
+&amp; \text{Where:} \\
+&amp; n = \text{sample size} \\
+&amp; \sigma = \text{population standard deviation}  
+\end{align}`
+$$
+
+
+```r
+9.1 / sqrt(227)
+```
+
+```
+## [1] 0.604
+```
+
+]
+
+???
+we saw simulations, but we also saw that we can use formulae  
+
+maybe motivate the formulas by taking the density plot or histogram from the simulations, and superimposing the normal with mean mu and SD = SE = sd / sqrt(n)
+
+so they see the formulas actually map to the centre and width of the density curve
+
+
+---
+class: inverse, center, middle
+# Week 3 - signals and noise
+
+---
+# what we expect vs what we observe
+
+e.g. "If the population mean height is 170, is it unlikely to see our sample's mean height of 168?"
+
+.pull-left[
+__What we expect:__  
+![](lecture6A_files/figure-html/unnamed-chunk-12-1.svg)&lt;!-- --&gt;
+]
+
+--
+
+.pull-right[
+__What we observe:__  
+![](lecture6A_files/figure-html/unnamed-chunk-13-1.svg)&lt;!-- --&gt;
+]
+
+---
+# is the signal stronger than the noise?
+
+e.g. "Given the signals we expect, how unlikely is the signal we observe?"  
+
+.pull-left[
+__Signals we expect:__  
+![](lecture6A_files/figure-html/unnamed-chunk-14-1.svg)&lt;!-- --&gt;
+]
+
+.pull-right[
+__Signal we observe:__  
+![](lecture6A_files/figure-html/unnamed-chunk-15-1.svg)&lt;!-- --&gt;
+]
+
+
+---
+# sampling variation in theory
+
+e.g. "Given the signals we expect, how unlikely is the signal we observe?"  
+
+.pull-left[
+__Signals we expect:__  
+![](lecture6A_files/figure-html/unnamed-chunk-16-1.svg)&lt;!-- --&gt;
+]
+.pull-right[
+&lt;br&gt; 
+$$
+`\begin{align}
+&amp; SE = \frac{\sigma}{\sqrt{n}} \\
+\\
+&amp; \text{Where:} \\
+&amp; n = \text{sample size} \\
+&amp; \sigma = \color{red}{\text{population standard deviation}}  
+\end{align}`
+$$
+]
+
+---
+# sampling variation in practice
+
+e.g. "Given the signals we expect, how unlikely is the signal we observe?"  
+
+.pull-left[
+__Signals we expect:__  
+![](lecture6A_files/figure-html/unnamed-chunk-17-1.svg)&lt;!-- --&gt;
+]
+.pull-right[
+&lt;br&gt; 
+$$
+`\begin{align}
+&amp; SE = \frac{s}{\sqrt{n}} \\
+\\
+&amp; \text{Where:} \\
+&amp; n = \text{sample size} \\
+&amp; s = \color{red}{\text{sample standard deviation}}  
+\end{align}`
+$$
+]
+
+
+
+
+---
+# statistical testing
+
+1. assume the null hypothesis is true
+
+2. how unlikely is the statistic that we observe (the 'signal') given the variation (noise) we would expect?  
+
+--
+
+
+```r
+usmr &lt;- read_csv("../../data/surveydata_allcourse22.csv") %&gt;%
+  filter(course=="usmr")
+```
+
+
+---
+# statistical tests: e.g. t-tests
+
+__One sample t-test__  
+
+- how far the sample mean is from some number:
+`$$t = \frac{\bar{x}_1 - \mu_0}{SE_{\bar{x}}}$$`
+
+
+```r
+t.test(usmr$height, mu = 170)
+```
+
+```
+## 
+## 	One Sample t-test
+## 
+## data:  usmr$height
+## t = -3.1, df = 227, p-value = 0.002
+## alternative hypothesis: true mean is not equal to 170
+## 95 percent confidence interval:
+##  167.0 169.3
+## sample estimates:
+## mean of x 
+##     168.1
+```
+
+
+---
+# statistical tests: e.g. t-tests
+
+__Two sample t-test__  
+
+- how far the difference in means is from zero:  
+`$$t = \frac{\bar{x}_1 - \bar{x}_2}{SE_{\bar{x}_1-\bar{x}_2}} \, \, = \, \,\frac{(\bar{x}_1 - \bar{x}_2) - 0}{SE_{\bar{x}_1-\bar{x}_2}}$$`  
+
+
+```r
+t.test(height ~ catdog, data = usmr)
+```
+
+```
+## 
+## 	Welch Two Sample t-test
+## 
+## data:  height by catdog
+## t = -1.6, df = 196, p-value = 0.1
+## alternative hypothesis: true difference in means between group cat and group dog is not equal to 0
+## 95 percent confidence interval:
+##  -4.3162  0.5004
+## sample estimates:
+## mean in group cat mean in group dog 
+##             167.0             168.9
+```
+
+---
+class: inverse, center, middle
+# Week 4 &amp; 5 - more signals, more noise
+
+---
+# statistical tests: e.g. chisquare tests
+
+__Chi-squared: Goodness of Fit__  
+
+$$
+\chi^2 = \Sigma \frac{{(Observed-Expected)}^2}{Expected}
+$$
+
+
+```r
+table(usmr$eyecolour)
+```
+
+```
+## 
+##  blue brown green  grey hazel other 
+##    47   121    26     4    22     9
+```
+
+```r
+chisq.test(table(usmr$eyecolour))
+```
+
+```
+## 
+## 	Chi-squared test for given probabilities
+## 
+## data:  table(usmr$eyecolour)
+## X-squared = 245, df = 5, p-value &lt;2e-16
+```
+
+
+---
+# statistical tests: e.g. chisquare tests
+
+__Chi-squared: Test of Independence__  
+
+$$
+\chi^2 = \Sigma \frac{{(Observed-Expected)}^2}{Expected}
+$$
+
+
+```r
+table(usmr$ampm, usmr$catdog)
+```
+
+```
+##                 
+##                  cat dog
+##   Evening person  33  45
+##   Morning person  19  27
+```
+
+```r
+chisq.test(table(usmr$ampm, usmr$catdog))
+```
+
+```
+## 
+## 	Pearson's Chi-squared test with Yates' continuity correction
+## 
+## data:  table(usmr$ampm, usmr$catdog)
+## X-squared = 0, df = 1, p-value = 1
+```
+
+???
+
+```r
+table(usmr$ampm, usmr$catdog) %&gt;% prop.table(margin=1)
+```
+
+```
+##                 
+##                     cat    dog
+##   Evening person 0.4231 0.5769
+##   Morning person 0.4130 0.5870
+```
+
+
+---
+# statistical tests: e.g. correlation tests
+
+__Correlation__  
+
+$$
+t = \frac{r}{\sqrt{\frac{1-r^2}{n-2}}} = \frac{r}{SE_{r}}
+$$
+
+
+```r
+cor.test(usmr$sleeprating, usmr$loc)
+```
+
+```
+## 
+## 	Pearson's product-moment correlation
+## 
+## data:  usmr$sleeprating and usmr$loc
+## t = 3.6, df = 74, p-value = 0.0006
+## alternative hypothesis: true correlation is not equal to 0
+## 95 percent confidence interval:
+##  0.1726 0.5602
+## sample estimates:
+##    cor 
+## 0.3831
+```
+
+???
+
+---
+class: inverse, center, middle
+# and here we are!  
+
+
+
+
+
+
+
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script src="mc_libs/macros.js"></script>
+<script>var slideshow = remark.create({
+"ratio": "16:9",
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

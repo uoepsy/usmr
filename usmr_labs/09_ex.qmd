@@ -8,3 +8,62 @@ editor_options:
   chunk_output_type: console
 ---
 
+
+
+
+
+
+
+
+```{r}
+library(tidyverse)
+df <- read_csv("../../data/surveydata_allcourse22.csv") %>% filter(year==2022)
+
+# make season
+# ifelse
+df %>% mutate(
+  season = case_when(
+    birthmonth %in% tolower(month.abb)[c(1,2,12)] ~ "winter",
+    birthmonth %in% tolower(month.abb)[3:5] ~ "spring",
+    birthmonth %in% tolower(month.abb)[6:8] ~ "summer",
+    birthmonth %in% tolower(month.abb)[9:11] ~ "autumn",
+    TRUE ~ NA_character_
+  ),
+  season = factor(season)
+) -> df
+
+# horoscopes
+lm(spirituality ~ season, df) %>% summary
+
+# boxplot
+ggplot(df, aes(x=season,y=spirituality))+
+  geom_boxplot()
+
+# coefs match to boxplot and group means
+df %>% group_by(season) %>%
+  summarise(
+    m = mean(spirituality, na.rm=TRUE)
+  ) %>% 
+  mutate(
+    diffaut = m - m[1]
+  )
+lm(spirituality ~ season, df) %>% coef
+
+# contrasts 
+lm(spirituality ~ season, df, contrasts = list(season="contr.sum")) %>% coef
+
+
+```
+
+
+
+```{r}
+#| eval: false
+lm(sleeprating ~ emot_stability + loc*ampm, data = usmrdata) %>% summary
+
+lm(sleeprating ~ emot_stability + loc*agreeableness, data = usmrdata) %>% summary
+
+
+```
+
+

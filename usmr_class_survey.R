@@ -63,6 +63,26 @@ prev <- prev %>% filter(year!=2022)
 
 updated <- bind_rows(prev, newsurv) %>%
   arrange(desc(year),desc(course)) 
+
+usmrdata <- 
+  updated %>%
+  filter(course == "usmr", year == 2022)
+set.seed(993)
+#usmrdata$loc[usmrdata$pseudonym%in%"Josiah"]<-14
+#usmrdata$loc[usmrdata$pseudonym%in%"Definitely not Ian"]<-14
+new <- sample_n(usmrdata, 4)
+new$threewords<-NA
+new$pseudonym<-c("Albert",NA,"Vincent Noone",NA)
+new$loc <- c(17,16,14,14)
+new$sleeprating<-c(25,10,30,25)
+
+new$emot_stability<-round(new$loc*-1+32+rnorm(4,0,3))
+
+updated<-bind_rows(updated,new) %>% 
+  arrange(desc(year),desc(course)) 
+
+updated$catdog <- tolower(updated$catdog)
+
 write_csv(updated,"C:/Users/jking34/Desktop/uoepsy/data/surveydata_allcourse22.csv")
 
 #updated <- bind_rows(prev,newsurv) %>% arrange(desc(year),desc(course))

@@ -38,7 +38,7 @@ library(tidyverse)
 library(readxl)
 
 download.file('https://uoepsy.github.io/data/blink_eyegaze.xlsx', 'data/blink_eyegaze.xlsx', mode="wb")
-eyedata<-read_excel(path = 'data/blink_eyegaze.xlsx')
+eyedata <- read_excel(path = 'data/blink_eyegaze.xlsx')
 
 setupdata <- read_csv("https://uoepsy.github.io/data/blink_setup.csv", col_names = FALSE)
 head(setupdata)[,1:4] %>%
@@ -372,59 +372,59 @@ We want to match the observations based on two columns which are present in each
 In this solution, let's build up a sequence step by step. Work through the steps, adding lines of code each time. Between each step, run the code to quickly see what the output looks like at each step.   
 
 1. First, let's see how we can remove the "subject_" from "subject_1" etc.. 
-    ```{r eval=FALSE}
-    setuplong %>%
-      mutate(
-        sub = gsub("subject_","",sub)
-      )
-    ```
+```{r eval=FALSE}
+setuplong %>%
+  mutate(
+    sub = gsub("subject_","",sub)
+  )
+```
 2. But we also want it to be numeric, to match the `sub` variable in the eyegaze data, so let's edit it to:
-    ```{r eval=FALSE}
-    setuplong %>%
-      mutate(
-        sub = as.numeric(gsub("subject_","",sub))
-      )
-    ```
+```{r eval=FALSE}
+setuplong %>%
+  mutate(
+    sub = as.numeric(gsub("subject_","",sub))
+  )
+```
 3. We'll also need to do the same for the `trial_number` variable, so let's add that line too:
-    ```{r eval=FALSE}
-    setuplong %>%
-      mutate(
-        sub = as.numeric(gsub("subject_","",sub)),
-        trial_number = as.numeric(gsub("trial_","",trial_number))
-      )
-    ```
+```{r eval=FALSE}
+setuplong %>%
+  mutate(
+    sub = as.numeric(gsub("subject_","",sub)),
+    trial_number = as.numeric(gsub("trial_","",trial_number))
+  )
+```
 4. And then, we'll note that we need to have the same name for variables indicating trial number in both data-sets, so lets rename it:
-    ```{r eval=FALSE}
-    setuplong %>%
-      mutate(
-        sub = as.numeric(gsub("subject_","",sub)),
-        trial_number = as.numeric(gsub("trial_","",trial_number))
-      ) %>%
-      rename(trial_no = trial_number)
-    ```
+```{r eval=FALSE}
+setuplong %>%
+  mutate(
+    sub = as.numeric(gsub("subject_","",sub)),
+    trial_number = as.numeric(gsub("trial_","",trial_number))
+  ) %>%
+  rename(trial_no = trial_number)
+```
 5. And now... add the join! 
-    ```{r eval=FALSE}
-    setuplong %>%
-      mutate(
-        sub = as.numeric(gsub("subject_","",sub)),
-        trial_number = as.numeric(gsub("trial_","",trial_number))
-      ) %>%
-      rename(trial_no = trial_number) %>%
-      full_join(x = ., y = eyedata)
-    ```
+```{r eval=FALSE}
+setuplong %>%
+  mutate(
+    sub = as.numeric(gsub("subject_","",sub)),
+    trial_number = as.numeric(gsub("trial_","",trial_number))
+  ) %>%
+  rename(trial_no = trial_number) %>%
+  full_join(x = ., y = eyedata)
+```
   **NOTE** the solution has `x = ., y = eyedata` to make it clear that we are 'piping in' (using `%>%`) the thing coming out of the previous lines of code, and putting it where the `.` is. `.... %>% full_join(eyedata)` would do the same.  
   We use `full_join` here because we want to keep all the data, but `left_join` would do the same. `right_join` would be slightly different, because there are 3 observations in the setup data (when reshaped to long, n = 460) which aren't in the eye gaze data (n = 457). You can see which ones they are by using `anti_join`.  
 6. Finally - we need to give the whole output a name to store it in our environment! 
-    ```{r}
-    blinks_full <- 
-      setuplong %>%
-      mutate(
-        sub = as.numeric(gsub("subject_","",sub)),
-        trial_number = as.numeric(gsub("trial_","",trial_number))
-      ) %>%
-      rename(trial_no = trial_number) %>%
-      full_join(x = ., y = eyedata)
-    ```
+```{r}
+blinks_full <- 
+  setuplong %>%
+  mutate(
+    sub = as.numeric(gsub("subject_","",sub)),
+    trial_number = as.numeric(gsub("trial_","",trial_number))
+  ) %>%
+  rename(trial_no = trial_number) %>%
+  full_join(x = ., y = eyedata)
+```
 
 `r solend()`
 
@@ -757,3 +757,5 @@ ggplot(blinks_full, aes(x = nr_blinks, y = distractor_fix)) +
 
 <!-- `r solend()` -->
 
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>

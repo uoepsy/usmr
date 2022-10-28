@@ -5,7 +5,6 @@
 # samples and populations
 # 
 
-
 library(tidyverse)
 library(janitor)
 set.seed(777)
