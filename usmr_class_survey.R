@@ -75,13 +75,21 @@ new$threewords<-NA
 new$pseudonym<-c("Albert",NA,"Vincent Noone",NA)
 new$loc <- c(17,16,14,14)
 new$sleeprating<-c(25,10,30,25)
-
 new$emot_stability<-round(new$loc*-1+32+rnorm(4,0,3))
+new$height[4]<-174
 
 updated<-bind_rows(updated,new) %>% 
   arrange(desc(year),desc(course)) 
 
 updated$catdog <- tolower(updated$catdog)
+
+
+updated %>% filter(course=="usmr") %>% select(height,eyecolour) %>% na.omit %>% summarise(
+  m=mean(height,na.rm=T),
+  sd = sd(height,na.rm=T),
+  n = sum(!is.na(height))
+)
+
 
 write_csv(updated,"C:/Users/jking34/Desktop/uoepsy/data/surveydata_allcourse22.csv")
 

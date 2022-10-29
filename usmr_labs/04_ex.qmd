@@ -16,7 +16,6 @@ library(patchwork)
 library(xaringanExtra)
 xaringanExtra::use_panelset()
 set.seed(017)
-survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv") 
 ```
 
 # Birth-Months
@@ -245,8 +244,26 @@ table(survey_data$eyecolour)
 ```
 Our theoretical probabilities of different eye colours must match the order in the table which we give `chisq.test()`. They must also always sum to 1.  
 ```{r}
+#| warning: true
+#| message: true
 chisq.test(table(survey_data$eyecolour), p = c(.05,.1,.76,.02,.01,.05,.01))
 ```
+
+Note, we get a warning here of <span style="color:blue">"Chi-squared approximation may be incorrect"</span>. This is because some of the expected cell counts are <5.  
+```{r}
+#| warning: false
+#| message: false
+chisq.test(table(survey_data$eyecolour), 
+           p = c(.05,.1,.76,.02,.01,.05,.01))$expected
+```
+
+There are a couple of options here, but the easiest is to use the functionality of `chisq.test()` that allows us to compute the p-value by using a simulation (similar to the idea we saw in [2B#sampling-&-sampling-distributions](02b_sampling.html#sampling-sampling-distributions){target="_blank"}), rather than by comparing it to a theoretical $\chi^2$ distribution.  We can do this by using:  
+
+```{r}
+chisq.test(table(survey_data$eyecolour), p = c(.05,.1,.76,.02,.01,.05,.01),
+           simulate.p.value = TRUE)
+```
+
 `r solend()`
 
 `r qbegin(8)`
