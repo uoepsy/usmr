@@ -11,28 +11,28 @@ get_my_data <- function(exam_num = NULL){
     pairdf <- tibble(
       rearing = sample(c("wild","captv"),N,TRUE),
       
-      HOIc = rnorm(N,.7,1.6),
-      HOIw = rnorm(N,0,1),
-      HOI = round(rnorm(1,0,.1) + scale(ifelse(rearing=="captv",HOIc, HOIw))[,1],3),
+      
       
       species = rep(c("macaque","bonobo","capuchin"), e=N/3),
       friendliness = round(rnorm(N),3),
-      age = round(rnorm(1,16,1) + scale(1*friendliness + rnorm(N,0,2))[,1]*5),
+      age = round(rnorm(1,16,1) + scale(3*(rearing=="captv") + rnorm(N,0,2))[,1]*5),
       openness = round(rnorm(N),3),
       neuroticism = round(rnorm(N),3),
-      dominance = round(rnorm(N),3),
+      domc = rnorm(N,0,1.5),
+      domw = rnorm(N,.7,1),
+      dominance = round(rnorm(1,0,.1) + scale(ifelse(rearing=="captv",domc, domw))[,1],3),
       food_type = rep(rep(c("n","g"),e=N/6), 3)
     )
     
-    coefs = c(0, 2.4, 0.03, -3.4, -1.9, -4, -0.03, 0.05, -4.7)
-    y = model.matrix(lm(rnorm(N) ~ rearing + age + friendliness + HOI + species + species:HOI, pairdf)) %*% coefs + 
+    coefs = c(0, 5.4, -.1, -1, -1.9, -4, -0.03, 0.05, -4.7)
+    y = model.matrix(lm(rnorm(N) ~ rearing + age + friendliness + dominance + species + species:dominance, pairdf)) %*% coefs + 
       rnorm(N,0,6)
     y = rnorm(1, 12, 1) + (scale(y)[,1]*rnorm(1,4,.1))
     y = round(y, 1)
     pairdf$task_time = pmax(1,y)
     
-    coefs2 = c(0, 9, 3, 2, 5, 4, -14, 6, 25, 35, 0)
-    pp = model.matrix(lm(rnorm(N) ~ rearing + age + HOI + dominance + openness + neuroticism + friendliness + food_type + species, 
+    coefs2 = c(0, 9, 3, 5, 4, -14, 6, 25, 35, 0)
+    pp = model.matrix(lm(rnorm(N) ~ rearing + age + dominance + openness + neuroticism + friendliness + food_type + species, 
                          pairdf %>% mutate_if(is.numeric,~scale(.)[,1]))) %*% coefs2
     pairdf$share = rbinom(N, 1, prob = plogis(scale(pp)))
     
@@ -49,7 +49,7 @@ get_my_data <- function(exam_num = NULL){
     
     
     
-    taskdata <<- pairdf %>% select(pid, HOI, food_type, task_time, share)
+    taskdata <<- pairdf %>% select(pid, food_type, task_time, share)
     monkeydata <<- pairdf %>% select(pid, species, rearing, age, dominance, openness, neuroticism, friendliness) %>% sample_n(n())
   }
 }
