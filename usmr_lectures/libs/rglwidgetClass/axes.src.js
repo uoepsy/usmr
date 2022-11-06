@@ -15,14 +15,40 @@
                       [0,1,0,1], [0,1,1,1],
                       [1,0,0,1], [1,0,1,1],
                       [1,1,0,1], [1,1,1,1]], 
-           dim, i, j, k, edges, hull, step, result = [], proj = [];
+           dim, i, j, k, edges, hull, step, result = [], proj = [],
+
+        // Filter to edges that are on sides that would
+        // be shown with a filled backing.
+        
+      has_back = function(edge) {
+          var normals = [[], []],
+              verts = [vertices[edge[0]], 
+                       vertices[edge[1]]], 
+              normal, m, n;
+          n = 0;
+          for (m=0; m<3; m++) {
+            if (verts[0][m] === verts[1][m]) {
+              normals[n] = [0,0,0,1];
+              normals[n][m] = 2*verts[0][m] - 1;
+              n++;
+            }
+          }
+          for (n=0; n<2; n++) {
+            normal = rglwidgetClass.multVM(normals[n], self.normMatrix);
+            if (normal[2] < 0 ||
+                (normal[2] === 0 && normal[0] < 0))
+              return true;
+          }
+          return false;
+        }, self = this;
+        
       for (i = 0; i < vertices.length; i++) {
-        proj[i] = this.multVM(vertices[i], prmv);
+        proj[i] = rglwidgetClass.multVM(vertices[i], prmv);
         proj[i][0] = proj[i][0]/proj[i][3];
         proj[i][1] = proj[i][1]/proj[i][3];
         proj[i][2] = i;
       }
-      hull = this.chull(proj.slice());  
+      hull = rglwidgetClass.chull(proj.slice());  
       for (i = 0; i < hull.length; i++)
         hull[i] = hull[i][2];
       hull.push(hull[0]);
@@ -38,6 +64,9 @@
               edges.push([j, j+step], [j+step, j]);
           }
         }
+
+        edges = edges.filter(has_back);
+        
         // Find the edge with a vertex closest
         // to the bottom left corner
         if (edges.length) {
@@ -51,8 +80,11 @@
               val = newval;
             }
           }
-          result[dim] = vertices[best].slice(0,3);
-          result[dim][dim] = undefined;
+          if (typeof best !== "undefined") {
+            result[dim] = vertices[best].slice(0,3);
+            result[dim][dim] = undefined;
+          } else
+            result[dim] = undefined;
         }
       }
       return result;
@@ -73,13 +105,14 @@
         case "custom":
           for (i=0; i < obj.vertices.length; i++) {
             value = (obj.vertices[i][dim] - limits[0])/range;
-            if (typeof value !== "undefined")
+            if (typeof value !== "undefined" &&
+                !isNaN(value))
               result[dim].push(value);
           }
           break;
         case "fixedstep":
-          len = Math.floor(range/obj.axes.unit[dim]);
-          delta = obj.axes.unit[dim];
+          len = Math.floor(range/obj.axes.step[dim]);
+          delta = obj.axes.step[dim];
           for (i = 0; i < len; i++)
             result[dim].push(i*delta);          
           break;
@@ -136,7 +169,7 @@
         }
       ticks.vertices = vertices;
       ticks.vertexCount = vertices.length;
-      ticks.values = new Float32Array(this.flatten(vertices));
+      ticks.values = new Float32Array(rglwidgetClass.flatten(vertices));
       ticks.initialized = false;
     };
     
@@ -155,6 +188,8 @@
         locations = ticks.locations[dim];
         if (locations.length)
           for (i = 0; i < locations.length; i++) {
+            if (isNaN(locations[i]))
+              continue;
             while (j < tickvertices.length && 
                    tickvertices[j][dim] !== locations[i]) j++;
             if (j >= tickvertices.length)
@@ -199,7 +234,7 @@
           for (i = 0; i < locations.length; i++) {
             if (Math.abs(values[i])/max < Math.pow(10, -5))
               values[i] = 0;
-            labels.push(this.signif(values[i], 5).toString());
+            labels.push(rglwidgetClass.signif(values[i], 4).toString());
           }
           obj.axes.nticks[dim] = locations.length;  
         }
@@ -243,7 +278,7 @@
       bboxMV.scale(scale[0], scale[1], scale[2]);
       bboxMV.translate(bbox[0], bbox[2], bbox[4]);
       bboxMV.multRight(saved.mvMatrix);
-      this.mvMatrix = bboxMV;
+      this.mvMatrix = obj.mvMatrix = bboxMV;
       
       if (this.prmvMatrix === null)
         saved.prmvMatrix = null;
@@ -251,6 +286,8 @@
         saved.prmvMatrix = new CanvasMatrix4(this.prmvMatrix);
         
       this.setprmvMatrix();
+      obj.prmvMatrix = this.prmvMatrix;
+      
       return saved;
     };
     
@@ -300,7 +337,7 @@
     
     rglwidgetClass.prototype.fixVertex = function(orig, parms, center, bbox) {
       var vertex = [0,0,0];
-      if (this.missing(orig[0]))
+      if (rglwidgetClass.missing(orig[0]))
         vertex[parms.at] = center[parms.at];
       else if (orig[0] === "-Inf")
         vertex[parms.at] = bbox[2*parms.at];

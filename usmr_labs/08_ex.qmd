@@ -2,8 +2,8 @@
 title: "Week 8 Exercises: Multiple Regression"
 link-citations: yes
 params: 
-    SHOW_SOLS: TRUE
-    TOGGLE: FALSE
+    SHOW_SOLS: FALSE
+    TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
 ---
@@ -199,12 +199,13 @@ confint(wbmodel, level = 0.95)
 `r solend()`
 
 `r qbegin(5)`
-Does your model provide a better fit to the data than a model with no explanatory variables? (i.e., test against the alternative hypothesis that at least one of the explanatory variables significantly predicts wellbeing scores). 
+Does your model provide a better fit to the data than a model with no explanatory variables? (i.e., test against the alternative hypothesis that _at least one_ of the explanatory variables significantly predicts wellbeing scores). 
 
 :::hints
 __Hints:__ 
 
 - it's all in the `summary()`!!
+- this might not be a useful question to ask, but we're just trying to go through what each bit of the model output shows.  
 
 :::
 
@@ -353,101 +354,277 @@ tab_model(wbmodel)
 
 # Student Sleep Quality
 
+:::frame
+__USMR 2022 Data__  
 
-4. Check for influential people. It's possible that one [really weird person](https://ianhajnosz.com/wp-content/uploads/2018/08/IMGP4662-3-724x1024.jpg){target="_blank"} could be skewing all our results.  
-  - If this is the case, it might be worth conducting a 'sensitivity analysis'. Fit the model without this person (or people) - do your conclusions change?  
-5. Create a plot and/or table (see [7A#example](07a_slr.html#example){target="_blank"}). 
+The data from the USMR 2022 survey (now closed) can be found at [https://uoepsy.github.io/data/usmr2022.csv](https://uoepsy.github.io/data/usmr2022.csv).  
 
+_note, this is the survey data just from USMR **this** year, not other students on other courses or in previous years_
 
+:::
 
-`r qbegin()`
-
-dag
-emot_stability confound
-
-how does loc influence sleeprating _after_ accounting for emot_stability?  
-
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-```{r}
-usmrdata <- 
-  read_csv("../../data/surveydata_allcourse22.csv") %>%
-  filter(course == "usmr", year == 2022) %>%
-  filter(!(pseudonym %in% "Definitely not Ian"))
-set.seed(993)
-#usmrdata$loc[usmrdata$pseudonym%in%"Josiah"]<-14
-
-#usmrdata$loc[usmrdata$pseudonym%in%"Definitely not Ian"]<-14
-new <- sample_n(usmrdata, 4)
-new$threewords<-NA
-new$pseudonym<-c("Albert",NA,"Vincent Noone",NA)
-new$loc <- c(17,16,14,14)
-new$sleeprating<-c(25,10,30,25)
-new$emot_stability<-round(new$loc*-1+32+rnorm(4,0,3))
-
-usmrdata<-bind_rows(usmrdata,new)
-
-m <- lm(sleeprating ~ emot_stability + loc, usmrdata)
-
-
-```
-
-`r solend()`
-
-`r qbegin()`
-assumptions
-
-bootstrap or transform
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-`r solend()`
-
-
-# Conscientiousness
-
-`r qbegin()`
-
-is birth month associated with conscientiousness?  
-
-hint 
-note the question is more a matter of "is"/"does", and not "what is"/"how does". 
-to answer this question, we might be more inclined to conduct a 
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-```{r}
-m <- lm(conscientiousness ~ birthmonth, usmrdata)
-anova(m)
-```
-
-`r solend()`
-
-
-
-# Rmd
 
 `r qbegin(11)`
-Let's put this all together.  
+Recall that last week we discussed my little theory that people who believe they have more control over life will rate their sleep quality as being better.  
 
-Create an rmarkdown file that:
+```{r}
+#| label: fig-locsleep
+#| fig-cap: "linear model predicting sleep quality ratings by perceived locus of control"
+#| echo: false
+#| fig-height: 3
+usmrdata <- read_csv("https://uoepsy.github.io/data/usmr2022.csv")
+ggplot(usmrdata, aes(x = loc, y = sleeprating)) +
+  geom_point()+
+  geom_smooth(method=lm)+
+  labs(x="Locus of Control", y = "Sleep Quality Rating")
 
-1. Reads in data and fits the model
-2. Describes the research question and the analytical method used to address it
-3. Presents and interprets the results
+```
+
+Monica has pointed out that it's likely that the association we have found (@fig-locsleep) might be due to other things. There are lots of explanations we could come up with. Some of these might involve variables we have measured.^[When designing a study/collected data, it's good practice to do this sort of thinking before hand, to make sure you measure all the things you want to measure] What if the relationship we see between peoples' `loc` and `sleeprating` is better explained by their emotional stability? Monica makes a convincing argument that having higher emotional stability may be correlated with feeling more in control of one's life, and may also influence sleep quality.  
+Sometimes it can help to think of models in the form of diagrams:  
+```{r}
+#| label: fig-surveydag
+#| fig-cap: "Monica's suggestion, where emotional stability and locus of control are correlated (indicated by double headed arrow), and both influence sleep quality (indicated by single headed arrows)"
+#| echo: false
+knitr::include_graphics("images/mlr/surveydag.png")
+```
+
+Monica tells me that if I want to look at how 'locus of control' is associated with sleep quality, it would be more useful to think about the association _after_ controlling for emotional stability.  
+
+> How does locus of control (`loc`) influence sleep quality (`sleeprating`) _after_ accounting for emotional stability (`emot_stability`)?  
+
 
 :::hints
-__Hints:__
+__Hints:__  
 
-- You've actually done all of this already in the earlier questions, it's just a matter of shoving it in the .Rmd file and tidying it up.  
+- See section [8A#multiple-regression-coefficients](08a_mlr.html#multiple-regression-coefficients){target="_blank"} for how this might be achieved. 
+- the way the question is phrased suggests that `sleeprating` is our outcome (the thing being explained/influenced/predicted); `loc` is the _focal predictor_ (the main predictor of interest); and `emot_stability` is a _covariate_. we treat "covariates" and "focal predictors" exactly the same in the model: `lm(outcome ~ covariates and focal predictors)`, it is just terminology that we use to distinguish what we are interested in from what we want to acknowledge as being theoretically relevant.  
+
+- Don't worry about assumptions, we'll take a look at them next. 
+ 
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+First we read in the data: 
+```{r}
+usmrdata <- read_csv("https://uoepsy.github.io/data/usmr2022.csv")
+```
+
+Our model is going to be sleep ratings predicted by emotional stability and locus of control:  
+```{r}
+sleeplocmod2 <- lm(sleeprating ~ emot_stability + loc, usmrdata)
+summary(sleeplocmod2)
+```
+
+
+
+`r solend()`
+
+`r qbegin(12)`
+
+Monica and I want to write up our study of how locus of control is associated with sleep ratings. 
+
+However, we haven't checked any of our model assumptions, and so we shouldn't really trust the p-values we have been looking at so far. 
+
+Take a look at the assumptions and diagnostics of your model. If your assumptions are worryingly weird, there are things that may be useful to consider doing. We would probably recommend bootstrapping (see [8B#back-to-the-bootstrap](08b_assumptdiag.html#back-to-the-bootstrap)).
+
+
+:::hints
+__Hints:__  
+
+- You can ask yourself one of two questions (or both if you like), but we recommend the visualisation approach: 
+    - Do the plots look okay? ([8B#plotting-assumptions](08b_assumptdiag.html#plotting-assumptions){target="_blank"})
+    - Do the residuals pass statistical tests? ([8B#testing-assumptions](08b_assumptdiag.html#testing-assumptions){target="_blank"})
+- It's also worth taking a look at the 'diagnostics' (such as the influence of individual cases, see [8B#individual-case-diagnostics](08b_assumptdiag.html#individual-case-diagnostics){target="_blank"}.  
+
+- In order to bootstrap, you might need to fit the model to a dataset without any NAs in it.  
 
 :::
 
 `r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+Let's have a little look at assumption plots:  
+```{r echo=c(2)}
+par(mfrow=c(2,2))
+plot(sleeplocmod2)
+par(mfrow=c(1,1))
+```
+None of these plots look great to me.  
+
+- The "residuals vs fitted" shows a curved line rather than a horizontal line at 0
+- The "normal QQ" plot looks okay apart from a couple of points that are dragging it down at the bottom. 
+- The "scale-location" plot indicates the variance of residuals changes across the fitted values (the red line isn't horizontal). 
+- The "residuals vs leverage" plot shows a few points might be quite influential. However, they are within the bounds of the cook's distance thresholds (the dotted lines).
+  - note that some of these points, the 46th and 47th observations, are the same as the ones pulling down the QQplot.. 
+
+Let's take a look at if we have some people who are too influential:  
+```{r}
+summary(influence.measures(sleeplocmod2))
+```
+
+According to cooks distance, all of these are fine (no stars next to the `cook.d` column values). However, observations 46, 47 and 65 all have fairly large values for some of the DFbeta - suggesting they have fairly large influence (relative to the other observations) on our coefficients. 
+
+Let's perform a bootstrap, which means we can relax our assumptions about the distribution of the residuals.  
+
+To do so, we need to get a dataset with only _complete cases_: 
+```{r}
+moddata <- usmrdata %>% 
+  select(sleeprating, emot_stability, loc) %>%
+  na.omit()
+```
+
+Then refit the model and bootstrap: 
+```{r}
+sleeplocmod2a <- lm(sleeprating ~ emot_stability + loc, moddata)
+
+library(car)
+bootmod <- Boot(sleeplocmod2a, R = 2000)
+Confint(bootmod)
+
+```
+
+
+`r solend()`
+
+
+`r qbegin(13)`
+Monica convinces me that we have theoretical motivation for thinking that sleeprating is influenced by both emotional stability and locus of control.  
+
+Tia is curious if other aspects of personality influence sleep quality ratings. She knows that we measured 5 personality traits: emotional stability, imagination, extraversion, agreeableness, and conscientiousness.  
+
+Tia asks us: 
+
+> Over and above the influence of locus of control and emotional stability, are other personality traits important predictors of how sleep quality is rated?  
+
+:::hints
+__Hints:__  
+
+- This question asks about the explanatory power of a __set of__ predictors. The best way to test this might be model comparison (see [](){target="_blank"})
+- To compare two models, the models need to be fitted to the _same_ data. However, when we fit a model using `lm()`, rows where there is missing data for _any_ of the variables in the model will be excluded.  
+    - if we have a model `mod1 <- lm(y ~ x1)` and we compare it to `mod2 <- lm(y ~ x1 + x2)`, if there is missing data on `x2`, then `mod2` will be fitted to a smaller set of the data.  
+    - a good approach is to make a separate object in your environment which is the data you want to model.  
+  ```{r}
+  #| eval: false
+  # select all variables included in either model, and omit the NAs
+  moddata <- data %>% select(y, x1, x2) %>% na.omit
+  # these two models will now be fitted to the same data
+  mod1 <- lm(y ~ x1, moddata)
+  mod2 <- lm(y ~ x1 + x2, moddata)
+  # meaning we can compare them:
+  anova(mod1, mod2)
+  ```
+    
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Make a dataset with the complete cases on relevant variables: 
+```{r}
+moddata <- usmrdata %>% 
+  select(sleeprating, emot_stability, loc, extraversion, agreeableness, conscientiousness, imagination) %>% 
+  na.omit
+```
+
+Fit two models, with and without the relevant set of personality variables:  
+```{r}
+m2 <- lm(sleeprating ~ emot_stability + loc, moddata)
+m3 <- lm(sleeprating ~ emot_stability + loc + extraversion + agreeableness + conscientiousness + imagination, moddata)
+```
+
+Conduct a model comparison:
+```{r}
+anova(m2,m3)
+```
+
+
+`r solend()`
+
+# RMarkdown 
+
+`r qbegin(14)`
+
+Create an RMarkdown document that presents and describes analyses that addresses the research questions below, and then presents and interprets the results.  
+
+> **Research Questions**  
+> 1. After accounting for emotional stability, how is perceived control over one's life associated with quality of sleep? 
+> 2. In addition to the associations studied above, are other personality traits associated with differences in sleep quality? 
+
+
+:::hints
+__Hints:__
+
+- You've done the modelling already in the last couple of questions, so this just a matter of writing, interpreting, and presenting! 
+- Don't forget that we have the "Rmd-bootcamp" materials for reference: [https://uoepsy.github.io/scs/rmd-bootcamp/](https://uoepsy.github.io/scs/rmd-bootcamp/){target="_blank"}
+
+:::
+
+`r qend()`
+
+# Optional Extra: Conscientiousness
+
+`r qbegin("Optional Question 15",qlabel=FALSE)`
+
+:::: {.columns}
+::: {.column width="80%"}
+This is Eleanor Abernathy. She has been learning about astrology and horoscopes, but is still skeptical. She wants to know if, after accounting for differences between cat/dog people, a person's month-of-birth is associated with how conscientious they are. 
+:::
+::: {.column width="20%"}
+```{r}
+#| echo: false
+#| out.height: "100px"
+#| out.width: "60px"
+knitr::include_graphics("images/mlr/Eleanor_Abernathy.png")
+```
+:::
+::::
+
+Using the same USMR 2022 survey data, fit the a model and use it to address the following research question:  
+
+> After accounting for differences between cat/dog people, is month-of-birth associated with conscientiousness?  
+
+:::hints
+__Hint:__  
+
+- Note that the question is more a matter of "is"/"does", and not "what is"/"how does". 
+- To answer this question, we might be more inclined to analyse the variance in conscientiousness explained by birth-months (rather than looking at specific differences) - see [8A#analysis-of-variance](08a.mlr#analysis-of-variance){target="_blank"}.  
+
+:::
+`r qend()`
+
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Here's our data: 
+```{r}
+usmrdata <- read_csv("https://uoepsy.github.io/data/usmr2022.csv")
+```
+
+To conduct the analyis of variance, all we do is fit a linear model:
+```{r}
+bmonthmod <- lm(conscientiousness ~ catdog + birthmonth, data = usmrdata)
+```
+
+and then pass that to the `anova()` function, in order to examine the variance explained by the `birthmonth` grouping as a whole:    
+```{r}
+anova(bmonthmod)
+```
+
+Interestingly, note that one of our birthmonth coefficients **is** significant! 
+```{r}
+summary(bmonthmod)
+```
+This is because it is testing the _specific_ difference between September and April (the reference level). Taken alone, this is a significant difference. But considered all together, the month-level differences in conscientiousness aren't significant _enough_ to improve over what we'd expect from 12 random groupings. 
+
+```{r}
+ggplot(usmrdata, aes(x=birthmonth, y=conscientiousness)) + 
+  geom_boxplot()
+```
+
+`r solend()`
+
+
 
 <div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
 

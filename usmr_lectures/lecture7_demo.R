@@ -2,6 +2,8 @@
 # heights have an average of 168, sd of 9.1
 # 52% of people have brown eyes
 
+
+# sampling introduces variability 
 # these lines of code will 'take a sample' from the population defined above:
 heights <- rnorm(n = 228, mean = 168, sd = 9.1)
 browneyes <- sample(c(0,1), size = 228, replace = TRUE, prob = c(.48, .52))
@@ -11,6 +13,7 @@ browneyes <- sample(c(0,1), size = 228, replace = TRUE, prob = c(.48, .52))
 mean(heights)
 mean(browneyes)
 sum(browneyes==1)/228
+
 
 
 # 1 possible sample:

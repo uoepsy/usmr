@@ -94,10 +94,15 @@ $r= `r rd$estimate`$, $p = `r rd$p.value`$
 ![:scale 70%](lecture_7_files/img/playmo_brain.jpg)
 ]
 ???
+- start by picking up where Monica left off in week 5.
+- now if you remember, we were talking about how exercise and brain volume are associated
+- so here we are, we've got data from 20 of our little playmo characters. 
+- we've put little smartwatches on them, and we've measured their brain volume. 
+
+- and we've established that there is a positive correlation. hooray. 
+
 - is there anything more the data about exercise and brain volume can tell us?
-
-- so far we know they're correlated, but it would be good if we could something about _how good/bad_ exercise is
-
+- we know that exercise increases brain volume, it would be good if we could say something about _how good_ exercise is for the brain? 
   + how much better does exercise make things?  
   
 ---
@@ -118,8 +123,11 @@ m1 <- lm(brain_vol ~ weekly_actv, data=dat)
 
 ]
 ???
-- this kind of information is based on the assumption that the relationship between activity and brain volume is _linear_
-
+- so we saw this a lot in week 5 - the idea of the correlation being represented by the line of best fit. 
+- but we can actually describe this line in a lot more detail! 
+- we can use it to make statements like this one "for every extra 1 hour more weekly activity, brain volume increases by `r round(coef(m1)[2],2)` (% of intracranial space)"
+ 
+- using this kind of line on a plot is only permissible if the relationship between activity and brain volume is _linear._  
 - that is, that each additional minute of activity affects brain volume by the same amount
 
 
@@ -133,6 +141,23 @@ $$ \textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i $$
 .center.pt2[
 ![:scale 25%](lecture_7_files/img/model_error.svg)
 ]
+
+???
+- in order to put this line on the graph, we've built a statistica model of the data
+- that model is representable, at least in basi terms, by "the only equation you will ever need". 
+- and that equation says that for a particular outcome, that outcome can be represented as whatever the model says for that outcome, plus an error term.  
+
+- in other words, the model makes a prediction for the ith datapoint. 
+- that's the red dot here.
+- but that prediction won't be the same as the actual observed ith datapoint. 
+- that's because of other factors that can affect things. 
+
+- so in our exercise and brain volume example, there are other things which influence brain volume, that we haven't measured. 
+- things like age, etc. 
+- as our model doesn't include things like age, it's not going to capture that. 
+- so there's going to be a rough approximation to brainvolumes, but not exact. 
+- aim of statistics is often = maximise explanatory value of model. 
+- minimise amount of variance attributable to error
 
 ---
 count: false
@@ -151,6 +176,14 @@ $$ \textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i $$
 - nature of the **errors** .tr[
 (normal)
 ]
+
+???
+- so let's start looking into how the linear world works
+
+- before we do, we need to make a couple of assumptions
+  - the first is about the nature of the model. it's linear.
+  - the second, which we return to next week, is that the errors conform to the normal distribution - i.e. they're normally distributed
+  - this will allow us to use all sorts of approximation functions to work out what the model might be - i.e. how it may generalise beyond our sample to the wider world
 
 ---
 # A Linear Model
@@ -171,6 +204,14 @@ $$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
 .w-60[
 &nbsp;
 ]]
+
+???
+- linear model looks like this:
+- [GENERAL MODEL FORMULA]
+- [Y = b0 + b1 x + e]
+- [MODEL part]
+
+
 
 ---
 count: false
@@ -211,6 +252,16 @@ p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 
 ]]
 
+???
+- so here's an example graph
+- arbitrarily set b0 and b1
+- so where x = 0, then the b1 cancels out, and it's just b0
+- where x = 0, estimated y is 5
+- where x != 0, we need to multiply b1 time x and add it to b0
+- where x = 2, y is going to be 5 + 2*2 = 9
+- where x = 3, y is going to be 5 + 2*3 = 11
+- [R syntax]
+
 ---
 count: false
 # A Linear Model
@@ -242,6 +293,14 @@ p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 
 ]]
 
+???
+- if you're astute
+- b0 x 1 is a bit redundant
+- b0 x 1 is just b0
+- so we can simplify, and just write the model as b0 + b1 times x
+- and in R, as just y ~ x
+
+
 ---
 # Take An Observation
 
@@ -270,12 +329,13 @@ p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 ]
 ]
 ???
+- lets take an observation
 - $\hat{y}_i$ is what the model _predicts_ for $x_i$
 
 - $y_i$ is the actual value that was observed for $x_i$
 
-- why would we care?
-
+- when we have data, and fit a model, what it's doing is minimising these errors. 
+  
   + for one thing, the model can predict $\hat{y}$ for values of $x$ that we have never observed
 
 
@@ -302,11 +362,22 @@ dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
 ```
 ]
 
+???
+- okay lets go back to our data
+- we've fit our model, and it's saying that for every extra 1 hour more weekly activity, brain volume increases by `r round(coef(m1)[2],2)` (% of intracranial space)
+- and we can actually visualise this simple model by adding a geom_smooth().  
+
+
+
 --
 
 .center.f3.pt3[
 but how can we evaluate our model?
 ]
+
+???
+- but we're going to want to evaluate our model.
+- so lets take a look at how we build this model in R
 
 ---
 # Linear Models in R
@@ -314,6 +385,14 @@ but how can we evaluate our model?
 ```{r lm1, eval=F}
 mod <- lm(brain_vol ~ weekly_actv, data=dat)
 ```
+
+???
+- here we are. 
+- lm() function
+- syntax like we've seen with t.test.. it's a formula syntax
+- y predicted by x
+- no output, we save it as an object
+
 
 ---
 count: false
@@ -323,6 +402,15 @@ count: false
 mod <- lm(brain_vol ~ weekly_actv, data=dat)
 summary(mod)
 ```
+
+???
+- to look at the output, we use summary() on the model object
+- whole load of useful information
+- the main thing we're going to look at first, is these highlighted lines
+- intercept and slope
+- b0 and b1 we saw before
+- [VALUES]
+- what does it look like
 
 ---
 # Intercept and Slope Again
@@ -371,6 +459,10 @@ p2
 ```
 ]
 
+???
+- the slope is how much y changes for every 1 unit of x
+- how much brain volume changes for every hour increase in activity time
+
 ---
 count: false
 # Intercept and Slope Again
@@ -381,6 +473,9 @@ $$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],2)` $$
 p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=.7)
 ```
 ]
+
+???
+- so we can draw the line across here
 
 ---
 count: false
@@ -399,6 +494,11 @@ p2 +
 
 - it may be pretty meaningless to talk about the brain volume of someone who does zero hours activity
 
+- may recenter x
+- or just focus on slope
+
+- neither intercept or slope are interesting if they're not significant, so that's what we'll focus on next.  
+
 ---
 class: inverse, center, middle, animated, fadeInDownBig
 # End of Part 1
@@ -416,6 +516,15 @@ class: inverse, center, middle
 <<lm2>>
 ```
 
+???
+- here we are
+- fitted the model to some data using lm()
+- summarise the model, using summary()
+
+- we've talked about the intercept and slope estimates
+- there are other numbers
+- standard errors, t values, and something that looks like probability
+
 ---
 # Are We Impressed?
 
@@ -428,6 +537,10 @@ m.s <- round(coef(mod)[2],2)
 
 - in NHST world, our pressing question is
 
+???
+- so in broad terms our question is - are we impressed by our intercept and slope
+- in the null hypothesis significance testing world, that question is...
+
 --
 
 .pt4[
@@ -437,6 +550,11 @@ m.s <- round(coef(mod)[2],2)
 .br3.bg-gray.pa2.white.tc[
 how likely would we have been to find these parameters under the null hypothesis?
 ]
+
+???
+- how likely would we have been to find these parameter estimates under the null hypothesis. 
+- in other words:
+- in a universe where there's nothing but chance, how likely would we be to see something like what we have seen
 
 ---
 # Testing Chance
@@ -465,6 +583,22 @@ dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
   + variability in _height_ of line = variability in intercept ( $b_0$ )
   + variability in _angle_ of line = variability in slope ( $b_1$ )
   
+???
+- continuing with our trend, 
+- use simulation to build the intuition behind testing chance
+- in reality, we don't have to simulate, we can use math, but simulations are useful to kind of "see what is happening" 
+
+- this data is fake
+- i **know** the parameters defining what is happening here.
+- this is a graph where i have taken 1000 samples of 20 people. and fitted a model to each.
+- and we can see that the mass of the lines appear to be going up. 
+
+- the variability in the height of the line is the SE of intercept
+- variability in slope is SE of slope
+
+- one important thing to remember is that in practice, we don't have access to the population.
+- i.e. you don't know how i've faked the data, you just have 20 datapoints and a single line
+  
 ---
 # We've Seen This Before
 
@@ -483,11 +617,13 @@ dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
   + assumes that the 20 we have are the _best estimate_ of the population
 
 ???
-- if you were able to lay these graphs over each other, they wouldn't be the same
-- in the simulation graph, we _know_ the entire population (of 50 drink-drivers) we're repeatedly sampling 20 from
-- in this graph, the only information we have is that our 20 drink-drivers represent "the population" but we have no other information about that population
-  + so the 20 are our "best estimate" of the population
+- so that single line is your best estimate -that's the blue line here
+- and the grey areas are the uncertainty around that, calculated not by simulations, but using a formula for the standard error. 
+- and we've seen this already
+- this is what we got with geom_smooth() function
+
   + **just like means and standard errors** (here the edges of the grey regions are `r -qt(.025,18)` standard errors from the line)
+  + what range of lines would we get 95% of the time
 
 
 ---
@@ -506,6 +642,9 @@ dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
 
 - **slope**: does the best-fit line differ from horizontal?
 
+???
+- for each parameter, we are able to test whether it is different from zero
+
 --
 
 - these are just (two-tailed) one-sample $t$-tests
@@ -513,6 +652,24 @@ dat %>% ggplot(aes(x=weekly_actv,y=brain_vol)) +
   + **standard error** is the standard deviation of doing these lots of times
   + **t value** is $\frac{\textrm{Estimate}}{\textrm{Std. Error}}$
   + to calculate $p$, we need to know the _degrees of freedom_
+  
+???
+- note, this is two-tailed
+  - not asking if it's larger/smaller than zero. just if it's different.
+  
+- the intercept is just like a mean 
+- is that mean different from zero?
+- askign if the slope is different from zero is asking if the line is different from horizontal
+
+- signif positive then it's going up
+- signif negative then it's going down
+
+- these are just our standard t tests.
+- standard error is just "the standard deviation of doing these lots of times"
+- an estimate of what variation we would expect if we repeatedly sampled from the population
+- and again, like we saw earlier, the test statistic is the thing we measured the difference from zero for our coef, in terms of standard errors.
+
+- and we can get out our p-values, but to do so, we need to know the degrees of freedom 
   
 ---
 # Degrees of Freedom
@@ -575,6 +732,15 @@ p4 <- do_p(pd4)
 ```
 ]
 
+???
+- let's talk about DF
+- here are random collections of 8 datapoints
+- each graph has 8 points, each graph has a line of best fit
+
+- now, for these collections of 8 points,
+- we can always add in another two points to each plot and make the best fit line the same in each
+
+
 ---
 count: false
 # Degrees of Freedom
@@ -601,7 +767,8 @@ p4 <- do_p(pd4)
 ]
 
 ???
-- we can always add in two points to make the straight line that we want to see
+- so here we've added two points to each, and the lines are now the same in each
+
 - this is one way of showing that for $n$ data points, there are $n-2$ degrees of freedom
 
 ---
@@ -615,6 +782,12 @@ p4 <- do_p(pd4)
 
 - the remaining degrees of freedom are the _residual_ degrees of freedom
 
+???
+- we subtract 2, because we know 2 things - the intercept and the slope. 
+- the remaining degrees of freedom are residual degrees of freedom
+- so in our activity brain volume example we have 20 people, so we have 18 residual degrees of freedom
+- and our tests of intercept and slope will be calculated using t distribution with 18 df
+
 --
 
 - the _model_ also has associated degrees of freedom
@@ -627,12 +800,31 @@ the models we have been looking at have 20 observations and 1 predictor
 **(1, 18)** degrees of freedom
 ]  
 
+???
+- as well as residual degrees of freedom, it is useful to think of the overall model degrees of freedom
+- the model has two parameters. the intercept and the slope
+- if you think about it, the intercept and the slope are related. 
+- once we define one, it affects the possible values the other can take
+- so one way to think about this is that the model has 1 predictor, so 1 degree of freedom. 
+- and the residuals have 18 degrees of freedom
+
 ---
 # Linear Models in R
 
 ```{r lm3, highlight.output=c(17,18)}
 <<lm2>>
 ```
+
+???
+- why is this useful?
+- well, we can calculate other things
+- rather than effects of particular predictors
+- we can ask questions about whether the model overall is of value
+  - this will become a lot more relevant when we start building more complex models
+  
+- the crucial part of the summary output is at the bottom, highlighted here
+- two things. R2 and F
+
 
 ---
 # Total Sum of Squares
@@ -659,6 +851,19 @@ pTot
 
 ]
 
+
+???
+- to understand these, we need to think about a couple of calculations
+- we'll start with total sum of squares
+- these are the sum of squares between observed y and the mean
+
+- sum of all those red dotted lines, squared. 
+
+- represents total amount of variance in the data
+- if we had no info about weekly activity, the best model we could make is one that has just an intercept, i.e. the mean. 
+- that model would be called the "null model" 
+
+
 ---
 # Residual Sum of Squares
 
@@ -678,6 +883,15 @@ pRes<- p1 + geom_segment(aes(xend=weekly_actv),linetype="dotted",colour="red",si
 pRes
 ```
 ]
+
+???
+- contrast that with the residual Sums of squares from our model
+- this is the sum of squared differences from observed y to the predicted y. 
+- again, sum of squared red dotted lines here
+
+- this is representing the variance that is left unexplained by our model, once we allow our model to have the predictor of weekly activity
+
+- like asking how much does the data vary from the model that we're now testing? 
 
 ---
 # Model Sum of Squares
@@ -699,6 +913,14 @@ pMod
 ```
 
 ]
+
+???
+- finally the model sums of squares is the third one we need to look at
+- and this is the sum of squared differences between the predicted values and the mean. 
+
+- so this is the additional variance that is explained by the current model over the null model
+
+- i.e. the variance we explain by having weekly ativity as a predictor of brain volume, instead of just using the mean brain volume
 
 ---
 # Testing the Model: _R_<sup>2</sup>
@@ -727,6 +949,22 @@ pMod/pTot
 ```
 
 ]
+
+???
+- out of these three things, we can calculate a couple of useful statistics
+- the first is R^2. 
+
+- R squared is model sum of squares divided by total sum of squares
+
+- again, here are the relevant graphs on the right.
+
+- so we can see that Rsquared is telling us what proportion of the total variance is captured/explained by our model
+
+- so a value of 0 is that our model with weekly activity explains nothing more than just using a mean
+- a value of 1 would mean that our model explains literally all the variance
+
+- a little aside, when we have a single predictor like this, Rsquared is going to be the value of r (correlation coefficient from week 5), squared. hence the name! 
+
 
 ---
 # Testing the Model: _F_
@@ -761,6 +999,22 @@ pMod/pRes
 
 ]
 
+???
+- another metric we can use to evaluate our model is the F ratio, or F statistic
+
+- this is calculated using mean squares
+- and mean squares are the sums of squares divided by the relevant degrees of freedom
+
+- so you can sort of think of these as the sums of squares, but weighted by how many bits of information are contributing to those variances.
+- the model explains some variance in our data, thats the model SS, and to do so it uses 1 thing - the predictor of weekly activity
+- the residual sums of squares also accounts for variance in our data, and to do so it uses all the available datapoints - i.e. it can use 18, because 2 of them have to be fixed to get our intercept nad slope
+
+- and the F ratio is, if you like, a measure of how much the model improves over chance. 
+- So how much does the average amount of variance explained by the model improve over the average amount of variance caused by an observation.
+
+- F is always going to be >0, and we want it to be large, but the significance does not always equate to a sensible effect. 
+- it simply tells us that knowing weekly activity hours is better than not knowing about it. 
+- so we are best to also look at the coefficients to determine if the effect is particularly impressive
 
 ---
 # A Linear Model for 20 Brains
@@ -775,12 +1029,25 @@ pRes
 
 - minimises the error terms $\epsilon$ or **residuals**
 
+???
+- so lets return to our 20 brains
+- here's a linear model for our 20 people 
+- the model describes the best fit line through the data
+- it minimises the error terms/epsilons/residuals
+
 ---
 # Two Types of Significance
 
 ```{r lmlm,highlight.output=c(11,12,17,18)}
 <<lm2>>
 ```
+
+???
+- and we've looked at 2 types of significance
+- first is whether the coefficients b0 b1 are different from zero
+- second is about variance explained. 
+- that's R^2, so that tells us that knowing about weekly activity hours allows us to account for 56% of the variance in brain volumes
+- and the F statistic, which is telling us that knowing about weekly activity hours improves the model over the null model, in which we know nothing other than what the brain volumes are
 
 ---
 # The Good, the Bad, and the Ugly
@@ -801,6 +1068,14 @@ pRes
   + depends on _decisions_ about analysis
 ]]
 
+???
+- okay so here's the good, the bad and the ugly about these models
+- the good is that these can easily be extended to use more than one predictor (that's next week), and can be applied to different types of outcomes (that's week 10)
+
+- but it's not a panacea. it depends on assumptions.
+- throuhgout the lecture we've assuemd there's a linear relationship between activity hours and brain volume. and that may simply not be the case
+- and it depends on decisions we make in the analysis. we'll see this a lot more in coming weeks
+
 --
 
 .flex.items-center[
@@ -815,6 +1090,14 @@ pRes
 ![:scale 70%](lecture_7_files/img/playmo_clown.jpg)
 ]
 ]
+
+
+???
+- the ugly, is that linear models don't really tell us about our data.
+- they simply assess what is likely to be observed in a universe governed by chance.
+
+- the key to good statistics is always going to be common sense and good interpretation
+
 
 ---
 class: inverse, center, middle, animated, fadeInDownBig

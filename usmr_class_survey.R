@@ -75,6 +75,7 @@ new$threewords<-NA
 new$pseudonym<-c("Albert",NA,"Vincent Noone",NA)
 new$loc <- c(17,16,14,14)
 new$sleeprating<-c(25,10,30,25)
+new$imagination[3]<-NA
 new$emot_stability<-round(new$loc*-1+32+rnorm(4,0,3))
 new$height[4]<-174
 
@@ -83,6 +84,9 @@ updated<-bind_rows(updated,new) %>%
 
 updated$catdog <- tolower(updated$catdog)
 
+
+#updated %>% filter(course=="usmr", year==2022) %>% select(-in_uk, -gender, -optimism) %>%
+#  write_csv("C:/Users/jking34/Desktop/uoepsy/data/usmr2022.csv")
 
 updated %>% filter(course=="usmr") %>% select(height,eyecolour) %>% na.omit %>% summarise(
   m=mean(height,na.rm=T),
