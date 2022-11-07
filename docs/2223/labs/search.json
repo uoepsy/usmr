@@ -361,7 +361,7 @@
     "href": "08a_mlr.html#whats-the-point",
     "title": "8A: Multiple Linear Regression",
     "section": "What’s the point?",
-    "text": "What’s the point?\nIt might feel pointless to bother asking “does [predictor(s)] explain variance in y?” when we can look at the coefficients to ask “how does [predictor] influence y?”\nThe main utility in this approach comes in when we want to assess overall group differences, rather than testing differences between specific groups.\n\nExample\n\nQuestion A: Do species have different brain mass?\n\nIf we fit our linear model, we can examine our coefficients (remember, the reference level for species here is “Humans”:\n\nbraindata <- read_csv(\"https://uoepsy.github.io/data/usmr_braindata.csv\")\nfit <- lm(mass_brain ~ species, data = braindata)\nsummary(fit)\n\nCoefficients:\n                      Estimate Std. Error t value Pr(>|t|)\n(Intercept)           0.415308   0.263731   1.575    0.125\nmass_body             0.002941   0.004116   0.715    0.480\nspeciesPotar monkey  -0.217808   0.199699  -1.091    0.284\nspeciesRhesus monkey -0.014035   0.198628  -0.071    0.944\nBut these actually answer the questions:\n\nQuestion B: Do Potar monkeys have different brain mass from Humans?\nQuestion C: Do Rhesus monkeys have different brain mass from Humans?\n\nAnd these are not the same as our original question. However, we can answer it with an analysis of variance, which tests the variance explained by species grouping as a whole!\n\nanova(fit)\n\nAnalysis of Variance Table\n\nResponse: mass_brain\n          Df  Sum Sq Mean Sq F value    Pr(>F)    \nspecies    2 0.78678 0.39339   37.22 4.453e-09 ***\nResiduals 32 0.33822 0.01057                      \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1"
+    "text": "What’s the point?\nIt might feel pointless to bother asking “does [predictor(s)] explain variance in y?” when we can look at the coefficients to ask “how does [predictor] influence y?”\nThe main utility in this approach comes in when we want to assess overall group differences, rather than testing differences between specific groups.\n\nExample\n\nQuestion A: Do species have different brain mass?\n\nIf we fit our linear model, we can examine our coefficients (remember, the reference level for species here is “Humans”:\n\nbraindata <- read_csv(\"https://uoepsy.github.io/data/usmr_braindata.csv\")\nfit <- lm(mass_brain ~ species, data = braindata)\nsummary(fit)\n\nCoefficients:\n                     Estimate Std. Error t value Pr(>|t|)    \n(Intercept)           0.60271    0.02748  21.936  < 2e-16 ***\nspeciesPotar monkey  -0.35735    0.04142  -8.627 7.38e-10 ***\nspeciesRhesus monkey -0.15261    0.04257  -3.585   0.0011 ** \nBut these actually answer the questions:\n\nQuestion B: Do Potar monkeys have different brain mass from Humans?\nQuestion C: Do Rhesus monkeys have different brain mass from Humans?\n\nAnd these are not the same as our original question. However, we can answer it with an analysis of variance, which tests the variance explained by species grouping as a whole!\n\nanova(fit)\n\nAnalysis of Variance Table\n\nResponse: mass_brain\n          Df  Sum Sq Mean Sq F value    Pr(>F)    \nspecies    2 0.78678 0.39339   37.22 4.453e-09 ***\nResiduals 32 0.33822 0.01057                      \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1"
   },
   {
     "objectID": "08a_mlr.html#types-of-sums-of-squares",
@@ -411,5 +411,54 @@
     "title": "Univariate Statistics and Methodology in R",
     "section": "",
     "text": "Univariate Statistics and Methodology in R (USMR) is a semester long crash-course aimed at providing Masters students in psychology with a competence in standard statistical methodologies and data analysis using R. Typically the analyses taught in this course are relevant for when there is just one source of variation - i.e. when we are interested in a single outcome measured across a set of independent observations. The first half of the course covers the fundamentals of statistical inference using a simulation-based approach, and introduces students to working with R & RStudio. The latter half of the course focuses on the general linear model, emphasising the fact that many statistical methods are simply special cases of this approach. This course introduces students to statistical modelling and empowers them with tools to analyse richer data and answer a broader set of research questions."
+  },
+  {
+    "objectID": "09a_interactions.html",
+    "href": "09a_interactions.html",
+    "title": "9A: Interactions",
+    "section": "",
+    "text": "When we learned about multiple linear regression, we talked about the idea of the coefficients as “holding constant” the other predictors in the model.\nConsider a model with the following structure:\n\\[\ny = b_0 + b_1(x_1) + b_2(x_2) + \\epsilon\n\\]\nWhen we fit this model to our data, what we get out is some estimated values for the coefficients \\(b_0\\), \\(b_1\\), and \\(b_2\\):\n\nmydata <- read_csv(\"https://uoepsy.github.io/data/usmr_mlr.csv\")\nmymodel <- lm(y ~ x1 + x2, data = mydata)\n\nCoefficients:\n            Estimate Std. Error t value Pr(>|t|)   \n(Intercept) -2.39138    3.67735  -0.650  0.51867   \nx1           0.17570    0.06435   2.730  0.00888 **\nx2          -0.64756    0.19959  -3.244  0.00217 **\nThe coefficient we get out for \\(x_1\\) tells us that the model estimates that \\(y\\) will increase by 0.17 for every increase of 1 unit in \\(x_1\\), provided that we hold \\(x_2\\) constant.\nWhat this means is that it doesn’t really matter at what value \\(x_2\\) we consider, the association between \\(x_1\\) with \\(y\\) is the same.\nAs it happens, we can use plot_model to show us the how \\(y\\) changes with \\(x_1\\) for some specific values of \\(x_2\\). Below, the red line is the association between \\(y\\) and \\(x_1\\) when \\(x_2 = 3\\), the blue is when \\(x_2 = 12\\), and the green is when \\(x_2 = 20\\). As we can see, the slope of \\(y\\) on \\(x_1\\) is the same.\n\nlibrary(sjPlot)\n# plot the effect of x1, at 3 specific values of x2\nplot_model(mymodel, type = \"eff\", terms=c(\"x1\", \"x2 [3, 12, 20]\"))\n\n\n\n\n\n\n\n\n\nExample\nWe’re interested in estimating the association between BMI and cognition, after controlling for differences due to age.\nWe want to use this model:\n\\[\n\\text{score on test of cognition} = b_0 + b_1(\\text{age}) + b_2(\\text{BMI}) + \\epsilon\n\\]\nwhich we can fit using lm():\n\nlm(score ~ 1 + age + BMI, data = ourdata)\n\nand we might get some coefficients (estimates for the \\(b_?\\) values) such as those below:\n(I’ve just made up some nice round numbers to make it easier to think about)\nCoefficients:\n            Estimate    ...   ...\n(Intercept)  160.000    ...   ...\nage         -1.50000    ...   ...\nBMI         -2.50000    ...   ...\nThe coefficient of interest, the one for BMI, is telling us that “a 1 unit increase in BMI is associated with a -2.5 decrease in Scores on the cognitive test, holding age constant”.\nConsider 3 people:\n\n\n\n\n\nFigure 1: Three theoretical people\n\n\n\n\nThe coefficient for BMI represents the difference in cognitive scores we would expect between Person A and Person B.\nThink about why this is. For some person \\(i\\), their model predicted score is: g\n\\[\n\\hat{score_i} = b_0 + b_1(age_i) + b_2(BMI_i)\n\\]\nWhich from our model estimates is:\n\\[\n\\hat{score_i} = 160 - 1.5(age_i) - 2.5(BMI_i)\n\\]\n\nPerson A’s score = \\(160 - (1.5*50) - (2.5*22) = 30\\)\nPerson B’s score = \\(160 - (1.5*50) - (2.5*23) = 27.5\\)\nPerson B’s score = \\(160 - (1.5*60) - (2.5*23) = 12.5\\)\n\nThe difference in model estimated Score between Person A and Person B is the coefficient of BMI, because those two people only differ on BMI. Person A and Person C also differ on age. This is how the coefficient of BMI is interpreted as “holding age constant” - it is a comparison between two hypothetical people who differ on BMI but are identical with respect to the other predictors in the model."
+  },
+  {
+    "objectID": "09a_interactions.html#simple-slopes",
+    "href": "09a_interactions.html#simple-slopes",
+    "title": "9A: Interactions",
+    "section": "Simple Slopes",
+    "text": "Simple Slopes\nwe’ve kind of already done it visually.\nplot the slope of y~x1 for certain values of x2.\nwe’ve done this visually, but it would be nice to get out a “is y~x1 significant when x2 = ?”"
+  },
+  {
+    "objectID": "09a_interactions.html#johnson-neyman",
+    "href": "09a_interactions.html#johnson-neyman",
+    "title": "9A: Interactions",
+    "section": "Johnson Neyman",
+    "text": "Johnson Neyman"
+  },
+  {
+    "objectID": "09_ex.html",
+    "href": "09_ex.html",
+    "title": "USMR",
+    "section": "",
+    "text": "lm(sleeprating ~ emot_stability + loc*ampm, data = usmrdata) %>% summary\n\nlm(sleeprating ~ emot_stability + loc*agreeableness, data = usmrdata) %>% summary"
+  },
+  {
+    "objectID": "09b_contrasts.html",
+    "href": "09b_contrasts.html",
+    "title": "9B: Contrasts",
+    "section": "",
+    "text": "use example from 07a"
+  },
+  {
+    "objectID": "09b_contrasts.html#treatment-contrasts-the-default",
+    "href": "09b_contrasts.html#treatment-contrasts-the-default",
+    "title": "9B: Contrasts",
+    "section": "Treatment Contrasts (the default)",
+    "text": "Treatment Contrasts (the default)\nintuition: “each level compared to a reference level”\n“each treatment compared to the placebo”\nif a character, not a factor in the data, lm will interpret it as factor with treatment contrasts in the model."
+  },
+  {
+    "objectID": "09b_contrasts.html#sum-contrasts",
+    "href": "09b_contrasts.html#sum-contrasts",
+    "title": "9B: Contrasts",
+    "section": "Sum Contrasts",
+    "text": "Sum Contrasts\nintuition “each level compared to the overall mean”"
   }
 ]
