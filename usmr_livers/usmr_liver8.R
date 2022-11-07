@@ -6,7 +6,6 @@ head(bdat)
 
 
 ## our original model
-
 m1 <- lm(brain_vol ~ weekly_actv, data = bdat)
 
 summary(m1)
@@ -17,12 +16,12 @@ ggplot(bdat, aes(x=weekly_actv, y=brain_vol)) +
 
 
 ## legos and playmos have different brain vols.. 
+ggplot(bdat, aes(x=weekly_actv, y=brain_vol, col=group)) +
+  geom_point()
 
 # intuition about the slope? 
 # when we take into account lego/playmo differences, 
 # is weekly actv slope shallower or steeper?  
-ggplot(bdat, aes(x=weekly_actv, y=brain_vol, col=group)) +
-  geom_point()
 
 # fit it and see:  
 m2 <- lm(brain_vol ~ group + weekly_actv, data = bdat)
@@ -53,3 +52,16 @@ m2 <- lm(brain_vol ~ hydration + weekly_actv, data = bdat)
 summary(m2)
 plt2_surfcloud
 
+# what does this mean for how we interpret our coefficients? 
+
+# the increase in y for a one unit increase in x1 when…
+
+# ... holding x2 constant.
+# ... controlling for differences in x2.
+# ... partialling out the effects of x2.
+# ... holding x2 equal.
+# ... accounting for effects of x2.
+
+summary(m2)$coefficients
+
+plot_model(m2, type="eff", terms=c("weekly_actv", "hydration [1]"))

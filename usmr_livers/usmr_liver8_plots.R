@@ -5,7 +5,7 @@ xmat <- tibble(
   group = sample(c("playmo","lego"), 50, replace = TRUE),
   weekly_actv = 15.3 + scale((group=="playmo")*1.1 + rnorm(50, 0, 1))[,1]*3,
   hydration = 4.4 + scale(weekly_actv*.2 + rnorm(50, 0, 1))[,1]*1.6,
-  brain_vol = 80.6 + .3*weekly_actv - 2*(group=="lego") + 1*hydration + rnorm(50, 0, 1)
+  brain_vol = 80.6 + .3*weekly_actv - 2*(group=="lego") + 1*hydration + rnorm(50, 0, 2)
 )
 bdat <- xmat
 

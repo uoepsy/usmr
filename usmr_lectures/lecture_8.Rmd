@@ -87,6 +87,10 @@ mod <- lm(RT~BloodAlc, data=dat)
 
 ]
 
+???
+- new data
+- we see positive r
+
 ---
 # Some new data
 
@@ -106,6 +110,16 @@ mod <- lm(RT~BloodAlc, data=dat)
 ![](lecture_8_files/img/playmo_police.jpg)
 ]
 
+???
+
+- describe using a line
+- line defined by two numbers
+  - intercept  
+  - slope
+
+- .08% = intoxicated
+- >.4 = fatal
+
 ---
 # The Model
 
@@ -117,11 +131,14 @@ summary(mod)
 ]
 
 ???
+- formally, we're fitting a linear model to the data 
+
 - note the _huge_ affect of `BloodAlc`
-
 - why is this? [pause?]
+- slope = change in RT for increase of 1% in bloodalc
 
-- because these are "real" units, not units x 100
+- but in reality, everyone is <1% 
+- change happens in bloodalc at the .01% level  
 
 ---
 # Another (identical) Model
@@ -133,11 +150,38 @@ mod2 <- lm(RT~BloodAlc100, data=dat)
 summary(mod2)
 ```
 
+???
+- multiply these by 100
+  - .09 = 9
+  - .10 = 10
+- what has changed? [pause]
+  - slope
+  - nothing else! 
+
+- estimates describe the sample
+- we want to make statements about the population
+
+- so we perform a test.
+  - last week:
+    - test of coefficient
+    - test of whether model improves over chance
+
+- both of these:
+  - imagine a universe where no relationship. "null universe"
+  - calculate probability of observing data from sample of same size in that universe
+  
+  - if probability is low, reason to believe our universe is NOT the null universe
+  - if probability is high, no reason not to believe our universe is the null universe
 
 ---
 class: inverse, center, middle
 # Part 2
 ## Checking Assumptions
+
+
+???
+- To conduct these tests
+- we make certain assumptions
 
 
 ---
@@ -161,6 +205,33 @@ class: inverse, center, middle
 - no 'bad' (overly influential) observations
 ]]
 
+???
+- the first assumption we make is about nature of relationship we're studying
+  - [DRAW height ~ age]
+  - not a good model. 
+
+- we also have some assumptions that we make on the residuals
+  - high level
+  - [WRITE reality = model + error]
+  - model is systematic, error is random. so we want to make sure that the residuals look random.  
+
+- the standard errors of coefs, and the F stat, all rely on calculations that involve measuring the variance of the residuals
+    - normality = we want variance to be an appropriate metric
+      - not normal, variance isn't great
+    - homogeneity variance = we want variance same across model
+      - [DRAW heterosked plot]. line is imprecise
+    - independence
+      - systematic relationship between residuals
+
+- we also have some desirable qualities - that our model is not unduly influenced by a small set of our obs
+      
+- LETS LOOK IN MORE DETAIL
+
+WHY? 
+$SE(\hat \beta_1) = \sqrt{\frac{ SS_{Residual}/(n-k-1)}{\sum(x_i - \bar{x})^2}}$
+https://www.saedsayad.com/mlr.htm
+
+
 ---
 # Residuals
 
@@ -182,11 +253,29 @@ d20 %>% ggplot(aes(x=BloodAlc,y=RT,yend=pred)) +
 ```
 ]
 
+???
+- here's model
+- here's how we write our assumptions
+
+- "zero mean constant variance" 
+- DOTTED LINES 
+  - normally distributed with mean of zero
+  - spread doesn't change as we move up the line
+  - not related to one another
+
+
+
 ---
 # At A Glance
 ```{r modresid,highlight.output=7}
 summary(mod)
 ```
+
+???
+
+- brief glance in the summary
+  - like a boxplot, shows quartiles of residuals
+  - want this to by roughly symmetric
 
 ---
 # In More Detail
@@ -209,6 +298,16 @@ plot(mod,which=1)
 ![](lecture_8_files/figure-html/resid1-1.svg)
 ]
 
+???
+- we get a lot from plot(model)
+
+- we can see the linearity in the first plot
+
+- want the line to be horizontal at zero
+
+- [DRAW] non linear
+
+
 ---
 # In More Detail
 
@@ -222,6 +321,10 @@ hist(resid(mod))
 .pull-right[
 ![](lecture_8_files/figure-html/resid2-1.svg)
 ]
+
+???
+- we can look at normality in various ways
+- we've already seen things like hist
 
 ---
 count: false
@@ -241,6 +344,10 @@ plot(density(resid(mod)))
 .pull-right[
 ![](lecture_8_files/figure-html/resid3-1.svg)
 ]
+
+???
+- and density too
+
 
 ---
 name: QQ
@@ -263,6 +370,14 @@ plot(mod,which=2)
 ![](lecture_8_files/figure-html/resid4-1.svg)
 ]
 
+???
+- QQ plots
+- also one of plot(model)
+
+- compares residuals against normal distribution
+- dots that follow the line are good
+
+
 ---
 # Q-Q Plots
 
@@ -283,11 +398,19 @@ scale(resid(mod))
 ```
 ]
 
+???
+- reading QQplots is easy enough - we're looking for dots fllowing the straight line
+
+- let's unpack it a litte more
+
+- y axis = our residuals, but staadardised. 
+
+
 
 --
 
 .pull-right[
-#### y axis
+#### x axis
 
 - we have 50 residuals.  
 
@@ -300,11 +423,21 @@ qnorm(c(1/50,2/50,3/50))
 ```
 ]
 
+???
+- on the x axis, we have the equivalent steps of the normal distribution
+- so we have 50 obs
+- where does 1/50th of the normal distribution lie?
+- where does 2/50th lie? 
+
+
+
 --
 
 - Q-Q Plot shows these values plotted against each other
 
 ???
+
+- we're just plotting these together 
 
 it's actually not quite 1/50, but 0.5/50, because it's the centres of those areas
 so this is the qqplot: 
@@ -328,6 +461,16 @@ plot(mod,which=3)
 ![](lecture_8_files/figure-html/resid5-1.svg)
 ]
 
+???
+- for homogeneity of variance
+- "scale location plot" 
+
+- the y axis is a measure of distance from the mean, so we want that to be constant 
+- we want the red line to be horizontal
+
+
+
+
 ---
 # Visual vs Other Methods
 
@@ -338,6 +481,9 @@ plot(mod,which=3)
 - nothing beats looking at plots like these (and `plot(<model>)` makes it easy)
 
 - however, two things:
+
+???
+- [READ]
 
 --
 
@@ -388,6 +534,10 @@ dwt(mod)
 
 - shows no autocorrelation at lag 1
 
+???
+- typically, we _think_ about independence and account for it in our model structure, rather than inspecting for it
+
+
 ---
 # Influence
 .center[
@@ -408,6 +558,15 @@ p + geom_line(data=tt,aes(x=x,y=y),size=.8,colour="red") +
 
 - here, only the intercept is affected
 
+???
+
+- let's move to looking at influence
+- when we talk about influence, we're talking about how specific observations influence our results 
+
+- one thing that contributes to influence is the value of residual. 
+- [SEE PLOT]
+
+
 ---
 # Influence
 .center[
@@ -424,6 +583,13 @@ p + geom_line(data=tt,aes(x=x,y=y),size=.8,colour="red") +
 ]
 - observations with high **leverage** are inconsistent with other data, but may not be distorting the model
 
+???
+- another thing is the leverage
+
+- link to a lever. 
+
+- [SEE PLOT]
+
 ---
 # Influence
 .center[
@@ -439,6 +605,9 @@ p + geom_line(data=tt,aes(x=x,y=y),size=.8,colour="red") +
 ```
 ]
 - we care about observations with high **influence** (outliers with high leverage)
+
+???
+- when these two things combine, we get influence
 
 ---
 # Cook's Distance
@@ -457,16 +626,35 @@ d20 %>% ggplot(aes(x=BloodAlc,y=RT)) +
 
 - a standardised measure of "how much the model differs without observation $i$"
 
+???
+- there are metrics to examine how much influence observations have
+
+- best known = "cooks distance" 
+
+- a standardised measure of "how much the model differs without observation $i$"
+
+
 ---
 .flex.items-center[.w-10.pa1[![:scale 70%](lecture_8_files/img/danger.svg)] .f1.w-80.pa1[Cook's Distance]]
 
 .pt3[
 $$D_i=\frac{\sum_{j=1}^{n}{(\hat{y}_j-\hat{y}_{j(i)})^2}}{(p+1)\hat{\sigma}^2}$$
-- $\hat{y}+j$ is the $j$th fitted value
+- $\hat{y}_j$ is the $j$th fitted value
 - $\hat{y}_{j(i)}$ is the $j$th value from a fit which doesn't include observation $i$
 - $p$ is the number of regression coefficients
 - $\hat{\sigma}^2$ is the estimated variance from the fit, i.e., mean squared error
 ]
+
+???
+- dangerous bend in the road.  
+
+- here's the formula. 
+
+- looks scary, but we can maybe simplify it
+   - top bit: all the differences between the y on the blue line and those on the red line [prev slide]. all the differences in estimated values between the model with and without i
+   - bottom bit: something to scale it all back. something to standardise the top bit
+   - and that's the numner of predictors and the variance of the residuals
+
 
 ---
 # Cook's Distance
@@ -488,6 +676,15 @@ plot(mod,which=4)
 .pull-right[
 ![](lecture_8_files/figure-html/cook2-1.svg)
 ]
+
+???
+- now we can just do this automatically - using again, plot(model)
+
+- lots and lots of suggested cutoffs, but there's no hard rule on this
+- typically, start looking when the value is >.5  
+- sometimes useful to just examine the relative size
+  - see in the plot - one obs is much much bigger than rest
+
 
 ---
 class: animated, rollIn
@@ -564,6 +761,20 @@ load("R/reading.Rdata")
 - **outcome: "reading age"**
 ]
 
+???
+- let's look at this in practice
+
+- so here are our playmo people
+- and we're examining the school children's reading programmes
+
+- so we've got 50 children
+  - measured their age
+  - measured how much reading practice they do a week
+  - whether they are taught using one of two methods 
+  - measured their reading proficiency - their "reading age"
+  - reading age is going to be our outcome
+
+
 ---
 count: false
 # Learning to Read
@@ -600,6 +811,13 @@ reading %>% slice(c(1:5,46:50)) %>% gt() %>%
   data_color(columns=c("hrs_wk","R_AGE"),colors="#d0d9ff",alpha=.8)
 ```
 ]]
+???
+- so here is what we're goin to look at now
+- these two variables
+  - hrs week practice
+  - and reading age
+
+
 
 ---
 # Does Practice Affect Reading Age?
@@ -620,12 +838,18 @@ p
 ![](lecture_8_files/figure-html/plot1-1.svg)
 ]
 
+???
+we can see a positive relationship. 
+
 --
 
 - hours per week is correlated with reading age: $r=`r cor(reading$hrs_wk,reading$R_AGE)`$,
 $p=`r cor.test(reading$hrs_wk,reading$R_AGE)$p.value`$
 
 - we can use a linear model to say something about the effect size
+
+???
+- we can test that using correlation, but we might want to describe it in more depth, e.g. put a number on how much practice increases reading age
 
 ---
 # Does Practice Affect Reading Age?
@@ -643,10 +867,16 @@ p + geom_smooth(method="lm")
 mod <- lm(R_AGE~hrs_wk,data=reading)
 ```
 
+???
+- so we add our lm()
+
 --
 
 - each extra hour spent reading a week adds `r .rround(coef(mod)[2])` years to reading age
 
+???
+
+- and we can now talk about things in this style
 
 ---
 # A Linear Model
@@ -656,9 +886,17 @@ mod <- lm(R_AGE ~ hrs_wk, data=reading)
 summary(mod)
 ```
 
+???
+
+- and we got that from fitting this model.  
+- and we can see all the various bits we've talked about in the course so far highlighted here.  
+
 ---
 class: center, middle, inverse
 .f1[but...]
+
+???
+but we need to check assumptions! 
 
 ---
 .center[
@@ -667,6 +905,16 @@ par(mfrow=c(2,2))
 plot(mod,which=1:4)
 ```
 ]
+
+???
+- here's the plots we get from plot(model)  
+
+- doesn't look great. 
+- doesn't look completely awful either.  
+
+- this **is** subjective.  
+- top left looks okay, but QQ and scale location don't look very good to me
+
 
 ---
 # Assumptions Not Met!
@@ -686,10 +934,23 @@ plot(density(resid(mod)))
 
 ]
 
+???
+- so... we have a model that we can't really use?  
+- the first thing to do here is think about whether there might be something i have missed out from the model.  
+
+- something systematic in the residuals - something that looks unlike randomness
+
+- [BOARD - reality = model + error]  
+
+
 ---
 class: inverse, center, middle, animated, flip
 
 # End of Part 3
+
+
+???
+and that's what we'll start looking at after a short break 
 
 ---
 class: inverse, center, middle
@@ -723,6 +984,12 @@ rglwidget()
 ]
 
 ???
+- okay, so we have been looking at hrs week and reading proficiency.. 
+
+- but surely older children will read better?  
+
+- child's age is an important part of the picture
+
 - **rotate cube leftward to show R_AGE~age**
 
 ---
@@ -738,6 +1005,11 @@ reading %>% ggplot(aes(x=age,y=R_AGE)) +
 
 ]
 
+???
+- for starters, let's examine age and reading age separately
+- we can see a positive relationship
+
+
 ---
 # Another Model
 
@@ -747,7 +1019,8 @@ summary(mod2)
 ```
 
 ???
-- point out that intercept is quite meaningless (reading age for age zero)
+- and here's the associated model
+- intercept is quite meaningless (reading age for age zero)
 
 ---
 .center[
@@ -757,6 +1030,11 @@ plot(mod2,which=1:4)
 
 ```
 ]
+
+???
+- and here are the assumptions
+- again.. it doesn't look great...
+
 
 ---
 # Two Models, No Answers
@@ -780,6 +1058,18 @@ plot(mod2,which=1:4)
 - or ** $\frac{1}{10}$ ** overall
 ]
 
+???
+- so we have two models
+  - one shows effect of age
+  - one shows effect of hrs week practice
+- neither look like they satisfy assumptions enabling us to conduct tests and use those models
+
+- in addition... 
+  - we would be doing lots of tests here. 
+  - remember we typically reject the null hypothesis if p<.05 or 1/20
+  - so for each model, we have 1/20 chance of incorrectly rejecting the null
+  - do it twice, we have 1/10
+
 --
 .pt1[
 &nbsp;
@@ -789,18 +1079,34 @@ plot(mod2,which=1:4)
 we need to test multiple predictors in _one_ linear model
 ]
 
+???
+- what's the solution to all this?
+- put both predictors into one model
+
+
 ---
 # Model Equations Again
 
 $$\color{red}{\textrm{outcome}_i}=\color{blue}{(\textrm{model})_i}+\textrm{error}_i$$
 
 $$\color{red}{y_i}=\color{blue}{b_0\cdot{}1+b_1\cdot{}x_i}+\epsilon_i$$
+
+???
+- here's our linear model equation we've seen a lot of lately
+
 --
 
 ### linear model with two predictors
 
 $$\color{red}{y_i}=\color{blue}{b_0\cdot{}1+b_1\cdot{}x_{1i}+b_2\cdot{}x_{2i}}+\epsilon_i$$
 $$\color{red}{\hat{y}_i}=\color{blue}{b_0\cdot{}1+b_1\cdot{}x_{1i}+b_2\cdot{}x_{2i}}$$
+
+???
+- and here's how we can add to it.
+- now, y is predicted by 
+  - some number b0, 
+  - plus some amount b1 times x1, 
+  - plus some amount b2 times x2 (another predictor)
 
 --
 .center[
@@ -814,6 +1120,11 @@ $$\color{red}{\hat{y}_i}=\color{blue}{b_0\cdot{}1+b_1\cdot{}x_{1i}+b_2\cdot{}x_{
 <sup>1</sup> we'll come back to why order can matter in a bit
 ]
 
+???
+- and in R this is quite easy, we just add in the predictor x2
+- we can do this in either order, but for _some_ of the things we can do with these models, the order will matter. 
+  - we'll come back to that in a bit
+
 ---
 # Running a Multiple Regression
 
@@ -821,6 +1132,11 @@ $$\color{red}{\hat{y}_i}=\color{blue}{b_0\cdot{}1+b_1\cdot{}x_{1i}+b_2\cdot{}x_{
 mod.m <- lm(R_AGE ~ age + hrs_wk, data=reading)
 summary(mod.m)
 ```
+
+???
+- so here's our model! 
+- and we get out a coefficient for each
+
 
 ---
 # Running a Multiple Regression
@@ -839,9 +1155,17 @@ ch <- coef(mod.m)[3]
 
 - note that the _intercept_ (0 years old, 0 hours/week) is meaningless here
 
+???
+- intercept is estimated R_AGE when all predictors are zero
+- reading age improves by `r ca` for each year of age
+- reading age improves by `r ch` for each weekly hour of practice
+
 --
 
 - important question:  is this model _better_ than a model based just on age?
+
+???
+- our first question then, might be whether this improves over the model based just on age? - this would tell us about the effect of hrs_week on reading age that is independent of effects of age
 
 ---
 # Model Fit: $R^2$
@@ -867,9 +1191,21 @@ mod2 <- lm(R_AGE ~ age, data=reading)
 mod.2r <- update(mod2, ~ . + runif(50))
 .pp(summary(mod.2r),l=list(0,18,0))
 ```
-???
 
-- Adjusted $R^2$ accounts for multiple predictors
+???
+- so let's look at model overall. 
+
+- we have and R^2, which is the amount of variance explained by all predictors combined
+- for our model with both age and hrs week in it, R^2 is .39
+- this is better than the model with jut age, where it is .32
+
+- however, even if we add in completely random numbers as predictors, the variance explained will increase, just by chance.  
+- here i've just updated the model with age and added a set of 50 random numbers.
+- R^2 increases to .36
+
+- instead we should really look at the Adjusted $R^2$. 
+- this is similar to the R^2, only it accounts for multiple predictors
+- contains a penalty for how many predictors we put in
 
 - for `mod2`, it's `r summary(mod2)$adj.r.squared`
 
@@ -892,6 +1228,13 @@ anova(null_mod, mod.m)
 ```
 
 ???
+- the F stat at the bottom of the summary of the model tells us if the model overall (i.e. both predictors) explain more variance than we would expect over chance 
+
+- and this is a bit like a model comparison:
+- between our model and the model with no predictors.
+- so just to show you - that's what we've done here. 
+  - uses the `anova()` function to compare two models
+  - 9e-06 is 0.000009
 
 ---
 # Comparing Models
@@ -908,6 +1251,15 @@ mod.f <- lm(R_AGE ~ age + hrs_wk, data=reading)
 anova(mod.r, mod.f)
 ```
 
+???
+- we can use F to compare different models, however. 
+- so we can directly compare our model to the model with just age in it
+
+- we can only do this when models are _nested_, and fitted to same data
+- so we can see from this comparison, that hrs_week does improve on the age-only model,
+- it improves more so than we would expect by chance
+
+
 ---
 # Partitioning Variance
 
@@ -917,6 +1269,11 @@ anova(mod.r, mod.f)
 mod.f <- lm(R_AGE ~ age + hrs_wk, data=reading)
 anova(mod.m)
 ```
+
+???
+- another thing we can do with our model, is separate out the variance explained by each predictor in the model
+- to do that, we just give the one model to `anova()`. 
+
 
 ---
 # Order Matters!
@@ -933,7 +1290,9 @@ mod.hrsfirst <- lm(R_AGE~hrs_wk+age,data=reading)
 ```
 
 ???
-map to series of model comparisons
+- Important thing here is that this is where the order matters
+- using `anova()`, tests the incremental addition of each predictor to the model
+- [DESCRIBE] as series of model comparisons
 
 ---
 # Type 1 vs. Type 3 SS
@@ -945,6 +1304,16 @@ map to series of model comparisons
   + calculate each predictor's improvement to the model _taking all other predictors into account_
   
 - huge debate about which is "better" (nobody likes Type 2)
+
+- if using Type 1, _predictors should be entered into the model in a theoretically-motivated order_
+
+???
+- the order matters for this because for `anova()` in R, it defaults to using something called type 1 sums of squares. 
+- this involves calculating the reduction in sums squared residuals as we add each predictor _in turn_
+
+- there are other types that may be useful, and that is type 3
+- (i'm not going to mention which type 2, because no one uses it)
+- type 3 examines variance explained by each predictor as if it were the last one into the model  
 
 - if using Type 1, _predictors should be entered into the model in a theoretically-motivated order_
 
@@ -960,6 +1329,18 @@ map to series of model comparisons
 .center[
 ![:scale 70%](lecture_8_files/t13/jk/type0-0.svg)
 ]]
+
+???
+- so let's try and build this intuition a bit using some venn diagrams
+
+- top circle is outcome, Y
+- circle area is the variance in Y
+- bottom circles are each a predictor  
+- overlap is the shared variance. 
+- predictors are probably related a little, so they overlap a bit
+- [DRAW] - 1 pred, 2 pred uncor, 2 pred cor
+
+- so what does type 1 SS do?  
 
 ---
 
@@ -1038,6 +1419,12 @@ drop1(mod.m, test="F")
 ```
 ]
 
+???
+- and this is what we see in the use of `anova()` for type 1.  
+- and `drop1()` for type 3. 
+- the last one in, is the same as the bottom of each of these  
+
+
 ---
 # So far.. 
 
@@ -1056,6 +1443,18 @@ What can we do with multiple regressions?
       `anova(model)`
     - after accounting for all other predictors  
       `drop1(model, test = "F")`
+
+
+???
+- okay, so far we've talked a lot about 
+  - the model overall, 
+  - about how we can examine variance explained by sets of predictors using model comparison
+  - and how we can partition up the variance explained by each predictor in the model
+    - either added incrementally
+    - or after including all other predictors  
+    
+- i haven't talked much about the coefficients themselves yet. 
+
 
 ---
 # Two Subtly Different Questions
@@ -1088,12 +1487,36 @@ summary(mod.m)
 
 ]
 
+???
+- i'd like to draw a distinction between how these two things 
+  - analysing variance explained
+  - and testing the slope of the predictor
+- address two slightly different questions.  
+
+- we can ask "does" x have an effect, or "is there an effect"? 
+- and that's asking if a predictor explains variance.  
+
+- we can also ask, and probably will want to ask "how does x effect y?"
+- and for that we need our coefficients. 
+
+
 ---
 # The Two-Predictor Model
 
 ```{r multiti,highlight.output=11:13}
 <<multi>>
 ```
+
+???
+- our coefficients are interpreted a bit more similar to the type 3 approach. 
+- order doesn't matter here
+- the effect of age on R_AGE _after accounting for hrs_week_
+- the effect of hrs_week on R_AGE _after accounting for age_
+
+- where previously we had 2 things, an intercept and a slope
+- we now have 3: an intercept and 2 slopes  
+
+- what this means is that instead of a line, our model is now... 
 
 ---
 
@@ -1121,6 +1544,9 @@ rglwidget()
 .w-25[
 &nbsp;
 ]]
+
+???
+and that's what i want to look at for the remainder of the class, but i'm going to go into R to do so.  
 
 ---
 class: inverse, center, middle, animated, flip
