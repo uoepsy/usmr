@@ -18,6 +18,14 @@ library(patchwork)
 xaringanExtra::use_panelset()
 ```
 
+:::lo
+This reading:  
+
+- How can we fit a more sophisticated model of how multiple things predict an outcome? 
+- How are the associated coefficients interpreted?  
+- What kinds of questions can we ask with these models?  
+
+:::
 
 The simple linear regression model with a single predictor `lm(y ~ x1)` is a useful introduction to the idea of model-based thinking, but it's not clear how much benefit this gives us as it is actually equivalent to the basic statistical tests we have already seen. 
 
@@ -302,12 +310,9 @@ mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
 eg_model <- lm(y ~ x1 + x2, data = mydata)
 summary(eg_model)
 ```
-```
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)   
-(Intercept) -2.39138    3.67735  -0.650  0.51867   
-x1           0.17570    0.06435   2.730  0.00888 **
-x2          -0.64756    0.19959  -3.244  0.00217 **
+```{r}
+#| echo: false
+.pp(summary(lm(y ~ x1 + x2, data = mydata)),l=list(9:13))
 ```
 
 
@@ -332,7 +337,7 @@ mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
 eg_model <- lm(y ~ x1 + x2, data = mydata)
 
 library(sjPlot)
-plot_model(fit, type = "eff", terms = "x1")
+plot_model(eg_model, type = "eff", terms = "x1")
 ```
 
 It might help to think of this as if we are just tilting the our view of the regression surface so that we see it from only one edge: 
@@ -451,27 +456,18 @@ ggplot(hrcaff, aes(x=caffeine,y=rhr))+
   geom_point() +
   geom_smooth(method=lm)
 ```
-```
-lm(rhr ~ caffeine, data = hrcaff)
-...
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept) 101.1746     5.3424  18.938  < 2e-16 ***
-caffeine     -0.2600     0.0527  -4.933 3.31e-06 ***
+```{r}
+#| echo: false
+.pp(summary(lm(rhr ~ caffeine, data = hrcaff)), l=list(3, 9:12))
 ```
 
 But... what if the reason that people in our sample who drink more caffeine have lower heart rates _not_ because they drink more caffeine, but because they are older (and older people have lower heart rates).  
 
 The coefficient for the association between caffeine and heart rate when we _also_ include age in as a predictor (`lm(rhr ~ age + caffeine)`), is no longer significant.  
 
-```
-lm(rhr ~ age + caffeine, data = hrcaff)
-...
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  41.8310    16.0000   2.614 0.010363 *  
-age           0.3914     0.1003   3.904 0.000175 ***
-caffeine      0.0933     0.1030   0.906 0.367398  
+```{r}
+#| echo: false
+.pp(summary(lm(rhr ~ age + caffeine, data = hrcaff)), l=list(3, 9:13))
 ```
 
 Why? Because after we take into account how old people are, knowing their caffeine consumption doesn't actually provide any information about their heart rate.  
@@ -664,15 +660,11 @@ When we consider a model in which brain mass is predicted by species, the `speci
 When we fit the model `lm(mass_brain ~ species)`, the default way in which the `species` predictor is included in the model is by setting one category as the "reference level", and comparing each level to that reference level. So if the reference level is "Human", the coefficients we get out include the intercept (which is the estimated brain mass of humans); the estimated difference in brain mass when we move from humans to potar monkeys; and from humans to rhesus monkeys:   
 
 
+```{r}
+#| echo: false
+.pp(summary(lm(mass_brain~species, braindata)),l=list(3,9:13))
 ```
-lm(formula = mass_brain ~ species, data = mm)
 
-Coefficients:
-                     Estimate Std. Error t value Pr(>|t|)    
-(Intercept)           0.60271    0.02748  21.936  < 2e-16 ***
-speciesPotar monkey  -0.35735    0.04142  -8.627 7.38e-10 ***
-speciesRhesus monkey -0.15261    0.04257  -3.585   0.0011 ** 
-```
 
 ```{r}
 #| include: false
@@ -946,6 +938,7 @@ It might feel pointless to bother asking "__does__ [predictor(s)] explain varian
 The main utility in this approach comes in when we want to assess _overall group differences_, rather than testing differences between specific groups.  
 
 :::statbox
+
 __Example__  
 
 > Question A: Do species have different brain mass? 
@@ -957,14 +950,9 @@ braindata <- read_csv("https://uoepsy.github.io/data/usmr_braindata.csv")
 fit <- lm(mass_brain ~ species, data = braindata)
 summary(fit)
 ```
-
-```
-Coefficients:
-                      Estimate Std. Error t value Pr(>|t|)
-(Intercept)           0.415308   0.263731   1.575    0.125
-mass_body             0.002941   0.004116   0.715    0.480
-speciesPotar monkey  -0.217808   0.199699  -1.091    0.284
-speciesRhesus monkey -0.014035   0.198628  -0.071    0.944
+```{r}
+#| echo: false
+.pp(summary(lm(mass_brain ~ species, data = braindata)), l=list(3,9:13))
 ```
 
 But these actually answer the questions:  
@@ -977,6 +965,7 @@ And these are not the same as our original question. However, we _can_ answer it
 anova(fit)
 ```
 
+:::
 
 ## Types of Sums of Squares
 
