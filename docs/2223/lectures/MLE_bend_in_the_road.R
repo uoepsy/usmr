@@ -49,7 +49,7 @@ for(mod in possible_models){
   ll <- c(ll, modll)
 }
 
-plot(x = some_models, y = ll, type=c("both"))
+plot(x = possible_models, y = ll, type=c("both"))
 
 # it looks like it peaks at the value of 0.6
 mod_par <- 0.6
@@ -59,6 +59,6 @@ logLik(glm(splat ~ 1, family = binomial))
 
 
 # often we talk instead about -2*LL (and we sometimes call it deviance)
-plot(x = some_models, y = -2*ll, type=c("both"))
+plot(x = possible_models, y = -2*ll, type=c("both"))
 
 deviance(glm(splat ~ 1, family = binomial))

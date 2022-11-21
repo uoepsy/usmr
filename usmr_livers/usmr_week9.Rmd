@@ -1,0 +1,76 @@
+---
+title: "example Rmd"
+author: "uoepsy"
+date: "2022-11-14"
+output:
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+# everything (code, output, everything) in this code chunk will be hidden, because it says "include = FALSE". 
+# we can set a global option of "echo = FALSE" to say "hide all the code in any chunk"
+knitr::opts_chunk$set(echo = FALSE)
+
+# packages and data
+library(tidyverse)
+library(sjPlot)
+load(url("https://uoepsy.github.io/usmr/2223/lectures/R/reading.Rdata"))
+
+# i want to fit this model
+m1 <- lm(R_AGE ~ hrs_wk * method, data = reading)
+summary(m1)
+
+# but i want to get more out of it. 
+# 1. we have two groups: "phonics" and "word", and lets suppose that "word" is more like the status quo (people learn to read by learning words), and "phonics" is this new method. it makes sense to have "word" as the reference level.
+# 2. children DO practise reading. there's no one in the dataset who does 0 practise. I would like the difference in phonics/words to be at some more useful value (e.g. mean) of practise. 
+reading <- reading %>% 
+  mutate(
+    method = fct_relevel(factor(method), "word"),
+    hrs_wkC = hrs_wk - mean(hrs_wk)
+  )
+
+# so here's our model: 
+m1a <- lm(R_AGE ~ hrs_wkC * method, data = reading)
+summary(m1a)
+plot_model(m1a, type="int")
+```
+
+this is my report! 
+hello :|
+
+# methods
+
+multiple linear regression was used to model reading ages from the method of learning (words vs phonics, with word as the reference level), the number of hours of practice per week (mean centered), and their interaction. 
+
+# results
+
+```{r}
+# I can pull out bits of my model results in order to include them in the text
+
+# here i pull out the coefficients and store them as res
+res <- coefficients(summary(m1a))
+# i'll make it a dataframe and make the column names easier to use
+res <- as.data.frame(res)
+names(res) <- c("est","se","t","p")
+
+# we can now tidy these up, by rounding, and
+# using the `format.pval` function
+res <- res %>% mutate(
+  est = round(est, 2),
+  se = round(se,2),
+  t = round(t,2),
+  p = format.pval(p, digits = 3, eps = .05)
+)
+# and we can then use them in the paragraph below
+```
+
+
+For toys learning to read via the standard "word" method, there was no significant association between the amount of practise and reading age ($p$=`r res[2,4]`). 
+When practicing at the average number of hours per week (mean = `r round(mean(reading$hrs_wk),1)`, sd = `r round(sd(reading$hrs_wk),1)`), learning by phonics was associated with `r res[3,1]` higher reading ages than learning by the word method. 
+Crucially, the significant interaction between practise and method indicates that the extent to which practice influences reading ages is dependent on which method is taught, with learners of the phonics method increasing in reading ages by `r res[4,1]` for a extra hour of weekly reading practice beyond the learners of the word method ($b$ = `r res[4,1]`, $t(`r m1a$df.residual`)$ = `r res[4,3]`, $p$ `r res[4,4]`). This is visualised in Figure 1.  
+
+```{r}
+plot_model(m1a, type="int")
+```
+

@@ -1,0 +1,1307 @@
+---
+title: "<b>Week 10: The Generalized Linear Model</b>"
+subtitle: "Univariate Statistics and Methodology using R"
+author: ""
+institute: "Department of Psychology<br/>The University of Edinburgh"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: 
+      - xaringan-themer.css
+      - mc_libs/tweaks.css
+    nature:
+      beforeInit: "mc_libs/macros.js"
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+options(digits=4,scipen=2)
+options(knitr.table.format="html")
+xaringanExtra::use_xaringan_extra(c("tile_view","animate_css","tachyons"))
+xaringanExtra::use_extra_styles(
+  mute_unhighlighted_code = FALSE
+)
+library(knitr)
+library(tidyverse)
+library(ggplot2)
+source('R/pres_theme.R')
+knitr::opts_chunk$set(
+  dev = "svg",
+  warning = FALSE,
+  message = FALSE
+)
+source('R/myfuncs.R')
+
+library(xaringanthemer)
+style_mono_accent(
+  #base_color = "#0F4C81", # DAPR1
+  # base_color = "#BF1932", # DAPR2
+  # base_color = "#88B04B", # DAPR3 
+  base_color = "#FCBB06", # USMR
+  # base_color = "#a41ae4", # MSMR
+  header_color = "#000000",
+  header_font_google = google_font("Source Sans Pro"),
+  header_font_weight = 400,
+  text_font_google = google_font("Source Sans Pro", "400", "400i", "600", "600i"),
+  code_font_google = google_font("Source Code Pro")
+)
+```
+
+class: inverse, center, middle
+# Part 1
+## Bigger and Better
+
+???
+before we get onto the generalized model, i'd like to just tidy up the example we've been using the last couple of weeks in the lecture. 
+
+
+---
+# Learning to Read
+
+.pull-left.pulse.animated[
+![](lecture_9_files/img/playmo_teach.jpg)
+]
+.pull-right[
+.center[
+```{r showdat, echo=FALSE}
+library(gt)
+load("R/reading.Rdata")
+
+## NB running model for next slides here
+mod.m <- lm(R_AGE ~ hrs_wk*method, data=reading)
+reading %>% slice(c(1:5,46:50)) %>% gt() %>%
+  data_color(columns=c("hrs_wk","method","R_AGE"),colors="#d0d9ff",alpha=.8)
+```
+]]
+
+???
+- yes indeed, we're still learning to read! 
+- so last week we saw a couple of things
+- we mainly looked at how reading age is influenced by hours week of practice, and that this is different dependign on whether you learn in the phonics method or the word method
+
+
+---
+count: false
+# Learning to Read
+
+.pull-left[
+![](lecture_10_files/img/playmo_teach.jpg)
+]
+.pull-right[
+```{r plotme1,echo=F,fig.asp=.6}
+reading %>% ggplot(aes(x=hrs_wk,y=R_AGE,colour=method)) +
+  xlab("practice") + ylab("reading age") +
+  geom_point(size=3) +
+  geom_smooth(method="lm")
+```
+
+]
+???
+- that was when we saw this plot here. 
+- we can see that practice has a beneficial effect for phonics learners
+- but not for word learners
+
+---
+# Learning to Read
+
+.pull-left[
+![](lecture_10_files/img/playmo_teach.jpg)
+]
+.pull-right[
+.center[
+```{r showdat2, echo=FALSE}
+library(gt)
+load("R/reading.Rdata")
+
+## NB running model for next slides here
+mod.m2 <- lm(R_AGE ~ age*hrs_wk, data=reading)
+reading %>% slice(c(1:5,46:50)) %>% gt() %>%
+  data_color(columns=c("age","hrs_wk","R_AGE"),colors="#d0d9ff",alpha=.8)
+```
+]]
+???
+- we also looked briefly at how we can allow a continuous variable like hrs week practice
+- to interact with another continuous variable like age.  
+
+---
+count: false
+# Learning to Read
+
+.pull-left[
+![](lecture_10_files/img/playmo_teach.jpg)
+]
+.pull-right[
+```{r plotly,echo=F}
+library(plotly)
+steps=49
+age <- with(reading,seq(min(age),max(age),length=steps))
+hrs_wk <- with(reading,seq(min(hrs_wk),max(hrs_wk),length=steps))
+newdat <- expand.grid(age=age,hrs_wk=hrs_wk)
+R_AGE <- matrix(predict(mod.m2, newdat),steps,steps)
+plot_ly(x=~age,y=~hrs_wk,z=~R_AGE, type="surface") %>% layout(
+    scene = list(
+      xaxis = list(title = "age"),
+      yaxis = list(title = "practise"),
+      zaxis = list(title = "READING AGE"),
+      aspectmode = "cube"
+    ))
+```
+]
+???
+- and that was where we saw this more general idea of an interaction being a twisting surface 
+- i.e. non-parallel lines, but where we have infinitely many lines, making that surface
+
+---
+# Bigger and Better
+
+- easy to build models including more predictors
+
+.br3.pa2.bg-gray.white[
+$$\hat{y}_i=b_0+b_1x_{1i}+b_2x_{2i}+\ldots{}+b_kx_{ki}+\ldots{}+b_mx_{1i}x_{2i}+b_{m+1}x_{2i}x_{3i}+\ldots$$
+]
+
+
+- for example
+
+
+```{r model}
+mod.mm <- lm(R_AGE ~ age + hrs_wk + method + hrs_wk:method + age:hrs_wk, data=reading)
+```
+
+???
+- we've seen in the labs a reasonable number of models where we have lots of predictors.
+- in the lectures so far we've just been working with 2 i think
+- so it's worth mentioning here that we can easily add predictors to a model by simply estimating more coefficients.
+- so with k predictors, we have k coefficients.  
+- and we can add in our interactions.  
+- and that's kind of all the stuff we've been looking at last week, in the one model.  
+  - age, hrs week, and method
+  - interaction between hrs week and method, and between hrs week and age
+
+--
+
+- NB., order of predictors **can** matter (judgement is important)
+    - if we conduct `anova(mod.mm)` we test _incremental addition_ of each predictor
+
+- first question:  is it worth it building such a complex model?
+
+???
+- and remember, the order *might* matter here, depending upon what we do.
+- things like the type 1 SS anova, test the variance explained by each predictor when we add them incrementally, one after the other.  
+- so in order to tidy up this example, the question i'd like to look at is whether this model is just neccessary?  
+
+
+---
+# Does Each New Predictor Improve Fit?
+```{r anova}
+anova(mod.mm)
+```
+
+- adding `age:hrs_wk` doesn't improve the model any further over a model without it
+
+```{r update}
+mod.mm <- update(mod.mm, ~ . -age:hrs_wk)
+# equivalent
+# mod.mm <- lm(R_AGE ~ age + hrs_wk + method + hrs_wk:method, data=reading)
+```
+???
+- so we can see from this that the age and hrs_wk interaction doesn't improve the model any further than the model without it.
+- I'm showing you the "update" command in part to show you how "-" can have a special meaning outside the I() function (in this case, it means "take this predictor out")
+
+---
+.center[
+```{r assumptions,echo=F,fig.asp=.7,fig.width=9}
+par(mfrow=c(2,2))
+plot(mod.mm,which=1:4)
+```
+]
+???
+- here are the assumption plots of our final model
+- we can see a fairly straight line in both the left hand plots, which is good
+- the QQ plot looks okay, with slight deviations at the bottom there
+
+---
+# The Model
+```{r mod,echo=F}
+summary(mod.mm)
+```
+- [coef_by_pred.R](coef_by_pred.R)
+???
+- so lets look at our model summary
+- and i think interpreting all these coefs in speech is actually quite difficult to follow. 
+- so [RSTUDIO]
+
+
+---
+# The Model
+
+.pull-left[
+- not always convenient to draw 3d models!
+
+- graphs can show "interesting" results
+
+- here, `age` doesn't interact with anything
+
+- so show plot for _mean age_ (or some other meaningful value)
+]
+.pull-right[
+```{r pp,echo=F,fig.asp=.6}
+r2 <- reading %>% mutate(age=mean(age))
+r2 <- r2 %>% bind_cols(as_tibble(predict(mod.mm,r2,interval="confidence")))
+r2 %>% ggplot(aes(x=hrs_wk,y=R_AGE,colour=method)) +
+  geom_point(size=3) +
+  geom_ribbon(aes(ymin=lwr,ymax=upr,fill=method,colour=NULL),alpha=.15) +
+  geom_line(aes(y=fit),size=1) +
+  ylab("reading age") + xlab("practice")
+```
+.f5[_reading age predicted by practice hours per week for children of average age_]
+]
+???
+- let's talk about how we might visualise this model
+- well, we're never going to visualise the whole thing. 
+- 3d plots are fine, but we don't really want them, and besides, we're already working in more than 3 dimensions. 
+- now age doesn't interact, and it's something we've been treating more as a covariate 
+  - i.e. something we expect to be associated with reading age, but are not specifically interested in estimating
+- so we could plot the thing we _are_ interested in, i.e. this interaction, predicted at the mean age.  
+- and that's what things like plot_model do for us
+
+---
+class: inverse, center, middle, animated, zoomInRight
+
+# End of Part 1
+
+
+---
+class: inverse, center, middle
+# Part 2
+## Probability, Odds, Log-Odds
+
+???
+okay, now we're going to move on to the new stuff for this week. 
+
+
+
+---
+# Aliens
+.center[
+<video width= "70%" controls>
+  <source src="lecture_10_files/video/alien.mp4" type="video/mp4">
+  video not supported by this browser
+</video>
+]
+
+???
+- i'd like to begin by showing you a video, of a singing competition, on a planet far away
+- it's a singing competition where contestants get voted off immediately if the audience doesn't like them
+- so it's a sudden death competition
+  - either you're through to the next round
+  - or you're voted off with immediate effect
+
+CREDITS    
+
+
+---
+# A Binary World
+
+.center[
+![:scale 50%](lecture_10_files/img/playmo_aliens.jpg)
+]
+???
+- so we're in a binary world
+- for each person, or each alien, i should say.. 
+
+---
+count: false
+# A Binary World
+
+.center[
+![:scale 50%](lecture_10_files/img/playmo_aliens_splat.jpg)
+]
+
+???
+- they're either splatted or they are not
+
+---
+count: false
+# A Binary World
+
+.center[
+![:scale 50%](lecture_10_files/img/playmo_aliens_10.jpg)
+]
+???
+- and we can represent this with some 0s and 1s 
+- so 0 is where they get through, and 1 is where they get splatted
+
+
+---
+# 1,000 Aliens
+```{r aliens,include=F}
+load("R/singers.Rdata")
+a<-c("The Great Odorjan of Erpod",
+"Hapetox Bron",
+"Loorn Molzeks",
+"Ba'lite Adrflen",
+"Tedlambo Garilltet",
+"Goraveola Grellorm",
+"Colonel Garqun",
+"Bosgogo Lurcat",
+"Osajed Voplily",
+"Subcommander Edorop",
+"Dopjed Klumlily",
+"Terajis Roygan",
+"Colonel Bonkloren",
+"Gwjed Bineflimegs",
+"Ka'tin Kaisor",
+"Quejan Vodgongonala",
+"Dinzok Krhoplan",
+"Judhop Cakrn",
+"Gwhuru Darutsnol",
+"Volaela Guttrop",
+"Kaikrut Gurjid")
+singers$id <- as.character(singers$id)
+singers$id[1:21] <- a
+singers <- as_tibble(singers) %>% rename(SPLATTED=splatted)
+rm(a)
+```
+.pull-left[
+```{r al,echo=F}
+library(gt)
+head(singers,10) %>% gt()
+```
+]
+.pull-right[
+- `quality` = quality of singing
+
+- `SPLATTED` = whether splatted (1 or 0)
+]
+
+???
+- and so here's some more toy data.  
+- we have 1000 aliens entering the competition
+- and for each one, we have some very scientifically measured indicator of their singing quality
+- and we have whether or not they were splatted.  
+
+---
+# 1,000 Aliens
+
+.center[
+```{r plotm,echo=F,fig.asp=.6}
+p <- singers %>% ggplot(aes(x=quality,y=SPLATTED)) +
+  scale_y_continuous(breaks=c(0,1))
+p + geom_point(size=3)
+```
+
+]
+???
+- and we can plot these two things  
+- here we have singing quality on x axis, and splatted on the y
+- and it looks a bit ugly.
+
+
+
+---
+count: false
+# 1,000 Aliens
+
+.center[
+```{r plotme,echo=F,fig.asp=.6}
+p + geom_jitter(size=3,width=0,height=.2) +
+  scale_y_continuous(breaks=c(0,1))
+```
+]
+- using `geom_jitter()`
+
+???
+- we can jitter these a little, to separate them out so we can see them all, rather than have them overlapping. 
+- clusters of points at 0 or 1
+- makes sense. either they were splatted or they weren't
+
+
+---
+# Binomial Regression, Conceptually
+
+- each alien either gets splatted or doesn't
+
+  + each observation is either a 1 or a 0
+  
+- underlyingly, there's a **binomial** distribution
+
+- for each value of "quality of singing" there's a _probability_ of getting splatted
+
+???
+- so what are we going to do? 
+- how do we analysis "being splatted"?  
+- we're going to use a form of binomial regression.
+- this is a regression model where underlyingly, there is a binomial distribution
+- binomial distribution is represents probability of getting a k successes in n trials [WRITE]
+- but in this example, n is just 1. binary is just binomial with n=1
+- $P(x) = nCk \;\;p^k(1-p)^{n-k}$
+
+--
+
+.pt2[
+- for each alien, the outcome is deterministic
+
+- but it's the _probability_ we are ultimately interested in
+
+- we can approximate it by binning our data...
+]
+
+???
+- for each of our aliens.
+- outcome has happened. they either did, or didn't get splatted
+- but it's the probability we are ultimately interested in
+- one way to start thinking about it is to consider the proportion splatted at various bins of singing quality
+
+---
+# Binned Data
+
+.pull-left[
+```{r cut,fig.asp=.6,fig.show='hide'}
+singers <- singers %>% 
+  mutate(bin=cut_interval(quality,10))
+
+dat <- singers %>% group_by(bin) %>%
+  summarise(prop=mean(SPLATTED))
+
+dat %>% ggplot(aes(x=bin,y=prop)) +
+  xlab("bin") + ylab("prop splatted") +
+  geom_point(size=3) +
+  scale_x_discrete(label=1:10)
+```
+]
+.pull-right[
+![](lecture_10_files/figure-html/cut-1.svg)
+]
+
+???
+- that's what we have here
+- [TALK THROUGH CODE]
+
+
+---
+# Best Fit Lines
+
+.pull-left[
+- we can fit our data using a standard linear model
+
+- but there's something very wrong...
+]
+
+.pull-right[
+```{r with_line,echo=F,fig.asp=.6}
+p2 <- p + geom_point(size=3) +
+  geom_smooth(method="lm")
+p2
+```
+
+]
+???
+- so what happens when we try to use our linear models? 
+- well, it gets kind of the right idea. 
+  - splatting decreases with quality
+- anyone notice any problems? 
+[PAUSE]
+
+---
+# The Problem with Probability
+
+.center[
+```{r bplot,echo=F,fig.asp=.6,fig.width=6}
+p + geom_point(size=3) +
+  geom_smooth(method="lm") +
+  geom_smooth(method="glm",method.args=list(family="binomial"),se=FALSE,
+              linetype="dashed", colour="grey") +
+  ylab("p(SPLATTED)") + theme_presentation(16) +
+  theme(legend.position = "none")
+  
+```
+]
+???
+- firstly, we've already seen in previous slide. 
+- probability seems to form a sort of S shaped curve
+- and now we're trying to fit a straight line through that. which is going to suggest that maybe we are going to be violating that assumption of linearity
+
+---
+count: false
+# The Problem with Probability
+
+.center[
+```{r bplot2,echo=F,fig.asp=.6,fig.width=6}
+gd <- layer_data(p2,2)
+p + geom_rect(aes(xmin=0,xmax=100,ymin=1,ymax=max(gd$ymax),fill="red"),alpha=0.05) +
+  geom_rect(aes(xmin=0,xmax=100,ymin=min(gd$ymin),ymax=0,fill="red"),alpha=0.05) + geom_point(size=3) +
+  geom_smooth(method="lm") +
+  geom_smooth(method="glm",method.args=list(family="binomial"),se=FALSE,
+              linetype="dashed", colour="grey") +
+  ylab("p(SPLATTED)") + theme_presentation(16) +
+  theme(legend.position = "none")
+  
+```
+]
+
+- a _linear_ model predicts impossible values because probability isn't linear; it's **asymptotic**
+
+???
+- possibly a bigger problem is that we are predicted values of probability that are literally impossible.
+- for any straight line that is not perfeclty horizontal, it's going to (at some point) go above 1 and below 0.
+- but we know that probability is necessarily between 0 and 1
+- in fact, prob is not linear. - it is asymptotic. 
+  - gets close to 0 and 1, but should never reach it. 
+
+
+
+---
+# The Problem with Probability
+
+.center[
+```{r bplot3,echo=F,fig.asp=.6,fig.width=6}
+tt <- singers %>% 
+  group_by(bin) %>% summarise(var=var(SPLATTED)) %>% mutate(x=seq(5,95,10))
+p + geom_point(size=3) +
+  geom_smooth(method="glm",method.args=list(family="binomial"),se=FALSE,
+              linetype="dashed", colour="grey") +
+  ylab("p(SPLATTED)") + theme_presentation(16) +
+  theme(legend.position = "none") +
+  geom_smooth(data=tt,aes(x=x,y=var,colour="red"),size=2,se=F)
+  
+```
+]
+
+- variance _necessarily_ covaries with probability
+
+???
+- there's also an additional, more technical problem
+- probability necessarily violates our assumption of constant variance
+- and this just kind of has to be the case 
+  - on the left, all these obs are the same
+  - on the right, all these obs are the same
+  - in both those cases, variance is low
+  - in the middle, there is more variance. some 0s, some 1s
+- tried to plot a little curve to show the variance here [RED LINE]. we can see it is at its max in the middle
+
+---
+# Assumptions
+.center[
+```{r ass,fig.asp=.7,width=9,echo=F}
+mod.b <- lm(SPLATTED~quality,data=singers)
+par(mfrow=c(2,2))
+plot(mod.b,which=1:4)
+```
+
+]
+???
+- in fact let's just take a look at the assumptions of that linear model we're attempting to use. 
+- we're way off the mark
+- linearity is way off 
+  - top left. line is not horizontal at 0
+- equal variance is off
+  - bottom left. line is not horizontal. 
+  - you can actually see the line mapping that variance curve in the previous plot
+- normality doesn't look great, but in this particular model it's not awful - at least we've got a straight line. 
+
+- so clearly we're not going to manage here. we need to do something different. 
+- and the first thing we need to talk about is the difference between probability and odds
+
+---
+# Probability and Odds
+
+.br3.pa2.bg-gray.white.flex.items-center[
+.w-50.pa2[
+$$\textrm{odds}(y)=\frac{p(y)}{1-p(y)}$$
+]
+.w-50.pa2[
+$$0<p<1$$
+$$0<\textrm{odds}<\infty$$
+]]
+
+???
+- so we often talk intuitively about probability. 
+- but we can also express probability in terms of odds.
+
+- so if you think of probability, loosely speaking, as
+  - proportion of times something will happen
+- then odds is the number of times something will happen, divided by the number of times it __won't__ happen.  
+
+- so if you think something will happen a quarter of the time
+  - 0.25
+- odds of that thing happening is that one quarter where it happens, vs the three quarters that it doesn't. 
+
+- you may be familiar with odds if you're into gambling (which, for your sake i hope you aren't)
+
+
+--
+.center[
+.flex.flex-column[
+.flex.items-center[
+.w-40[
+&nbsp;
+]
+.w-20[
+$p(y)$
+]
+.w-20[
+$\textrm{odds}(y)$
+]
+]
+.flex.items-center[
+.w-40[
+throw heads
+]
+.w-20[
+$\frac{1}{2}$
+]
+.w-20[
+$\frac{1}{1}$
+]
+]
+.flex.items-center[
+.w-40[
+throw 8 from two dice
+]
+.w-20[
+$\frac{5}{36}$
+]
+.w-20[
+$\frac{5}{31}$
+]
+]
+.flex.items-center[
+.w-40[
+get splatted
+]
+.w-20[
+$\frac{99}{100}$
+]
+.w-20[
+$\frac{99}{1}$
+]
+]
+]
+]
+
+???
+so let's look at some odds
+- [BOARD]
+- throwing heads. prob = 0.5. 
+  - even stevens
+- 6-2, 5-3, 4-4, 3-5, 2-6
+- 5 ways we can throw an 8. 31 ways we throw a not-8.  
+
+
+
+---
+# Probability and Log-Odds
+
+- $\log(0)=-\infty$; $\log(\infty)=+\infty$
+- $\log(1)=0$ where odds of 1 are exactly 50:50 ( $p=0.5$ )
+
+.center[
+```{r threeg,echo=F,fig.asp=.25,fig.width=10}
+library(patchwork)
+pt <- tibble(x=seq(-4.5,4.5,length=49),lo=x,o=exp(x),p=o/(1+o))
+
+p1 <- pt %>% ggplot(aes(x=x,y=p)) +
+  theme_presentation(10) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("probability") +
+  ggtitle("probability") +
+  annotate("text",-1,.75,label="p=.5",size=3)
+
+p2 <- pt %>% ggplot(aes(x=x,y=o)) +
+  theme_presentation(10) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("odds") +
+  ggtitle("odds") +
+  annotate("text",-1.2,15,label="odds=1",size=3)
+
+p3 <- pt %>% ggplot(aes(x=x,y=lo)) +
+  theme_presentation(10) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("log(odds)") +
+  ggtitle("log-odds (logits)")
+
+p4 <- p3 + annotate("text",-2.2,2,label="log(odds)=0",size=3) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+p1+p2+p4
+
+```
+]
+
+???
+- just looking at the first two plots here
+- here's the probability s-shape we had before
+- if we translate all those probabilities to odds, we turn the s-shape into a big exponential curve
+- and that's because these big probabilities start to get really big in terms of ODDs. 
+  - [prev slide] 99/1
+
+- it's still curvy. so it's still not suitable for modelling
+- but we can map odds to a straight line
+  - log 0 is negative infinity
+  - log inf is inf
+  - log 1 is 0
+
+--
+
+- if log-odds are _less than zero_, the odds go down (multiply by <1)
+- if log-odds are _more than zero_, the odds go up (multiply by >1)
+- high odds = high probability
+
+???
+- dotted line in these shows the mid-way point, even stevens
+  - p of .5 is odds of 1, is logodds of 0
+  - odds of 1 because if we multiply odds by 1, they don't change - i.e. equal odds. 
+  
+- linear associations.  
+- model is going to do all this for us!  
+- but that means the model is going to be living in this world (right hand plot).
+- linear associations
+- so we might have to do some conversions to get our coefficients back into something more palatable. 
+
+---
+class: inverse, center, middle, animated, zoomInRight
+# End of Part 2
+
+---
+class: inverse, center, middle
+
+# Part 3
+## The Generalized Linear Model
+
+???
+- now that we've learned a little bit about probability, odds, and log odds, 
+- let's look at how we can actually model this.  
+- so it's the GLM
+- generalised to different outcomes
+
+
+---
+name: glm1
+# The Generalized Linear Model
+
+- generalises the linear model using mapping functions
+
+- coefficients are in **logit** (log-odds) units
+
+.pt2[
+
+- fit using **maximum likelihood**
+
+- coefficients use **Wald's $z$ ** instead of $t$
+
+]
+
+???
+- how does it do this? 
+- instead of modelling y directly
+- we model it via some mapping function "link function" 
+- [BOARD y and ln p/1-p]
+- and we're saying that p here, is the p(y) in 1 trial.
+- y ~ binom(n,p)
+
+
+---
+# Likelihood
+
+.flex.items-center[
+
+.w-20.pa2[
+![:scale 90%](lecture_10_files/img/50p.jpg)
+]
+.w-80[
+.center[
+```{r likely,echo=F,fig.asp=.6,fig.width=6}
+do.l <- function(heads,total=10) {
+  tt <- tibble(x=seq(0,1,length.out=89),
+               y=dbinom(heads,total,x))
+
+  tt %>% ggplot(aes(x=x,y=y)) +
+    xlab(expression(theta)) + ylab('likelihood') +
+    ggtitle(paste(heads," H out of ",total," tosses",sep='')) +
+    theme_presentation(12) +
+    ylim(0,.4) +
+    theme(axis.text.y=element_blank(),
+         axis.ticks.x=element_blank(),
+         axis.title.y=element_text("likelihood")) +
+    geom_path(size=1)
+}
+
+(do.l(3) + do.l(5)) / (do.l(7) + do.l(9))
+
+```
+]]]
+- extent to which a sample provides support for a model (![:scale 3%](lecture_10_files/img/danger.svg) &nbsp; [MLE_bend_in_the_road.R](MLE_bend_in_the_road.R)).  
+
+???
+- we're going to take a little tangent here to talk about how it gets estimated
+- we said "fit using maximum likelihood"
+- and i think this is a valuable thing to learn about, even though, in reality the computer does all of this for us
+- so what is likelihood? lieklihood is p(data|theta)  
+  - theta is a way of just saying "the parameters that make up a model"
+
+- a very simple example is the coin toss
+- [DESCRIBE PLOTS]
+  - x axis = possible values that govern the coin e.g. our model
+  - probability of seeing the data, given that model
+
+
+---
+template: glm1
+
+- but actually it's all quite straightforward...
+
+???
+- it's actually fairly straightforward in terms of fitting
+- cmputer does a lot for us
+
+---
+# Alien Singer Splat Probability
+
+.pull-left[
+```{r assp,echo=F}
+singers %>% select(-bin) %>% head(10) %>% gt()
+```
+]
+.pull-right[
+- use `glm()` $\text{ }^{*}$ instead of `lm()`
+
+- specify **link function** with `family = binomial` $\text{ }^{**}$
+
+.pt2[
+```{r}
+mod.b <- glm(SPLATTED ~ quality,
+             family = binomial, 
+             data=singers)
+```
+
+]
+
+
+.pt5[
+$\text{ }^*$ can take a 2-level factor DV  
+$\text{ }^{**}$ `family="binomial"` and  
+`family=binomial(link="logit")` also work  
+]]
+
+???
+- all we do is move to using the glm function, rather than lm
+- it can take either a binary set of 0s and 1s as the outcome
+- or we can make it a 2-level factor
+- and because glm is generalised, ew can do more thn just this form of binomial logistic regression, we need to specify that it is binomial and specify the mapping function 
+- [DESCRIBE CODE]
+
+---
+# Evaluating the Model
+
+
+
+.pull-left[
+- NB., no statistical test done by default
+
+- **deviance** compares the likelihood of the new model to that of the previous model
+
+  + a generalisation of sums of squares
+  
+  + _lower_ "residual deviance" is good  
+  (*a bit like Residual Sums of Squares*)
+
+]
+.pull-right[
+```{r anova1,highlight.output=12, eval=FALSE}
+summary(mod.b)
+```
+```{r dev,echo=FALSE}
+.pp(summary(mod.b),l=list(1:7,0,0,18:19))
+```
+]
+
+???
+- first things first, what can we get out to evaluate our model as a whole?  
+- at the bottom of the summary output we see something called deviance
+- deviance is similar to our notion of sums of squares that we used in linear models
+- it is the likelihood of our model, compared to the null model (with no predictors)
+- so lower residual deviance is kind of like less "misfit" of the model to the data
+
+
+
+---
+![:scale 5%](lecture_10_files/img/danger.svg) &nbsp;&nbsp; .f1[Evaluating the Model]
+
+
+```{r anova2, echo=F}
+.pp(summary(mod.b),l=list(18:19))
+```
+
+- deviance is $-2\times$ the **log-likelihood ratio** of the reduced compared to the full model
+- _higher_ "deviance" is good (*a bit like F*)  
+
+```{r anova3}
+mod.n <- glm(SPLATTED~1,family=binomial,data=singers)
+```
+
+.pull-left[
+```{r}
+logLik(mod.n)
+logLik(mod.b)
+```
+]
+.pull-right[
+```{r}
+-2*logLik(mod.n)
+-2*logLik(mod.b)
+```
+]
+
+```{r anova4,highlight.output=1}
+-2 * (logLik(mod.n)-logLik(mod.b))
+```
+???
+- now deviance is actually -2x log likelihood
+- we saw this a minute ago
+- because loglike is negative, it basically flips it round to make it positive, and make it more like RSS
+
+- remember that because we're in log-world, a log-ratio is obtained by subtracting one log from another
+
+---
+# Evaluating the Model
+- model deviance maps to the $\chi^2$ distribution
+
+- can specify a $\chi^2$ test to statistically evaluate model in a similar way to $F$ ratio
+
+```{r anova5, highlight.output=12}
+anova(mod.b, test="Chisq")
+```
+
+???
+- now when we consider deviance, we can actually test it against a chisquare distribution
+- just like F was a ratio
+- we're now using a likelihood ratio
+- and we can test using something like this - anova, test chisq
+
+---
+# Model Coefficients
+
+```{r sum1,echo=F}
+summary(mod.b)
+```
+???
+- okay, that's our full model, what about our coefficients?  
+
+
+---
+# Model Coefficients
+
+.flex.items-center[
+.w-70.pa2[
+#### coefficients are in **logits** (= log-odds)
+
+```{r sum2,echo=F,highlight=2:4}
+.pp(summary(mod.b),l=list(0,10:12,0))
+```
+- zero = "50/50" (odds of 1)
+
+- value below zero: probability of being splatted _decreases_ as quality increases
+]
+.w-30.pa2[
+```{r p3,fig.asp=1,echo=F}
+p3 + theme_presentation(20) +
+  annotate("text",-2.2,2,label="log(odds)=0",size=9)+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+]]
+???
+-important thing to remember, is that our model is living in the log-odds world
+-our associations are all in log-odds, or logits
+- 0 in this world is odds of 1 to 1, i.e. 50/50
+
+
+
+---
+# Log-Odds, Odds, and Probability
+```{r sum3,echo=F}
+a<-round(as.numeric(coef(mod.b)[1]),2)
+b<-round(as.numeric(coef(mod.b)[2]),2)
+l<-a+50*b
+o<-exp(l)
+<<sum2>>
+```
+.pull-left[
+**quality** = 50
+
+- _log-odds_:  $`r a`+`r b`\cdot50=\color{red}{`r a+50*b`}$ 
+
+- _odds_: 
+$e^{`r l`}=\color{red}{`r o`}$
+
+- _probability_:
+$\frac{`r o`}{1+`r o`}=\color{red}{`r o/(1+o)`}$
+
+]
+.pull-right[
+<br/>
+$$\hat{y}_i=b_0+b_1x_i$$
+$$\textrm{odds}=e^{\hat{y}_i}$$
+$$p=\frac{\textrm{odds}}{1+\textrm{odds}}$$
+
+]
+
+???
+- well, can convert them back, at least some of the way
+- exponent is the opposite of logarithm
+
+- so for a singer who has quality of singing 70
+- their log-odds of splatted are the intercept + the coef * 70
+- we can exponentiate that, to get their odds
+- and we can then convert that back to probability
+
+- note we can do this for a single predicted value, but how do we talk about "the association". 
+  - every 1 quality decreases log-odds by -0.11
+  - go up 1 qual, you add that amount onto your log odds
+  - this isn't true of odds
+  
+- [DRAW PEOPLE 50 51]   
+  - logodd 51 = -.42 -.11 = -.53
+  - odds 51 = .589
+  - exp(-.11) = 0.9
+    - .657 * 0.9 = .589
+
+
+log(100, base=10) = 2
+log(1000, base=10) = 3
+log(16, base=2) = 4
+
+$(1 + \frac{1}{n})^n$
+
+---
+# A Useful Function
+
+- intuitive to think in probability
+
+- useful to write a function which takes a value in logits `l` and converts it to a probability `p`
+
+```{r l2p}
+l2p <- function(logits) {
+  odds = exp(logits)
+  prob = odds/(1+odds)
+  return(prob)
+}
+```
+.pull-left[
+- singing qualities 50 and 51
+
+```{r l2pex,results ="asis",echo=FALSE}
+cat("```r\n")
+cat(paste0("l2p(",a,"+",b,"*50)\n"))
+cat("```\n")
+```
+```{r l2pexr,echo=FALSE}
+l2p(a+50*b)
+```
+```{r l2pex1,results ="asis",echo=FALSE}
+cat("```r\n")
+cat(paste0("l2p(",a,"+",b,"*51)\n"))
+cat("```\n")
+```
+```{r l2pex1r,echo=FALSE}
+l2p(a+51*b)
+```
+]
+.pull-right[
+- singing qualities 10 and 11
+
+```{r l2pex2a,results ="asis",echo=FALSE}
+cat("```r\n")
+cat(paste0("l2p(",a,"+",b,"*10)\n"))
+cat("```\n")
+```
+```{r l2pexr2a,echo=FALSE}
+l2p(a+10*b)
+```
+```{r l2pex2,results ="asis",echo=FALSE}
+cat("```r\n")
+cat(paste0("l2p(",a,"+",b,"*11)\n"))
+cat("```\n")
+```
+```{r l2pex2r,echo=FALSE}
+l2p(a+11*b)
+```
+]
+
+???
+- we can write some custom funcgtions to convert back to probabilities
+- so here we have for a singer of 50 quality, and one of 51
+- and one of 10 and 11
+- thing to note is that the difference here is not constant. it's not a constant addition, or a constant multiplication. so we can't reall describe the association in terms of probability. odds is far as we go.  
+
+
+---
+# Representing the Model Graphically
+
+
+```{r g,fig.asp=.6,fig.width=5.5,fig.show='hide'}
+singers %>% ggplot(aes(x=quality,y=SPLATTED)) +
+  ylab("p(SPLATTED)") +
+  geom_jitter(size=3,width=0,height=.2,alpha=.1) +
+  geom_smooth(method="glm",method.args=list(family=binomial)) +
+  scale_y_continuous(breaks=seq(0,1,by=.2)) #<<
+```
+.center[
+![](lecture_10_files/figure-html/g-1.svg)
+]
+
+???
+- what we _can_ do, is visualise it
+
+- here, with just one predictor, we can use the geom smooth, with a lttle bit of extra stuff
+- we could do the same with plot_model()
+
+---
+# One Last Trick
+
+- so far we've looked at
+
+  + model _deviance_ and $\chi^2$ (similar to sums of squares and $F$)
+  
+  + model _coefficients_ and how to map them to probability
+  
+- what about "explained variance" (similar to $R^2$)?
+
+- no really good way of doing this, many proposals
+
+- SPSS uses something called "accuracy" (how well does the model predict actual data?)
+
+- not very informative, but good for learning R
+
+???
+- we've talked about model deviance. i.e. like RSS and F
+- and about coefficiens 
+- what about some standardised way of explained varianbce? 
+  - remember, we can't really deal with variance very well here, we need something else
+  - one option is accuracy. 
+
+---
+# Accuracy
+
+- first, what does the model predict (in logit units)?
+```{r acc}
+guess <- predict(mod.b) # in logit units
+```
+- if the chance of being splatted is more than .5 (logit > 0) call it a "splat"
+```{r acc2}
+guess <- ifelse(guess>0,1,0)
+```
+- how well do predicted splats match actual splats?
+```{r acc3}
+hits <- sum(guess == singers$SPLATTED)
+hits/length(singers$SPLATTED)
+```
+
+- present model "correctly predicts" `r 100*hits/length(singers$SPLATTED)`% of the observations
+
+???
+[SLIDE]
+
+---
+# Other Types of Data
+
+- logit regression is _one type_ of GLM
+
+- others make use of different **link functions** (through `family=...`)
+
+.pt2[
+
+- **poisson**: number of events in a time period
+
+- **inverse gaussian**: time to reach some criterion
+
+- ...
+]
+
+???
+- okay, what we've seen is "binary logistic regression"
+- the GLM can actually be applied to all sorts of data
+  - count data (number of clicks on an advert)
+  - time to event data (neuron getting to firing level)
+  - etc.
+  
+- and we do all this through the link fnctions.  
+- [DRAW, g()]
+- once we get an idea of how the glm is used most frequently, in logit modelling, hopefuly you won't find it too hard in your future research to figure out how we can apply to to different circumstances and distributions
+
+
+
+---
+# GLMs
+
+.flex[
+.w-50.br3.mr2.pa2.bg-gray.white[
+### Predictor Variables
+- linear
+
+- convertible to linear (use `log()` etc.)
+
+- non-convertible (use `contrasts()` etc. to map)
+
+- **don't affect the choice of model**
+
+]
+.w-50.br3.mr2.pa2.bg-gray.white[
+### Dependent Variables
+- linear
+
+- convertible to linear (use `log()` etc.)
+
+- non-convertible (use `glm()` with `family=...`)
+
+- **directly affect the choice of model**
+
+]]
+
+???
+- so let's sum up what we've looked at
+- first lets think about predictor variables
+  - if predictors are linear, then we don't need to do anything very exciting
+  - if we can convert predictors to linear, then we can use things like log etc, to convert it to something that is linear. and that's fine to do
+  - if we can't, i.e. "not convertible" - most obvious example is that they're not numeric to begin with. 
+  - then we can use our contrasts() that we learned last week to map them to smething numeric
+- whatever predictors are, it doesn't change the choice of the model
+
+- the choice of the model is all about the outcome variabl, or dependent variable.
+  - if they're linear, or convertible to linear. we can carry on using lm
+  - if they're not. so they're something we can't talk about or covert to a linear scale, like our binary outcomes.
+  - then we need to use the glm with linking functions
+
+
+---
+class: inverse, center, middle, animated, zoomInRight
+# End
+
+---
+# Acknowledgements
+
+
+- icons by Diego Lavecchia from the [Noun Project](https://thenounproject.com/)

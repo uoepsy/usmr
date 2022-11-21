@@ -1,5 +1,5 @@
 ---
-title: ""
+title: "Week 10 Exercises: Logistic Regression"
 link-citations: yes
 params: 
     SHOW_SOLS: FALSE
@@ -8,3 +8,674 @@ editor_options:
   chunk_output_type: console
 ---
 
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(xaringanExtra)
+library(tidyverse)
+library(patchwork)
+xaringanExtra::use_panelset()
+set.seed(017)
+
+```
+
+
+# Odd Probability
+
+
+
+`r qbegin(1)`
+
+1. The probability of a coin landing on heads if 0.5, or 50%. What are the odds, and what are the log-odds?    
+2. Last year's Tour de France winner, Tadej Pogacar, was given odds of 11 to 4 by a popular gambling site (i.e., if we could run the race over and over again, for every 4 he won he would lose 11). Translate this into the implied probability of him winning.  
+
+:::hints
+__Hints:__  
+
+- $odds = \frac{p}{1-p}$  
+- See [10A#introducing-the-glm](10a_glm.html#introducing-the-glm){target="_blank"}
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+1. A 50% chance of landing on heads is equivalent to the odds of $\frac{0.5}{(1-0.5)} = \frac{0.5}{0.5} = \frac{1}{1}$ (odds of 1 to 1, i.e., "equal odds").   
+The log-odds can be calculated using `log(1)` in R, which returns `r log(1)`.  
+
+2. If Pogacar is predicted to win 4 for every 11 he loses, then this is means he is predicted to win 4 in every 15 races, so the implied probability of him winning is $\frac{4}{15} = `r round(4/15,3)`$.  
+
+`r solend()`
+
+# Drunkdoor
+
+:::frame
+> **Research Questions**
+> Is susceptibility to change blindness influenced by level of alcohol intoxication and perceptual load?  
+
+**Method**
+Researchers conducted a study in which they approached 120 people, recruited from within the vicinity of a number of establishments with licenses to sell alcohol to be consumed on-premises. Initially, experimenter A approached participants and asked if they were interested in participating in a short study, and obtained their written consent. While experimenter A subsequently talked each participant through a set of questions on multiple pieces of paper (with the pretense of explaining what the participant was required to do), experimenters B and C carrying a door passed between the participant and experimenter A, with experimenter C replacing A (as can be viewed in the video below). 
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/FWSxSQsspiQ" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+[Simons, D. J., & Levin, D. T. (1997). Change blindness. Trends in cognitive sciences, 1(7), 261-267.](https://www.cse.iitk.ac.in/users/se367/11/papers/simons-ambinder-05_change-blindness.pdf)
+
+The perceptual load of the experiment was manipulated via a) the presentation of the door and b) the papers held by the experimenters. For 60 of these participants, the door was painted with some detailed graffiti and had a variety of pieces of paper and notices attached to the side facing the participants. Additionally, for these participants, the experimenters handled a disorganised pile of 30 papers, with the top pages covered in drawings around the printed text. For the remaining 60, the door was a standard MDF construction painted a neutral grey, and the experimenters handled only 2 sheets of paper which had minimal printed text on them and nothing else. 
+
+**Measures**   
+After experimenters A and C had successfully swapped positions, the participant was asked (now by C) to complete small number of questions taking approximately 1 minute. Either after this set of questions, or if the participant made an indication that they had noticed the swap, the experimenters regrouped and the participant was explicitly asked whether they had noticed the swap.   
+Immediately after this, participants were breathalysed, and their blood alcohol content was recorded. In addition, participants' age was recorded, as previous research suggests that change-blindness increases with age. 
+
+**Data**  
+```{r echo=FALSE}
+set.seed(2834)
+N = 120
+Xmatrix = tibble(
+  int=1,
+  bac = runif(N, 0, 0.082),
+  age = round(rnorm(N,55,9)),
+  condition = rep(0:1,each=N/2)
+) 
+coefs = c(0, 60, -.3, -1.5)
+mu = as.matrix(Xmatrix) %*% coefs
+sigma = 2
+y = rnorm(N, mu, sigma)
+bind_cols(Xmatrix[,-1], 
+          tibble(notice = ifelse(y>mean(y),1,0))
+          ) -> df
+drunkdoor <- sample_n(df, n())
+drunkdoor$id <- paste0("ID",1:N)
+drunkdoor <- relocate(drunkdoor, id)
+drunkdoor$condition <- factor(ifelse(drunkdoor$condition == 1,"High","Low"))
+# write.csv(drunkdoor,"../../data/drunkdoor.csv", row.names=F)
+# 
+# drunkdoor$condition<-fct_relevel(factor(drunkdoor$condition),"Low")
+# changeblind_model <- glm(notice ~ I(age-mean(age)) + I(bac*100) + condition, data = drunkdoor, family = "binomial")
+# exp(confint(changeblind_model))
+
+
+
+
+
+```
+The data can be downloaded from [https://uoepsy.github.io/data/drunkdoor.csv](https://uoepsy.github.io/data/drunkdoor.csv).  
+A description of the variables included is presented below.  
+```{r echo=FALSE}
+tibble(
+variable = names(drunkdoor),
+description = c("Unique ID number","Blood Alcohol Content (BAC), A BAC of 0.0 is sober, while in the United States 0.08 is legally intoxicated, and above that is very impaired. BAC levels above 0.40 are potentially fatal.", "Age (in years)","Condition - Perceptual load created by distracting oject (door) and details and amount of papers handled in front of participant (Low vs High)", "Whether or not the participant noticed the swap (Yes = 1 vs No = 0)")
+) %>% gt::gt()
+```
+
+:::
+
+## Age effects
+
+`r qbegin(2)`
+To begin with, we're going to ignore the research question, and just look at the relationship between age and whether or not participants noticed the person-switch. 
+
+Make a scatterplot of this relationship, and add to the plot `geom_smooth(method="lm")`. This will plot the regression line for a simple model of `lm(notice ~ age)`.  
+
+:::hints
+
+__Hint:__ It won't look very nice!  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+drunkdoor <- read_csv("https://uoepsy.github.io/data/drunkdoor.csv")
+
+ggplot(drunkdoor, aes(x=age, y=notice))+
+  geom_point()+
+  geom_smooth(method="lm")
+```
+`r solend()`
+
+`r qbegin(3)`
+Just visually following the line from the plot produced in the previous question, what do you think the predicted model value would be for someone who is aged 30?  
+What does this value *mean*?  
+
+:::hints
+
+__Hint:__ There's not really an answer to this. 
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)` 
+
+This plot will make it easier to see that the model predicted value for someone aged 30 is approximately 1.15. 
+```{r echo=FALSE}
+ggplot(drunkdoor, aes(x=age, y=notice))+
+  geom_point()+
+  geom_smooth(method="lm",se=F,fullrange=T)+
+  geom_smooth(method="lm")+
+  xlim(30,80)+
+  scale_y_continuous(breaks=seq(-.2,1.3,0.1))
+```
+
+What does **1.15** really mean here? A 30 year old participant will notice 1.15 experimenter-swaps? They have a 115% probability of noticing the swap? That is maybe closer, but we can't have such a probability - probability is between 0 and 1.  
+
+`r solend()`
+
+`r qbegin(4)`
+Fit a logistic regression model investigating whether participants' age predicts the log-odds of noticing the person they are talking to being switched out mid-conversation. Look at the `summary()` output of your model.  
+
+:::hints
+__Hints:__   
+
+- To fit a logistic regression model, we need to use`glm()`, a slightly more general form of `lm()`. 
+- The syntax is pretty much the same, but we need to add in a `family` at the end, to tell it that we are doing a binomial^[In this case it happens to be the special case of a binomial where $n=1$, which sometimes gets referred to as 'binary logistic regression'] logistic regression.  
+- See [10A#fitting-glm-in-r](10a_glm.html#fitting-glm-in-r){target="_blank"}
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+model1 <- glm(notice ~ age, data = drunkdoor, family=binomial(link="logit"))
+summary(model1)
+```
+`r solend()`
+
+`r qbegin(5)`
+Based on your model output, complete the following sentence:  
+
+"Being 1 year older decreases _________ by 0.18."
+
+:::hints
+
+__Hint:__ on what scale (probability, odds, log-odds) are we modelling _linear_ associations?  
+
+:::
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+"Being 1 year older decreases **the log-odds of noticing a mid-conversation person switch** by 0.18."  
+`r solend()`
+
+`r qbegin(6)`
+To get this association into something that is (slightly) more easy to understand, exponentiate the coefficients from your model in order to translate them back from log-odds in to "odds ratios". 
+Provide an interpretation of what the resulting estimates mean.  
+
+:::hints
+__Hints:__   
+
+- The opposite of the natural logarithm `log()` is the exponential `exp()`.
+- See [10A#interpretation-of-coefficients](10a_glm.html#interpretation-of-coefficients){target="_blank"}
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+exp(coef(model1))
+```
+:::int 
+
+- The odds of noticing a mid-conversation person-switch for someone age 0 is 27639:1.  
+- For every year older someone is, the odds of noticing the switch are multiplied by 0.83. 
+
+:::
+`r solend()`
+
+`r qbegin(7)`
+Based on your answer to the previous question, calculate the odds of noticing the swap for a one year-old (for now, forget about the fact that this experiment wouldn't work on a 1 year old!)  
+And what about for a 40 year old?  
+
+Can you translate the odds back in to probabilities?  
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+exp(coef(model1))
+```
+
+> The odds of noticing a mid-conversation person-switch for someone age 0 is 27639:1.  
+For every year older someone is, the odds of noticing decrease by 0.83. 
+
+__For a one year old__  
+
+This means that for a one year old, the odds of noticing are $27640 \times 0.83$, or more precisely $`r format(round(exp(coef(model1)[1])))` \times `r exp(coef(model1)[2])`$:   
+```{r}
+exp(coef(model1)[1]) * exp(coef(model1)[2])
+```
+So the odds for a one-year old are `r format(round(exp(coef(model1)[1])* exp(coef(model1)[2])))`:1.  
+
+We can also get to this using addition on the log-odds scale:  
+```{r}
+coef(model1)[1] + coef(model1)[2]
+```
+and _then_ exponentiating it: 
+```{r}
+exp(10.0451)
+```
+
+__For a 40 year old__  
+
+The odds for a 40 year old are $27640 \times 0.83 \times 0.83 \times 0.83 \times 0.83 \times 0.83 \times ...$ or $27640 \times 0.83^{40}$.  
+```{r}
+exp(coef(model1)[1]) * exp(coef(model1)[2])^40
+```
+
+Or using log-odds:  
+```{r}
+( coef(model1)[1] + (coef(model1)[2]*40) ) %>% 
+  exp()
+```
+
+__Converting to probabilities__  
+
+And we can now turn these back into probabilities. 
+
+Predicted probability of noticing for a one year old = $\frac{23042.6}{1 + 23042.6} = 0.9999$
+Predicted probability of noticing for a 40 year old = $\frac{19.11}{1 + 19.11} = 0.95$  
+`r solend()` 
+
+`r qbegin(8)`
+It's possible to calculate predicted probabilities for a specific value of the predictor(s), but what would be nice is to see how the _probability_ of noticing the swap changes with age. 
+
+The code below creates a dataframe with the variable `age` in it, which has the values 1 to 100. Can you use this object and the `predict()` function, along with your model, to calculate the predicted probabilities of the outcome (noticing the swap) for each year of age from 1 to 100?   
+Can you then plot this?  
+
+```{r}
+ages100 <- tibble(age = 1:100)
+```
+
+:::hint
+__Hints:__  
+
+- `predict(model, newdata = ???)`  
+- try seeing what happens to the plot when you change between:
+    - `predict(model, newdata = ???, type = "link")`
+    - `predict(model, newdata = ???, type = "response")`  
+- [10A#visualising](10a_glm.html#visualising){target="_blank"}
+
+
+:::
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+This will spit out the predicted probabilities for each observation
+```{r eval=FALSE}
+predict(model1, newdata = ages100, type = "response")
+```
+
+Let's add them to the `ages100` tibble
+```{r}
+ages100 <- 
+  ages100 %>%
+  mutate(
+    predprobs = predict(model1, newdata = ages100, type = "response"),
+    predlogodds = predict(model1, newdata = ages100, type = "link")
+  )
+```
+
+and plot them against age!
+We can also add those two people (the 1 year old and the 40 year old) that we were predicting in the earlier question
+```{r}
+ggplot(data = ages100, aes(x = age, y = predprobs)) +
+  geom_line()+
+  labs(y="predicted probability of noticing the swap")+
+  geom_vline(xintercept=c(1,40), lty="dotted")
+```
+
+Note that the `predict(model, type="link")` gives us the estimated log-odds. If we plot those: 
+```{r}
+ggplot(data = ages100, aes(x = age, y = predlogodds)) +
+  geom_line()+
+  labs(y="predicted log-odds of noticing the swap")
+```
+
+
+`r solend()`
+
+
+## Tackling the research question
+
+`r qbegin(9)`
+Recall our research question, which we will now turn to:  
+
+> **Research Questions**
+> Is susceptibility to change blindness influenced by level of alcohol intoxication and perceptual load?  
+
+Try and make a mental list of the different relationships between variables that this question invokes, can you identify one variable as the 'outcome' or 'response' variable? (it often helps to think about the implicit direction of the relationship in the question)  
+
+In addition, are there known things that it might be useful to account for, so that you capture associations that are independent from differences due to these things (hint hint, what have you just been looking at?).   
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+The question seems to ask about two relationships:  
+
++ susceptibility to change blindness &#8592; alcohol intoxication  
++ susceptibility to change blindness &#8592; perceptual load  
+
+and we know (from previous research, as well as our previous exercises) that change-blindness is associated with age.  
+
+The arrows above are used to show the *implied* direction of the influence, and in the `lm()/glm()` syntax, you could imagine each of these mapping to a formula syntax we have seen a few times (e.g., `t.test(outcome ~ group)` and `lm(outcome ~ predictor)`). We can see that the 'susceptibility to change blindness' is our outcome variable:  
+
++ `change blindness ~ alcohol`  
++ `change blindness ~ perceptual load`  
++ and we also have reason to think `change blindness ~ age`  
+
+As a general rule of thumb, it is often worth asking yourself "why run multiple models when one will do?". Think about what we have learned about moving from simple to multiple regression - some of the explanatory power of `x` in the relationship `y~x` might be shared by the relationship `y~z`.  
+This will depend on precisely what quantity you want to estimate, i.e., "the overall effect of $x$ on $y$ *ignoring $z$*" or "the effect of $x$ on $y$ *after accounting for differences due to $y$*". The former statement might indicate a simple bivariate relationship, and the latter requires more advanced techniques (e.g., multiple regression).  
+
+`r solend()`
+
+`r qbegin(10)`
+Think about our outcome variable and how it is measured. What type of data is it? Numeric? Categorical?  
+
+What type of distribution does it follow? For instance, do values vary around a central point, or fall into one of various categories, or follow the count of successes in a number of trials? 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+Our outcome variable here is `drunkdoor$notice`, and is stored as a set of 0s and 1s. These are the only two values that an observation can take, and they represent the number of successes in n = 1 trial.  
+
+So, from this we learn that our method of analysis should be suited to model this binary outcome. So things like `lm()` and `t.test()` are not very suitable.  
+`r solend()`
+
+`r qbegin(11)`
+Think about our explanatory variable(s). Is there more than one? What type of variables are they? Do we want to model these together? Might they be correlated?  
+`r qend()`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
+We know that `drunkdoor$bac` is simply the observed blood alcohol level (BAC). This is technically measured as a proportion, but for the current purposes we can just treat it as any other numeric scale. However, we might consider scaling the variable so that instead of the coefficient representing the change when moving from 0% to 1% BAC (1% blood alcohol is fatal!), we might want to have the change associated with 0% to 0.01% BAC (i.e, a we want to talk about effects in terms of changing 1/100th of a percentage of BAC). 
+
+The `drunkdoor$condition` variable is an experimental manipulation. That is, the researchers had control over what observations fell into which group. We wouldn't therefore expect any correlation between this and the `bac` variable (unless researchers did not allocate participants to conditions randomly).  
+
+As we've talked about already, we have the idea based on previous research that change-blindness appears to vary depending upon age. From the earlier exercises here we have some evidence to corroborate this. We may therefore want to include this in our model. If we don't, any results might simply be due to, e.g. older people tending to be more highly intoxicated (and so we see an effects of alcohol that might actually be simply the effect of age). 
+
+We might also think about any other possible variables which might influence our results, even if we didn't measure them. This sort of thinking becomes important in the discussion section. 
+
+:::lo
+**John Stuart Mill - Three Criteria for Causality**  
+To varying extents, all of these criteria can be incredibly difficult to satisfy. Criteria 3 especially is one of the things that makes scientific investigation so interesting. 
+
+1) The cause precedes the effect
+2) The cause is demonstrably related to the effect
+3) There are no plausible alternative explanations  
+  
+*Mill, J. S. (1869). A System of Logic, Ratiocinative and Inductive: Being a Connected View of the Principles of Evidence and the Methods of Scientific Investigation. Harper and brothers.*  
+:::
+
+`r solend()`
+
+`r qbegin(12)`
+
+1. Write a sentence describing the model you will fit. It might help to also describe each variable as you introduce it.  
+2. Fit the model.  
+
+
+:::hints
+__Hints:__ 
+
+Think of this as writing out the R code but _in words._  
+For instance:
+`glm(outcome ~ predictor1 + predictor2 + ` 
+    `Predictor1:Predictor2, family = binomial)` might be described as "Outcome (binary, "Level 1" vs "Level 2") was modelled using logistic regression, predicted by Predictor1, Predictor2 and their interaction"   
+  
+- Do you want BAC on the current scale, or could you transform it somehow? 
+- Is condition a factor? What is your reference level? Have you checked `contrasts(drunkdoor$condition)`? (Remember that this will only work if you make it a factor first)
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+:::int 
+Whether or not participants noticed the swap mid-conversation (binary 0 vs 1) is modelled using logistic regression, with blood alcohol content (measured in 100th of percentages blood content) and perceptual load condition (low load vs high load, with low as the reference level) and age (in years, mean centered).  
+:::
+
+In the sentence above, I stated that I want blood alcohol in terms of 100ths of percentages, rather than percentages. And I want age centered on the mean (this won't change anything other than the intercept).  
+```{r}
+drunkdoor <- drunkdoor %>% 
+  mutate(
+    bac100 = bac*100,
+    ageC = age - mean(age)
+  )
+```
+
+I also stated that the low-load will be the reference level.  
+Currently it will be the other way around, because "high" comes before "low" in the alphabet. I can change it:  
+```{r}
+# make it a factor and give it the levels in the right order
+# note this requires getting the levels named exactly as they appear in the variable. 
+# if we use lowercase "low", then every "Low" in the variable will turn to NA
+drunkdoor$condition <- factor(drunkdoor$condition, levels = c("Low","High"))
+# check the contrasts
+contrasts(drunkdoor$condition)
+```
+
+Finally, let's fit our model! 
+```{r}
+changeblind_model <- glm(notice ~ ageC + bac100 + condition, data = drunkdoor, family = "binomial")
+summary(changeblind_model)
+```
+
+`r solend()`
+
+`r qbegin(13)`
+Compute 95% confidence intervals for the log-odds coefficients using `confint()`. Wrap the whole thing in `exp()` in order to convert all these back into odds and odds-ratios.   
+
+Try the **sjPlot** package and using `tab_model(model)` and `plot_model(model, type = "est")` on your model. What do you get? 
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+confint(changeblind_model)
+exp(confint(changeblind_model))
+```
+
+We can get out the same but in a nice little html table: 
+```{r}
+library(sjPlot)
+tab_model(changeblind_model)
+```
+
+And the `plot_model` with `type = "est"` gives a nice little way of visualising these odds ratios and confidence intervals.  
+```{r}
+plot_model(changeblind_model, type = "est") +
+  geom_hline(yintercept=1)
+```
+
+`r solend()`
+
+`r qbegin(14)`
+Write up the results of the study. 
+
+:::hints
+__Hints:__  
+
+- Often when reporting odds ratios, it's easiest to interpret them as simply "increased odds of <outcome> (OR = <??> [95% CI: <lower> -- <upper>])". This saves a bit of hassle too! &#128516  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+`r solend()`
+
+
+
+# Dog people/Cat people
+
+:::frame
+__USMR 2022 Data__  
+
+The data from the USMR 2022 survey (now closed) can be found at [https://uoepsy.github.io/data/usmr2022.csv](https://uoepsy.github.io/data/usmr2022.csv).  
+
+_note, this is the survey data just from USMR **this** year, not other students on other courses or in previous years_
+
+:::
+
+
+`r qbegin(15)`
+People often talk about personality differences between "cat people" and "dog people" (e.g. if you're more introverted then you're more likely to be a cat person).  
+In our survey, we forced you to choose between "cat" and "dog", and we also measured a bunch of personality traits from a set of 50 questions (these were aggregated up into scores for 'extraversion', 'conscientiousness', and so on).  
+
+Fit a model that tries to predict whether someone is a cat- or dog- person, based on aspects of their personality.  
+
+:::hints
+__Hints:__  
+
+- your outcome variable is currently not 0 and 1, but "cat" and "dog". Remember how R prefers to think of categories - as `factors`.  
+
+
+:::
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+usmr <- read_csv("https://uoepsy.github.io/data/usmr2022.csv")
+```
+
+make the outcome a factor
+```{r}
+usmr$catdog <- factor(usmr$catdog)
+```
+we can see from the ordering of the levels that it will treat "cat" as 0 and "dog" as 1, so our model with `glm(catdog ~ ...)` will be predicted the logodds of being a dog person: 
+```{r}
+levels(usmr$catdog)
+```
+
+And we are interested in predicted dog-person-ness vs cat-person-ness by different personality traits:  
+```{r}
+catdogmod <- glm(catdog ~ extraversion + agreeableness + 
+                   conscientiousness + emot_stability + 
+                   imagination, 
+                 data=usmr, family=binomial)
+
+summary(catdogmod)
+```
+
+`r solend()`
+
+:::statbox
+__Using GLM to classify__  
+
+A table of predicted outcome vs observed outcome sometimes gets referred to as a *confusion matrix*, and we can think of the different cells in general terms (@fig-confmat).  
+Another way to think about how our model is fitted is that it aims to maximise (TP + TN)/n, or, put another way, to minimise (FP+FN)/n. Which is equivalent to the good old idea of minimising sums of squares (where we minimise the extend to which the predicted values differ from the observed values).  
+```{r}
+#| label: fig-confmat
+#| echo: false
+#| fig-cap: "Confusion Matrix"
+knitr::include_graphics("images/glm/cmat.png")
+```
+
+:::
+
+`r qbegin(16)`
+
+1. Add new column to the survey dataset which contains the predicted probability of being a cat/dog person for each observation.  
+2. Then, using `ifelse()`, add another column which is these predicted probabilities translated into the predicted binary outcome (0 or 1) based on whether the probability is greater than >.5.  
+3. Create a two-way contingency table of the predicted outcome and the observed outcome.  
+4. What proportion of observations are correctly predicted?  
+
+:::hints
+**Hint:**  
+
+- you don't need the `newdata` argument for `predict()` if you want to use the original data the model was fitted on.  
+- if there are NAs in any of the variables in your model (predictors or outcome), then the number of rows in your data will be greater than the number of model predictions.  
+  - if you want a handy function which might help with this, check out what the __broom__ package has to offer. What does `augment(model, type.predict = "response")` do?  
+  
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+if we just try to add the predictions to the data, we get an error:
+```{r}
+#| error: true
+usmr %>%
+  mutate(
+    predprobs = predict(catdogmod)
+  )
+```
+
+We _could_ try making our dataset _"complete cases"_ (remove all rows with any missingness), and then refit our model, and then the data and the model would all be the same number of observations.  
+
+However, the __broom__ package has a really useful function which will bring us back the data that was fed into the model (i.e. excluding the NAs), and lots of information about the model fit itself such as predictions (`.fitted` column), residuals, and leverage etc.  
+
+```{r}
+library(broom)
+augment(catdogmod, type.predict = "response")
+```
+
+So we can use this to get out the observed and the predicted!  
+```{r}
+augment(catdogmod, type.predict = "response") %>%
+  mutate(
+    prediction = ifelse(.fitted >.5, "pred_dog", "pred_cat")
+  ) %>%
+  select(catdog, prediction) %>%
+  table() %>% prop.table
+```
+
+So 19 cat people are predicted as cat people, and 32 dog people are predicted as dog people. 
+But 17 cat people are predicted as dog-people, and 11 dog people are predicted to be cat people. 
+
+$$
+\frac{19+32}{19+32+17+11} = \frac{51}{79} = 0.65
+$$
+
+65% of observations are correctly predicted by our model. 
+`r solend()`
+
+# Optional Extra: Red and White
+
+`r qbegin(16)`
+People are a lot more difficult to predict than something like, say, the colour of different wines. 
+
+You can download a dataset of 6497 different wines (1599 red, 4898 white) from [https://uoepsy.github.io/data/usmr_wines.csv](https://uoepsy.github.io/data/usmr_wines.csv).  
+
+It contains information on various physiochemical properties such as pH, a measure of level of sulphates, residual sugar, citric acid, volatile acidity and alcohol content, and also quality ratings from a sommelier (wine expert).  All the wines are vinho verde from Portugal, and the data was collected between 2004 and 2007.  
+
+Build a model that predicts the colour of wine based on all available information.  
+How accurately can it predict wine colours?  
+
+:::hints
+__Hints:__  
+
+- `glm(outcome ~ ., data = mydata)` is a shorthand way of putting _all_ variables in the data in as predictors. 
+- Generally speaking, this question doesn't reflect how we do research in psychology. Ideally, we would have a theoretical question that motivates the inclusion (and testing of) specific predictors. 
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+wines <- read_csv("https://uoepsy.github.io/data/usmr_wines.csv")
+
+wines$col <- factor(wines$col)
+
+winemod <- glm(col ~ ., data = wines, family = binomial)
+
+broom::augment(winemod, type.predict="response") %>%
+  mutate(
+    pred = ifelse(.fitted>.5,"white","red")
+  ) %>%
+  select(col,pred) %>% 
+  table() %>% 
+  prop.table()
+
+broom::augment(winemod, type.predict="response") %>%
+  mutate(
+    pred = ifelse(.fitted>.5,"white","red"),
+    correct = ifelse(pred==col, 1, 0)
+  ) %>%
+  select(correct) %>%
+  table() %>%
+  prop.table()
+```
+
+93.6% accurate!  
+
+
+`r solend()`
