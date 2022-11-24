@@ -50,7 +50,7 @@ get_my_data <- function(exam_num = NULL){
     # add in a different monkey
     pairdf <- bind_rows(pairdf, 
                         sample_n(pairdf, 1) %>%
-                          mutate(species = "baboon",pid = "John Nerdelbaum Frink Jr")
+                          dplyr::mutate(species = "baboon",pid = "John Nerdelbaum Frink Jr")
     )
     # missings n things
     pairdf$rearing[sample(which(pairdf$rearing=="captv"),2)] <- "catpv"
@@ -58,10 +58,10 @@ get_my_data <- function(exam_num = NULL){
     pairdf$age[mm] <- paste0(pairdf$age[mm]*12," months")
     pairdf$age[sample(1:nrow(pairdf),2)] <- NA
     
-    slowd <- pairdf %>% filter(species == "macaque") %>%
-      arrange(desc(dominance)) %>%
-      slice_head(n=1) %>%
-      pull(pid)
+    slowd <- pairdf %>% dplyr::filter(species == "macaque") %>%
+      dplyr::arrange(desc(dominance)) %>%
+      dplyr::slice_head(n=1) %>%
+      dplyr::pull(pid)
     pairdf$task_time[pairdf$pid==slowd] <- max(pairdf$task_time)*2
     
     tt = sample(1:nrow(pairdf),rdunif(1,15,45))
@@ -69,7 +69,7 @@ get_my_data <- function(exam_num = NULL){
     pairdf$share[sample(1:nrow(pairdf),1)] <- (-99)
     
     
-    taskdata <<- pairdf %>% select(pid, food_type, task_time, share)
-    monkeydata <<- pairdf %>% select(pid, species, rearing, age, dominance, openness, neuroticism, friendliness) %>% sample_n(n())
+    taskdata <<- pairdf %>% dplyr::select(pid, food_type, task_time, share)
+    monkeydata <<- pairdf %>% dplyr::select(pid, species, rearing, age, dominance, openness, neuroticism, friendliness) %>% dplyr::sample_n(n())
   }
 }
