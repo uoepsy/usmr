@@ -1,0 +1,441 @@
+---
+title: ""
+link-citations: yes
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(xaringanExtra)
+library(tidyverse)
+library(patchwork)
+xaringanExtra::use_panelset()
+set.seed(nchar("everybody loves USMR"))
+
+```
+
+
+- make RQs more clear
+- happiness ~ covs + week_stopped * health 
+- dropout ~ season + acc + selfmot
+```{r}
+#| include: false
+set.seed(57492)
+# parameters are going to vary based on seed
+# N 
+usmrN = round(runif(1, 120,140))
+
+usmrdata <- tibble(
+  age = rdunif(usmrN, 18, 60),
+  selfmot = rnorm(usmrN, 0, 1), # scale these later
+  accountability = rnorm(usmrN,0,1), # scale these later
+  city = rbinom(usmrN,1,prob = plogis(-.03*age + rnorm(usmrN))),
+  health = scale(-.07*age + rnorm(usmrN, 0, 1))[,1], # scale later
+  season = sample(c("autumn","spring","summer","winter"), usmrN, replace=TRUE, prob = c(.1,.5,.3,.1)),
+)
+
+# make the dropout variable first:
+usmrdata %>% 
+  mutate(season = season=="spring") %>% 
+  select(age, accountability, selfmot, season, health) %>% 
+  mutate_all(scale) %>%
+  as.matrix -> xmat
+head(xmat)
+lp = xmat %*% c(-1,0,-1,2,-1)
+usmrdata$dropout = rbinom(usmrN, size = 1, prob = plogis(lp))
+usmrdata$dropout
+
+# we want to also have week_stopped.
+# would have probs been easier to generate week_stopped and then make dropout from that, but heyho, lets do it backwards
+week_stopped = as.numeric(cut(plogis(lp),3))
+week_stopped[usmrdata$dropout == 0] <- 9
+week_stopped[week_stopped == 1] <- 8
+week_stopped[week_stopped == 2] <- rdunif(length(week_stopped[week_stopped == 2]),5,7)
+week_stopped[week_stopped == 3] <- rdunif(length(week_stopped[week_stopped == 3]),1,4)
+usmrdata$week_stopped = week_stopped
+
+
+# let's make the happiness one
+usmrdata %>% 
+  mutate(summer = season=="summer", 
+         spring = season=="spring"
+  ) %>%
+  select(age, selfmot, health, week_stopped, spring, summer, city) %>%
+  mutate_all(scale) %>%
+  mutate(hws = health*week_stopped) %>% select(-health,-week_stopped) %>%
+  as.matrix -> xmat
+head(xmat)
+
+lp = xmat %*% c(.1,.8,.7,.7,-.3,1)
+
+
+usmrdata$happiness = lp + rnorm(usmrN,0,2)
+summary(lm(happiness ~.+health*week_stopped, usmrdata))
+summary(glm(dropout ~., usmrdata %>% select(-week_stopped), family=binomial))
+
+usmrdata$age[usmrdata$city=="Edinburgh"]<-usmrdata$age[usmrdata$city=="Edinburgh"]+rnorm(1,1.7,.2)
+
+usmrdata %>% transmute(
+  pptID = paste0("ID",1:n()),
+  age = age,
+  accountability = pmin(35,pmax(5,round((accountability * 5)+20))), # 5 times likert questions (scored 1-7)
+  selfmot = pmin(35,pmax(5,round((selfmot*3)+15))), # 5 times likert questions (scored 1-7)
+  health = pmin(100,pmax(0,round((health * 10)+57))), # slider scale 0 to 100
+  happiness = pmin(100,pmax(0,round((happiness * 16)+47))), # slider scale 0 to 100
+  season = season, 
+  city = ifelse(city==1,"Glasgow","Edinburgh"), 
+  week_stopped = week_stopped
+) -> usmrdata
+
+summary(lm(happiness ~.+health*week_stopped, usmrdata[,-1]))
+summary(glm(I(week_stopped != 9) ~., usmrdata[,-1], family=binomial))
+
+
+# odd values
+usmrdata$age[sample(usmrN,2)] <- rdunif(2, 100, 160)
+usmrdata$week_stopped[sample(usmrN,1)] <- sample(12:14,1)
+usmrdata$season[sample(which(usmrdata$season=="autumn"),ceiling(sum(usmrdata$season=="autumn")/3))]<-"autunm"
+usmrdata$selfmot[sample(usmrN,2)] <- -99
+couchto5k <- usmrdata
+rm(lp, xmat, usmrN, week_stopped, usmrdata)
+
+lm(happiness~age+city+selfmot+accountability+season,data=couchto5k) %>% anova()
+
+#glm(week_stopped==9 ~ season + accountability + selfmot, couchto5k[,-1], family=binomial) %>% summary
+```
+
+# Couch to 5k
+
+
+:::frame
+
+__Background: Couch to 5k__  
+
+[Couch to 5k](https://www.nhs.uk/live-well/exercise/get-running-with-couch-to-5k/) is an NHS-sponsored fitness programme which lasts 9 weeks, taking participants from a gentle start up to a half-hour run.  
+
+The NHS wants to research some of the potential impact this programme has on wellbeing. They have conducted a small study of `r nrow(couchto5k)` people in 2 cities (Edinburgh and Glasgow), all of whom started the Couch to 5k programme, across the course of a year.  
+
+The researchers' interests are two-fold: They are interested in the effects of taking the programme on psychological wellbeing, and also in the psychological factors that make people continue on the programme. 
+
+__Methods__  
+
+At Week 0, all participants completed a questionnaire measuring the psychometric factors of accountability and self-motivation.  
+Upon either completing the programme (Week 9) or dropping out (< Week 9), participants completed a questionnaire which included a measure of their self-reported happiness, and a "health" measure derived from a number of physiological tests. Researchers also recorded the season in which participants started the programme, as evidence from previous research suggests that the probability of completing the couch to 5k programme varies substantially across the year. 
+
+Details of the data collected can be found in the table below.
+  
+_Please note that Couch to 5k is a real programme, but the data you will be analysing comes from our febrile minds._  
+  
+---
+
+__Data Dictionary:__
+
+Column    | Content
+----------|-------------
+`pptID`   | random ID code for participant
+`age`     | age in years
+`accountability` | psychometric measure of accountability (or 'responsibility') (Sum of 5 questions, each scored 1-7). 
+`selfmot` | psychometric measure of self-motivation (Sum of 5 questions, each scored 1-7)
+`health`  | multi-test health measure (0-100)
+`happiness` | simple happiness scale (0-100)
+`season`  | season of the year participants were interviewed in
+`city`    | city participant was recruited in
+`week_stopped` | week of programme participant stopped in (week 9 = completed the programme)
+
+
+:::
+
+
+`r qbegin("Clean and describe", qlabel=FALSE)`
+Have a look at the data. Check for impossible values and deal with these in an appropriate manner. Describe the data, either in words or using suitable graphs (or a combination). Remember to detail the decisions you have made.  
+
+
+:::hints
+__Hints:__  
+
+- to clean data, go through each variable in turn. If numeric, what is the min and max? If categorical, what are the possible levels?  
+- to describe data, you might want to use tables and plots, or you might find describing in text can work too.  
+- There's no right way to deal with missing values. 
+  - one option is to cross-tabulate the _reasons for_ missingness, and then remove them from the dataset at this point. This means all your analyses are conducted on the same set of "complete cases". This can be the neat and tidy option, but if some variables have lots of missingness, you might end up needlessly limiting some of your analyses in terms of statistical power. 
+  - another option is to leave all missing values in the dataset and let them be dealt with by each of your model(s) and test(s). The downside of this is that different tests end up being performed on different subsets of data, making it harder to describe (it also means you need to be very careful with model comparisons)
+- There's no right way to deal with outliers.  
+  - Some fields of research will identify at the outset any observations that are outlying by looking at each variable individually. These they will then remove, or scale back ([6WalkThrough#outliers](06_wt.html#outliers){target="_blank"}) prior to any analysis. This should really only be done if you are sure that these observations are outlying because of either a) measurement error or b) not belonging to the target population of interest. If the outlyingness could well simply be natural variation in the variable, keep it in. You can always then examine its influence on subsequent analyses!  
+
+:::
+
+`r qend()`
+
+`r solbegin("Explore", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Going through each variable:  
+
+- `age` is an integer variable, shouldn't have negative values **by definition of variable**. There are a couple of values $\geq 100$, which we should probably either exclude, or at the very least mention in our writing. 
+```{r}
+#| fig-height: 3
+summary(couchto5k$age)
+hist(couchto5k$age)
+```
+
+
+- `accountability` and `selfmot` are both integer variables should both be $5 \leq x \leq 35$ - **by definition**
+
+We can see that `accountability` looks to be okay, but `selfmot` has a minimum value of -99, which we can't have.  
+
+```{r}
+couchto5k %>% 
+  select(accountability, selfmot) %>%
+  summary()
+```
+
+
+- `health` and `happiness` are both integer and should be $0 \leq x \leq 100$ - **by definition of variable**
+
+both `health` and `happiness` variables are within the possible ranges  
+```{r}
+couchto5k %>% 
+  select(health, happiness) %>%
+  summary()
+```
+
+
+- `season` should be one of "spring", "summer", "autumn", "winter" 
+
+We have some mis-spellings of "autumn" as "autunm" which we should fix  
+(i'm adding in the `useNA="always"` bit just so i can also see if there are any that are already missing)
+```{r}
+table(couchto5k$season, useNA = "always")
+```
+
+- `city` should be one of "Edinburgh", "Glasgow"
+
+This looks fine:  
+```{r}
+table(couchto5k$city, useNA = "always")
+```
+
+- `week_stopped` is an integer variable and should be $1 \leq x \leq 9$ - **by definition of variable**
+
+We have an entry of 12, which we can't have. Could this be interpreted as someone doing the programme for an extra 3 weeks beyond the 9? In which case could we turn that 12 into a 9? It's just a possible that it's a typo, and it's supposed to be a 1. This ambiguity is probably going to be best dealt with by considering that datapoint to be missing.  
+```{r}
+table(couchto5k$week_stopped, useNA = "always")
+```
+
+`r solend()`
+`r solbegin("Clean", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+We'll do all of our cleaning inside one `mutate()`. 
+
+```{r}
+couchto5k <- 
+  couchto5k %>% 
+  mutate(
+    # ages >100, make NA
+    age = ifelse(age>100, NA, age),
+    # selfmot scores <5, make NA
+    selfmot = ifelse(selfmot < 5, NA, selfmot),
+    # change autunm to autumn
+    season = ifelse(season == "autunm","autumn",season),
+    # and then make it a factor (lets set the levels too)
+    season = factor(season, levels = c("spring","summer","autumn","winter")),
+    # make city a factor
+    city = factor(city),
+    # weekstopped if >9, then NA
+    week_stopped = ifelse(week_stopped > 9, NA, week_stopped)
+  )
+```
+
+```{r}
+summary(couchto5k)
+```
+
+Because we know that the resulting missingness is restricted to a relatively small proportion of the dataset, we'll just stick with the complete cases. 
+
+```{r}
+couchto5k <- na.omit(couchto5k)
+```
+
+
+`r solend()`
+`r solbegin("Describe", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+
+:::int
+
+`r nrow(couchto5k)+5` participants were recruited to take part in the study. 
+2 participants recorded ages exceeding 100, 2 participants recorded an impossible score on the self-motivation scale, and a further one participant recorded having stopped the programme 3 weeks after the defined maximum. These 5 participants were excluded from all analyses.  
+
+The remaining `r nrow(couchto5k)` participants were all over 18 (Mean age `r round(mean(couchto5k$age))`, SD `r round(sd(couchto5k$age),1)`) and were recruited from Edinburgh (`r round(prop.table(table(couchto5k$city))[1]*100)`%) and Glasgow (`r round(prop.table(table(couchto5k$city))[2]*100)`%). 
+The median number of weeks spent in the 'couch-to-5k' programme was `r median(couchto5k$week_stopped)`, with `r round(sum(couchto5k$week_stopped==9)/nrow(couchto5k)*100)`% successfully completing the 9 weeks. Spring and summer were the most common seasons for attempting the programme (`r round(prop.table(table(couchto5k$season))*100)[1]`% and `r round(prop.table(table(couchto5k$season))*100)[2]`% of participants respectively), with `r round(prop.table(table(couchto5k$season))*100)[3]`% undertaking it in autumn and only `r round(prop.table(table(couchto5k$season))*100)[4]`% in winter. 
+
+:::
+
+`r solend()`
+
+`r qbegin("City differences", qlabel = FALSE)`
+
+The researchers conducting the study want to first find out a little more about differences between the Edinburgh and Glasgow study sites. Specifically, they would like to investigate whether dropping out of the programme early (prior to week 5), late (after week 5) or not at all (completed all 9 weeks), is different between Edinburgh and Glasgow participants. They would also like to know if the average age of participants is different between the cities.  
+
+:::hints
+__Hints:__ 
+
+- The first 5 weeks of the course focused on some of the more fundamental tests of relationships between two variables. Some of these might be useful here!  
+
+:::
+
+`r qend()`
+
+`r solbegin("Conducting the tests", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+There are two questions here, `dropout ~ city` and `age ~ city`. These are nice and simple questions about the relationships between only two variables.  
+
+The `dropout ~ city` question is asking us to categorise when participants stop the programme into "early", "late", or "not at all". So the question is `categorical ~ categorical`. Sounds like a $\chi^2$ test to me!  
+
+```{r}
+couchto5k <- 
+  couchto5k %>%
+    mutate(
+      dropout = ifelse(week_stopped < 5, "early",
+                      ifelse(week_stopped <9, "late", "not at all"))
+    )
+```
+
+let's check that the above `ifelse` statement worked as we wanted:  
+```{r}
+table(couchto5k$dropout, couchto5k$week_stopped)
+```
+
+and let's look at the differences between the cities, and also perform a $\chi^2$ test. 
+We're going to simulate the p-value here, because some of our expected cell counts are going to be $<5$ (see e.g. [Week 4 Exercises #eye-colours](04_ex.html#eye-colours){target="_blank"})  
+
+```{r}
+#| eval: false
+table(couchto5k$dropout, couchto5k$city)
+chisq.test(table(couchto5k$dropout, couchto5k$city), simulate.p.value = TRUE)
+```
+```{r}
+#| echo: false
+res_dropout <- chisq.test(table(couchto5k$dropout, couchto5k$city), simulate.p.value = TRUE)
+res_dropout
+```
+
+<br><br>
+
+The `age ~ city` question, on the other hand, is asking whether a continuous variable is different between two groups (Edinburgh and Glasgow). We can do this with a $t$-test!   
+
+Let's first assess the extent to which the ages of two groups of participants (Edinburgh folk and Glasgow folk) have similar variances (an assumption of the standard t-test), as well as the extent to which they are normally distributed: 
+
+```{r echo=c(-1,-14)}
+#| fig-height: 4
+par(mfrow=c(2,2))
+
+hist(couchto5k$age[couchto5k$city=="Edinburgh"], 
+     main = "Edinburgh", xlab = "Age")
+hist(couchto5k$age[couchto5k$city=="Glasgow"], 
+     main = "Glasgow", xlab = "Age")
+
+qqnorm(couchto5k$age[couchto5k$city=="Edinburgh"], main = "Edinburgh")
+qqline(couchto5k$age[couchto5k$city=="Edinburgh"])
+
+qqnorm(couchto5k$age[couchto5k$city=="Glasgow"], main = "Glasgow")
+qqline(couchto5k$age[couchto5k$city=="Glasgow"])
+
+par(mfrow=c(1,1))
+```
+
+These look almost okay to me. Not great, but not completely awful. We should bear in mind that we have >30 participants in each group, which means we can be a little more relaxed about requiring very close to normal data.  
+
+The test of equal variances suggests we have no reason to reject the hypothesis that the two groups have equal variances: 
+```{r}
+var.test(age ~ city, data = couchto5k)
+```
+
+So we can carry on with our t-test of the difference in means^[If we had reason to believe the variances are not equal, we can look at doing Welch's t-test]:  
+```{r}
+t.test(age ~ city, data = couchto5k, var.equal = TRUE)
+```
+
+
+`r solend()`
+`r solbegin("Writing up", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+#| include: false
+res_age <- t.test(age ~ city, data = couchto5k, var.equal = TRUE)
+```
+
+:::int
+
+A $\chi^2$ test of independence indicated that rate of attrition (early-/late-/no- dropout) did not significantly differ between Edinburgh and Glasgow ($\chi^2$(N=`r sum(res_dropout$observed)`) = `r round(res_dropout$statistic,3)`, Monte Carlo simulated (B=2000) p = `r round(res_dropout$p.value,3)`). From both cities, 50% of participants did not drop out of the programme, late drop-outs made up 12.5% of Glasgow participants and 10% of those from Edinburgh, with the remainder dropping out early (37.5% of Glasgow, 40% of Edinburgh).  
+
+The mean age of participants was not significantly different between the two cities ($t( `r res_age[['parameter']]` )=`r round(res_age[['statistic']],2)`, \, p=`r round(res_age[['p.value']],2)`$), with a mean age in Edinburgh of `r round(res_age$estimate,1)[1]` and in Glasgow of `r round(res_age$estimate,1)[2]`.
+
+
+:::
+
+
+
+`r solend()`
+
+`r qbegin("Happiness and Health", qlabel=FALSE)`
+Researchers would like to examine whether, beyond seasonal and age-related variation, happiness ratings are influenced by how far participants get through the couchto5k programme. 
+They would also like to investigate whether the effects of couchto5k progression are amplified by feeling healthy, such that the happiness of participants who got further along the programme might be more affected by the health metric than that of those who stopped earlier.  
+
+:::hints
+__Hints:__  
+
+- the use of the word "beyond" here should cue us to be thinking in terms of multiple regression. It's like saying "we have thought about x1, 
+- This feels a bit like two questions, but we might not need to fit two models.  
+  - for instance by fitting `mod <- lm(y ~ x1 + x2 + x3:x4)`, use of `anova(mod)` and `coef(mod)` can give us different things.  
+
+
+
+
+:::
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+TODO
+
+```{r}
+mod <- lm(happiness ~ age + season + week_stopped * health, couchto5k)
+anova(mod)
+```
+- week_stopped does not explain variance after accounting for age and season
+
+- but, interaction is significant. 
+
+```{r}
+interactions::interact_plot(mod, pred="week_stopped",modx = "health", 
+                            interval=TRUE)
+```
+
+
+`r solend()`
+
+`r qbegin("Predictors of Drop-out", qlabel=FALSE)`
+Researchers are interested the psychological factors that make people continue on the programme. 
+
++ **3a.** Build a model that predicts the likelihood of dropping out (at all).
++ **3b.** Briefly describe the effects in your model as you would in an academic paper.
++ **3c.** Draw a graph representing the probability of quitting as a function of how self motivated participants were. 
+
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+
+
+`r solend()`
+
+
+
+
