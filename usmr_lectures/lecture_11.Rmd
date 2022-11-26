@@ -1,0 +1,654 @@
+---
+title: "<b>Week 11: Some Kind of End to the Course</b>"
+subtitle: "Univariate Statistics and Methodology using R"
+author: ""
+institute: "Department of Psychology<br/>The University of Edinburgh"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    css: 
+      - xaringan-themer.css
+      - mc_libs/tweaks.css
+    nature:
+      beforeInit: "mc_libs/macros.js"
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+options(digits=4,scipen=2)
+options(knitr.table.format="html")
+xaringanExtra::use_xaringan_extra(c("tile_view","animate_css","tachyons"))
+xaringanExtra::use_extra_styles(
+  mute_unhighlighted_code = FALSE
+)
+library(knitr)
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+source('R/pres_theme.R')
+knitr::opts_chunk$set(
+  dev = "svg",
+  warning = FALSE,
+  message = FALSE,
+  cache = FALSE
+)
+source('R/myfuncs.R')
+
+library(xaringanthemer)
+style_mono_accent(
+  #base_color = "#0F4C81", # DAPR1
+  # base_color = "#BF1932", # DAPR2
+  # base_color = "#88B04B", # DAPR3 
+  base_color = "#FCBB06", # USMR
+  # base_color = "#a41ae4", # MSMR
+  header_color = "#000000",
+  header_font_google = google_font("Source Sans Pro"),
+  header_font_weight = 400,
+  text_font_google = google_font("Source Sans Pro", "400", "400i", "600", "600i"),
+  code_font_google = google_font("Source Code Pro"),
+  code_font_size = "0.8rem"
+)
+```
+
+class: inverse, center, middle
+# Part 1
+## Week 7 - 10 Recap
+
+---
+# Describing a pattern with a line
+
+```{r include=FALSE}
+set.seed(913)
+df <- tibble(
+  x1 = round(pmax(0,rnorm(50,4,2)),1),
+  y = 8 + .6*x1 + rnorm(50,0,4)
+)
+
+```
+
+
+.pull-left[
+![](lecture_11_files/figure-html/lm1-1.svg)
+]
+.pull-right[
+```{r eval=FALSE}
+ggplot(df, aes(x = x1, y = y)) + 
+  geom_point()
+```
+```{r lm1,fig.asp=.8,fig.show='hide', echo = FALSE}
+ggplot(df, aes(x = x1, y = y)) + 
+  geom_point(size=3) +
+  geom_smooth(method=lm, se = FALSE, fullrange = TRUE) +
+  scale_x_continuous(limits=c(0,9),breaks=0:9)
+```
+]
+
+
+---
+# Coefficients describe the line
+
+.pull-left[
+```{r echo=FALSE, fig.asp=.8}
+m = lm(y~x1,df)
+ggplot(df, aes(x = x1, y = y)) + 
+  geom_point(size=3) +
+  geom_smooth(method=lm, se = FALSE, fullrange = TRUE) +
+  scale_x_continuous(limits=c(0,9),breaks=0:9) +
+  geom_segment(x=0,xend=0,y=0,yend=coef(m)[1],col="blue") +
+  geom_segment(x=0,xend=1,y=coef(m)[1],yend=coef(m)[1],col="blue")+
+  geom_segment(x=1,xend=1,y=coef(m)[1],yend=sum(coef(m)),col="blue")+
+  geom_segment(x=1,xend=2,y=sum(coef(m)),yend=sum(coef(m)),col="blue")+
+  geom_segment(x=2,xend=2,y=sum(coef(m)),yend=sum(coef(m))+coef(m)[2],col="blue")
+  
+```
+]
+.pull-right[
+
+$$\Large y_i = b_0 + b_1(x_{1i}) + \varepsilon_i$$
+
+]
+
+---
+# We can test the coefficients
+
+.pull-left[
+```{r echo=FALSE, fig.asp=.8}
+m = lm(y~x1,df)
+sims = as.data.frame(MASS::mvrnorm(2e3, mu=c(coef(m)[1],0),Sigma=vcov(m)))
+names(sims) = c("i","s")
+
+ggplot(df, aes(x = x1, y = y)) + 
+  geom_point(size=3) +
+  geom_abline(data=sims, aes(intercept=i,slope=s),alpha=.05) +
+  geom_smooth(method=lm, se = FALSE, fullrange = TRUE) +
+  scale_x_continuous(limits=c(0,9),breaks=0:9)
+```
+]
+.pull-right[
+$$y_i = b_0 + \color{red}{b_1}(x_{1i}) + \varepsilon_i$$
+
+In the "null universe" where $b_1 = 0$, when sampling this many people, what is the probability that we will find a relationship at least as extreme as the one we _have_ found?  
+
+```{r echo=FALSE,highlight.output=4}
+.pp(summary(m),l=list(9:12))
+```
+]
+
+---
+# We can test the coefficients
+
+.pull-left[
+```{r echo=FALSE, fig.asp=.8}
+m = lm(y~x1,df)
+
+ggplot(df, aes(x = x1, y = y)) + 
+  geom_point(size=3) +
+  geom_smooth(method=lm, se = TRUE, fullrange = TRUE) +
+  scale_x_continuous(limits=c(0,9),breaks=0:9)
+```
+]
+.pull-right[
+$$y_i = b_0 + \color{red}{b_1}(x_{1i}) + \varepsilon_i$$
+
+Plausible range of values for $b_1$: 
+```{r eval=FALSE}
+confint(model)
+```
+```{r echo=FALSE,highlight.output=3}
+confint(m)
+```
+]
+
+
+---
+# We can test the model
+
+```{r echo=FALSE,fig.asp=.5}
+broom::augment(m) %>%
+ggplot(., aes(x = x1, y = y)) + 
+  geom_point(size=2) +
+  #geom_smooth(method=lm, se = FALSE, fullrange = TRUE) +
+  geom_abline(intercept=mean(df$y),slope=0,col="blue",lwd=1)+
+  geom_segment(aes(x=x1,xend=x1,y=mean(df$y),yend=y),lty="dotted",lwd=1) +
+  labs(title="SS Total") +
+
+broom::augment(m) %>%
+ggplot(., aes(x = x1, y = y)) + 
+  geom_point(size=2) +
+  geom_smooth(method=lm, se = FALSE, fullrange = TRUE) +
+  geom_abline(intercept=mean(df$y),slope=0,col="blue",lwd=1)+
+  geom_segment(aes(x=x1,xend=x1,y=mean(df$y),yend=.fitted),lty="dotted",lwd=1)+labs(title="SS Model") +
+  
+broom::augment(m) %>%
+ggplot(., aes(x = x1, y = y)) + 
+  geom_point(size=2) +
+  geom_smooth(method=lm, se = FALSE, fullrange = TRUE) +
+  geom_segment(aes(x=x1,xend=x1,y=.fitted,yend=y),lty="dotted",lwd=1)+
+  labs(title="SS Residual")
+```
+
+```{r highlight.output=c(3), echo=FALSE}
+.pp(summary(m),l=list(c(1,17,18)))
+```
+
+
+---
+# More predictors
+
+```{r echo=FALSE}
+set.seed(913)
+df <- tibble(
+  x1 = round(pmax(0,rnorm(50,4,2)),1),
+  x2 = round(pmax(0,rnorm(50,4,2)),1),
+  y = 8 + .6*x1 + .5*x2 + rnorm(50,0,4)
+)
+```
+
+.pull-left[
+```{r echo=FALSE,fig.asp=.6}
+ggplot(df,aes(x=x1,y=y)) +
+  geom_point(size=3) + 
+  geom_smooth(method=lm,se=F)
+```
+]
+.pull-right[ 
+```{r echo=FALSE,fig.asp=.6}
+ggplot(df,aes(x=x2,y=y)) +
+  geom_point(size=3) + 
+  geom_smooth(method=lm,se=F)
+```
+]
+
+
+---
+# More predictors (2)
+
+<br><br>
+
+$$\Large y_i = b_0 + b_1(x_{1i}) + b_2(x_{2i}) + \varepsilon_i$$
+
+---
+# More predictors (3)
+
+```{r echo=FALSE, fig.asp=.9}
+modl2 <- lm(y~x1+x2,df)
+
+x1_pred <- df |> with(seq(min(x1),max(x1),length.out=100))
+x2_pred <- df |> with(seq(min(x2),max(x2),length.out=100))
+
+ac <- expand.grid(x1=x1_pred,x2=x2_pred) 
+
+ypred <- matrix(predict(modl2,type="response",
+                             newdata=ac),nrow=100)
+
+library(plot3D)
+
+persp3D(x=x1_pred,y=x2_pred,z=ypred,phi=25,
+        type="surface",xlab="x1",ylab="x2",zlab="y",
+        zlim=c(min(df$y),max(df$y)),colkey=FALSE)
+points3D(x=df$x1,y=df$x2,z=df$y,col="black",add=TRUE)
+```
+
+
+---
+# _Even_ more predictors...  
+
+<br><br>
+
+$$\Large y_i = b_0 + b_1(x_{1i}) + b_2(x_{2i}) + \, ... \, + b_k(x_{ki}) + \varepsilon_i$$
+
+
+
+---
+# associations that depend on other things
+
+```{r echo=FALSE, fig.asp=.6}
+set.seed(913)
+df <- tibble(
+  x1 = round(pmax(0,rnorm(50,4,2)),1),
+  x2 = round(pmax(0,rnorm(50,4,2)),1),
+  y = 8 + .6*x1 + .5*x2 + .8*x1*x2 + rnorm(50,0,4),
+  yb = rbinom(50,1,plogis(scale(y)))
+)
+
+df %>% 
+  mutate(x2c=cut_interval(x2,3,labels=c("0<x2<3","3<x2<6","6<x2<9"))) %>%
+  ggplot(., aes(x=x1,y=y)) +
+  geom_point(size=3) + 
+  geom_smooth(method=lm,se=F)+
+  facet_wrap(~x2c) -> p1
+  
+df %>% 
+  mutate(x1c=cut_interval(x1,3,labels=c("0<x1<3","3<x1<6","6<x1<9"))) %>%
+  ggplot(., aes(x=x2,y=y)) +
+  geom_point(size=3) + 
+  geom_smooth(method=lm,se=F)+
+  facet_wrap(~x1c) -> p2
+```
+
+.pull-left[
+```{r echo=FALSE}
+p1
+```
+]
+.pull-right[
+```{r echo=FALSE}
+p2
+```
+]
+
+---
+# interactions
+
+<br><br>
+
+$$\Large y_i = b_0 + b_1(x_{1i}) + b_2(x_{2i}) + b_3(x_{1i}\cdot x_{2i}) + \varepsilon_i$$
+
+---
+# interactions
+
+.pull-left[
+```{r echo=FALSE, fig.asp=.9}
+modl2 <- lm(y~x1*x2,df)
+
+x1_pred <- df |> with(seq(min(x1),max(x1),length.out=100))
+x2_pred <- df |> with(seq(min(x2),max(x2),length.out=100))
+
+ac <- expand.grid(x1=x1_pred,x2=x2_pred) 
+
+ypred <- matrix(predict(modl2,type="response",
+                             newdata=ac),nrow=100)
+
+library(plot3D)
+
+persp3D(x=x1_pred,y=x2_pred,z=ypred,theta=65,phi=15,
+        type="surface",xlab="x1",ylab="x2",zlab="y",
+        xlim=c(0,9), ylim=c(0,8),
+        zlim=c(min(df$y),max(df$y)+2),colkey=FALSE)
+points3D(x=df$x1,y=df$x2,z=df$y,col="black",add=TRUE)
+```
+]
+.pull-right[
+
+]
+
+---
+# interactions (2)
+
+.pull-left[
+
+```{r echo=FALSE, fig.asp=.9}
+modl2 <- lm(y~x1*x2,df)
+
+x1_pred <- df |> with(seq(min(x1),max(x1),length.out=100))
+x2_pred <- df |> with(seq(min(x2),max(x2),by=1))
+
+library(plot3D)
+lines3D(x=x1_pred,y=rep(1,100),theta=65,phi=15,
+        z=predict(modl2, newdata=tibble(x1=x1_pred,x2=1)),
+        xlab="x1",ylab="x2",zlab="y",
+        xlim=c(0,9), ylim=c(0,8),
+        zlim=c(min(df$y),max(df$y)+2),colkey=FALSE)
+lines3D(x=x1_pred,y=rep(2,100),
+        z=predict(modl2, newdata=tibble(x1=x1_pred,x2=2)),
+        colkey=FALSE,add=TRUE)
+lines3D(x=x1_pred,y=rep(3,100),
+        z=predict(modl2, newdata=tibble(x1=x1_pred,x2=3)),
+        colkey=FALSE,add=TRUE)
+lines3D(x=x1_pred,y=rep(4,100),
+        z=predict(modl2, newdata=tibble(x1=x1_pred,x2=4)),
+        colkey=FALSE,add=TRUE)
+lines3D(x=x1_pred,y=rep(5,100),
+        z=predict(modl2, newdata=tibble(x1=x1_pred,x2=5)),
+        colkey=FALSE,add=TRUE)
+lines3D(x=x1_pred,y=rep(6,100),
+        z=predict(modl2, newdata=tibble(x1=x1_pred,x2=6)),
+        colkey=FALSE,add=TRUE)
+lines3D(x=x1_pred,y=rep(7,100),
+        z=predict(modl2, newdata=tibble(x1=x1_pred,x2=7)),
+        colkey=FALSE,add=TRUE)
+```
+]
+.pull-right[
+
+```{r echo=FALSE, fig.asp=.9}
+modl2 <- lm(y~x1*x2,df)
+
+x1_pred <- df |> with(seq(min(x1),max(x1),by=1))
+x2_pred <- df |> with(seq(min(x2),max(x2),length.out=100))
+
+library(plot3D)
+lines3D(x=rep(1,100),y=x2_pred,theta=65,phi=15,
+        z=predict(modl2, newdata=tibble(x1=1,x2=x2_pred)),
+        xlab="x1",ylab="x2",zlab="y",
+        xlim=c(0,9), ylim=c(0,8),
+        zlim=c(min(df$y),max(df$y)+2),colkey=FALSE)
+lines3D(x=rep(2,100),y=x2_pred,
+        z=predict(modl2, newdata=tibble(x1=2,x2=x2_pred)),
+        colkey=FALSE,add=TRUE)
+lines3D(x=rep(3,100),y=x2_pred,
+        z=predict(modl2, newdata=tibble(x1=3,x2=x2_pred)),
+        colkey=FALSE,add=TRUE)
+lines3D(x=rep(4,100),y=x2_pred,
+        z=predict(modl2, newdata=tibble(x1=4,x2=x2_pred)),
+        colkey=FALSE,add=TRUE)
+lines3D(x=rep(5,100),y=x2_pred,
+        z=predict(modl2, newdata=tibble(x1=5,x2=x2_pred)),
+        colkey=FALSE,add=TRUE)
+lines3D(x=rep(6,100),y=x2_pred,
+        z=predict(modl2, newdata=tibble(x1=6,x2=x2_pred)),
+        colkey=FALSE,add=TRUE)
+lines3D(x=rep(7,100),y=x2_pred,
+        z=predict(modl2, newdata=tibble(x1=7,x2=x2_pred)),
+        colkey=FALSE,add=TRUE)
+```
+]
+
+---
+# other outcomes
+
+.pull-left[
+
+$$ln(\frac{p}{1-p}) = b_0 + b_1(x_{1i}) + b_2(x_{2i})$$
+
+```{r echo=FALSE}
+set.seed(913)
+df <- tibble(
+  x1 = round(pmax(0,rnorm(50,4,2)),1),
+  x2 = round(pmax(0,rnorm(50,4,2)),1),
+  y = 8 + .6*x1 + .5*x2 + rnorm(50,0,4),
+  yb = rbinom(50,1,plogis(scale(y)))
+)
+
+modl2 <- glm(yb~x1+x2,df,family=binomial)
+
+x1_pred <- df |> with(seq(min(x1),max(x1),length.out=100))
+x2_pred <- df |> with(seq(min(x2),max(x2),length.out=100))
+
+ac <- expand.grid(x1=x1_pred,x2=x2_pred) 
+
+ylo <- matrix(predict(modl2,type="link",
+                             newdata=ac),nrow=100)
+
+ypred <- matrix(predict(modl2,type="response",
+                             newdata=ac),nrow=100)
+#ypred <- exp(ylo)
+
+df$ylo = ifelse(df$yb==1,max(ylo),min(ylo))
+
+library(plot3D)
+persp3D(x=x1_pred,y=x2_pred,z=ylo,theta=35,phi=15,
+        type="surface",xlab="x1",ylab="x2",zlab="log(p/(1-p))",colkey=FALSE)
+points3D(x=df$x1,y=df$x2,z=df$ylo,col="black",add=TRUE)
+```
+]
+.pull-right[
+
+$$
+ln(\frac{p}{1-p}) \, \Rightarrow \, \frac{p}{1-p} \, \Rightarrow \, p
+$$
+
+```{r echo=FALSE}
+persp3D(x=x1_pred,y=x2_pred,z=ypred,theta=35,phi=15,
+        type="surface",xlab="x1",ylab="x2",zlab="probability",
+        zlim=c(0,1),colkey=FALSE)
+points3D(x=df$x1,y=df$x2,z=df$yb,col="black",add=TRUE)
+```
+]
+
+---
+# Checking Assumptions:  Linear Models
+
+.pull-left[
+### required
+
+- linearity of relationship
+
+- for the _residuals_:
+  + normality
+  + homogeneity of variance
+  + independence
+]
+.pull-right[
+### desirable
+- uncorrelated predictors
+
+- no "bad" (overly influential) observations
+]
+
+---
+# Checking Assumptions:  Logit Models
+
+.pull-left[
+### required
+
+- linearity of relationship .red[between IVs and log-odds]
+
+- for the _residuals_:
+  + .red[~~normality~~]
+  + .red[~~homogeneity of variance~~]
+  + independence
+]
+.pull-right[
+### desirable
+- uncorrelated predictors
+
+- no "bad" (overly influential) observations
+
+- .red[large samples (due to maximum likelihood fitting)]
+]
+
+
+
+---
+class: inverse, center, middle, animated, flipInY
+# End of Part 1
+
+---
+class: inverse, center, middle
+# Part 2
+## Common Tests as linear models
+
+```{r}
+usmr <- read_csv("https://uoepsy.github.io/data/usmr2022.csv")
+```
+
+---
+# lm vs correlation  
+
+```{r echo=FALSE}
+usmr$catdog <- factor(usmr$catdog)
+```
+
+
+.pull-left[
+#### regression, continuous predictor
+```{r}
+summary(lm(sleeprating ~ height, data = usmr))
+```
+]
+.pull-right[
+#### Correlation
+```{r}
+cor.test(usmr$height, usmr$sleeprating)
+```
+]
+
+
+---
+# lm vs t.test
+
+.pull-left[
+#### regression, intercept
+```{r}
+summary(lm(height ~ 1, data = usmr))
+```
+]
+.pull-right[
+#### one sample t.test
+```{r}
+t.test(usmr$height, mu=0)
+```
+]
+
+---
+# lm vs t.test (2)
+
+.pull-left[
+#### regression, binary predictor
+```{r}
+summary(lm(height ~ catdog, data = usmr))
+```
+]
+.pull-right[
+#### two sample t.test
+```{r}
+t.test(height ~ catdog, data = usmr,
+       var.equal = TRUE)
+```
+]
+
+---
+# lm vs Traditional ANOVA 
+
+.pull-left[
+#### regression, binary predictor
+```{r}
+summary(lm(height ~ eyecolour, data = usmr))
+```
+]
+.pull-right[
+#### anova
+```{r}
+summary(aov(height ~ eyecolour, data = usmr))
+```
+]
+
+
+---
+# lm vs Traditional ANOVA 
+
+> If you should say to a mathematical statistician that you have discovered that linear multiple regression and the analysis of variance (and covariance) are identical systems, he would mutter something like "Of course&mdash;general linear model," and you might have trouble maintaining his attention.  If you should say this to a typical psychologist, you would be met with incredulity, or worse.  Yet it is true, and in its truth lie possibilities for more relevant and therefore more powerful research data.
+.tr[
+Cohen (1968)
+]
+
+---
+# History
+
+.pull-left[
+.br3.pa2.bg-gray.white[
+### .white[Multiple Regression]
+
+- introduced c. 1900 in biological and behavioural sciences
+
+- aligned to "natural variation" in observations
+
+- tells us that means $(\bar{y})$ are related to groups $(g_1,g_2,\ldots,g_n)$
+]]
+.pull-right[
+.br3.pa2.bg-gray.white[
+### .white[ANOVA]
+
+- introduced c. 1920 in agricultural research
+
+- aligned to experimentation and manipulation
+
+- tells us that groups $(g_1,g_2,\ldots,g_n)$ have different means $(\bar{y})$
+]]
+
+.pt2[
+- both produce $F$-ratios, discussed in different language, but identical
+]
+
+---
+# Why Teach LM/Regression?
+
+- LM has less restrictive assumptions
+
+  + especially true for unbalanced designs/missing data
+  
+- LM is far better at dealing with covariates
+
+  + can arbitrarily mix continuous and discrete predictors
+  
+- LM is the gateway to other powerful tools
+
+  + mixed models and factor analysis (→ MSMR)
+
+  + structural equation models
+
+
+
+---
+background-image: url(lecture_11_files/img/playmo_goodbye.jpg)
+background-size: contain
+
+# Goodbye!
