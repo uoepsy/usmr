@@ -92,7 +92,7 @@ ggplot(df, aes(x = x1, y = y)) +
 
 
 ---
-# Coefficients describe the line
+# Defining a line
 
 .pull-left[
 ```{r echo=FALSE, fig.asp=.8}
@@ -113,26 +113,54 @@ ggplot(df, aes(x = x1, y = y)) +
 
 $$\Large y_i = b_0 + b_1(x_{1i}) + \varepsilon_i$$
 
+A line can be defined by two values:  
+
+  - A starting point (Intercept)
+  - A slope
+
+Fitting a linear model to some data provides coefficient estimates $\hat{b}_0$ and $\hat{b}_1$ that minimise $\sigma_\varepsilon$.  
+
 ]
 
 ---
-# We can test the coefficients
+# Testing the coefficients (1)
 
 .pull-left[
 ```{r echo=FALSE, fig.asp=.8}
 m = lm(y~x1,df)
-sims = as.data.frame(MASS::mvrnorm(2e3, mu=c(coef(m)[1],0),Sigma=vcov(m)))
+sims = as.data.frame(MASS::mvrnorm(2e3, mu=c(0,0),Sigma=vcov(m)))
 names(sims) = c("i","s")
 
-ggplot(df, aes(x = x1, y = y)) + 
+p <- ggplot(df, aes(x = x1, y = y)) + 
   geom_point(size=3) +
   geom_abline(data=sims, aes(intercept=i,slope=s),alpha=.05) +
   geom_smooth(method=lm, se = FALSE, fullrange = TRUE) +
-  scale_x_continuous(limits=c(0,9),breaks=0:9)
+  scale_x_continuous(limits=c(0,9),breaks=0:9)+
+  ylim(-5,17)
+p
 ```
 ]
 .pull-right[
-$$y_i = b_0 + \color{red}{b_1}(x_{1i}) + \varepsilon_i$$
+$$\Large \hat{y} = \color{red}{\hat{b}_0} + \hat{b}_1(x_{1})$$
+
+In the "null universe" where $b_0 = 0$, when sampling this many people, what is the probability that we will find an intercept at least as extreme as the one we _have_ found?  
+
+```{r echo=FALSE,highlight.output=3}
+.pp(summary(m),l=list(9:12))
+```
+]
+
+
+---
+# Testing the coefficients (2)
+
+.pull-left[
+```{r echo=FALSE, fig.asp=.8}
+p
+```
+]
+.pull-right[
+$$\Large \hat{y} = \hat{b}_0 + \color{red}{\hat{b}_1}(x_{1})$$
 
 In the "null universe" where $b_1 = 0$, when sampling this many people, what is the probability that we will find a relationship at least as extreme as the one we _have_ found?  
 
@@ -142,7 +170,7 @@ In the "null universe" where $b_1 = 0$, when sampling this many people, what is 
 ]
 
 ---
-# We can test the coefficients
+# Coefficient Sampling Variability
 
 .pull-left[
 ```{r echo=FALSE, fig.asp=.8}
@@ -155,20 +183,20 @@ ggplot(df, aes(x = x1, y = y)) +
 ```
 ]
 .pull-right[
-$$y_i = b_0 + \color{red}{b_1}(x_{1i}) + \varepsilon_i$$
+$$\Large \hat{y} = \hat{b}_0 + \hat{b}_1(x_{1})$$
 
-Plausible range of values for $b_1$: 
+Plausible range of values for $b_0$ and $b_1$: 
 ```{r eval=FALSE}
 confint(model)
 ```
-```{r echo=FALSE,highlight.output=3}
-confint(m)
+```{r echo=FALSE}
+car::Confint(m)
 ```
 ]
 
 
 ---
-# We can test the model
+# Testing the model
 
 ```{r echo=FALSE,fig.asp=.5}
 broom::augment(m) %>%
@@ -176,7 +204,7 @@ ggplot(., aes(x = x1, y = y)) +
   geom_point(size=2) +
   #geom_smooth(method=lm, se = FALSE, fullrange = TRUE) +
   geom_abline(intercept=mean(df$y),slope=0,col="blue",lwd=1)+
-  geom_segment(aes(x=x1,xend=x1,y=mean(df$y),yend=y),lty="dotted",lwd=1) +
+  geom_segment(aes(x=x1,xend=x1,y=mean(df$y),yend=y),lty="dotted",lwd=1,col="red") +
   labs(title="SS Total") +
 
 broom::augment(m) %>%
@@ -184,19 +212,32 @@ ggplot(., aes(x = x1, y = y)) +
   geom_point(size=2) +
   geom_smooth(method=lm, se = FALSE, fullrange = TRUE) +
   geom_abline(intercept=mean(df$y),slope=0,col="blue",lwd=1)+
-  geom_segment(aes(x=x1,xend=x1,y=mean(df$y),yend=.fitted),lty="dotted",lwd=1)+labs(title="SS Model") +
+  geom_segment(aes(x=x1,xend=x1,y=mean(df$y),yend=.fitted),lty="dotted",lwd=1,col="red")+labs(title="SS Model") +
   
 broom::augment(m) %>%
 ggplot(., aes(x = x1, y = y)) + 
   geom_point(size=2) +
   geom_smooth(method=lm, se = FALSE, fullrange = TRUE) +
-  geom_segment(aes(x=x1,xend=x1,y=.fitted,yend=y),lty="dotted",lwd=1)+
+  geom_segment(aes(x=x1,xend=x1,y=.fitted,yend=y),lty="dotted",lwd=1,col="red")+
   labs(title="SS Residual")
 ```
 
+.pull-left[
+$$
+\small 
+\begin{align}
+& F_{df_{model},df_{residual}} = \frac{MS_{Model}}{MS_{Residual}} = \frac{SS_{Model}/df_{Model}}{SS_{Residual}/df_{Residual}} \\
+& df_{model} = \text{nr predictors} \\
+& df_{residual} = \text{sample size} - \text{nr predictors} - 1 \\
+\end{align}
+$$
+]
+.pull-right[
 ```{r highlight.output=c(3), echo=FALSE}
 .pp(summary(m),l=list(c(1,17,18)))
 ```
+]
+
 
 
 ---
@@ -441,12 +482,12 @@ ypred <- matrix(predict(modl2,type="response",
                              newdata=ac),nrow=100)
 #ypred <- exp(ylo)
 
-df$ylo = ifelse(df$yb==1,max(ylo),min(ylo))
+df$ylo = ifelse(df$yb==1,max(ylo)+.2,min(ylo)-1)
 
 library(plot3D)
 persp3D(x=x1_pred,y=x2_pred,z=ylo,theta=35,phi=15,
         type="surface",xlab="x1",ylab="x2",zlab="log(p/(1-p))",colkey=FALSE)
-points3D(x=df$x1,y=df$x2,z=df$ylo,col="black",add=TRUE)
+points3D(x=df$x1,y=df$x2,z=df$ylo,col="grey",add=TRUE)
 ```
 ]
 .pull-right[
@@ -575,21 +616,6 @@ t.test(height ~ catdog, data = usmr,
 ```
 ]
 
----
-# lm vs Traditional ANOVA 
-
-.pull-left[
-#### regression, binary predictor
-```{r}
-summary(lm(height ~ eyecolour, data = usmr))
-```
-]
-.pull-right[
-#### anova
-```{r}
-summary(aov(height ~ eyecolour, data = usmr))
-```
-]
 
 
 ---
@@ -628,6 +654,28 @@ Cohen (1968)
 - both produce $F$-ratios, discussed in different language, but identical
 ]
 
+
+---
+# lm vs Traditional ANOVA 
+
+.pull-left[
+#### regression, binary predictor
+```{r eval=FALSE}
+summary(lm(height ~ eyecolour, data = usmr))
+```
+```{r echo=FALSE}
+.pp(summary(lm(height ~ eyecolour, data = usmr)),
+    l=list(c(1,3,9:23)))
+```
+]
+.pull-right[
+#### anova
+```{r}
+summary(aov(height ~ eyecolour, data = usmr))
+```
+]
+
+
 ---
 # Why Teach LM/Regression?
 
@@ -645,7 +693,9 @@ Cohen (1968)
 
   + structural equation models
 
-
+---
+class: inverse, center, middle, animated, flipInY
+# End
 
 ---
 background-image: url(lecture_11_files/img/playmo_goodbye.jpg)
