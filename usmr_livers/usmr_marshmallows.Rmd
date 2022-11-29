@@ -1,0 +1,115 @@
+---
+title: "marshmallow"
+author: "uoepsy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+https://edin.ac/3F7y8Vq
+
+# 1. Research aims 
+
+200 children between the ages of 3 and 7 years old took part in a study aiming replicate the Stanford Marshmallow Experiment, in which the experimenter shows a marshmallow to the child and explains that they (the experimenter) is about to leave the room for 40 minutes. They explain to the child that they are welcome to eat the marshmallow while they are waiting, but _if_ the marshmallow is still there after 40 minutes, they will get _two_ marshmallows as a reward. In the "hidden" condition, the marshmallow is placed in an opaque box on a table. In the "visible" condition, the marshmallow is placed on a plate. 
+
+The original study found that older children were more likely to wait the full time for two marshmallows. It also found that the visibility of the marshmallow was associated with taking the immediate (but smaller) reward of only one marshmallow, but that this was reduced for older children.  
+
+Researchers record *if* each child takes the marshmallow while the experimenter is away, and for those that do, how long (in minutes) they manage before taking it.  
+
+Their aims are twofold: 
+
+- to assess whether the results of the original study are present even _after_ accounting for individual differences in how much children like sweet things (as rated by a questionnaire administered to their parents). 
+- to investigate whether the same pattern of results is evident in the 'time taken to give in' for the children who do not manage to wait for the experimenter's return
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(sjPlot)
+mallow <- read_csv("https://uoepsy.github.io/data/marshmallow.csv")
+
+summary(mallow)
+
+# make factors
+# check distributions
+# keep track of changes and missingness
+mallow <- 
+  mallow %>% 
+  mutate(
+    visibility = factor(visibility),
+    taken = factor(taken, levels=c("0","1")),
+    agemonths = ifelse(agemonths==0, NA, agemonths),
+    ageyears = floor(agemonths/12)
+  ) %>%
+  filter(!is.na(sweetrating), !is.na(taken), !is.na(agemonths))
+
+```
+
+
+
+# taking the marshmallow
+
+```{r include = FALSE}
+# to assess whether the results of the original study are present even _after_ accounting for individual differences in how much children like sweet things (as rated by a questionnaire administered to their parents). 
+# The original study found that older children were more likely to wait the full time for two marshmallows. It also found that the visibility of the marshmallow was associated with taking the immediate (but smaller) reward of only one marshmallow, but that this was reduced for older children.  
+
+
+
+```
+
+- explain what was done and why
+- explain 
+- describe what we found
+  - a plot?
+  - a table? 
+
+
+# time taken (for those who took it)
+
+```{r include=FALSE}
+#to investigate whether the same pattern of results is evident in the 'time taken to give in' for the children who do not manage to wait for the experimenter's return
+
+#The original study found that older children were more likely to wait the full time for two marshmallows. It also found that the visibility of the marshmallow was associated with taking the immediate (but smaller) reward of only one marshmallow, but that this was reduced for older children.   
+
+
+
+# this analysis applies to only those who did take the marshmallow
+# we'll filter to them, and we'll also recenter the age to be 36 (3 years old).  
+# this means our visibility coef will be the difference between vis & hidden for 3yo, rather than 0yo
+
+mallowtime <- mallow %>% filter(!is.na(time)) %>%
+  mutate(
+    agemonthsC = agemonths - (3*12)
+  )
+
+# here's the model
+m <- lm(time ~ sweetrating + agemonthsC * visibility, data=mallowtime)
+
+# check assumptions.
+plot(m)
+# these look okay. a little concerned about variance. 
+# could check using ncvTest() from car package, or could simply bootstrap :)
+library(car)
+
+# making a little table of results
+res <- data.frame(
+  round(coef(m),2), # the estimate
+  round(confint(Boot(m),B=1999),2) # the bootstrapped 95% CIs
+)
+names(res)<-c("est","lower","upper")
+res
+# note that according to the bootstrapped CIs, the coef for Age (in the hidden condition) is not significant.
+```
+Time (in minutes) to take the marshmallow was modelled using linear regression, with sweet-ratings (Z-scored), age (in months, centered at `r 3*12`), marshmallow visibility (visible vs hidden, treatment coded with hidden as the reference level), and the interaction between age and visibility. Bootstrapped confidence intervals (with 2000 iterations) were obtained for all coefficients.  
+
+Results indicate that after accounting for how much children like sweet foods, when the marshmallow was hidden from sight, being one month older was not significantly associated with managing to last any more time before taking the marshmallow (95% bootstrapped CI [`r res[3,2]`, `r res[3,3]`]). 
+A significant interaction was found between age and visibility: the older children were, the more visibility of the marshmallow _increased_ time taken before eating the marshmmallow (`r res[5,1]` [`r res[5,2]`, `r res[5,3]`]). This relationship (visualised in Figure 1) is conceptually at odds with the pattern of results in previous studies examining predictors of taking vs not taking the marshmallow. 
+
+```{r echo=FALSE, fig.cap="Figure 1: interaction between age and visibility"}
+plot_model(m, type="int", show.data = TRUE) +
+  scale_x_continuous("Age (months)", breaks=(0:4)*12, labels=(3:7)*12) +
+  labs(title=NULL, y = "Time before marshmallow is taken")
+```
+
+
+
+
+
