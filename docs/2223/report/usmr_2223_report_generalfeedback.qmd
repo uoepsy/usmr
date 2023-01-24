@@ -1,0 +1,255 @@
+---
+title: "USMR General Feedback"
+format: html
+---
+
+```{css, echo=FALSE}
+div.blue, div.red, div.green, div.yellow, div.frame{ 
+    border-radius: 5px; 
+    padding: 20px 20px 10px 20px; 
+    margin-top: 20px; 
+    margin-bottom: 20px; 
+}
+.title {color:#FCBB06}
+.blue { background-color:#d9edf7 !important; }
+.green { background-color:#dff0d8 !important; }
+.yellow { background-color:#fcf8e3 !important; }
+.red { background-color:#F3E3E5 !important; } 
+.frame {border: 1px solid #333333 !important; }
+```
+
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+
+
+
+
+
+This document outlines what we would consider some appropriate ways to address the coursework report, and some of the key things to remember to include when reporting.  
+For full instructions for the report, please see [https://uoepsy.github.io/usmr/2223/report/instructions.html](https://uoepsy.github.io/usmr/2223/report/instructions.html){target="_blank"}.  
+
+The report consisted of 3 primary tasks: 
+
+1. Describe the sample, and examine some simple relationships between pairs of variables
+2. Investigate problem solving ability (i.e. `task_time` variable)
+3. Investigate sharing behaviours (i.e. the `share` variable)
+
+
+We can obtain the data and clean it using the following code:  
+```{r}
+source("https://edin.ac/3TBOKsl")
+get_my_data(nchar("Hello USMR!"))
+mydf <- 
+  full_join(monkeydata, taskdata) %>% 
+  filter(species %in% c("macaque","bonobo","capuchin")) %>%
+  mutate(
+    rearing = ifelse(rearing == "catpv","captv",rearing),
+    age = ifelse(grepl("months",age), 
+                 as.numeric(gsub(" months", "", age))/12,
+                 as.numeric(age)),
+    task_time = as.numeric(gsub(" minutes", "", task_time)),
+    share = ifelse(share == -99, NA, share)
+  )
+```
+
+
+
+# 1. Descriptives
+
+:::yellow
+_Prior to conducting the main analyses, the researchers would like some descriptive statistics on the primates included in their study._
+:::
+
+For a description of the sample, we would ideally provide: 
+
+- A brief description of missing data, and and actions taken (e.g. listwise deletion - exclusion of all rows with any missingness)
+
+- Total N of sample used in subsequent analyses, along with
+  - Summary statistics (central tendency and spread, counts for ) for observed characteristics of the sample such as, `age` and `rearing`. Descriptives of personality traits are less useful here, as we know they are standardised, so we would already (by definition) expect them to have roughly a mean of zero and standard deviation of 1
+  - Summary statistics of key outcome variables - e.g. mean and sd of `task_time`, counts of `share`.  
+
+
+# 1. Tests (1A, 1B, 1C)
+
+:::yellow
+
+...   
+...   
+_In addition, they would like you to test and report on:_
+
+_a)  Whether the distribution of primates with wild/captive rearings is evenly distributed across species._
+_b)  Whether dominance significantly differs between primates born in captivity and those born in the wild._
+_c)  Whether species significantly differ in their sharing behaviours_
+
+:::
+
+
+For these questions, the key is in the wording of "*test and report on*". Ideally we want more than just descriptive statistics. Tables, plots, means and standard deviations are all very useful to illustrate patterns, but they don't provide us with a means of testing an hypothesis. 
+
+- We should aim to be clear in the **specific** tests conducted along with any specific reasons for choosing that test  
+e.g. "Due to unequal variances ($F(?,?)=\, ?, \, p<.05$), a Welch T-test was conducted to examine..."
+
+- When we report results of these tests, we want to make sure that we include: 
+  - test statistic (e.g. $t$, $\chi^2$), degrees of freedom, and p value
+  - a clear statement on our conclusion
+  
+- A good answer will also devote a bit of space to describe *how* things are associated, by telling the reader clearly which group (wild/captive) is more dominant, and which species shares most, etc.   
+e.g. Compare A and B below:
+  - **A:** "A significant association was found between dominance and rearing $t(?)=\, ?,\, p <.05$."
+  - **B:** "A significant association was found between dominance and rearing $t(?)=\, ?,\, p <.05$, with wild primates ($M =\, ??,\, SD =\, ??$) displaying higher levels of dominance than captive ones ($M =\, ??,\, SD =\, ??$)." 
+
+<div style="margin-bottom:50px"></div>
+
+# 2. Investigating problem solving ability 
+ 
+To investigate problem solving, we're interested in the `task_time` variable, and we're into the multiple regression world.  
+
+There are two important things we need to keep in mind:  
+
+1. the background information, and 
+2. the research aims of the current study:  
+
+:::yellow
+__Background info__   
+_It is well established that one species of primate (capuchin monkeys), when raised in captivity, will cooperate on such problem solving tasks, and will subsequently share food with their partner. This type of study has been used demonstrate a) the ability to problem solve a complex task requiring cooperation, and b) a concept of fairness. Previous research suggests that older primates are quicker to solve these types of tasks, and are more likely to share the resulting food. In addition, it is well known that primates who are reared in captivity tend to live longer than those reared in the wild. Predictors of sharing behaviour are less well documented, but it is widely known that all monkeys love grapes._
+:::
+
+The background information tells us that we would expect `task_time ~ age` (i.e. older primates take less time). 
+
+It also tells us that there is some relation between `age` and `rearing`. So we might want rearing in the model in order to separate out the unique influence of age. Additionally, if we found in 1B that `dominance ~ rearing` (dominance differs between rearings), then we may be justified in putting rearing in our model of `task_time`, to ensure that any effects of `dominance` is unique to dominance and not due to rearing.  
+
+Importantly, this background information does _not_ suggest that we should expect an interaction between age and rearing: `task_time ~ age * rearing`. Knowing that age and rearing covary just means that age differs between rearings. It does not imply that effects of age on task_time differs between rearings. 
+The same is true for dominance and rearing. 
+
+The fact that previous research has only been conducted on captive-reared Capuchins does not necessarily mean that species is a "known predictor" of `task_time`. We don't yet know how species differ in `task_time` (because only Capuchins have been studied). And we don't yet know how rearing background differ in `task_time` (because only captive-reared primates have been studied). We also have no reason to suspect that rearing's influence on task_time differs between species (i.e. we're not expecting an interaction `task_time ~ species*rearing`).  
+In fact, the species differences in problem solving is part of the aim of the current study:  
+
+:::yellow
+__Our research aims__  
+_The present study aims to investigate how species and primate personalities influence both problem solving ability and sharing behaviours. The researchers are specifically interested in the role that dominance has in how quickly primates are able to solve the task and access the food, and whether this is different for different species._
+:::
+
+To address the study aims, we would ideally look at how `task_time` is associated with `species`, `dominance`, `openness`, `friendliness` & `neuroticism`. To address the specific question about dominance, we'll want the `species*dominance` interaction too. 
+
+Combining the study aims with the background informaton, we might fit the following model:  
+
+```{r}
+#| eval: false
+fullmodel <- lm(task_time ~ 
+     # known predictors/possible confounders
+     rearing + age + 
+     # focal predictors (species & personality)
+     species + 
+     dominance + openness + neuroticism + friendliness + 
+     # specific question about interaction
+     species:dominance, 
+     data=mydf)
+```
+
+For the vast majority of the generated datasets given to students, evaluation of Cook's Distance will show that at least one of these monkeys is extremely influential on this model. Further examination will show that this is due to an extremely high value for `task_time`. With such high Cook's D, it is easily justified that we remove this observation from this analysis. Once this is done, we should check our assumption plots/tests before we move to using our model for inferences.  
+```{r}
+#| echo: false
+fullmodel <- lm(task_time ~ rearing + age + 
+     species + 
+     dominance + openness + neuroticism + friendliness + 
+     species:dominance, data=mydf[-81,])
+```
+
+From our model, we can do many things, such as: 
+
+- We can compare the model to a model without species or personality in it, to examine whether all these things together are useful in explaining task time (this gives a very big picture answer to the study aims)
+```{r}
+#| eval: false
+# Do species, personality and the species*dom interaction explain variation in task time?
+basemodel <- lm(task_time ~ rearing + age, data=mydf)
+anova(basemodel, fullmodel)
+```
+- We can compare the model to a model without any personality traits in it (this might be a nice way to examine the collective influence of personality as a whole)
+```{r}
+#| eval: false
+# Do personality and the species*dom interaction explain variation in task time?
+no_personality_model <- lm(task_time ~ rearing + age + species, data=mydf)
+anova(no_personality_model, fullmodel)
+```
+- Conducting an ANOVA *may* be useful, provided we have a specific theoretical motivation for the ordering of our predictors. For instance, `anova(fullmodel)` will give us an F test for the `species*dominance` interaction, which may be a nice way to test the interaction overall, before we look at specific coefficients (which look at specific differences in dominance effects between species).  
+- Finally, and probably most usefully, we can interpret the coefficients and their tests to talk about the direction and magnitude of specific associations or differences (with care taken about interpreting species & dominance coefficients in the presence of the species*dominance interaction)
+```{r}
+#| eval: false
+summary(fullmodel)$coefficients
+```
+<!-- _(we could consider releveling the species variable so that capuchins are the reference level here, which may make more sense as they are the ones which have been studied previously)_  -->
+
+<!-- Specific interpretation of the coefficients:  -->
+<!-- - `(Intercept)` : estimated task time for a captive reared bonobo of age zero, and zero on all personality traits (i.e. average).  -->
+<!-- - `rearingwild` : estimated change in task time from captive primates to wild primates (holding all other predictors constant) -->
+<!-- - `age` : estimated change in task time for every 1 year increase in age (holding all other predictors constant) -->
+<!-- - `speciescapuchin` : estimated difference in task time from bonobos of mean dominance to capuchins **of mean dominance** (holding all other predictors constant) -->
+<!-- - `speciesmacaque` : estimated difference in task time from bonobos of mean dominance to macaques **of mean dominance** (holding all other predictors constant) -->
+<!-- - `dominance` : estimated change in task time for every 1 SD increase in dominance **for a bonobo** (and other predictors constant) -->
+<!-- - `openness` : estimated change in task time for every 1 SD increase in openness (holding all other predictors constant) -->
+<!-- - `neuroticism` : estimated change in task time for every 1 SD increase in neuroticism (holding all other predictors constant) -->
+<!-- - `friendliness` : estimated change in task time for every 1 SD increase in friendliness (holding all other predictors constant) -->
+<!-- - `speciescapuchin:dominance` : estimated change in the effect of dominance on task_time when moving from bonobos to capuchin (holding other predictors constant) -->
+<!-- - `speciesmacaque:dominance` : estimated change in the effect of dominance on task_time when moving from bonobos to capuchin (holding other predictors constant) -->
+
+
+
+  
+# 3. Investigating Sharing Behaviours.  
+
+To investigate sharing behaviours, we're interested in the `share` variable, which is a binary 0 vs 1. This means we will ideally want to be fitting a logistic regression model.  
+
+As with our investigation of `task_time`, it's important to remember that we are still interested broadly in how species & personality influences our outcomes (problem solving and sharing behaviour).   
+With regards to sharing behaviours, we have no specific interactions that we are interested in, but we do have "*a specific focus on whether species other than Capuchins are as likely to share food.*".  
+
+This means we are going to want species in as a predictor, and it will be helpful if we set the Capuchins as the reference level (so we can compare each species to Capuchins - in keeping with the focus of this question). We're also going to want to look at the personality variables `dominance`, `openness`, `friendliness` & `neuroticism`.  
+
+The background info tells us that we might expect `share ~ age`, and because monkeys all love grapes, we might reasonably expect `share ~ food_type`. I would see it as defensible to also include `rearing` as a predictor. 
+
+If we fit the following model: 
+```{r}
+#| eval: false
+glm(share ~ rearing + age + food_type + 
+      species + 
+      dominance + openness + neuroticism + friendliness,
+    data = mydf, family=binomial)
+```
+Then, much like for question 2, we can do many things, such as using a model comparison to isolate how 'personality' as a collection of traits might be useful in predicting sharing behaviours, over and above effects of age, rearing, species and food_type. 
+Or we could similarly test whether, beyond age, rearing, food_type and personality traits, there are species differences in sharing behaviours (compare the model above with a model without species in it).  
+
+As with Question 2, much of our report, however, will likely focus on the coefficients from our model, providing us with estimates of how the odds of sharing increase/decrease along values of the predictor. For instance, we might find that both bonobos and macaques have decreased odds of sharing food, compared to capuchins $(OR =\, ?,\, 95\%\, CI [?,\, ?])$.  
+
+
+# Writing up
+
+When writing up our analysis, we want to ensure that we convey the following information:
+
+- a clear **explanation** of the structure of the model(s) fitted
+  - what are the predictors?
+  - what are the reference levels, contrasts etc?
+- explanation of any model comparisons conducted, with the purpose of those comparisons clearly stated (e.g. to examine the influence of personality traits collectively).
+- the reader should be able to more or less replicate all the models and tests that you have conducted. 
+
+- **reporting results** of the model estimates, and model comparisons if used
+  - a table of coefficients is really useful here
+  - ensure that for any reported p-values it is clear what test they are from (e.g. good practice to make sure you have t and df reported too, or Z for logistic regression)
+  
+- **interpretation** of key associations of interest (e.g. of primary interest is the species*dominance interaction, but other personality traits are also of interest)
+  - ideally phrased with discussion of the _direction_  
+  e.g. A vs B:
+    - **A:** "A significant association was found between task time and friendliness ($\beta=\,?,\,t(?)=\,?,\,p<.05$)".  
+    - **B:** "A significant association was found between task time and friendliness, with primates being $?$ minutes quicker to solve the task for every 1 SD increase in friendliness ($\beta=\,?,\,t(?)=\,?,\,p<.05$)". 
+    
+- **presentation** of the key findings. 
+  - an interaction plot would be the most obvious approach for Question 2 to illustrate the species*dominance interaction. 
+  - ideally we wouldn't leave the reader with all the work to do to understand the plot. Explain what the big picture is (e.g. "for [reference species], more dominant monkeys are quicker to solve the task. This association was dependent upon species, with dominance in macaques showing a greater decrease in task times than in [reference level]")
+  - for logistic regression models, a plot of the predicted probability across values of predictor(s) of interest would be ideal - e.g. predicted probability of sharing across neuroticism, and across species.  
+  
