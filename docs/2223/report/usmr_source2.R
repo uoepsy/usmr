@@ -31,7 +31,7 @@ get_my_data <- function(exam_num = NULL){
     # dimnames(mm)[[2]]
     ybinl = mm %*% c(0,.7,-1.4,-1,-1.5)
     
-    df = bind_cols(Xmat, jobsat=y[,1],supervisor_support = rbinom(N,1,plogis(scale(ybinl)[,1])))
+    df = bind_cols(Xmat, jobsat=y[,1],manager_support = rbinom(N,1,plogis(scale(ybinl)[,1])))
     
     
     df$workingstyle[sample(which(df$workingstyle=="remote"),sample(1:5,1))] <- "rmote"
@@ -44,7 +44,7 @@ get_my_data <- function(exam_num = NULL){
     df$employeeid = sample(unique(pids),N)
     
     hrdata <<- df %>% select(employeeid, workingstyle, project, years_in_role, age)
-    survdata <<- df %>% select(employeeid, supervisor_support, jobsat) %>% sample_n(n())
+    survdata <<- df %>% select(employeeid, manager_support, jobsat) %>% sample_n(n())
   
   }
 }
