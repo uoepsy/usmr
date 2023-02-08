@@ -40,6 +40,7 @@ get_my_data <- function(exam_num = NULL){
     df$project[sample(which(df$project=="team"),2)] <- c("i work in a team", "i don't know")
     df$jobsat <- 45.245 +scale(df$jobsat)[,1]*12.753
     df$jobsat <- pmin(100, pmax(0, df$jobsat))
+    df$jobsat <- round(df$jobsat, 2)
     pids = map_dbl(1:1e5, ~round(rnorm(1, 2e6, 1e3)))
     df$employeeid = sample(unique(pids),N)
     
