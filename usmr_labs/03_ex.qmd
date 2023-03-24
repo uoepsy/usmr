@@ -16,6 +16,72 @@ library(patchwork)
 set.seed(017)
 ```
 
+# A Better Confidence Interval 
+
+TODO
+
+```{r}
+surveydata <- read_csv("../../data/surveydata_historical.csv")
+
+usmr2022 <- surveydata %>%
+  filter(course == "usmr", year == 2022)
+
+usmr2022 %>% 
+  summarise(
+    m_sleep = mean(sleeprating, na.rm = TRUE),
+    sd_sleep = sd(sleeprating, na.rm = TRUE),
+    n_sleep = sum(!is.na(sleeprating)), 
+    n_total = n() # n() will give the total count
+  )
+```
+```{r}
+#| echo: false
+mu = mean(usmr2022$sleeprating, na.rm = TRUE)
+su = sd(usmr2022$sleeprating, na.rm = TRUE)
+m = round(mean(usmr2022$sleeprating, na.rm = TRUE),2)
+s = round(sd(usmr2022$sleeprating, na.rm = TRUE),2)
+n = sum(!is.na(usmr2022$sleeprating))
+se = round(su/sqrt(n),2)
+```
+
+$$
+\begin{align}
+\text{Mean = }& `r m` \\
+\text{95\% CI = }& `r m` \pm 1.96 \times `r se` \\
+&[`r round(m-(1.96*se),2)`, `r round(m+(1.96*se),2)`]
+\end{align}
+$$
+
+- where did 1.96 came from?
+```{r}
+qnorm(c(0.025, 0.975))
+```
+
+- what should we use instead? t! 
+- why df n-1? bc we have our mean. that's our estimate. 
+
+```{r}
+qt(c(0.025, 0.975), df = 78)
+```
+- using that instead, for our interval:  
+$$
+\begin{align}
+\text{Mean = }& `r m` \\
+\text{95\% CI = }& `r m` \pm 1.990847 \times `r se` \\
+&[`r round(m-(1.990847*se),2)`, `r round(m+(1.990847*se),2)`]
+\end{align}
+$$
+using t.test
+```{r}
+m = mean(usmr2022$sleeprating, na.rm = TRUE)
+se = sd(usmr2022$sleeprating, na.rm=TRUE)/sqrt(79)
+m-(1.990847*se);m+(1.990847*se)
+t.test(usmr2022$sleeprating)
+```
+
+
+
+
 # Procrastination Scores
 
 :::frame

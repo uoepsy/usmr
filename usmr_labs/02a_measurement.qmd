@@ -23,37 +23,32 @@ xaringanExtra::use_panelset()
 This reading:  
 
 - What different types of data can we collect?
-- How can we summarise distributions of different types of data?  
-- What are the different styles of coding in R?
-- How do we make nice plots of distributions?  
+- How can we summarise and visualise distributions of different types of data?  
+
+__Also:__  
+
+- The "Tidyverse" a different style of coding in R
+
 
 :::
 
 
 # Types of Data
 
-
-```{r}
-#| label: fig-typesdata
-#| echo: false
-#| fig-show: 'hold'
-#| fig-align: 'center'
-#| fig-cap: "Artwork by \\@allison_horst"
-knitr::include_graphics("images/ahorst/cdnob.png")
-```
-
-In the dice-rolling example we saw last week, each roll of the die could take one of a discrete set of responses (1, 2, 3, 4, 5 or 6). A die cannot land on 5.3, or 2.6.  
+In the example of rolling a single die (like our simulations last week), each roll of the die could take one of a discrete set of responses (1, 2, 3, 4, 5 or 6). A die cannot land on 5.3, or 2.6.  
 
 There are many different things we can measure / record on observational units, and the data we collect will also have different characteristics. Some data will be similar to rolling a die in that values take on **categories**, and others could take any value on a **continuous** scale.  
 
-For example, in the last couple of years during welcome week, we have asked students of the statistics courses in the Psychology department to fill out a little survey. Amongst other things, we capture data on student heights (we asked for answers in cm, and respondents could be precise as they liked) and the colours of they eyes (we gave a set of options to choose from). We distinguish between these different types of data by talking about variables that are __categorical__ (responses take one of a set of defined categories: "blue", "green", and so on..) and those that are __numeric__ (responses are in the form of a number). Within each of these, there also are a few important sub-classes.  
+For example, think about the short survey we sent out at the start of this course. Amongst other things, the survey captures data on heights (it asks for answers in cm, and respondents can be precise as they like) and eye-colours (chosen from a set of options). We distinguish between these different types of data by talking about variables that are __categorical__ (responses take one of a set of defined categories: "blue", "green", and so on..) and those that are __numeric__ (responses are in the form of a number). Within each of these, there also are a few important sub-classes.  
 
-When we collect observations on a variable, the resulting set of measurements is known as a __distribution__. This reading walks through the various different types of data we might encounter, and some of the metrics we use to summarise distributions of different types.  
+When we collect observations on a variable, the resulting set of measurements is known as a __sample distribution__. This reading walks through the various different types of data we might encounter, and some of the metrics we use to summarise distributions of different types.  
 
-We will use a dataset on some of the most popular internet passwords, their strength, and how long it took for an algorithm to crack it. The data are available online at https://uoepsy.github.io/data/passworddata.csv.  
+We will use a dataset on some of the most popular internet passwords, their strength, and how long it took for an algorithm to crack it. The data are available online at [https://uoepsy.github.io/data/passworddata.csv](https://uoepsy.github.io/data/passworddata.csv).  
   
 :::frame
 __Data: Passwords__
+
+You can read in the dataset by using code such as the below: 
 ```{r}
 pwords <- read.csv("https://uoepsy.github.io/data/passworddata.csv")
 ```
@@ -83,6 +78,7 @@ __Categorical__ variables tell us what group or category each individual belongs
 |  __Ordinal (Ordered categorical)__ | A categorical variable which levels possess some kind of order |  Level: _Low_, _Medium_, _High_ |
 |  __Binary categorical__ | A special case of categorical variable with only 2 possible levels |  isDog: _Yes_ or _No_. |
 
+:::
 
 If we want to summarise a categorical variable into a single number, then the simplest approach is to use the mode:  
 
@@ -94,7 +90,6 @@ When we have ordinal variables, there is another option, and that is to use the 
 
 When we use the __median__ as our measure of "central tendency" (i.e. the middle of the distribution) and we want to discuss how spread out the spread are around it, then we will want to use _quartiles._ The __Inter-Quartile Range (IQR)__ is obtained by rank-ordering all the data, and finding the points at which 25% (one quarter) and 75% (three quarters) of the data falls below (this makes the median the "2nd quartile").  
 
-:::
 
 In our dataset on passwords, we have various categorical variables, such as the type of password (categories like "animal", "fluffy" etc).  
 
@@ -104,15 +99,19 @@ There are various ways we might want to summarise categorical variables like thi
 table(pwords$type)
 ```
 This shows us that the __mode__ (most common) is "name" related passwords.  
+
 We could also convert these to proportions, by dividing each of these by the total number of observations. 
-For instance, here are the percentages of passwords of each type:  
+For instance, here are the percentages of passwords of each type^[think about what `sum(table(pwords$type))` is doing. it's counting all the values in the table. so it's going to give us the total]:   
 ```{r}
 table(pwords$type) / sum(table(pwords$type)) * 100
 ```
 
 :::rtip
 
-Often, if the entries in a variable are characters (letters), then many functions in R (like `table()`) will treat it the same as if it is a categorical variable. However, this is not always the case, so it is good to tell R specifically that each variable __is__ a categorical variable. There is a special way that we tell R that a variable is categorical - we set it to be a "factor". Note what happens when we make the "type" and "strength_cat"  variables to be a factor:  
+Often, if the entries in a variable are characters (letters), then many functions in R (like `table()`) will treat it the same as if it is a categorical variable.  
+However, this is not always the case, so it is good to tell R specifically that each variable __is__ a categorical variable.
+
+There is a special way that we tell R that a variable is categorical - we set it to be a "factor". Note what happens when we make the "type" and "strength_cat"  variables to be a factor:  
 
 ```{r}
 pwords$type <- factor(pwords$type)
@@ -128,11 +127,14 @@ The "strength_cat" variable specifically has an ordering to the levels, so we mi
 ```{r}
 pwords$strength_cat <- factor(pwords$strength_cat, ordered = TRUE, levels = c("weak","medium","strong"))
 ```
+
 :::
 
 Sometimes, we might have a variable that we know is categorical, but we might want to treat it as a set of numbers instead. A very common example in psychological research is Likert data (questions measured on scales such as "Strongly Disagree">>"Disagree">>...>>"Strongly Agree").  
-It is often useful to have these responses as numbers (e.g. 1 = "Strongly Disagree" to 5 = "Strongly Agree"), as this allows us to use certain functions in R more easily. 
+
+It is often useful to have these responses as numbers (e.g. 1 = "Strongly Disagree" to 5 = "Strongly Agree"), as this allows us to use certain functions and analyses more easily. 
 For instance, the `median()` and `IQR()` functions require the data to be numbers.  
+
 This will not work:
 ```{r}
 #| error: true
@@ -143,6 +145,33 @@ When we ask R to convert a factor to a numeric variable, it will give turn the f
 median(as.numeric(pwords$strength_cat))
 ```
 
+:::rtip
+__Converting between types of data:__  
+
+In R, we can use various functions to convert between different types of data, such as:  
+
+- `factor()` / `as.factor()` - to turn a variable into a factor
+- `as.numeric()` - to turn a variable into numbers
+- `as.character()` - to turn a variable into letters
+
+and we can _check_ what type of data something is coded as, by using `is.factor()`, `is.numeric()`, `is.character()`. 
+
+`r optbegin("be careful with conversions", olabel=FALSE)`
+Study the code below and the output.  
+Think carefully about why this happens:  
+```{r}
+vec <- c(1,2,4,7)
+as.numeric(as.factor(vec))
+```
+
+Why is the output different here?  
+```{r}
+as.numeric(as.character(as.factor(vec)))
+```
+
+`r optend()`
+
+:::
 
 ## Numeric
 
@@ -154,6 +183,7 @@ __Numeric__ (or quantitative) variables consist of numbers, and represent a _mea
 |  __Continuous__ | Variables which can take any real number within the specified range of measurement |  Height: _172_, _165.2_, _183_, ... |
 | __Discrete__ |  Variables which can only take integer number values. For instance, a _counts_ can only take positive integer values (0, 1, 2, 3, etc.) | Number_of_siblings: _0_, _1_, _2_, _3_, _4_, ... |
 
+:::
 
 One of the most frequently used measures of central tendency for __numeric__ data is the __mean__.  The mean is calculated by summing all of the observations together and then dividing by the total number of obervations ($n$). 
 
@@ -215,6 +245,7 @@ The mean is like a center of gravity - the sum of the positive deviations (where
 :::
 
 Because deviations around the mean always sum to zero, in order to express how spread out the data are around the mean, we must we consider __squared deviations__.  
+
 Squaring the deviations makes them all positive. Observations far away from the mean _in either direction_ will have large, positive squared deviations. The average squared deviation is known as the __variance,__ and denoted by $s^2$
 
 :::sticky
@@ -236,18 +267,23 @@ $$
 
 The mean for only two observations can be expressed as $\bar{x} = \frac{x_1 + x_2}{2}$, so we can substitute this in to the formula above. 
 $$
-(x_1 - \bar{x})^2 + (x_2 - \bar{x})^2 \qquad = \qquad \left(x_1 - \frac{x_1 + x_2}{2}\right)^2 + \left(x_2 - \frac{x_1 + x_2}{2}\right)^2 
+(x_1 - \bar{x})^2 + (x_2 - \bar{x})^2
+$$
+becomes:
+$$
+\left(x_1 - \frac{x_1 + x_2}{2}\right)^2 + \left(x_2 - \frac{x_1 + x_2}{2}\right)^2 
 $$
 Which simplifies down to one value:
 $$
-\left(x_1 - \frac{x_1 + x_2}{2}\right)^2 + \left(x_2 - \frac{x_1 + x_2}{2}\right)^2 \qquad = \qquad  \left(\frac{x_1 - x_2}{\sqrt{2}}\right)^2
+\left(\frac{x_1 - x_2}{\sqrt{2}}\right)^2
 $$
 <br>
-So although we have $n=2$ datapoints ($x_1$ and $x_2$), the top part of the equation for the variance has only 1 ($n-1$) units of information. In order to take the average of these bits of information, we divide by $n-1$. 
+So although we have $n=2$ datapoints, $x_1$ and $x_2$, the top part of the equation for the variance has 1 fewer units of information. In order to take the average of these bits of information, we divide by $n-1$. 
 `r optend()`
 :::
 
 One difficulty in interpreting __variance__ as a measure of spread is that it is in units of __squared deviations.__  It reflects the typical _squared_ distance from a value to the mean.  
+
 Conveniently, by taking the square root of the variance, we can translate the measure back into the units of our original variable. This is known as the __standard deviation.__  
 
 :::sticky
@@ -261,8 +297,6 @@ s = \sqrt{\frac{\sum\limits_{i=1}^{n}(x_i - \bar{x})^2}{n-1}}
 $$
 
 :::  
-
-:::
 
 In the passwords dataset, we only have one continuous variable, and that is the "cracked" variable, which if we recall is the "Time to crack by online guessing".  You might be questioning whether the "strength" variable, which ranges from 1 to 10 is numeric? This depends on whether we think that statements like "a password of strength 10 is twice as strong as a password of strength 5".  
 For now, we'll just look at the "cracked" variable.  
@@ -289,6 +323,7 @@ and just to prove to ourselves:
 sd(pwords$cracked)^2 == var(pwords$cracked)
 ```
 
+
 :::rtip
 If a column of our dataset contains only numbers, R will typically just interpret it as a numeric variable. However, we should still be careful; remember what happens if we have just one erroneous entry in there - they can all change to be characters (surrounded by quotation marks):  
 ```{r}
@@ -310,6 +345,16 @@ mean(x, na.rm = TRUE)
 ```
 
 :::
+
+```{r}
+#| label: fig-typesdata
+#| echo: false
+#| fig-show: 'hold'
+#| fig-align: 'center'
+#| fig-cap: "Artwork by \\@allison_horst"
+knitr::include_graphics("images/ahorst/cdnob.png")
+```
+
 
 
 <div class="divider div-transparent div-dot"></div>
@@ -337,7 +382,7 @@ This sort of writing (functions inside functions inside functions) involves R ev
 
 We can actually write code that better maps to this way of reading, using a nice little symbol called a "pipe":  
 
-:::lo
+:::statbox
 __Piping__
 
 We can write in a different style, however, and this may help to keep code tidy and easily readable - we can write __sequentially__:  
@@ -388,7 +433,7 @@ We're going to use pipes a lot throughout this course, and it pairs really well 
 Typically, the __tidyverse__ means that we no longer have to keep telling R in which dataframe to look for the variable. The tidyverse functions are designed to make things is a bit easier. Let's take a look at how.  
 You'll notice that the code has lots of indentations to make it more readable, which RStudio does for you when you press enter!  
 
-:::lo
+:::statbox
 __select()__  
 
 We know about using `$` to extract a column from a dataframe. The `select()` function is a little bit like that - it allows us to choose certain columns in a dataframe. It will return all rows.  
@@ -423,7 +468,7 @@ pwords[, c("type","strength")]
 
 :::
 
-:::lo
+:::statbox
 __filter()__ 
 
 The `filter()` function is a bit like the `[]` to choose rows that meet certain conditios - it allows us to _filter_ a dataframe down to those rows which meet a given condition. It will return all columns.  
@@ -458,7 +503,7 @@ pwords[pwords$strength_cat == "strong", ]
 
 :::  
 
-:::lo
+:::statbox
 __mutate()__  
 
 The `mutate()` function is used to add or modify variables to data.  
@@ -508,7 +553,7 @@ pwords$cracked_min <- pwords$cracked / 60
 :::
 
 
-:::lo
+:::statbox
 __summarise()__   
   
 The `summarise()` function is used to reduce variables down to a single summary value.
@@ -553,7 +598,7 @@ sum(pwords$strength_cat == "strong")
 
 :::
 
-:::lo
+:::statbox
 __group_by()__
 
 The __group_by()__ function is often used as an intermediate step in order to do something. For instance, if we want to summarise a variable by calculating its mean, but we want to do that for several groups, then we first __group_by()__ and _then_ __summarise()__:  
@@ -598,7 +643,7 @@ mean(pwords$cracked[pwords$strength_cat == "strong"])
 
 :::
 
-:::rtip
+:::statbox
 __Other pipes!__  
 
 The `%>%` pipe came on the scene in around 2014, and has been part of a huge shift since then in the way that many people use R.  
@@ -676,9 +721,10 @@ You can find great documentation on ggplot2 at https://www.statsandr.com/blog/gr
 :::
 
 
-`r optbegin("Optional - Looking ahead to different aes() and geoms, labels.", olabel=FALSE)`
+`r optbegin("Optional - Looking ahead", olabel=FALSE)`
 Use these as reference for when you want to make changes to the plots you create.  
-Additionall, remember that google is your friend - there are endless forums with people asking how to do something in ggplot, and you can just copy and paste bits of code to add to your plots!  
+
+Additionally, remember that google is your friend - there are endless forums with people asking how to do something in ggplot, and you can just copy and paste bits of code to add to your plots!  
   
 1. Filling/colouring geoms: 
 ```{r}
@@ -817,7 +863,7 @@ Now that we have learned about the different measures of central tendency and of
 
 We can visualise numeric data using a __histogram__, which shows the frequency of values which fall within _bins_ of an equal width. 
 
-To do this, we're going to use some new data, on 120 participants' IQ scores (measured on the Wechsler Adult Intelligence Scale (WAIS)), their ages, and their scores on 2 other tests. The data are available at https://uoepsy.github.io/data/wechsler.csv  
+To do this, we're going to use some new data, on 120 participants' IQ scores (measured on the Wechsler Adult Intelligence Scale (WAIS)), their ages, and their scores on 2 other tests. The data are available at [https://uoepsy.github.io/data/wechsler.csv](https://uoepsy.github.io/data/wechsler.csv)  
 ```{r}
 wechsler <- read_csv("https://uoepsy.github.io/data/wechsler.csv")
 ```
@@ -859,6 +905,113 @@ ggplot(data = wechsler, aes(x = test2)) +
 ```
 
 
+:::statbox
+__Defining moments__  
+
+The "moments" of a distribution are the metrics that relate to the shape of that distribution. 
+We've already seen the primary two moments that define the shapes of these distributions: the mean and the variance. The mean moves the distribution right or left, and the variance makes the distribution wider or narrower.  
+  
+There are two more, "skewness" and "kurtosis" which tend to be of less focus of investigation (the questions we ask tend to be mainly concerned with means and variances). Skewness is a measure of _asymmetry_ in a distribution. Distributions can be _positively skewed_ or _negatively skewed_, and this influences our measures of central tendency and of spread to different degrees. The kurtosis is a measure of how "pointy" vs "rounded" the shape of a distribution is.  
+
+
+```{r}
+#| echo: false
+tibble(
+  x = seq(0, 200, 1),
+  y = dnorm(x, 100, 15),
+  y2 = dnorm(x,150, 15),
+  y3 = dnorm(x,50,15)
+) %>%
+  ggplot(.,aes(x=x))+
+  geom_ribbon(aes(ymin=0, ymax=y, fill="Mean = 100"), alpha=0.2)+
+  geom_ribbon(aes(ymin=0, ymax=y2, fill="Mean = 150"), alpha=0.2)+
+  geom_ribbon(aes(ymin=0, ymax=y3, fill="Mean = 50"), alpha=0.2)+
+  theme_classic()+
+  scale_y_continuous(NULL, breaks=NULL,)+
+  theme(axis.line.y = element_blank(), axis.text.x = element_blank(), 
+        axis.title.x = element_blank(), legend.position="bottom")+
+  guides(fill=FALSE)+
+  labs(title="The mean defines the location of a distribution") -> plt_loc
+
+tibble(
+  x = seq(0, 200, 1),
+  y = dnorm(x, 100,10),
+  y2 = dnorm(x,100, 15),
+  y3 = dnorm(x,100,5)
+) %>%
+  ggplot(.,aes(x=x))+
+  geom_ribbon(aes(ymin=0, ymax=y, fill="Mean = 100"), alpha=0.3)+
+  geom_ribbon(aes(ymin=0, ymax=y2, fill="Mean = 150"), alpha=0.3)+
+  geom_ribbon(aes(ymin=0, ymax=y3, fill="Mean = 50"), alpha=0.3)+
+  theme_classic()+
+  scale_y_continuous(NULL, breaks=NULL,)+
+  theme(axis.line.y = element_blank(), axis.text.x = element_blank(), 
+        axis.title.x = element_blank(), legend.position="bottom")+
+  guides(fill=FALSE)+
+  xlim(50,150)+
+  labs(title="The variance defines the scale of a distribution") -> plt_scale
+
+library(sn)
+tibble(
+  x = seq(0, 200, 1),
+  y = dnorm(x, 100, 15),
+  y2 = dsn(x, xi = 180, omega=27.5, alpha = -5),
+  y3 = dsn(x, xi = 20, omega=27.5,alpha = 5),
+) %>%
+  ggplot(.,aes(x=x))+
+  geom_ribbon(aes(ymin=0, ymax=y, fill="Symmetric"), alpha=0.2)+
+  geom_ribbon(aes(ymin=0, ymax=y2, fill="Negative Skew"), alpha=0.2)+
+  geom_ribbon(aes(ymin=0, ymax=y3, fill="Positive Skew"), alpha=0.2)+
+  theme_classic()+
+  scale_fill_manual("",breaks=c("Positive Skew","Symmetric","Negative Skew"), values=c("chartreuse3","blue","red"))+
+  scale_y_continuous(NULL, breaks=NULL,)+
+  theme(axis.line.y = element_blank(), axis.text.x = element_blank(), 
+        axis.title.x = element_blank(), legend.position="bottom")+
+  
+  geom_vline(aes(xintercept=100), lty="dashed", col="blue")+
+  annotate("label",x=100, y=0.022, label="Mode", vjust=1,hjust=0.5, col="blue")+
+  annotate("label",x=100, y=0.0275, label="Median", vjust=1,hjust=0.5, col="blue")+
+  annotate("label",x=100, y=0.033, label="Mean", vjust=1,hjust=0.5, col="blue")+
+  
+  geom_vline(xintercept=c(155,165,170), lty="dashed", col="red")+
+  annotate("label",x=175, y=0.022, label="Mode", vjust=1,hjust=0.5, col="red")+
+  annotate("label",x=165, y=0.0275, label="Median", vjust=1,hjust=0.5, col="red")+
+  annotate("label",x=155, y=0.033, label="Mean", vjust=1,hjust=0.5, col="red")+
+  
+  geom_vline(xintercept=c(45,35,30), lty="dashed", col="chartreuse3")+
+  annotate("label",x=25, y=0.022, label="Mode", vjust=1,hjust=0.5, col="chartreuse3")+
+  annotate("label",x=35, y=0.0275, label="Median", vjust=1,hjust=0.5, col="chartreuse3")+
+  annotate("label",x=45, y=0.033, label="Mean", vjust=1,hjust=0.5, col="chartreuse3")+
+  labs(title="Skewness defines the asymmetry of a distribution") + 
+  NULL -> plt_skew
+
+library(PearsonDS)
+tibble(
+  x = seq(0, 200, .1),
+  y = dpearson(x, moments = c(mean=100,variance=15,skewness=0,kurtosis=3)),
+  y2 = dpearson(x, moments = c(mean=100,variance=15,skewness=0,kurtosis=7)),
+  y3 = dpearson(x,moments = c(mean=100,variance=15,skewness=0,kurtosis=2.3))
+) %>%
+  ggplot(.,aes(x=x))+
+  geom_ribbon(aes(ymin=0, ymax=y, fill="100"), alpha=0.2)+
+  geom_line(aes(y=y,col="100"))+
+  geom_ribbon(aes(ymin=0, ymax=y2, fill="150"), alpha=0.2)+
+  geom_line(aes(y=y2,col="150"))+
+  geom_ribbon(aes(ymin=0, ymax=y3, fill="50"), alpha=0.2)+
+  geom_line(aes(y=y3,col="50"))+
+  theme_classic()+
+  scale_y_continuous(NULL, breaks=NULL,)+
+  theme(axis.line.y = element_blank(), axis.text.x = element_blank(), 
+        axis.title.x = element_blank(), legend.position="bottom")+
+  guides(fill='none',col='none')+
+  xlim(80,120)+
+  labs(title="The kurtosis defines the 'pointy-ness' of a distribution") -> plt_kurt
+
+plt_loc / plt_scale
+plt_skew / plt_kurt
+```
+
+:::
 
 
 ## Density
@@ -872,6 +1025,8 @@ You can think of "density" as a bit similar to the notion of "relative frequency
 ggplot(data = wechsler, aes(x = iq)) + 
   geom_density()
 ```
+
+
 
 :::statbox
 __Area under the curve__  
@@ -942,20 +1097,20 @@ tibble(response = 1:6, prob = rep(1/6,6)) %>%
 ggplot(., aes(x=response, y=prob))+
   geom_point(size=3)+
   geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
-  scale_x_continuous("faces of a die", breaks=1:6)+
+  scale_x_continuous("possible faces of a die", breaks=1:6)+
   scale_y_continuous("probability", limits = c(0,1), breaks=map_dbl(1:6,~./6), labels=c(paste0(1:5,"/6"),"1"))+
   theme_classic()+
-  theme(text = element_text(size = 24)) -> dp
+  theme(text = element_text(size = 20)) -> dp
 
 
 df <- tibble(x=c(50,150))
 g <- df %>% ggplot(aes(x=x)) +
   stat_function(fun=dnorm,args=list(mean=100,sd=15),size=1) +
-  xlab("IQ scores") + ylab("density")
+  xlab("possible IQ scores") + ylab("density")
 ld <- layer_data(g) %>% filter(x>= 110)
 cp <- 
   g + geom_area(data=ld,aes(x=x,y=y),fill="red")+theme_classic()+
-  theme(text = element_text(size = 24))
+  theme(text = element_text(size = 20))
 
 library(patchwork)
 dp + cp

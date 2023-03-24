@@ -15,8 +15,11 @@ xaringanExtra::use_panelset()
 
 
 :::frame
-In the last couple of years during welcome week, we have asked students of the statistics courses in the Psychology department to fill out a little survey.  
-Anonymised data are available at [https://uoepsy.github.io/data/surveydata_allcourse22.csv](https://uoepsy.github.io/data/surveydata_allcourse22.csv).  
+__Data: Past Surveys__  
+In the last few years, we have asked students of the statistics courses in the Psychology department to fill out a little survey.  
+Anonymised data are available at [https://uoepsy.github.io/data/surveydata_historical.csv](https://uoepsy.github.io/data/surveydata_historical.csv).  
+
+__Note:__ this does _not_ contain the responses from this year. 
 :::
 
 # Data manipulation & visualisation
@@ -36,7 +39,8 @@ You might want to use `mutate()`. Remember to make the changes apply to the obje
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 ```{r}
 library(tidyverse)
-surveydata <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv")
+# TODO
+surveydata <- read_csv("../../data/surveydata_historical.csv")
 
 surveydata <- surveydata %>%
   mutate(
@@ -71,20 +75,22 @@ prop.table(table(surveydata$over6ft))
 
 
 `r qbegin(3)`
-how many of USMR students in `r paste0(as.numeric(substr(Sys.Date(),1,4)),"/",as.numeric(substr(Sys.Date(),3,4))+1)` are born in the same month as you? 
+How many previous **USMR** students are born in the same month as you? 
 
 :::hints
 __Hints:__  
-This will involve `filter`ing your data to current USMR students first.  
-In tidyverse you can make a table using `... %>% select(variable) %>% table()`  
-You can also try `... %>% count(variable)` to get the same information.  
+
+- The data contains students from some of the other statistics courses we teach, so this will involve `filter`ing your data to USMR students first. 
+- In tidyverse you can make a table using `... %>% select(variable) %>% table()`  
+- You can also try `... %>% count(variable)` to get the same information.  
+
 :::
 
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 ```{r}
 surveydata %>% 
-  filter(course == "usmr", year=="2022") %>%
+  filter(course == "usmr") %>%
   count(birthmonth)
 ```
 
@@ -94,12 +100,14 @@ surveydata %>%
 `r qbegin(4)`
 Calculate the mean and standard deviation of heights of all respondents to the survey.  
 
-Can you (also) do this using the tidyverse syntax?
+Can you also do this using the tidyverse syntax?
 
 :::hints
 __Hints:__  
-We can do it with `mean(data$variable)`, but it will be useful to practice tidyverse style. You'll want to `summarise()` the data.  
-We're likely to have missing data in here, so `na.rm=TRUE` will be handy (see [2A #numeric](02a_measurement.html#numeric){target="_blank"})
+
+- We can do it with `mean(data$variable)`, but it will be useful to practice tidyverse style. You'll probably want to `summarise()` the data.  
+- We're likely to have missing data in here, so `na.rm=TRUE` will be handy (see [2A #numeric](02a_measurement.html#numeric){target="_blank"})
+
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
@@ -111,7 +119,10 @@ So we need to make sure we use `na.rm = TRUE` (we can use `T` as a shorthand for
 ```{r}
 mean(surveydata$height, na.rm = T)
 sd(surveydata$height, na.rm = T)
+```
 
+or in tidyverse:
+```{r}
 surveydata %>% 
   summarise(
     meanheight = mean(height, na.rm = T),
@@ -163,8 +174,9 @@ surveydata %>%
 `r solend()`
 
 `r qbegin(7)`
-Plot the distributions of heights for each course.  
-Based on your answer to the previous question, can you picture what the distributions are going to look like _before_ you plot them?  
+Based on your answer to the previous question, can you picture what the distributions are going to look like?  
+
+Plot the distributions of heights for each course to see if you're correct.  
 
 :::hints
 __Hints:__  
@@ -187,20 +199,12 @@ ggplot(surveydata, aes(x=height, fill = course)) +
 
 `r solend()`
 
-
 `r qbegin(8)`
-What proportion of respondents to the survey are taller than you?  
 
-:::hints
-__Hints:__  
+How many people in the survey do we have height data for? (i.e. how many are not missing?)   
+To find this out we might need to use `is.na()` (see below for a little example for you to play with).  
 
-- Remember that we can `sum()` a condition as a quick way of counting: `sum(data$variable == "thing")` adds up all the TRUE responses.  
-  - We're going to need to make sure we tell `sum()` to ignore the missing values (`na.rm=TRUE` will come in handy again).  
-- We're _also_ going to need to figure out what our denominator is when calculating the proportion $\frac{\text{nr people taller than me}}{\text{total nr of people}}$.  
-The denominator (the bit on the bottom) should really be the total number of people _for whom we have height data_. We should exclude the missing data because otherwise we will be counting them as if they are all shorter than you (but they might not be - we don't know!).
-To find out how many in a variable are not NAs, we might need to use `is.na()` (see below for a little example for you to play with)
-- Can you also do this in tidyverse syntax? (most of it can be done inside `summarise()`).  
-  
+
 :::frame
 __`is.na()`__  
 
@@ -215,6 +219,39 @@ is.na(mynumbers)
 sum(!is.na(mynumbers))
 ```
 :::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+To get the number of respondents with height data, we can sum the non-NA values:
+```{r}
+sum(!is.na(surveydata$height))
+```
+and we have this many missing:
+```{r}
+sum(is.na(surveydata$height))
+```
+which makes sense because we have this many entries in the data:
+```{r}
+nrow(surveydata)
+```
+
+`r solend()`
+
+`r qbegin(9)`
+How many respondents are taller than you?  
+
+What proportion of respondents (with valid height data) are taller than you?  
+
+:::hints
+__Hints:__  
+
+- Remember that we can `sum()` a condition as a quick way of counting: `sum(data$variable == "thing")` adds up all the TRUE responses.  
+  - We're going to need to make sure we tell `sum()` to ignore the missing values (`na.rm=TRUE` will come in handy again).  
+- Our denominator (bit on the bottom) for calculating the proportion $\frac{\text{nr people taller than me}}{\text{total nr of people}}$, is the total number of people _for whom we have height data_. We just calculated that in the previous question!  
+
+- Can you also do this in tidyverse syntax? (most of it can be done inside `summarise()`).  
+  
 
 :::
 `r qend()`
@@ -247,7 +284,10 @@ surveydata %>%
   )
 ```
 
-
+And we can actually do it the same way we did question 2! 
+```{r}
+prop.table(table(surveydata$height > 177))
+```
 
 `r solend()`
 
@@ -262,25 +302,25 @@ For these next exercises we are going to be focusing on self-perceived sleep qua
 knitr::include_graphics("images/sleepquestion.png")
 ```
 
-`r qbegin(9)`
-We only asked the sleep quality rating question to students in USMR in the 2022/23 academic year, so to make things easier, let's create a subset of the dataset which includes only those students. 
+`r qbegin(10)`
+We only asked the sleep quality rating question to students in USMR in the 2022 cohort, so to make things easier, let's create a subset of the dataset which includes only those students. 
 
 :::hints
 __Hints:__  
-This will need some `filter`ing, and assigning (`usmrdata <-`) to a new name.
+This will need some `filter`ing, and assigning (e.g. `usmr2022 <-`) to a new name.
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 ```{r}
-usmrdata <- surveydata %>% 
-  filter(course == "usmr", year == "2022")
-dim(usmrdata)
+usmr2022 <- surveydata %>% 
+  filter(course == "usmr", year == 2022)
+dim(usmr2022)
 ```
 `r solend()`
 
 
-`r qbegin(10)`
-For the USMR students in the 2022/23 academic cohort, calculate the following: 
+`r qbegin(11)`
+For the USMR students in the 2022 academic cohort, calculate the following: 
 
 - mean Sleep-Quality rating
 - standard deviation of Sleep-Quality ratings
@@ -295,7 +335,7 @@ You can do this with things like `mean(data$variable)`, or you can do it all in 
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 ```{r}
-usmrdata %>% 
+usmr2022 %>% 
   summarise(
     m_sleep = mean(sleeprating, na.rm = TRUE),
     sd_sleep = sd(sleeprating, na.rm = TRUE),
@@ -306,7 +346,7 @@ usmrdata %>%
 
 `r solend()`
 
-`r qbegin(11)`
+`r qbegin(12)`
 Using your answers to the previous question, construct a 95% confidence interval for the average Sleep-Quality rating.  
 
 Why might it be a _bad_ idea to use this as an estimate of the average Sleep-Quality  rating of the global population?  
@@ -324,15 +364,15 @@ __Hints:__
 
 ```{r}
 #| echo: false
-mu = mean(usmrdata$sleeprating, na.rm = TRUE)
-su = sd(usmrdata$sleeprating, na.rm = TRUE)
-m = round(mean(usmrdata$sleeprating, na.rm = TRUE),2)
-s = round(sd(usmrdata$sleeprating, na.rm = TRUE),2)
-n = sum(!is.na(usmrdata$sleeprating))
+mu = mean(usmr2022$sleeprating, na.rm = TRUE)
+su = sd(usmr2022$sleeprating, na.rm = TRUE)
+m = round(mean(usmr2022$sleeprating, na.rm = TRUE),2)
+s = round(sd(usmr2022$sleeprating, na.rm = TRUE),2)
+n = sum(!is.na(usmr2022$sleeprating))
 se = round(su/sqrt(n),2)
 ```
 
-So we have our estimate, which is the mean sleep quality rating in our sample: $\bar x = `r m`$. And we have a standard deviation of our sleep quality ratings: $s = `r s`$. While our sample has `r nrow(usmrdata)` students in it, only `r n` responded to the sleep question, so really our $n$ for this calculation is `r n`.  
+So we have our estimate, which is the mean sleep quality rating in our sample: $\bar x = `r m`$. And we have a standard deviation of our sleep quality ratings: $s = `r s`$. While our sample has `r nrow(usmr2022)` students in it, only `r n` responded to the sleep question, so really our $n$ for this calculation is `r n`.  
 
 We can calculate our standard error as $SE = \frac{s}{\sqrt{n}}$, which is $\frac{`r s`}{\sqrt{`r n`}} = `r se`$.
 
@@ -346,7 +386,7 @@ $$
 \end{align}
 $$
 
-How well does our sample represent the global population? Well, for one thing, you're all university students, and while there will be many students from across the globe, it's highly likely that our sample is biased towards certain countries or continents. Additionally, we're going to have a lot of people in our sample in a fairly narrow age range. It might be that sleep quality changes a lot as people age, in which case our results are probably not going to generalise very well to, for instance, people who are 70 years old. There are lots more ways in which our sample might be biased - you can find a nice little 1 page article at [https://www.nature.com/articles/466029a](https://www.nature.com/articles/466029a){target="_blank"} to get you thinking.  
+How well does our sample represent the global population? Well, for one thing, they're all university students, and while there will be many students from across the globe, it's highly likely that our sample is biased towards certain countries or continents. Additionally, we're going to have a lot of people in our sample in a fairly narrow age range. It might be that sleep quality changes a lot as people age, in which case our results are probably not going to generalise very well to, for instance, people who are 70 years old. It's also important to remember that this is a snapshot taken at a certain point in time, and might not generalise to other times. There are lots more ways in which our sample might be biased - you can find a nice little 1 page article at [https://www.nature.com/articles/466029a](https://www.nature.com/articles/466029a){target="_blank"} to get you thinking.  
 
 
 `r solend()`
