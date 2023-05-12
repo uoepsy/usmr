@@ -1,6 +1,6 @@
 ---
 title: "3B: Practical Inference"
-link-citations: yes
+link-citations: true
 params: 
     SHOW_SOLS: TRUE
     TOGGLE: TRUE
@@ -27,10 +27,10 @@ This reading:
 
 :::
 
-In the previous section we saw how we can apply the logic of _Null Hypothesis Significance Testing_ (NHST), allowing us to draw inferences about parameters in the __population__, based on statistics computed on the __sample__ we have collected.  
+In [3A](03a_inference.html){target="_blank"} we learned about the logic of _Null Hypothesis Significance Testing_ (NHST), allowing us to draw perform inferentials tests about parameters in the __population__, based on statistics computed on the __sample__ that we have collected.  
 
 :::statbox
-__NHST__  
+__NHST Recap__ 
 
 We have a sample ($n=10$):
 ```{r}
@@ -40,7 +40,11 @@ And a sample mean:
 ```{r}
 mean(mysample)
 ```
-We want to test this against the null hypothesis that the mean in the population is actually 0. 
+
+We're interested in whether - in the _population_ - the mean of this variable is different from 0. So we are testing between two hypotheses:
+
+- Null Hypothesis $H_0: \mu = 0$.  
+- Alternative Hypothesis $H_1: \mu \neq 0$. 
 
 Remember, there are lots of samples of size $n=10$ that we _could_ take, and they all have different means. To quantify the spread of these different means we can use the __standard error__, calculated using $SE = \frac{\sigma}{\sqrt{n}}$:  
 ```{r}
@@ -52,7 +56,7 @@ We can use this information to express how far away from the null hypothesis (me
 $$
 Z \ = \ \frac{\text{estimate}-\text{null}}{SE} \ = \ \frac{1.9 - 0}{1.39} \ = \ 1.36
 $$
-We then ask, __if__ the mean in the population _is_ 0, what is the probability of obtaining a $Z$-statistic from a sample of this size at least as extreme as the one we _have_ observed?  
+We can then calculate, __if__ the mean in the population _is_ 0, what is the probability of obtaining a $Z$-statistic from a sample of this size at least as extreme as the one we _have_ observed?  
 
 The resulting probability is our __p-value:__  
 ```{r}
@@ -101,15 +105,15 @@ As this interval includes zero, then at the 5% level we fail to reject the null 
 
 While in practice NHST follows the logic described above, there is something important that we have been sweeping under the carpet.  
 
-In our estimation of the __standard error__ we have used the formula that includes $\sigma$, which refers to the __population__ standard deviation. However, we never know this value (because we don't have data for the population), so we have been using the __sample__ standard deviation $s$ instead. This is an _approximation_, and might be okay when we have a very large $n$ (meaning $s$ provides accurate estimate of $\sigma$), but in practice is not always feasible.
+In our estimation of the __standard error__ we have used the formula that includes $\sigma$, which refers to the __population__ standard deviation. However, we never know this value (because we don't have data for the population), so we have been using the __sample__ standard deviation $s$ instead. This is an _approximation_, and might be okay when we have a very large $n$ (meaning $s$ provides an accurate estimate of $\sigma$), but in practice this is not always feasible.
 $$
 SE = \frac{\sigma}{\sqrt{n}} \approx \frac{s}{\sqrt{n}}
 $$
 
-# $t$-distributions  
+# $t$ - distributions  
 
-To resolve the issues with this approximation (using $s$ in place of $\sigma$), instead of using the normal distribution, we tend to instead use the $t$-distribution.  
-The $t$ distribution is very similar to the normal distribution, but it has slightly _heavier_ tails:  
+To resolve the issues with this approximation (using $s$ in place of $\sigma$), instead of using the normal distribution, we tend to instead use the $t$-distribution. The $t$ distribution is very similar to the normal distribution, but it has slightly _heavier_ tails (see @fig-tnorm). $t$-distributions are always centered on zero, and the precise shape (how heavy the tails are) depends upon a parameter known as the __degrees of freedom.__  
+  
 ```{r}
 #| label: fig-tnorm
 #| fig-cap: "Normal distribution (black) vs t-distribution with 3 degrees of freedom (red)"
@@ -125,14 +129,13 @@ g <- df %>% ggplot(aes(x=x)) +
 g
 ```
 
-$t$-distributions are always centered on zero, and the precise shape (how heavy the tails are) depends upon a parameter known as the __degrees of freedom.__  
-
 :::sticky
 __Degrees of Freedom - $df$__ 
 
 'Degrees of freedom' is a tricky concept. One of the most intuitive ways to understand it is to think of it as the number of independent bits of information that go into calculating an estimate. Put another way, it is the number of datapoints that are _free to vary_.  
 
-`r optbegin("Degrees of freedom (df)", olabel=FALSE)`
+::: {.callout-note collapse="true"}
+### Degrees of freedom (df)
 
 Suppose we have four unknown numbers ($a$, $b$, $c$ and $d$) which *must* have a mean of 5.  
 
@@ -160,12 +163,12 @@ $1+2+3+d = 20$
 $d = 20-3-2-1$   
 $d = 14$  
 
-`r optend()`
+:::
 
 :::
 
 
-When we estimate the mean from a sample, we use up one of our degrees of freedom, and so our test of a single mean will require us to use a $t$-distribution with $n-1$ degrees of freedom. For $t$-distributions, as the $df$ increases the distribution becomes closer and closer to a normal distribution (see @fig-tdf) - the use of these $t$-distributions is exactly what we need to account for using $s$ in our calculation of the standard error.  
+When we estimate the mean from a sample, we use up one of our degrees of freedom, and so our test of a single mean will require us to use a $t$-distribution with $n-1$ degrees of freedom. For $t$-distributions, as the $df$ increases the distribution becomes closer and closer to a normal distribution (see @fig-tdf) - the use of these $t$-distributions is exactly what we need in order to account for using $s$ in our calculation of the standard error.^[This is because smaller samples will tend to have slightly less variability, and so the sample standard deviation will tend to be slightly smaller than the population standard deviation. Our standard error will therefore be smaller, and our test statistics slightly bigger (because the test statistic involves dividing by the SE, and if we divide by a smaller number, we get out a bigger number). To better represent this greater chance of seeing bigger test statistics from small samples, our $t$-distributions have heavier tails.]  
 
 ```{r}
 #| label: fig-tdf
@@ -193,7 +196,7 @@ g <- df %>% ggplot(aes(x=x)) +
 g
 ```
 
-In order to utilise the $t$-distribution in hypothesis testing, we need to move to performing $t$-tests! 
+To make use of the $t$-distribution in hypothesis testing, we need to move to performing $t$-tests! 
 
 The logic remains the same as before, but where we previously were relying on the normal distribution: 
 
@@ -202,15 +205,15 @@ The logic remains the same as before, but where we previously were relying on th
 
 We can use `pt()` and `qt()` to conduct the same process but in reference to the appropriate $t$-distribution.  
 
-:::statbox
-__Demonstration: t-test for a single mean__  
+# $t$ -test demonstration
 
-Recalling our sample, we'll now perform the appropriate test against the null hypothesis that the mean in the population is zero.  
 ```{r}
 mysample <- c(1, -4, 6, 4, -2, 3, 2, -5, 6, 8)
 ```
 
-Now that we move to using $t$-distributions, our test-statistic is going to be a $t$-statistic:  
+Let us then perform a more appropriate test against the null hypothesis that the mean in the population is zero. It is going to look pretty much the same as it did previously, but things like "Z" and "norm" are going to be replaced with "t".  
+
+For example, our test-statistic is now going to be a $t$-statistic:  
 
 $$
 \begin{align}
@@ -225,14 +228,15 @@ $$
 $$
 Which can be calculated as: 
 ```{r}
-xbar = mean(mysample)
-se = sd(mysample) / sqrt(length(mysample))
-tstat = (xbar - 0) / se
+xbar <- mean(mysample)
+se <- sd(mysample) / sqrt(length(mysample))
+tstat <- (xbar - 0) / se
 tstat
 ```
 
-Because we have $n=10$, and we are estimating a sample mean, we are going to be referring to a $t$-distribution with 9 ($10-1$) degrees of freedom (we lose one by calculating the mean).  
-
+While the calculation is just the same as it was previously, we're calling it a $t$-statistic because we are going to compare it to a reference $t$-distribution. 
+As our sample has $n=10$, and as part of the statistic we are estimating a mean, the relevant $t$-distribution for us has 9 ($10-1$) degrees of freedom (we lose one by calculating the mean). 
+  
 Our p-value can be found with the `pt()` function:  
 ```{r}
 2*pt(tstat, df = 9, lower.tail = FALSE)
@@ -242,20 +246,29 @@ And our confidence interval can be constructed using:
 $$
 \text{95% CI} = \bar{x} \pm t^* \times SE \\
 $$
-Note that $t^*$ has replaced the 1.96 we saw in previous chapters, because we obtained that using the normal distribution. The code `qnorm(c(0.025, 0.975))` shows us that 95% of __normal__ distribution is beyond 1.96 from the mean. But what we actually want to know is where 95% of the $t$-distribution with $df=9$ lies:  
+Note that $t^*$ has replaced the 1.96 we saw in previous chapters, because we obtained that using the normal distribution. The code `qnorm(c(0.025, 0.975))` showed us that 95% of __normal__ distribution is beyond 1.96 from the mean. But what we actually want to know is where 95% of the $t$-distribution with $df=9$ lies:  
 So instead we can use:
 ```{r}
 qt(c(0.025, 0.975), df = 9)
 ```
 And our confidence interval is:
 ```{r}
-xbar = mean(mysample)
-se = sd(mysample) / sqrt(length(mysample))
-c(xbar - (2.262 * se), xbar + (2.262 * se))
+#| eval: false
+xbar <- mean(mysample)
+se <- sd(mysample) / sqrt(length(mysample))
+xbar - (2.262157 * se)
+xbar + (2.262157 * se)
 ```
-:::
+```{r}
+#| echo: false
+xbar <- mean(mysample)
+se <- sd(mysample) / sqrt(length(mysample))
+xbar - (2.262157 * se)
+xbar + (2.262157 * se)
+```
 
-# R: Making things easier  
+
+# Make life easier with R
 
 All of the above is crucial for understanding how this all works, but in practice we can avoid all of the rigmarole of ever calculating the standard error or using functions like `pt()`, `qt()`. This is where R starts to become far more powerful - there are functions that do all this sort of stuff for us - in just _one single line of code!_ 
 
@@ -271,7 +284,7 @@ All of these numbers will match those that we calculated above (there may be a s
 
 It's __that__ easy!  
 
-## Checking/Testing Assumptions  
+# Assumptions  
 
 These sort of tests often require us to meet a set of conditions in order for our inferences to be valid. When we perform tests like these that involve estimating a mean, a common requirement is that the deviations from that mean are close to normally distributed.  
 
@@ -283,6 +296,7 @@ We can evaluate how close to normal a distribution is by visualising it via hist
 #| label: fig-normalquestion
 #| fig-cap: "Am I normal?"
 #| fig-height: 2.5
+#| out-width: '100%'
 #| code-fold: true
 data <- tibble(mysample = mysample)
 ggplot(data,aes(x=mysample))+geom_histogram(bins=14) +
@@ -298,7 +312,9 @@ qqnorm(data$mysample) # make the plot
 qqline(data$mysample) # add the line
 ```
 
-`r optbegin("Optional: What are the 'theoretical quantiles'?", olabel=FALSE)`
+::: {.callout-note collapse="true"}
+### Optional: What are the 'theoretical quantiles?
+
 The theoretical quantiles are the equivalent quantiles of the _standard normal distribution_ (see [#2B standard-normal-distribution](02b_sampling.html#the-standard-normal-distribution){target="_blank"}).  
 In the `data$mysample` example above, we have 10 datapoints. If we cut the standard normal distribution into 10 sections of equal area (see @fig-qqnormcurve), it is the points on the x-axis at the center of each area that we are plotting our data against.  
 
@@ -339,7 +355,7 @@ g +
   scale_x_continuous(breaks=round(map_dbl((seq(.1,1,.1)-.05), ~qnorm(.)),1))
 ```
 
-`r optend()`
+:::
 
 :::
 
@@ -479,7 +495,8 @@ wpmtime<-tibble(
 # write_csv(wpmtime, "../../data/usmr_tread.csv")
 ```
 
-:::frame
+::: {.callout-note collapse="true"}
+### Research Question & Data
 
 > **Research Question:**  Do people read more than 250 words per minute? 
 
@@ -491,38 +508,48 @@ head(wpmtime)
 ```
 :::
 
-`r optbegin("The quick and easy way", olabel=F)`
+::: {.callout-note collapse="true"}
+### Descriptives and Assumptions
 
-Below are some quick descriptives, and we should also make sure that our distribution is roughly normally distributed: 
+Below are some quick descriptives.  
 ```{r}
 mean(wpmtime$wpm)
 sd(wpmtime$wpm)
 hist(wpmtime$wpm)
+```
+
+Our histogram looks roughly normally distributed. We can (if we like), test this using the Shapiro-Wilk test.  
+```{r}
 shapiro.test(wpmtime$wpm)
 ```
 
+The $p$-value of `r round(shapiro.test(wpmtime$wpm)$p.value,3)` is $>.05$, so we fail to reject the null hypothesis that the data come from a normal distribution. In other words, we have no reason to consider our assumption to be violated.  
+
+:::
+
+::: {.callout-note collapse="true"}
+### Quick and easy `t.test()`
+
 Paying careful attention to the research question ("Do people read more than 250 words per minute?"), our null hypothesis here is that reading time is $\leq 250$ words per minute (wpm), and our alternative hypothesis is that it is $>250$ wpm.  
 
-We specify the alternative in the `t.test()` function:  
+This means that we will reject our null hypothesis if we get a test statistic indicating the mean is $>250$. We won't reject it if the mean is $<250$.  
+
+We specify the direction of the alternative in the `t.test()` function:  
 
 ```{r}
 t.test(wpmtime$wpm, mu = 250, alternative = "greater")
 ```
-:::int
-A one-sample t-test was conducted in order to determine if the average reading time was significantly ($\alpha=.05$) higher than 250 words per minute (wpm).  
-The sample of 50 participants read on average at 258 words per minute (Mean=`r round(mean(wpmtime$wpm))`, SD=`r round(sd(wpmtime$wpm))`). This was significantly above 250 ($t(49)=1.84, p = .036$, one-tailed).
+
 :::
-
-`r optend()`
-
-`r optbegin("Manually", olabel=F)`
+::: {.callout-note collapse="true"}
+### Calculated Manually 
 
 Our test-statistic is calculated as 
 $$
 t =  \frac{\bar x - \mu_0}{\frac{s}{\sqrt{n}}}
 $$
 
-There's a lot of brackets here, so go through it piece by piece if you are unsure of how it matches to the formula above  
+There's a lot of brackets in the code below, so go through it piece by piece if you are unsure of how it matches to the formula above  
 ```{r}
 (mean(wpmtime$wpm) - 250 ) / (sd(wpmtime$wpm) / sqrt(nrow(wpmtime)))
 ```
@@ -533,7 +560,17 @@ The test we are performing is against the null hypothesis that $\mu_0 \leq 250$.
 pt(1.842338, df = 49, lower.tail = FALSE)
 ```
 
-`r optend()`
+:::
+
+::: {.callout-note collapse="true"}
+### Write-up
+
+:::int
+A one-sample t-test was conducted in order to determine if the average reading time was significantly ($\alpha=.05$) higher than 250 words per minute (wpm).  
+The sample of 50 participants read on average at 258 words per minute (Mean=`r round(mean(wpmtime$wpm))`, SD=`r round(sd(wpmtime$wpm))`). This was significantly above 250 ($t(49)=1.84, p = .036$, one-tailed).
+:::
+
+:::
 
 ## Two sample t-test  
 
@@ -590,7 +627,8 @@ tcaff <- sample_n(tcaff, size = n())
 ```
 
 
-:::frame
+::: {.callout-note collapse="true"}
+### Research Question & Data
 
 > **Research Question:**  Is the average reaction time different between people who do and don't drink caffeinated drinks? 
 
@@ -602,10 +640,10 @@ head(tcaff)
 ```
 :::
 
+::: {.callout-note collapse="true"}
+### Descriptives and Assumptions
 
-`r optbegin("The quick and easy way", olabel=F)`
-
-First some quick descriptives, and a plot: 
+First some quick descriptive stats. We'll calculate the mean and standard deviation of reaction times for each group:  
 ```{r}
 tcaff %>% 
   group_by(caff) %>%
@@ -614,6 +652,7 @@ tcaff %>%
     s = sd(rt)
   )
 ```
+And we can make a plot here:  
 ```{r}
 #| fig-height: 3
 ggplot(tcaff, aes(x = rt)) +
@@ -622,7 +661,14 @@ ggplot(tcaff, aes(x = rt)) +
 ```
 The data look fairly close to normally distributed for each group here. One thing to note is that the variances look like they may be different between the two groups. The caffeine drinkers' reaction time's have a standard deviation of 109ms, and the non-caffeine drinkers have an sd of only 89ms. 
 
-However, we'll perform the Welch t-test here, which doesn't require us to assume equal variances. 
+As before, we can (if we are so inclined) rely on specific tests of these assumptions, such as using `shapiro.test()` for the distribution _in each group separately_.  
+
+Similarly, the `var.test()` function performs a test to compare two variances (the null hypothesis of this test being that they are equal). However, it is more common to simply perform the Welch test straight away, and thus not have to worry about this assumption.  
+
+:::
+
+::: {.callout-note collapse="true"}
+### Quick and easy `t.test()`
 
 We can give R the two sets of data in two ways. 
 Either by extracting the relevant entries:  
@@ -636,25 +682,16 @@ Or using the **formula** notation, with the `~` ("tilde") symbol. In R, you can 
 t.test(rt ~ caff, data = tcaff)
 ```
 
-:::int
+Note that the default behaviour of `t.test()` is to perform the Welch test - so we don't have to assume equal variances. If we want to override this, we can use `t.test(rt ~ caff, data = tcaff, var.equal = TRUE)`.  
 
-An Welch two sample t-test was used to assess whether the mean reaction time of people who regularly drink caffeine ($n = 60$) was different to that of people who do not ($n=40$). There was a significant difference in average reaction time between the caffeine (Mean=`r round(mean(tcaff$rt[tcaff$caff=="yes"]))`; SD=`r round(sd(tcaff$rt[tcaff$caff=="yes"]))`) and
-non-caffeine (Mean=`r round(mean(tcaff$rt[tcaff$caff=="no"]))`; SD=`r round(sd(tcaff$rt[tcaff$caff=="no"]))`) groups ($t(94)=-2.85, p = .005$, two-tailed). Therefore, we reject the null hypothesis that there is no difference in reaction times between caffeine drinkers and non-caffeine drinkers.   
-
-```{r}
-#| fig-height: 3
-#| code-fold: true
-ggplot(tcaff, aes(x = caff, y = rt)) +
-  geom_boxplot()+
-  labs(x="drinks caffeine",y="reaction time (ms)")
-```
 :::
 
-`r optend()`
+::: {.callout-note collapse="true"}
+### Calculated Manually
 
-`r optbegin("Manually", olabel=F)`
-
-Our test statistic here is:  
+Our test statistic here is:^[The formula here is for the Welch test.  
+For a standard two sample t-test that assumes equal variances, we first calculate the "pooled standard deviation" - $s_p = \sqrt\frac{(n_1 - 1)s_1^2 + (n_2 - 1)s_2^2}{n_1 + n_2 - 2}$.  
+We then use this to calculate the standard error - $SE_{(\bar{x}_1 - \bar{x}_2)} = s_p \sqrt{\frac{1}{n_1} + \frac{1}{n_2}}$]  
 $$
 \begin{align}
 & t =  \frac{\bar x_1 - \bar x_2}{SE}\\
@@ -669,6 +706,8 @@ $$
 & n_2 : \text{sample size group 2} \\
 \end{align}
 $$
+
+
 We can calculate each part:
 ```{r}
 tcaff %>%
@@ -683,31 +722,53 @@ tcaff %>%
 plugging these bits in gives us: 
 $$
 \begin{align}
-SE & = \sqrt{\frac{s^2_1}{n_1} + \frac{s^2_2}{n_2}} \\
-& = \sqrt{\frac{7906}{40} + \frac{11892}{60}} \\
-& = \sqrt{395.85} \\
+SE & = \sqrt{\frac{s^2_1}{n_1} + \frac{s^2_2}{n_2}} = \sqrt{\frac{7906}{40} + \frac{11892}{60}} = \sqrt{395.85} \\
+\qquad \\
 & = 19.9
 \end{align}
 $$
 and
 $$
 \begin{align}
-& t =  \frac{\bar x_1 - \bar x_2}{SE} \\
+t & =  \frac{\bar x_1 - \bar x_2}{SE} = \frac{408.1 - 464.8}{19.9} \\
 \qquad \\
-& =  \frac{408 - 465}{19.9} \\
-\qquad \\
-& = -2.86 \\
+& = -2.849 \\
 \end{align}
 $$
-Our $p$-value is determined against a $t$-distribution with a specific number of degrees of freedom. We are estimating two means here, the standard two-sample t-test uses $df = n-2$. However, the Welch t-test, which we performed quickly with `t.test()`, where we didn't assume equal variances, makes the calculation of the degrees of freedom much more complicated. 
+
+Our $p$-value is determined against a $t$-distribution with a specific number of degrees of freedom. We are estimating two means here, the standard two-sample t-test uses $df = n-2$. However, the Welch t-test, which we performed quickly with `t.test()`, where we don't assume equal variances, makes the calculation of the degrees of freedom much more complicated.^[If you _really_ want it, the formula is: $\text{df}=\frac{\left(\dfrac{s_1^2}{n_1}+\dfrac{s_2^2}{n_2}\right)^2}{\dfrac{\left(\dfrac{s_1^2}{n_1}\right)^2}{n_1-1}+\dfrac{\left(\dfrac{s_2^2}{n_2}\right)^2}{n_2-1}}$
+] 
 
 Using the same degrees of freedom as was used in the quick use of `t.test()` above, we get out our same p-value (or thereabouts - we have some rounding error):  
 ```{r}
-2*pt(abs(-2.86), df = 93.971, lower.tail = FALSE)
+2*pt(abs(-2.849), df = 93.971, lower.tail = FALSE)
 ```
 
-`r optend()`
+:::
 
+::: {.callout-note collapse="true"}
+### Write-up  
+
+```{r}
+#| include: false
+res = t.test(rt ~ caff, data = tcaff)
+```
+
+:::int
+
+A Welch two sample t-test was used to assess whether the mean reaction time of people who regularly drink caffeine ($n = 60$) was different to that of people who do not ($n=40$). There was a significant difference in average reaction time between the caffeine (Mean=`r round(mean(tcaff$rt[tcaff$caff=="yes"]))`; SD=`r round(sd(tcaff$rt[tcaff$caff=="yes"]))`) and
+non-caffeine (Mean=`r round(mean(tcaff$rt[tcaff$caff=="no"]))`; SD=`r round(sd(tcaff$rt[tcaff$caff=="no"]))`) groups ($t(`r round(res$parameter,2)`)=`r round(res$statistic,2)`, p = `r round(res$p.value,3)`$, two-tailed). Therefore, we reject the null hypothesis that there is no difference in reaction times between caffeine drinkers and non-caffeine drinkers.   
+
+```{r}
+#| fig-height: 3
+#| code-fold: true
+ggplot(tcaff, aes(x = caff, y = rt)) +
+  geom_boxplot()+
+  labs(x="drinks caffeine",y="reaction time (ms)")
+```
+:::
+
+:::
 
 
 ## Paired sample t-test  
@@ -729,7 +790,8 @@ __Assumptions:__
   
 :::
 
-:::frame
+::: {.callout-note collapse="true"}
+### Research Question & Data
 
 > **Research Question:** Is the mean cognitive score of participants at age 60 different from when they are re-tested at age 70?  
 
@@ -739,10 +801,11 @@ Addenbrooke’s Cognitive Examination-III (ACE-III) is a brief cognitive test th
 acedata <- read_csv("https://uoepsy.github.io/data/acedata.csv")
 head(acedata)
 ```
+
 :::
+::: {.callout-note collapse="true"}
+### The paired t test is the one sample t test in disguise
 
-
-`r optbegin("The paired t test is the one sample t test in disguise", olabel=F)`
 We can either perform this with the data exactly as it is: 
 
 ```{r}
@@ -759,4 +822,5 @@ acedata <- acedata %>%
 t.test(acedata$diff_score, mu = 0)
 ```
 
-`r optend()`
+:::
+

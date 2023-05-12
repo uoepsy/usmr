@@ -1,6 +1,6 @@
 ---
 title: "3A: Foundations of Inference"
-link-citations: yes
+link-citations: true
 params: 
     SHOW_SOLS: TRUE
     TOGGLE: TRUE
@@ -29,7 +29,7 @@ This reading:
 We use statistics primarily to estimate parameters in a population. Whether we are polling people to make predictions about the proportion of people who will vote for a certain party in the next election, or conducting a medical trial and assessing the change in blood pressure for patients given drug X vs those given a placebo in order to decide whether to put the drug into circulation in health service. 
 
 We have seen this already last week:
-We _observed_ a sample of peoples' life satisfaction ratings (scale 0-100), and we wanted to use these to make some statement about the wider population.  
+We _observed_ a sample of peoples' life satisfaction ratings (scale 0-100), and we wanted to use these to make some statement about the wider population, such as "the average life-satisfaction rating is ?? out of 100". So we use the mean of our sample, as an _estimate_ of the mean of the population.     
 
 # Uncertainty due to sampling
 
@@ -43,7 +43,7 @@ __Stroop Data__
 
 The data we are going to use here come from an experiment using one of the best known tasks in psychology, the "Stroop task".  
 
-In our dataset, we have information from 130 participants who completed an online task in which they saw two sets of coloured words. Participants spoke out loud the colour of each word, and timed how long it took to complete each set. In the one set of words, the words _matched_ the colours they were presented in (e.g., word "blue" was coloured blue). In the other set of words, the words _mismatched_ the colours (e.g., the word "blue" was coloured red (see @fig-stroop1). The order of matching/mismatching sets was randomly allocated for each participant. Participants' recorded their times for each set (*matching* and *mismatching*).^[You can try out the experiment at https://faculty.washington.edu/chudler/java/ready.html]      
+In our dataset, we have information from 131 participants who completed an online task in which they saw two sets of coloured words. Participants spoke out loud the colour of each word, and timed how long it took to complete each set. In the one set of words, the words _matched_ the colours they were presented in (e.g., word "blue" was coloured blue). In the other set of words, the words _mismatched_ the colours (e.g., the word "blue" was coloured red (see @fig-stroop1). The order of matching/mismatching sets was randomly allocated for each participant. Participants' recorded their times for each set (*matching* and *mismatching*).^[You can try out the experiment at https://faculty.washington.edu/chudler/java/ready.html]      
 
 The data are available at [https://uoepsy.github.io/data/stroop.csv](https://uoepsy.github.io/data/stroop.csv).  
 
@@ -56,31 +56,29 @@ knitr::include_graphics("images/numeric/stroop1.png")
 
 :::
 
-First, we read in the data and take a look at it. How many rows, how many columns, and so on.  
+First, we read in the data and take a look at it. We should note how many rows (130), how many columns (4), and so on.  
 ```{r}
 library(tidyverse)
 stroopdata <- read_csv("https://uoepsy.github.io/data/stroop.csv")
-dim(stroopdata)
-names(stroopdata)
 head(stroopdata)
 ```
 
 What we are interested in is the differences between the matching and mismatching times. For someone who took 10 seconds for the matching set, and 30 seconds for the mismatching set, we want to record their score as a difference of 20 seconds.   
 
-We can do that easily, storing the new values in a new variable:  
+So we can add this as a new variable to our data: 
 ```{r}
+#| code-fold: true
 stroopdata <- 
   stroopdata %>% 
   mutate(
     diff = mismatching - matching
   )
-```
-And to quickly prove to ourselves that is has worked:  
-```{r}
-head(stroopdata)
+head(stroopdata) # take a look to check it works
 ```
 
-And let's get some summary statistics and a visualisation of that distribution too.  
+What we're interested in is the distribution of these difference-scores. Are people, on average, _slower_? This would correspond to a positive value of the `diff` variable. 
+Let's get some summary statistics and a visualisation of out observed distribution.  
+
 ```{r}
 #| code-fold: true
 # mean(stroopdata$diff) and sd(stroopdata$diff) work just as well
@@ -97,13 +95,15 @@ ggplot(stroopdata, aes(x = diff)) +
   geom_histogram()
 ```
 
-What we're really interested in talking about is the average 'mismatching - matching' score for __everybody__, not just our sample of 131. But we only have those 131 people, so we'll have to make do and use their data to provide us with an __estimate__. 
+What we're really interested in talking about is the average 'mismatching - matching' score for __everybody__, not just our sample of 131. But we only have those 131 people, so we'll have to make do and use their data to provide us with an __estimate__.  
+
+Our __estimate__ is that people are `r round(mean(stroopdata$diff),1)` seconds slower, on average, when reading mismatched colour words than reading matched colour words.  
 
 Remember that there are many many different samples of $n=131$ that we _might have_ taken. And if we had taken a different sample, then our mean 'mismatching - matching' score (the `mean(stroopdata$diff)` value) would be different.  
 
 Previously we learned about how the distribution of all possible sample means we _might_ take is known as a __sampling distribution__. We also learned that these tend to be normally distributed (regardless of the underlying population distribution) and so we can use the standard deviation of the sampling distribution (known as the __standard error__) to quantify the variation due to sampling.  
 
-To actually get at the standard error, one of our options is to simulate the act of 'taking many samples of size $n$' by taking lots of samples _with replacement_ from our original sample.  
+To actually get at the standard error, one of our options is to simulate the act of 'taking many samples of size $n$' by taking lots of samples _with replacement_ from our original sample (this is known as "bootstrapping").  
 
 As our analyses become more advanced, then this will become more complex. In this example, because we are just interested in estimating a single mean value, we can use `replicate` to do calculate the means from 1000 resamples from our original sample. We can then simply calculate the standard deviation of all these means:   
 ```{r}
@@ -113,14 +113,15 @@ stroop_bootstrapdist <-
 sd(stroop_bootstrapdist)
 ```
 
-Alternatively (and more conventionally), we use a formula of $\frac{\sigma}{\sqrt{n}}$, which we can calculate in R. $\sigma$ is the standard deviation of the population (which we are going to approximate by using $s$, the standard deviation of our sample), and $n$ is the size of our sample:   
+Alternatively (and more conventionally), we use a formula of $\frac{\sigma}{\sqrt{n}}$, which we can calculate much more easily.  
+The symbol "$\sigma$" is the standard deviation of the population, but we are going to approximate this with "$s$", the standard deviation of our sample. The "$n$" is the size of our sample:   
 
 ```{r}
 stroopdata %>% 
   summarise(
-    s = sd(diff),
-    n = n(),
-    SE = s/sqrt(n)
+    s = sd(diff), # standard deviation of sample
+    n = n(), # number of sample
+    SE = s/sqrt(n) # standard error of mean
 )
 ```
 
@@ -161,7 +162,6 @@ $$
 \text{95\% CI} & \qquad = \bar{x} \pm 1.96 \times SE & \\
 & \qquad = 2.40 \pm 1.96 \times 0.438 \\
 & \qquad = 2.40 \pm 0.858 \\
-\qquad \\
 & \qquad = [1.542, 3.258] \\
 \end{align}
 $$
@@ -176,8 +176,11 @@ qnorm(c(0.025, 0.975))
 
 # Null Hypothesis Significance Testing (NHST)
 
-Let's suppose we are interested in whether there __is__ an effect of the mismatching/matching colour-words. 
-Our objective here has changed slightly: rather than being concerned with parameter estimation, our question is now about making a statement about two competing hypotheses: 
+Let's suppose we are interested in asking a question.  
+
+> __is there__ an effect of the mismatching/matching colour-words?  
+
+Our objective here has changed slightly: rather than being concerned with parameter estimation ("what is the estimated score"), our question is now about making a statement about two competing hypotheses: 
 
 - $H_0 \,\, (\text{The Null Hypothesis}):$ There is _no_ difference between matching and mismatching conditions. 
 - $H_1 \,\, (\text{The Alternative Hypothesis}):$ There is _some_ difference between matching and mismatching conditions. 
@@ -197,7 +200,7 @@ This is where the other primary tool for null hypothesis significance testing co
 
 The p-value is a formal way of testing a statistic against a null hypothesis. To introduce the p-value, instead of thinking first about what we _have_ observed in our sample, we need to think about what we would expect to observe _if our null hypothesis is true._  
 
-With our Stroop Task example, our null hypothesis is that there is no difference between matching and mismatching conditions ($H_0: \mu = 0$). Under $H_0$, the average 'mismatching-matching' score in the population is zero, and we would expect most of the samples we _might_ take to have a mean 'mismatching-matching' score of close to this (not _exactly_ 0, but centered around 0). We saw above that we could express the sampling distribution of means taken from samples of size $n=131$ using the __standard error__. Under $H_0$ we would expect the samples of $n=131$ we _might_ take to have means that follow something like the distribution in @fig-hyp. We can think of this as the sampling distribution of $\bar{x}$, but centered on our null hypothesis (in this case, $\mu = 0$). We call this the 'null distribution'.  
+With our Stroop Task example, our null hypothesis is that there is no difference between matching and mismatching conditions ($H_0: \mu = 0$). Under $H_0$, the average 'mismatching-matching' score in the population is zero, and we would expect most of the samples we _might_ take to have a mean score of close to this (not _exactly_ 0, but centered around 0). We saw above that we could express the sampling distribution of means taken from samples of size $n=131$ using the __standard error__. Under $H_0$ we would expect the samples of $n=131$ we _might_ take to have means that follow something like the distribution in @fig-hyp. We can think of this as the sampling distribution of $\bar{x}$, but centered on our null hypothesis (in this case, $\mu = 0$). We call this the 'null distribution'.  
 
 ```{r}
 #| label: fig-hyp
@@ -248,7 +251,9 @@ $$
 :::statbox
 __p-value__ 
 
-We can now calculate how likely it is to see values _at least as extreme_ as our observed test-statistic, _if the null is true_.  If the null hypothesis is true (there was no 'mismatching-matching' difference) then we would expect Z-statistics to be normally distributed with a mean of 0 and a standard deviation of 1.  
+We can now calculate how likely it is to see values _at least as extreme_ as our observed test-statistic, _if the null is true_.  
+
+If the null hypothesis is true (there was no 'mismatching-matching' difference) then we would expect Z-statistics to be normally distributed with a mean of 0 and a standard deviation of 1.  
 
 We have seen the process of how we might calculate a probability from a distribution like this already: the `pnorm()` function gives us the area of a distribution to the one side of a given value:  
 ```{r}
@@ -288,10 +293,6 @@ There is one last thing, and that the _direction_ of our hypotheses. Recall from
 We are interested in both tails:  
 
 ```{r}
-2 * pnorm(5.479, lower.tail = FALSE)
-```
-
-```{r}
 #| label: fig-pnormstroop2
 #| echo: false
 #| fig-cap: "2*pnorm gives the two tails"
@@ -310,10 +311,18 @@ g + geom_area(data=ld2,aes(x=x,y=y),fill="red") +
   new_theme_empty
 ```
 
+
+```{r}
+2 * pnorm(5.479, lower.tail = FALSE)
+```
+
+or $p =$ `r format(2*pnorm(5.479, lower.tail = FALSE), scientific=F)`. 
+
 :::sticky
 __p-value__  
 
-The p-value is the probability^[What we have been seeing is that probabilities in NHST are defined as the relative frequency of an event *over many trials* (as "many" $\to \infty$). This requires assuming some features of the data generating process which guides what the "many trials" would look like (e.g., that there is no effect). The $p$-value is the probability of observing results as or more extreme than the data, *if the data were really generated by a hypothesised chance process*.] that we observe a test statistic at least as extreme as the one we observed, _assuming the null hypothesis $H_0$ to be true_. 
+The p-value is the probability^[What we have been seeing is that probabilities in NHST are defined as the relative frequency of an event *over many trials* (as "many" $\to \infty$). This requires assuming some features of the data generating process which guides what the "many trials" would look like (e.g., that there is no effect). The $p$-value is the probability of observing results as or more extreme than the data, *if the data were really generated by a hypothesised chance process*.] that we observe a test statistic at least as extreme as the one we observed, _assuming the null hypothesis $H_0$ to be true_.  
+
 
 :::
 
@@ -387,6 +396,3 @@ This is the bottom right cell of the tables in @fig-httrial and @fig-httrial2. W
 :::
 
 <div class="divider div-transparent div-dot"></div>
-
-<!-- # Errors -->
-<!-- TODO -->
