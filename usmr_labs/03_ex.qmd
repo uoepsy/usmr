@@ -1,5 +1,5 @@
 ---
-title: "Week 3 Exercises: T-tests"
+title: "Exercises: T-tests"
 link-citations: true
 params: 
     SHOW_SOLS: TRUE
@@ -18,8 +18,7 @@ set.seed(017)
 
 # Intervals again  
 
-TODO TODO TODO 
-`r qbegin()`
+`r qbegin(1)`
 At the end of last week's exercises, we estimated the mean sleep-quality rating, and computed a confidence interval, using the formula below.  
 
 $$
@@ -28,75 +27,97 @@ $$
 \end{align}
 $$
 
-Where did the 1.96 come from?  
+Can you use R to show where the 1.96 comes from?  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+`qnorm`!  
+
+:::
+
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+The 1.96 comes from 95% of the normal distribution falling within 1.96 standard deviations of the mean:  
+
 ```{r}
 qnorm(c(0.025, 0.975))
 ```
 `r solend()`
 
+`r qbegin(2)`
+As we learned in [3B #t-distributions](03b_inference2.html#t-distributions){target="_blank"}, the sampling distribution of a statistic has heavier tails the smaller the size of the sample it is derived from. In practice, we are better using $t$-distributions to construct confidence intervals and perform statistical tests.  
+
+The code below creates a dataframe that contains the number of books read by 7 people in `r as.numeric(substr(Sys.Date(),1,4))-1`.    
+(Note `tibble` is just a tidyverse version of `data.frame`):  
 ```{r}
-surveydata <- read_csv("https://uoepsy.github.io/data/surveydata_historical.csv")
-
-usmr2022 <- surveydata %>%
-  filter(course == "usmr", year == 2022)
-
-usmr2022 %>% 
-  summarise(
-    m_sleep = mean(sleeprating, na.rm = TRUE),
-    sd_sleep = sd(sleeprating, na.rm = TRUE),
-    n_sleep = sum(!is.na(sleeprating)), 
-    n_total = n() # n() will give the total count
+bookdata <- 
+  tibble(
+    person = c("Martin","Umberto","Monica","Emma","Josiah","Dan","Aja"),
+    books_read = c(12,19,9,11,8,28,13)
   )
 ```
+
+Calculate the mean number of books read in `r as.numeric(substr(Sys.Date(),1,4))-1`, and construct an appropriate 95% confidence interval.   
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+Here is our estimated average number of books read:  
 ```{r}
-#| echo: false
-mu = mean(usmr2022$sleeprating, na.rm = TRUE)
-su = sd(usmr2022$sleeprating, na.rm = TRUE)
-m = round(mean(usmr2022$sleeprating, na.rm = TRUE),2)
-s = round(sd(usmr2022$sleeprating, na.rm = TRUE),2)
-n = sum(!is.na(usmr2022$sleeprating))
-se = round(su/sqrt(n),2)
+mean(bookdata$books_read)
+```
+
+And our standard error is still $\frac{s}{\sqrt{n}}$:  
+```{r}
+sd(bookdata$books_read)/sqrt(nrow(bookdata))
+```
+
+With $n = 7$ observations, and estimating 1 mean, we are left with $6$ degrees of freedom.  
+For our 95% confidence interval, the $t^*$ in the formula below is obtained via:^[(Why 97.5? and not 95? We want the _middle_ 95%, and $t$-distributions are symmetric, so we want to split that 5% in half, so that 2.5% is on either side. We could have also used `qt(0.025, df = 6)`, which will just give us the same number but negative: `r qt(0.025, df = 6)`)]  
+```{r}
+qt(0.975, df = 6)
+```
+
+Our confidence interval is therefore:  
+$$
+\begin{align}
+\text{CI} &= \bar{x} \pm t^* \times SE \\
+\text{95\% CI} &= 14.286 \pm 2.447 \times 2.652 \\
+\text{95\% CI} &= [7.80,\, 20.78] \\
+\end{align}
+$$
+
+`r solend()`
+
+`r qbegin(3)`
+Will a 90% confidence interval be wider or narrow?  
+Calculate it and see.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+A 90% confidence interval will be narrower:  
+```{r}
+qt(0.95, df = 6)
 ```
 
 $$
 \begin{align}
-\text{Mean = }& `r m` \\
-\text{95\% CI = }& `r m` \pm 1.96 \times `r se` \\
-&[`r round(m-(1.96*se),2)`, `r round(m+(1.96*se),2)`]
+\text{CI} &= \bar{x} \pm t^* \times SE \\
+\text{90\% CI} &= 14.286 \pm 1.943 \times 2.652 \\
+\text{90\% CI} &= [9.13,\, 19.44] \\
 \end{align}
 $$
 
-- where did 1.96 came from?
-```{r}
-qnorm(c(0.025, 0.975))
-```
+The intuition behind this is that our level of confidence is inversely related to the width of the interval.   
 
-- what should we use instead? t! 
-- why df n-1? bc we have our mean. that's our estimate. 
+Take it to the extremes:  
 
-```{r}
-qt(c(0.025, 0.975), df = 78)
-```
-- using that instead, for our interval:  
-$$
-\begin{align}
-\text{Mean = }& `r m` \\
-\text{95\% CI = }& `r m` \pm 1.990847 \times `r se` \\
-&[`r round(m-(1.990847*se),2)`, `r round(m+(1.990847*se),2)`]
-\end{align}
-$$
-using t.test
-```{r}
-m = mean(usmr2022$sleeprating, na.rm = TRUE)
-se = sd(usmr2022$sleeprating, na.rm=TRUE)/sqrt(79)
-m-(1.990847*se);m+(1.990847*se)
-t.test(usmr2022$sleeprating)
-```
+- I have 100% confidence that the interval $[-Infinity, +Infinity]$ contains the true population mean. 
+- If I want an narrower interval, then I have to sacrifice confidence. e.g. a 10% CI: $[`r round(t.test(bookdata$books_read,conf.level=0.1)$conf.int[1],2)`, `r round(t.test(bookdata$books_read,conf.level=0.1)$conf.int[2],2)`]$
 
+Imagine playing a game of [ringtoss](https://en.wikipedia.org/wiki/Ring_toss){target="_blank"}. A person throwing a 2-meter diameter hoop will have much more confidence that they are going to get it over the pole than a person throwing a 10cm diameter ring.  
 
-
+`r solend()`
 
 # Procrastination Scores
 
@@ -111,7 +132,7 @@ The data are available at [https://uoepsy.github.io/data/pass_scores.csv](https:
 :::
 
 
-`r qbegin(1)`
+`r qbegin(4)`
 
 1. Read in the data
 2. Calculate some relevant descriptive statistics
@@ -153,13 +174,13 @@ shapiro.test(pass_scores$PASS)
 `r solend()`
 
 
-`r qbegin(2)`
+`r qbegin(5)`
 Our test here is going to be have the following hypotheses:  
 
 - __Null:__ mean PASS score in Edinburgh Uni students is $\geq 33$
 - __Alternative:__ mean PASS score in Edinburgh Uni students is $< 33$ 
 
-Read in the data and _manually_ calculate the relevant test statistic.  
+_Manually_ calculate the relevant test statistic.  
 _Note, we're doing this manually right now as it's a useful learning process. In later questions we will switch to the easy way!_  
 
 ::: {.callout-tip collapse="true"}
@@ -196,7 +217,7 @@ pass_scores %>%
 ```
 `r solend()`
 
-`r qbegin(3)`
+`r qbegin(6)`
 Using the test statistic calculated in question 1, compute the p-value.  
 
 ::: {.callout-tip collapse="true"}
@@ -204,7 +225,8 @@ Using the test statistic calculated in question 1, compute the p-value.
 
 - this will be needing the `pt()` function.
 - the degrees of freedom is $n-1$ (we used one up by estimating the mean).
-- The test we are performing is against the null hypothesis that the mean is $\geq 33$. Our t-statistic is in the broad sense calculated as "mean minus 33", so negative numbers mean we have a mean lower than 33. These are the instances that we will reject the null hypothesis - if we get a test statistic very low. So we want the lower.tail of the distribution for our p-value. 
+- The test we are performing is against the null hypothesis that the mean is $\geq 33$. Our t-statistic is in the broad sense calculated as "mean minus 33", so negative numbers mean we have a mean lower than 33. These are the instances that we will reject the null hypothesis - if we get a test statistic very low. So we want the lower.tail of the distribution for our p-value.  
+
 :::
 
 `r qend()`
@@ -215,8 +237,8 @@ pt(-3.107272, df = 19, lower.tail = TRUE)
 ```
 `r solend()`
 
-`r qbegin(4)`
-Now using the `t.test()` function, conduct the same test. Check that the numbers match with questions 1 and 2, and create a visualisation to illustrate any results.  
+`r qbegin(7)`
+Now using the `t.test()` function, conduct the same test. Check that the numbers match with your manual calculations in the previous questions.  
 
 ::: {.callout-tip collapse="true"}
 #### Hints  
@@ -230,6 +252,13 @@ Check out the help page for `t.test()` - there is an argument in the function th
 t.test(pass_scores$PASS, mu = 33, alternative = "less")
 ```
 
+`r solend()`
+
+`r qbegin(8)`
+Create a visualisation to illustrate the results.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
 ```{r}
 #| fig.height: 3
 #| fig.width: 5
@@ -240,7 +269,8 @@ ggplot(data = pass_scores, aes(x=PASS)) +
 
 `r solend()`
 
-`r qbegin(5)`
+
+`r qbegin(9)`
 Write up the results.  
 
 ::: {.callout-tip collapse="true"}
@@ -264,22 +294,23 @@ Edinburgh University students scored lower (Mean = `r mean(pass_scores$PASS) %>%
 
 :::frame
 > __Research Question__
->  Is the average height of students taking the USMR statistic course in Psychology at Edinburgh University in 2021/2022 is different from 165cm?  
+>  Is the average height of students taking the USMR statistic course in Psychology at Edinburgh University in 2022 is different from 165cm?  
 
 ```{r echo=FALSE, out.width="30%"}
 knitr::include_graphics("images/hypothesis/playmo_tms.jpg")
 ```
 
-The data for students from all psychology statistics courses last year and USMR this year, are available at [https://uoepsy.github.io/data/surveydata_allcourse22.csv](https://uoepsy.github.io/data/surveydata_allcourse22.csv).  
+You can access the data for students of USMR in 2022, along with students taking other courses, at: [https://uoepsy.github.io/data/surveydata_historical.csv](https://uoepsy.github.io/data/surveydata_historical.csv).  
 
 :::
 
 
-`r qbegin(6)`
+`r qbegin(10)`
 No more manual calculations of test statistics and p-values for this week.  
 
-Conduct a one sample $t$-test to evaluate whether the average height of students taking the USMR courses in Psychology at Edinburgh University in 2022/23 is different from 165cm.  
+Conduct a one sample $t$-test to evaluate whether the average height of students taking the USMR courses in Psychology at Edinburgh University in 2022 is different from 165cm.  
 
+Make sure to consider the assumptions of the test! 
 
 ::: {.callout-tip collapse="true"}
 #### Hints  
@@ -300,11 +331,11 @@ knitr::include_graphics("images/hypothesis/guidelines.gif")
 
 __Read in the data:__  
 
-We need to filter it to just the USMR students this year
+We need to filter it to just the USMR students the 2022 cohort:  
 ```{r}
-survey_data <- read_csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv")
+surveydata <- read_csv("https://uoepsy.github.io/data/surveydata_historical.csv")
 
-usmr_data <- survey_data %>% 
+usmr_data <- surveydata %>% 
   filter(course=="usmr", year==2022)
 ```
 
@@ -329,11 +360,15 @@ However, as always, visualisations are vital here. The histogram below doesn't l
 
 ```{r}
 ggplot(data = usmr_data, aes(x = height)) + 
-  geom_histogram(bins=15) +
+  geom_histogram(binwidth = 2.5) +
   # adding our hypothesised mean
   geom_vline(xintercept = 165) 
 ```
-
+We can also take a quick look at the QQplot: 
+```{r}
+qqnorm(usmr_data$height)
+qqline(usmr_data$height)
+```
 
 
 __Conduct test__ 
@@ -353,18 +388,20 @@ t.test(usmr_data$height, mu = 165, alternative = "two.sided")
 > Can a server earn higher tips simply by introducing themselves by name when greeting customers?
 
 Researchers investigated the effect of a server introducing herself by name on restaurant tipping.
-The study involved forty, 2-person parties eating a \$23.21 fixed-price buffet Sunday brunch at Charley Brown's Restaurant in Huntington Beach, California, on April 10 and 17, 1988.
-Each two-person party was randomly assigned by the waitress to either a name or a no name introduction condition using a random mechanism. The waitress kept track of the two-person party condition and how much the party paid at the end of the meal.   
+The study involved forty, 2-person parties eating a \$23.21 fixed-price buffet Sunday brunch at Charley Brown's Restaurant in Huntington Beach, California, on April 10 and 17, 1988.  
+
+Each two-person party was randomly assigned by the waitress to either a name or a no-name condition. The total amount paid by each party at the end of their meal was then recorded.  
   
 The data are available at [https://uoepsy.github.io/data/gerritysim.csv](https://uoepsy.github.io/data/gerritysim.csv). (This is a simulated example based on [Garrity and Degelman (1990)](https://doi.org/10.1111/j.1559-1816.1990.tb00405.x))  
 :::
 
-`r qbegin(7)`
+`r qbegin(11)`
 Conduct an independent samples $t$-test to assess whether higher tips are earned when the server introduces themselves by name, in comparison to when they do not.    
 
 ::: {.callout-tip collapse="true"}
 #### Hints  
 
+- There is a direction in the research question stated above, which means we will want to set `alternative = ??`.  
 - We'll want to check the normality (either visually or with a test) of the variable of interest _for each group_.  
 - Some researchers suggest using the Welch t-test by default. This means you can relax the assumption of equal variances in the groups. If you want to _test_ whether two variances are equal, try the `var.test()` function.
 
@@ -376,13 +413,15 @@ Conduct an independent samples $t$-test to assess whether higher tips are earned
 __Read in the data__ 
 ```{r}
 tipdata <- read_csv("https://uoepsy.github.io/data/gerritysim.csv")
+```
 
+It might be nice to conduct our analysis on just the _tip_ given, and not the \$23.21 meal price + tip.  
+```{r}
 #make a "tip" column, which is minus the meal amount
 tipdata <- 
   tipdata %>% mutate(
     tip = paid - 23.21
   )
-
 ```
   
 __Descriptives and a plot__   
@@ -422,10 +461,12 @@ t.test(tip ~ condition, data = tipdata, alternative = "greater")
 
 # Optional Extras
 
-`r qbegin("Extra")`
 Here are a few extra questions for you to practice performing tests and making plots:  
 
-1. Are dogs heavier on average than cats? Data from Week 1: [https://uoepsy.github.io/data/pets_seattle.csv](https://uoepsy.github.io/data/pets_seattle.csv)  
+`r qbegin("Optional Extra")`
+
+Are dogs heavier on average than cats?  
+Data from Week 1: [https://uoepsy.github.io/data/pets_seattle.csv](https://uoepsy.github.io/data/pets_seattle.csv)  
 
 ::: {.callout-tip collapse="true"}
 #### Hints  
@@ -434,20 +475,8 @@ Here are a few extra questions for you to practice performing tests and making p
 
 :::
   
-2. Is taking part in a cognitive behavioural therapy (CBT) based programme associated with a greater reduction, on average, in anxiety scores in comparison to a Control group?  
-Data are at [https://uoepsy.github.io/data/dapr1_2122_report_data.csv](https://uoepsy.github.io/data/dapr1_2122_report_data.csv). The dataset contains information on each person in an organisation, recording their professional role (management vs employee), whether they are allocated into the CBT programme or not (control vs cbt), and scores on anxiety at both the start and the end of the study period.  
-
-::: {.callout-tip collapse="true"}
-#### Hints  
-
-- you might have to make a new variable in order to test the research question. 
-
-:::
-
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-__Cats v Dogs__  
 
 ```{r}
 pets <- read.csv("https://uoepsy.github.io/data/pets_seattle.csv")
@@ -479,8 +508,22 @@ catsndogs %>%
   geom_boxplot()
 ```
 
+`r solend()`
 
-__CBT & Anxiety__  
+
+`r qbegin("Optional Extra")`
+Is taking part in a cognitive behavioural therapy (CBT) based programme associated with a greater reduction, on average, in anxiety scores in comparison to a Control group?  
+Data are at [https://uoepsy.github.io/data/dapr1_2122_report_data.csv](https://uoepsy.github.io/data/dapr1_2122_report_data.csv). The dataset contains information on each person in an organisation, recording their professional role (management vs employee), whether they are allocated into the CBT programme or not (control vs cbt), and scores on anxiety at both the start and the end of the study period.  
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+
+- you might have to make a new variable in order to test the research question. 
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 Because we're testing the _reduction_ in anxiety, we need to calculate it. By subtracting anxiety at time 2 from anxiety at time 1, we create a variable for which bigger values represent more reduction in anxiety  
 ```{r}
@@ -503,5 +546,4 @@ ggplot(cbtanx, aes(x=cbt, y=reduction))+
 
 
 `r solend()`
-
 
