@@ -60,7 +60,7 @@ surveydata %>%
 `r solend()`
 
 `r qbegin(3)`
-Create a new variable in the dataset which indicates whether people are taller than 6 foot (182cm).
+Create a new variable in the dataset which indicates whether people were taller than 6 foot (182cm).
 
 ::: {.callout-tip collapse="true"}
 #### Hints  
@@ -192,6 +192,10 @@ You might also want to add an extra `aesthetic` mapping from the `course` variab
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+They're all going to look pretty similar - the center will be at around 167 and the majority of the distribution will lie within about 15cm either side (2 times the standard deviation of about 7.5).  
+Note that the USMR students have a slightly higher mean as well as a slightly bigger standard deviation. So this plot will be slightly shifted to the right, and will be slightly more spread out. It might be hard to see these differences just by looking at the plots though.  
+
 ```{r}
 ggplot(surveydata, aes(x=height, fill = course)) + 
   geom_histogram(binwidth = 5) + 
@@ -251,7 +255,7 @@ nrow(surveydata)
 
 `r qbegin(10)`
 
-Just like finding out how many people were over 6 foot, we can quickly work out how many respondents are taller than *<insert your height here>*, by using `table()`.  
+Just like finding out how many people were over 6 foot, we can quickly work out how many respondents are taller than *\<insert your height here\>*, by using `table()`.  
 For instance, here is a table of how many people are taller than me (Josiah):  
 
 ```{r}
@@ -407,9 +411,9 @@ How well does our sample represent the global population? Well, for one thing, t
 `r solend()`
 
 `r qbegin("Optional Extra")`
-Note that the confidence interval from the previous question is concerned with describing the abstract and _theoretical_ distribution of "what the mean sleep quality rating would look like from all possible samples of this size that i _could_ take". In order to do this we used a formula to describe the spread of this distribution, and in doing so had to assume that the standard deviation of our sample is a good approximation of the standard deviation of the population, and that the population is normally distributed.  
+Note that the confidence interval from the previous question is concerned with describing the abstract and _theoretical_ distribution of "what the mean sleep quality rating would look like from all possible samples of this size that I _could_ take". In order to do this we used a formula to describe the spread of this distribution, and in doing so had to assume that the standard deviation of our sample is a good approximation of the standard deviation of the population, and that the population is normally distributed.  
 
-We can also avoid ever using the standard deviation of our sample (`sd(usmr2022$sleeprating)`), and instead approximate the sampling distribution of the mean by "bootstrapping" - taking repeated _resamples_ with replacement from the original sample. TODO link.  
+We can also avoid ever using the standard deviation of our sample (`sd(usmr2022$sleeprating)`), and instead approximate the sampling distribution of the mean by "bootstrapping" - taking repeated _resamples_ with replacement from the original sample (see [2B#standard-error](02b_sampling.html#standard-error-in-practice){target="_blank"}.  
 
 ```{r}
 #| eval: false
@@ -417,9 +421,8 @@ bootstrap_means <- replicate(1000, mean(sample(observed_sample, replace = TRUE))
 ```
 
 1. Create an object that contains the 10,000 means from 10,000 resamples of our sleep ratings.  
-2. Plot a histogram of the bootstrap means
-3. What is the standard deviation of the bootstrap distribution? how does it compare to the standard error you calculated in the previous question with the formula?  
-4. At what values does the middle 95% of the bootstrap distribution fall?  
+2. The distribution of resample means is the 'bootstrap distribution'. Plot a histogram of it. What is the standard deviation? How does it compare to the standard error you calculated in the previous question with the formula?  
+3. At what values does the middle 95% of the bootstrap distribution fall?  
 
 
 ::: {.callout-tip collapse="true"}
@@ -432,6 +435,10 @@ For 4, look up `quantile()`. We saw this in [2B #confidence-intervals](02b_sampl
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+:::panelset
+:::panel
+#### Resample means  
 
 Here is our sample of sleep ratings: 
 ```{r}
@@ -458,22 +465,36 @@ finally, we'll do it lots and lots of times, using `replicate()`:
 BSmeans <- replicate(10000, mean(sample(sleeprates, replace = TRUE)))
 ```
 
-2. Here's the histogram:
+:::
+:::panel
+#### Bootstrap Distribution
+
+Here's the histogram of the bootstrap distribution:
 ```{r}
 hist(BSmeans)
 ```
 
-3. Here's the standard deviation. Recall our standard error calculated using $\frac{s}{\sqrt{n}}$ from the previous question was `r se`
+And here's the standard deviation of that distribution. This is a bootstrapped estimate of the standard error.  
+
 ```{r}
 sd(BSmeans)
 ```
 
+Recall our standard error calculated using $\frac{s}{\sqrt{n}}$ from the previous question was `r se`
 
-4. And we can get the 2.5% and 97.5% percentiles (i.e. getting the middle 95%), using the code below. Recall our confidence intervals that we computed analytically were `r round(m-(1.96*se),2)` and `r round(m+(1.96*se),2)`.  
+:::
+:::panel
+#### Percentiles
+
+We can get the 2.5% and 97.5% percentiles (i.e. getting the middle 95%), using the code below. Recall our confidence intervals that we computed analytically were `r round(m-(1.96*se),2)` and `r round(m+(1.96*se),2)`.  
 ```{r}
 quantile(BSmeans, c(.025,.975))
 ```
 
+:::
+:::
+
+<br><br>
 
 ::: {.callout-caution collapse="true"}
 #### bootstraps

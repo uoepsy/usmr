@@ -13,6 +13,15 @@ xaringanExtra::use_panelset()
 
 # First things
 
+
+<center>
+<sourceCode>
+**model name** <- lm( **dependent variable** ~ **independent variable**, data = **dataframe** )
+</sourceCode>
+</center>
+
+
+
 The very first things to do are to open RStudio and get a blank script ready for writing your code.
 
 :::column-margin
@@ -97,10 +106,11 @@ Or we can extract the names only:
 ```{r}
 #| eval: false
 # These all do the same
-petdata[c(47,200),"name"]
+petdata[c(47,200),"animals_name"]
 petdata[c(47,200),3]
 petdata$animals_name[c(47,200)]
 ```
+The will all give us these names:  
 ```{r}
 #| echo: false
 petdata$animals_name[c(47,200)]
@@ -114,8 +124,8 @@ In the last one, we use the `$` to access the `animals_name` variable. In this c
 
 
 `r qbegin(3)`
-Subset the data to only the data for the dogs, and store this object as another named object in your environment.   
-Subset the data to only the data for the cats, and store this object as another named object in your environment.   
+Subset the data to only the animals which are _dogs_, and store this subset as another named object in your environment.   
+Do the same for the _cats._ 
 
 ::: {.callout-tip collapse="true"}
 #### Hints
@@ -183,24 +193,37 @@ This is a slightly complex one. [1B #more-complex-conditions](01b_data.html#More
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 
+As always, there are lots of different ways.  
+Here are three:  
+
+::::panelset
+
+:::panel
+#### "not a dog AND not a cat"
 We can ask if something is not a dog by using `petdata$species != "Dog"`. But we want the rows where the species is not a dog _and_ it's not a cat.  So it's two conditions:  
 
 ```{r}
 petdata[petdata$species != "Cat" & petdata$species != "Dog", ]
 ```
-
+:::
+:::panel
+#### "not (dog OR cat)"
 We could also do this in other ways, such as asking for all the entries which are _either_ "Dog" _or_ "Cat", and then negating them: 
 
 ```{r}
 petdata[!(petdata$species == "Cat" | petdata$species == "Dog"), ]
 ```
+:::
+:::panel
+#### "not one of [Dog, Cat]"
 
 Another clever little operator is the `%in%` operator, which asks whether something is _in_ a set of things. Unfortunately, we can't use `!%in%` to mean "not in", so we need to put the `!` right at the start of the condition:  
 
 ```{r}
 petdata[!petdata$species %in% c("Cat","Dog"), ]
 ```
-
+:::
+::::
 
 `r solend()`
 
@@ -210,6 +233,9 @@ Create a new variable in the data, which contains the weights of all the animals
 ::: {.callout-tip collapse="true"}
 #### Hints
 Try looking up the help documentation for the function `round()`. Try playing with it in the console, e.g. `round(c(3.5, 4.257, 1.1111))`. You may find it helpful to look back at [1B #adding/changing-a-variable](01b_data.html#addingchanging-a-variable){target="_blank"}.  
+
+- "to the nearest kg" would mean we want no decimal points. Note that `round()` has a _digits_ argument. e.g. `round(22.324, digits = 2)` and `round(22.324, digits = 1)` do different things.  
+
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
@@ -330,14 +356,14 @@ barplot(table(rolls20))
 `r solend()`
 
 `r qbegin(13)`
-Do the same for 1,000 rolls, and then for 10,000. What do you notice?   
+Do the same for 100 rolls, and then for 1,000. What do you notice?   
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 ```{r}
-morerolls <- replicate(1000, dice(1))
+morerolls <- replicate(100, dice(1))
 barplot(table(morerolls))
 
-morerolls2 <- replicate(10000, dice(1))
+morerolls2 <- replicate(1000, dice(1))
 barplot(table(morerolls2))
 ```
 The more rolls we do of the dice, the flatter the graph becomes. This is because there is an equal probability of the die landing on any of the responses - there is a uniform probability.  
@@ -347,7 +373,7 @@ The more rolls we do of the dice, the flatter the graph becomes. This is because
 `r qbegin(14)`
 Copy the code below into your script and run it. It creates a new function called `wdice()` which simulates the rolling of `num` dice which are slightly weighted.  
   
-Roll a single weighted die 20 times and plot the frequency distribution. Do the same for 1,000 and 10,000 rolls of a single die. Does a pattern emerge? At how many rolls?  
+Roll a single weighted die 20 times and plot the frequency distribution. Do the same for 100 and 1,000 rolls of a single die. Does a pattern emerge? At how many rolls?  
 ```{r}
 wdice <- function(num = 1){
     sum(sample(1:6, num, replace=TRUE, prob = c(0.15,0.15,0.15,0.15,0.15,0.25)))
@@ -412,6 +438,8 @@ Can you observe the weighting in your new die (the one which 50% of the time lan
 wd <- replicate(20, wdice(1))
 barplot(table(wd))
 ```
+The die is very clearly weighted to land on 6. We can see this in just 20 rolls. Presumably it will become even clearer if we increased how many times we roll it.  
+
 `r solend()`
 
   
@@ -419,7 +447,7 @@ barplot(table(wd))
 Conceptually, what can we learn from this toy example?    
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
-The bigger the effect, the smaller the sample required to observe it! 
+The more highly weighted a die is, the less we have to roll it in order to observe that weighting.  
 `r solend()`
 
 

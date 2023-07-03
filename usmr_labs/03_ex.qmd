@@ -13,6 +13,8 @@ params:
 source('assets/setup.R')
 library(tidyverse)
 library(patchwork)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
 set.seed(017)
 ```
 
@@ -32,7 +34,7 @@ Can you use R to show where the 1.96 comes from?
 ::: {.callout-tip collapse="true"}
 #### Hints
 
-`qnorm`!  
+`qnorm`!  (see the end of [03A #uncertainty-due-to-sampling](03a_inference.html#uncertainty-due-to-sampling){target="_blank"})
 
 :::
 
@@ -119,6 +121,8 @@ Imagine playing a game of [ringtoss](https://en.wikipedia.org/wiki/Ring_toss){ta
 
 `r solend()`
 
+<div class="divider div-transparent div-dot"></div>
+
 # Procrastination Scores
 
 :::frame
@@ -138,27 +142,43 @@ The data are available at [https://uoepsy.github.io/data/pass_scores.csv](https:
 2. Calculate some relevant descriptive statistics
 3. Check the assumptions that we will be concerned with for a one-sample test of whether the mean PASS scores is less than 33. 
 
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- What counts as "relevant statistics"? Think about the question. It concerns just one variable (the PASS scores), which is numeric. What's a nice way of describing the center and spread of such a variable?  
+
+:::
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-__Read in the data:__  
+
+
+::::panelset
+:::panel
+#### Data
 
 ```{r}
 pass_scores <- read_csv("https://uoepsy.github.io/data/pass_scores.csv") 
+dim(pass_scores)
+head(pass_scores)
 ```
 
-__Descriptives:__  
+:::
+:::panel
+#### Descriptives
 
 ```{r}
 pass_scores %>%
   summarise(
     mPASS = mean(PASS),
-    sdPASS = sd(PASS)
+    sdPASS = sd(PASS),
+    n = n()
   )
 ```
 
-
-__Assumptions:__ 
+:::
+:::panel
+#### Assumptions
 
 We want to check that the data are close to normally distributed. This is especially relevant as we have only 20 datapoints here. The plot below makes it look like we may have one or two data points in the tails of the distribution that are further than we might expect. 
 ```{r}
@@ -170,6 +190,9 @@ But the Shapiro-Wilk test of $p > .05$ indicates that we are probably okay to co
 ```{r}
 shapiro.test(pass_scores$PASS)
 ```
+
+:::
+::::
 
 `r solend()`
 
@@ -238,7 +261,7 @@ pt(-3.107272, df = 19, lower.tail = TRUE)
 `r solend()`
 
 `r qbegin(7)`
-Now using the `t.test()` function, conduct the same test. Check that the numbers match with your manual calculations in the previous questions.  
+Now using the `t.test()` function, conduct the same test. Check that the numbers match with your manual calculations in the previous two questions.  
 
 ::: {.callout-tip collapse="true"}
 #### Hints  
@@ -247,10 +270,13 @@ Check out the help page for `t.test()` - there is an argument in the function th
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
 ```{r}
 t.test(pass_scores$PASS, mu = 33, alternative = "less")
 ```
+The $t$ statistic, our $df$, and our $p$-value all match the manual calculations from the previous questions.  
+
+The simple `t.test()` approach even gives us a confidence interval! Well.. half of one! This is because we conducted a one-sided test. Remember that null hypothesis significance testing is like asking "does our confidence interval contain zero?". With a one-sided test we only reject the null hypothesis if the test statistic is large in _one_ direction, and so our confidence interval is one-sided also.  
+
 
 `r solend()`
 
@@ -260,6 +286,8 @@ Create a visualisation to illustrate the results.
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 ```{r}
+#| label: fig-passfig
+#| fig-cap: "Distribution of scores on the Procrastination Assessment Scale for Students (PASS) measure. The majority of the sample scored below the suggested normal score of 33 (red dashed line)."
 #| fig.height: 3
 #| fig.width: 5
 ggplot(data = pass_scores, aes(x=PASS)) + 
@@ -284,11 +312,13 @@ res2<-t.test(pass_scores$PASS, mu = 33, alternative = "less")
 ```
 
 :::int
-A one-sided one-sample t-test was conducted in order to determine if the average score on the Procrastination Assessment Scale for Students (PASS) for a sample of `r nrow(pass_scores)` students at Edinburgh University was significantly lower ($\alpha = .05$) than the average score obtained during development of the PASS. 
+A one-sided one-sample t-test was conducted in order to determine if the average score on the Procrastination Assessment Scale for Students (PASS) for a sample of `r nrow(pass_scores)` students at Edinburgh University was significantly lower ($\alpha = .05$) than the average score of 33 obtained during development of the PASS. 
 
-Edinburgh University students scored lower (Mean = `r mean(pass_scores$PASS) %>% round(2)`, SD = `r sd(pass_scores$PASS) %>% round(2)`) than the score reported by the authors of the PASS (Mean = 33). This difference was statistically significant (t(`r nrow(pass_scores)-1`)=`r res2$statistic %>% round(2)`, p < .05, one-tailed).  
+Edinburgh University students scored lower (Mean = `r mean(pass_scores$PASS) %>% round(2)`, SD = `r sd(pass_scores$PASS) %>% round(2)`) than the score reported by the authors of the PASS (Mean = 33). This difference was statistically significant ($t(`r nrow(pass_scores)-1`)=`r res2$statistic %>% round(2)`$, $p < .05$, one-tailed).  
 :::
 `r solend()`
+
+<div class="divider div-transparent div-dot"></div>
 
 # Heights 
 
@@ -308,7 +338,7 @@ You can access the data for students of USMR in 2022, along with students taking
 `r qbegin(10)`
 No more manual calculations of test statistics and p-values for this week.  
 
-Conduct a one sample $t$-test to evaluate whether the average height of students taking the USMR courses in Psychology at Edinburgh University in 2022 is different from 165cm.  
+Conduct a one sample $t$-test to evaluate whether the average height of students taking the USMR courses in Psychology at Edinburgh University in 2022 was different from 165cm.  
 
 Make sure to consider the assumptions of the test! 
 
@@ -319,9 +349,13 @@ Make sure to consider the assumptions of the test!
 So what do we do if a test indicates our assumptions are violated?  
 Well, we should bear a couple of things in mind.  
     1. A decision rule such as $p<.05$ on Shapiro-Wilk test creates very dichotomous thinking for something which is in reality not black and white. Real life distributions are not *either* normal *or* non-normal. Plot the data, and make a judgement!  
-    2. As it happens, the t-test is actually reasonably robust against slight deviations from normality! Plot your data and make a judgement! 
-    3. The deeper you get into statistics, the more you discover that it is not simply a case of following step-by-step rules:
-```{r echo=FALSE, out.width="80%"}
+    2. As it happens, the t-test is actually reasonably robust against slight deviations from normality, especially if the sample size is "large enough" (rule-of-thumb n = 30) and the data are not heavily skewed. Plot your data and make a judgement!  
+
+```{r}
+#| label: fig-rules
+#| fig-cap: "The deeper you get into statistics, the more you discover that it is not simply a case of following step-by-step rules."  
+#| out-width: "80%"
+#| echo: false
 knitr::include_graphics("images/hypothesis/guidelines.gif")
 ```
 :::
@@ -329,7 +363,9 @@ knitr::include_graphics("images/hypothesis/guidelines.gif")
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
-__Read in the data:__  
+::::panelset
+:::panel
+#### Data
 
 We need to filter it to just the USMR students the 2022 cohort:  
 ```{r}
@@ -337,18 +373,25 @@ surveydata <- read_csv("https://uoepsy.github.io/data/surveydata_historical.csv"
 
 usmr_data <- surveydata %>% 
   filter(course=="usmr", year==2022)
+
+dim(usmr_data)
 ```
 
-__Descriptives:__  
+:::
+:::panel
+#### Descriptives
 
 ```{r}
 usmr_data %>% 
   summarise(
     mheight = mean(height, na.rm = T),
-    sdheight = sd(height, na.rm = T)
+    sdheight = sd(height, na.rm = T),
+    n = sum(!is.na(height))
   )
 ```
-__Assumptions:__  
+:::
+:::panel
+#### Assumptions
 
 The `shapiro.test()` suggests that our assumption of normality is not okay!  
 (the p-value is $<.05$, suggesting that we reject the hypothesis that the data are drawn from a normally distributed population)  
@@ -364,22 +407,28 @@ ggplot(data = usmr_data, aes(x = height)) +
   # adding our hypothesised mean
   geom_vline(xintercept = 165) 
 ```
-We can also take a quick look at the QQplot: 
+We can also take a quick look at the QQplot. The points follow the line closely apart from at the tail ends, matching the heavier tails of the distribution that are visible in the histogram above. 
 ```{r}
 qqnorm(usmr_data$height)
 qqline(usmr_data$height)
 ```
 
+The data are not skewed, and we are working with a sample of `r sum(!is.na(usmr_data$height))`, which is likely large enough for us to feel satisfied that the $t$-test will lead us to valid inferences.  
 
-__Conduct test__ 
+:::
+:::panel
+#### t-test
 
 ```{r}
 t.test(usmr_data$height, mu = 165, alternative = "two.sided")
 ```
 
+:::
+::::
 
 `r solend()`
 
+<div class="divider div-transparent div-dot"></div>
 
 # Names and Tips  
 
@@ -396,7 +445,7 @@ The data are available at [https://uoepsy.github.io/data/gerritysim.csv](https:/
 :::
 
 `r qbegin(11)`
-Conduct an independent samples $t$-test to assess whether higher tips are earned when the server introduces themselves by name, in comparison to when they do not.    
+Conduct an independent samples $t$-test to assess whether higher tips were earned when the server introduced themselves by name, in comparison to when they did not.    
 
 ::: {.callout-tip collapse="true"}
 #### Hints  
@@ -410,9 +459,13 @@ Conduct an independent samples $t$-test to assess whether higher tips are earned
 
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
-__Read in the data__ 
+::::panelset
+:::panel
+#### Data
 ```{r}
 tipdata <- read_csv("https://uoepsy.github.io/data/gerritysim.csv")
+dim(tipdata)
+head(tipdata)
 ```
 
 It might be nice to conduct our analysis on just the _tip_ given, and not the \$23.21 meal price + tip.  
@@ -423,8 +476,10 @@ tipdata <-
     tip = paid - 23.21
   )
 ```
-  
-__Descriptives and a plot__   
+
+:::
+:::panel
+#### Descriptives
   
 ```{r}
 tipdata %>% 
@@ -433,12 +488,18 @@ tipdata %>%
     meantip = mean(tip),
     sdtip = sd(tip)
   )
+```
 
+:::
+:::panel
+#### Plot
+```{r}
 ggplot(data = tipdata, aes(x = tip, y = condition)) +
   geom_boxplot()
 ```
-  
-__Assumptions__  
+:::
+:::panel
+#### Assumptions  
 
 According to these tests, we have normally distributed data for both groups, with equal variances. 
 ```{r}
@@ -447,7 +508,9 @@ shapiro.test(tipdata$tip[tipdata$condition=="no name"])
 var.test(tip ~ condition, data = tipdata)
 ```
 
-__Conduct test:__
+:::
+:::panel
+#### t-test  
 
 Because the variances do not appear to be unequal, we can actually use the standard t-test with `var.equal = TRUE` if we want. However, we'll continue with the Welch t-test. 
 
@@ -457,13 +520,18 @@ R will take the levels in order here (alphabetically), and assume that the alter
 t.test(tip ~ condition, data = tipdata, alternative = "greater")
 ```
 
+:::
+::::
+
 `r solend()`
+
+<div class="divider div-transparent div-dot"></div>
 
 # Optional Extras
 
 Here are a few extra questions for you to practice performing tests and making plots:  
 
-`r qbegin("Optional Extra")`
+`r qbegin(qlabel = FALSE, "Optional Extra 1")`
 
 Are dogs heavier on average than cats?  
 Data from Week 1: [https://uoepsy.github.io/data/pets_seattle.csv](https://uoepsy.github.io/data/pets_seattle.csv)  
@@ -511,7 +579,7 @@ catsndogs %>%
 `r solend()`
 
 
-`r qbegin("Optional Extra")`
+`r qbegin(qlabel = FALSE, "Optional Extra 2")`
 Is taking part in a cognitive behavioural therapy (CBT) based programme associated with a greater reduction, on average, in anxiety scores in comparison to a Control group?  
 Data are at [https://uoepsy.github.io/data/dapr1_2122_report_data.csv](https://uoepsy.github.io/data/dapr1_2122_report_data.csv). The dataset contains information on each person in an organisation, recording their professional role (management vs employee), whether they are allocated into the CBT programme or not (control vs cbt), and scores on anxiety at both the start and the end of the study period.  
 
