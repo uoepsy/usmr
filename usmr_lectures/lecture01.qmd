@@ -7,7 +7,7 @@ title: "Introductions to R and Statistics"
 #| include: false
 
 library(tidyverse)
-source('theme/theme_quarto.R')
+source('_theme/theme_quarto.R')
 ```
 
 # Why R?
@@ -84,3 +84,458 @@ summary(model)
 ![](img/quarto.png){width=80%}
 :::
 ::::
+
+
+## RMarkdown
+
+```markdown
+### About RMarkdown
+
+_This_ is some **RMarkdown**, which uses 'simple' codes to mark up text.
+
+- it can include R code like `r knitr::inline_expr("sqrt(2)")`
+- it's simple to format things like bulleted lists
+  + or even sublists
+```
+
+::: {.fragment}
+### About RMarkdown
+_This_ is some **RMarkdown**, which uses 'simple' codes to mark up text.
+
+- it can include R code like `r sqrt(2)`
+- it's simple to format things like bulleted lists
+  + or even sublists
+  
+:::
+
+# What is R Good For?
+
+## Managing Datasets
+
+![](img/rtable.png){.center-x}
+
+## Doing Statistics
+
+```{r}
+#| echo: false
+
+load('R/model.Rdata')
+.pp(summary(model),l = list(1:10,25:32,0))
+```
+
+## Publication-Quality Graphics
+
+![](img/ultra-profiles.svg){.center-x}
+
+## Data Visualisation
+
+![](img/fbook_sm.jpg){.center-x}
+
+::: attribution
+<https://www.facebook.com/notes/10158791468612200/>
+:::
+
+## RMarkdown: Books
+
+![](img/dapr-intro-book.png){.center-x}
+
+::: attribution
+<https://bookdown.org/csgillespie/efficientR/>
+:::
+
+## RMarkdown: Websites
+
+![](img/mc_website.png){.center-x}
+
+::: attribution
+<https://martincorley.org/>
+:::
+
+## Online Interactive Visualisation
+
+<iframe src="https://gallery.shinyapps.io/051-movie-explorer" title="Movie Explorer" width="1050px" height="500px"></iframe>
+
+::: attribution
+<https://shiny.posit.co/r/gallery/interactive-visualizations/movie-explorer/>
+:::
+
+## R for Anything to do with Data
+
+```{r}
+#| label: pp
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+#| fig-width: 8
+#| fig-height: 8
+
+require(tm)
+require(wordcloud)
+pp <- Corpus(DirSource('R/PP/'))
+pp <- tm_map(pp,stripWhitespace)
+pp <- tm_map(pp,tolower)
+pp <- tm_map(pp,removeWords,
+             stopwords('english'))
+pp <- tm_map(pp,stemDocument)
+pp <- tm_map(pp,removePunctuation)
+pp <- tm_map(pp, PlainTextDocument)
+wordcloud(pp,
+          scale=c(5,0.5),
+          max.words=150,
+          random.order=FALSE, 
+          rot.per=0.35,
+          colors=brewer.pal(12,'Dark2'))
+```
+
+## The R Community
+
+:::: {.columns}
+
+::: {.column width="35%"}
+![](`r knitr::fig_chunk('pp', 'svg')`)
+:::
+
+::: {.column width="65%"}
+- _someone else_ has done all the hard work to create wordclouds
+- released as libraries or **packages** (like `lme4` and `tidyverse`)
+- all I supplied was a text version of _Pride and Prejudice_
+
+:::
+::::
+
+::: {.fragment}
+- **R** allows you to do _anything_ with data
+- if it's useful, chances are someone has already done it
+- useful things include statistics!
+:::
+
+
+## The R Community
+
+- if it's useless, chances are that someone's already done it
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+library(cowsay)
+say("hello USMR")
+```
+
+---
+
+![](img/4logos.png){height=110}
+
+- USMR is created in **RStudio**, using **R** and **RMarkdown**
+
+![](img/make_lectures.png){.center-x height=550}
+
+## Why Use R?
+
+- because it's a _language_, I can easily show you what I did and you can copy it
+
+- because it's a _language_, statisticians can use it to implement leading-edge stats
+
+- because it's _free_, anyone can use it---and anyone can access your research
+
+- because it's _open source_, anyone can fix or improve it
+
+## Devilish Stuff
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### doing stats
+![](img/SPSS_logo.svg){width=230}
+:::
+
+::: {.column width="50%"}
+### coding
+![](img/js_logo.png){width=230}&nbsp;![](img/python-logo.svg){width=230}
+:::
+
+::::
+
+::: aside
+**NB** all indices in `R` start at `1`
+:::
+
+
+# Getting to Grips with R
+
+## Data in R
+
+- you can type **data** directly in to R
+```{r}
+# a number
+1.2
+# characters (a string)
+"fáilte"
+```
+
+::: {.fragment}
+- and you can do **operations** on data
+
+```{r}
+1.2 + 7 * 2
+```
+:::
+
+::: notes
+- why is the answer 15.2 and not 16.4?
+- by "data" we really mean anything that is measured *outside* R and provided to R directly
+:::
+
+## Variables
+
+:::: {.columns}
+
+::: {.column width="20%"}
+
+::::: {.r-stack}
+[![](img/playmog.jpg)]{.fragment fragment-index=1 .fade-out}
+
+[![](img/playmog.jpg)]{.fragment fragment-index=1 .animate__wobble}
+:::::
+
+:::
+
+::: {.column width="80%"}
+- you can assign data to **variables**
+```{r}
+bodyTemp <- 37.8
+```
+- and use those variables
+```{r}
+bodyTemp * (9/5) + 32 # to Fahrenheit
+```
+
+:::: {.fragment fragment-index=1}
+- **NB** spelling/capitalization matter
+```{r}
+#| error: true
+BodyTemp - 37
+```
+
+::::
+:::
+
+::::
+
+
+## Statistics is about Groups
+
+:::: {.columns}
+
+::: {.column width="70%"}
+```{r}
+allTemps <- c(37.8, 0, 37.4)
+
+# vector maths
+allTemps * (9/5) + 32
+```
+
+:::: {.fragment}
+- note the **vectorization** of the calculation
+
+- R is designed from the bottom up to deal with groups
+::::
+:::
+
+::: {.column width="30%"}
+![](img/playmo_tms.jpg)
+:::
+
+::::
+
+
+## Not everything is a number
+
+:::: {.columns}
+
+::: {.column width="70%"}
+```{r}
+allHair <- c("brown","white","black")
+allHair
+```
+- these are called **character strings**
+  + can be anything
+- **categories** (nominal data) are from a limited set
+  + called **factors** in R
+```{r}
+as.factor(allHair)
+```
+:::
+
+::: {.column width="30%"}
+![](img/playmo_tms.jpg)
+:::
+
+::::
+
+## Basic types of data (stats)
+
+:::: {.columns}
+
+::: {.column width="70%"}
+- **Nominal**
+
+  ('names of things': e.g., hair colour)
+  
+- **Ordinal**
+
+  (order, no number: e.g., small-medium-large)
+  
+- **Interval**
+
+  (number without a true zero: e.g., body temp in ℃)
+
+- **Ratio**
+
+  (number with a true zero: e.g., height)
+:::
+
+::: {.column width="30%"}
+![](img/playmo_tms.jpg)
+:::
+
+::::
+
+## NOIR in R
+
+:::: {.columns}
+
+::: {.column width="40%"}
+```{r}
+#| echo: false
+#| results: asis
+library(gt)
+t <- tibble(Type=c('Nominal','Ordinal','Interval','Ratio'),
+            `R Variable Type`=c('character/factor','number','number','number')
+)
+t |> gt() |> tab_options(table.font.size=pct(70))
+```
+:::
+
+::: {.column width="60%"}
+- nominal
+```{r}
+#| tidy.opts: { width.cutoff: 36 }
+
+allHair <-
+  as.factor(c("brown", "white", "black"))
+allHair
+```
+
+- interval
+```{r}
+allTemps <- c(37.8, 0, 37.4)
+allTemps
+```
+:::
+
+::::
+
+::: aside
+ordinal data can also be represented as **ordered factors** (`as.ordered()`)
+:::
+
+## Break it down
+
+```r
+allHair <- c("brown", "white", "black")
+```
+
+::: {layout="[[-1], [30, 70], [30, 70], [30,70], [30,70]]"}
+`allHair`
+
+- **variable** (we chose the name `allHair`)
+
+[`<-`]
+
+- **assignment** ("goes in to")
+
+[`c()`]
+
+- **function** (`c()` _combines_ its **arguments**)
+
+`"brown"`
+
+- **character** (arbitrary sequence of symbols)
+:::
+
+::: notes
+- only the middle two are "R"; the others are strings we chose.
+:::
+
+## Dataframes
+
+- data can be grouped into a **dataframe**
+- each _line_ represents one set of observations
+- each _column_ represents one type of information
+  + (a bit like a spreadsheet)
+```{r}
+#| label: df
+#| eval: false
+#| code-line-numbers: "1-5|6"
+people <- data.frame(name=c('Johanna','Casper','Steve'),
+                     temp=allTemps,
+                     hair=as.factor(allHair),
+                     height=c(132,205,181))
+people
+```
+
+```{r}
+#| echo: false
+<<df>>
+```
+
+## Functions and dataframes
+
+::: {layout="[[1],[-1],[1]]"}
+
+:::: {#id1}
+```{r}
+summary(people)
+```
+::::
+
+:::: {#id2 .fragment}
+- or you can pick out a vector
+
+```{r}
+mean(people$temp) # just the temp column from people
+```
+::::
+:::
+
+## We know a little about R
+
+- we've seen some R code
+
+- we know about basic data types
+
+- we know what variables are
+
+- we've seen vectors, and dataframes
+
+- we've seen a couple of examples of functions
+
+---
+
+[![](img/Two_red_dice_01.svg){height=350}]{.center-xy}
+
+## Are my dice fair?
+
+- one way to find out:  throw two dice many times and count the outcomes
+
+::: {.center-x}
+
+```{r}
+#| echo: false
+#| fig-width: 10
+#| fig-asp: .6
+
+d <- data.frame(dice=replicate(20,sum(sample(1:6,2,replace=T))))
+d %>% ggplot(aes(x=dice)) + geom_bar() + scale_x_continuous(breaks=1:12,name = 'sum of dice',limits = c(2,12)) +
+  ggtitle('20 throws of 2 dice')
+```
+:::
