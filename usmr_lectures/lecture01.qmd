@@ -220,7 +220,7 @@ library(cowsay)
 say("hello USMR")
 ```
 
----
+## {#making}
 
 ![](img/4logos.png){height=110}
 
@@ -259,7 +259,9 @@ say("hello USMR")
 :::
 
 
-# Getting to Grips with R
+# Basics of R
+
+
 
 ## Data in R
 
@@ -291,7 +293,7 @@ say("hello USMR")
 ::: {.column width="20%"}
 
 ::::: {.r-stack}
-[![](img/playmog.jpg)]{.fragment fragment-index=1 .fade-out}
+![](img/playmog.jpg)
 
 [![](img/playmog.jpg)]{.fragment fragment-index=1 .animate__wobble}
 :::::
@@ -449,11 +451,11 @@ allHair <- c("brown", "white", "black")
 
 - **variable** (we chose the name `allHair`)
 
-[`<-`]
+`<-`
 
 - **assignment** ("goes in to")
 
-[`c()`]
+`c()`
 
 - **function** (`c()` _combines_ its **arguments**)
 
@@ -488,11 +490,20 @@ people
 <<df>>
 ```
 
+:::{.notes}
+  - note that I've made _hair_ a factor but left _names_ as character strings.
+
+- that's because, in my world, there is a finite set of hair colours, but a name can be anything:  it's an arbitrary label.
+
+- you'll see the effect of this in the next slide.
+:::
+
 ## Functions and dataframes
 
 ::: {layout="[[1],[-1],[1]]"}
 
 :::: {#id1}
+- you can run a function on a dataframe
 ```{r}
 summary(people)
 ```
@@ -519,9 +530,30 @@ mean(people$temp) # just the temp column from people
 
 - we've seen a couple of examples of functions
 
----
+# {#part-label}
 
 [![](img/Two_red_dice_01.svg){height=350}]{.center-xy}
+
+## How likely are you to throw 12?
+
+
+::: {layout="[2,-1,7]"}
+![](img/two_sixes.svg)
+
+:::: {#rhs}
+- pretty easy to work out
+
+- one-in-six chance of throwing a six
+
+- one-in-six chance of throwing a second six
+
+  + NB., these observations are _independent_
+  + (wouldn't matter if you threw one dice twice or two dice together)
+  
+- $\frac{1}{36}$ chance of throwing two sixes
+::::
+
+:::
 
 ## Are my dice fair?
 
@@ -534,8 +566,189 @@ mean(people$temp) # just the temp column from people
 #| fig-width: 10
 #| fig-asp: .6
 
+# added to ensure replicability
+set.seed(8423394)
+
 d <- data.frame(dice=replicate(20,sum(sample(1:6,2,replace=T))))
 d %>% ggplot(aes(x=dice)) + geom_bar() + scale_x_continuous(breaks=1:12,name = 'sum of dice',limits = c(2,12)) +
   ggtitle('20 throws of 2 dice')
 ```
 :::
+
+## What would fair dice look like?
+
+:::: {.columns}
+
+::: {.column #vcenter width="55%"}
+![](img/playmo_lazy.jpg)
+:::
+
+::: {.column #vcenter width="45%"}
+- we need a lot of throws
+
+- first rule of coding: be lazy
+
+- let the computer do the work
+:::
+
+::::
+
+
+## Using RStudio
+
+::: r-stack
+
+![](img/rstudio.png){width=900}
+
+[![](img/rstudio_zones_overlay.png){width=900}]{.fragment .animate__fadeInDown}
+
+:::
+
+## {#make}
+
+[create some dice]{.center-xy}
+
+## Throwing dice _many_ times {auto-animate=true}
+
+```r
+dice <- function(num=1) {
+}
+```
+
+## Throwing dice _many_ times {visibility="uncounted" auto-animate=true}
+
+```{r}
+#| eval: false
+
+dice <- function(num=1) {
+  sum(
+    sample(1:6, num, replace = TRUE)
+  )
+}
+```
+
+## Throwing dice _many_ times {visibility="uncounted"}
+
+```{r}
+dice <- function(num=1) {
+  sum(
+    sample(1:6,num,replace=TRUE)
+  )
+}
+```
+
+
+- try the function
+
+```{r}
+dice()
+
+dice(2)
+
+dice(2)
+
+dice(2)
+```
+
+
+## Throw two dice many times
+
+```{r}
+replicate(250,dice(2))
+```
+
+::: notes
+- this also gives me a chance to explain the numbers in square brackets in the output
+:::
+
+... and record the result
+
+```{r}
+d <- replicate(250,dice(2))
+```
+
+::: notes
+- NB., `d` will be a _different_ 250 numbers because this is random
+:::
+
+## Make a table
+
+```{r}
+table(d)
+```
+
+## Make a graph
+
+```{r}
+barplot(table(d))
+```
+
+## Many more throws
+
+```{r}
+#| label: hist
+
+d <- replicate(10000,dice(2))
+barplot(table(d))
+```
+
+## 10,000 dice throws
+
+:::: {.columns}
+
+::: {.column width="30%"}
+![](`r knitr::fig_chunk('hist', 'svg')`)
+:::
+
+::: {.column width="70%"}
+- we can work out the number of throws that summed to 12
+```{r}
+sum(d==12)
+```
+
+- and we know what that sum should be if the dice are fair
+```{r}
+1/36 * 10000
+```
+:::
+
+::::
+
+[- seems fairly satisfactory?]{.fragment}
+
+
+## Some more (fake) dice throws {.nostretch}
+
+
+```{r}
+#| echo: false
+#| fig.asp: .5
+#| fig.width: 7
+
+d <- tibble(dice=replicate(10000,sum(sample(1:6,2,T,c(rep(.164,5),.21)))))
+d <- d %>% mutate(c = ifelse(dice==12,'a','b'))
+d %>% ggplot(aes(x=dice,fill=c)) + geom_bar() +
+  scale_fill_manual('legend',values=c('a'='red','b'='darkgrey')) +
+  theme(legend.position = "none") +
+  scale_x_continuous(breaks=1:12,name = 'sum of dice')
+
+```
+
+
+- for these dice **12** is thrown `r sum(d==12)` times (expected: `r .rround(10000/36,1)`)
+
+- [are the patterns from the dice _different enough_ from what we would expect from fair dice?]{.red}
+
+## Statistical questions
+
+- so the million-dollar question is a _negative_ question
+
+- [are we _dissatisfied_ with the suggestion that the pattern of results we have observed should be attributed to chance?]{.red}
+
+. . .
+
+- if we are, then maybe we can persuade you of a different explanation
+
+- but note that the different explanation is not _proven_, it's _suggested_
+
+# [End]{.animate__heartBeat}
