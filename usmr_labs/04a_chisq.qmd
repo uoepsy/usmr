@@ -25,9 +25,40 @@ This reading:
 
 :::
 
+```{r}
+#| include: false
+set.seed(257)
+timehands <- expand_grid(
+  handed = c("left","right","ambi"),
+  ampm = c("morning","night")
+) |>
+  mutate(
+    n = ceiling(c(c(.8, .2)*.1, c(.5,.5)*.87, c(.2,.8)*.03) * 1000)
+  ) |> uncount(n) |>
+  sample_n(n())
+#write_csv(timehands,"../../data/timehands.csv")
+```
 
 Just like we did with the various types of $t$-test, we're going to continue with some more brief explainers of different basic statistical tests. The past few weeks have focused on tests for __numeric__ outcome variables, where we have been concerned with the mean of that variable (e.g. whether that mean is different from some specific value, or whether it is different between two groups). 
 We now turn to investigate tests for __categorical__ outcome variables. 
+
+When studying categorical variables, we tend to be interested in __counts__ (or "frequencies"). These can be presented in tables. With 1 variable, we have a 1 dimensional table.  
+For example, how many people in the data are left-handed, right-handed, or ambidextrous:  
+
+```{r}
+# TODO uncomment timehands <- read_csv("https://uoepsy.github.io/data/timehands.csv")
+table(timehands$handed)
+```
+
+and with 2 variables, we have a 2-dimensional table (also referred to as a 'contingency table'). For instance, splitting up those left/right/ambidextrous groups across whether they prefer the morning or night:  
+```{r}
+table(timehands$handed, timehands$ampm)
+```
+
+We can perform tests to examine things such as:  
+
+a) how likely we are to see our sample frequencies in a single categorical variable, if some some hypothesised null distribution were true (e.g. how likely are we to see the numbers of left/right/ambi people in our sample if in bigger population we expect a 1/3 chance of each?)  
+b) how likely we are to see our sample frequencies across two categorical variables, if these variables are _independent_ in the population. (e.g. how likely are we to see the counts in the 2x2 table above, if being left/right/ambi has _nothing to do with_ whether you are a morning or night person).  
 
 The test-statistics for these tests (denoted $\chi^2$, spelled *chi-square*, pronounced "kai-square") are obtained by adding up the standardized squared deviations in each cell of a table of frequencies:  
 
@@ -38,6 +69,20 @@ where:
 
 - $\text{Observed}$ = observed count for a cell
 - $\text{Expected}$ = expected count for a cell
+
+
+Just like the $t$-statistics we calculate follow $t$-distributions, the $\chi^2$-statistics follow $\chi^2$ distributions! If you look carefully at the formula above, it can never be negative (because the value on top of the fraction is squared, and so is always positive). 
+For a given cell of the table, if we observe exactly what we expect, then $\text{(Observed - Expected)}^2$ becomes zero. The further away the observed count is from the expected count, the larger it becomes.  
+
+This means that under the null hypothesis, larger values are less likely. And the shape of our $\chi^2$ distributions follow this logic. They have higher probability for small values, getting progressively less likely for large values. $\chi^2$-distributions _also_ have a degrees of freedom, because with more cells in a table, there are more chances for random deviations between "observed and expected" to come in, meaning we are more likely to see higher test statistics when we have more cells in the table (and therefore more degrees of freedom).   
+
+You can see the distribution of $\chi^2$ statistics with different degrees of freedom below.  
+```{r}
+#| label: fig-chidist1
+#| echo: false
+#| fig.cap: "Chi-Square Distributions"
+knitr::include_graphics("https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Chi-square_pdf.svg/1200px-Chi-square_pdf.svg.png")
+```
 
 
 # $\chi^2$ Goodness of Fit Test
