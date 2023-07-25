@@ -1,0 +1,657 @@
+
+---
+# Dice again
+
+.center[
+```{r dice, echo=FALSE,fig.asp=.6}
+set.seed(13)
+dice <- function(num=1) {
+  sum(sample(1:6,num,replace = T))
+}
+t <- data.frame(x=replicate(1000,dice(2)))
+t %>% ggplot(aes(x)) + geom_bar() +
+  scale_x_continuous(breaks=2:12,name = 'sum of dice',limits = c(1,13)) +
+  ggtitle('1000 throws of 2 dice')
+
+```
+]
+
+???
+- the height of the bars represent the numbers of times we obtain each value
+
+- but why are the bars not touching each other?
+---
+# Dice throws aren't really numbers
+
+.pull-left[
+- **A** = ![:scale 20%](lecture_2_files/img/A1.svg)
+
+- **B** = ![:scale 20%](lecture_2_files/img/B1.svg) or ![:scale 20%](lecture_2_files/img/B2.svg)
+
+- **C** = ![:scale 20%](lecture_2_files/img/C1.svg) or ![:scale 20%](lecture_2_files/img/C2.svg) or ![:scale 20%](lecture_2_files/img/C3.svg)
+]
+.pull-right[
+.center[
+```{r dice2, echo=FALSE,fig.asp=.5}
+t %>% ggplot(aes(x)) + geom_bar() +
+  scale_x_continuous(breaks=2:12,labels = c('A','B','C','D','E','F','G','H','I','J','K'),
+  name = 'outcome type',limits = c(1,13)) +
+  ggtitle('1000 throws of 2 dice')
+```
+]]
+
+.pt3[
+- bar plot ("bar chart") always has gaps between bars
+- represents frequencies of _discrete categories_ (`factors`)
+]
+
+???
+- I could just label the possible outcomes of throwing two dice arbitrarily
+
+- if you think about it, there are only 11 possible values that the sum
+  of two dice can take.
+
+- and if the dice didn't have actual numbers on their faces, you could still
+  enumerate the outcomes
+
+- so the outcomes are _discrete_ (you can never throw a value between 3 and 4, or between "B and C")
+- and the bars on a bar plot have gaps between them to show this.
+---
+# Back to the Stick
+
+- let's look at our stick measurement again
+
+.flex.items-center[.w-30.pa2[
+`r include_graphics("lecture_2_files/img/stick_numnum.png")`
+]
+.w-10[
+&nbsp;
+]
+.w-30.pa2[
+`r include_graphics("lecture_2_files/figure-html/sketchnorm-1.svg")`
+]
+.w-30.pa2[
+- "true measurement" on graph _must_ be approximate
+]
+]
+
+???
+- the line we used to indicate the "true measure" isn't fully accurate
+- we would have to draw an infinitely thin line with infinite precision
+---
+# Zooming In...
+
+.pull-left[
+```{r zoom, echo=FALSE, fig.asp=.6}
+stick %>% ggplot(aes(x=x)) +
+  xlim(0.0750,0.0770) +
+  geom_density() + scale_y_continuous(breaks=NULL) +
+  xlab('measurement') + ylab("") + theme_presentation(16) +
+  scale_y_continuous(expand=c(0,0),breaks=NULL) +
+  geom_rect(xmin=0.07605,xmax=0.07615,ymin=0,ymax=10000,fill="red")
+```
+]
+.pull-right[
+- we are using the _width_ of the line to show measurement precision
+
+- here, we know the value is between 0.0761 and 0.0762
+  + but we can't be any more precise
+]
+
+---
+# Histograms
+
+.pull-left[
+- this principle allows us to draw a _histogram_ of all the measurements taken
+
+- the bars are touching because this represents _continuous_ data
+
+]
+.pull-right[
+```{r hist1, echo=FALSE, fig.asp=0.6}
+minx <- round(min(stick$x - .002),3)
+maxx <- round(max(stick$x + .002),3)
+p <- stick %>% ggplot(aes(x=x)) + geom_histogram(binwidth=0.001) +
+  scale_x_continuous(limits=c(minx,maxx),breaks=seq(68,84,by=2)/1000) + xlab('measurement')
+layD <- layer_data(p) %>% filter(x>=0.0755 & x<=0.0765)
+barHt <- layD$y
+p
+```
+
+]
+
+---
+count: false
+# Histograms
+
+.pull-left[
+- this principle allows us to draw a _histogram_ of all the measurements taken
+
+- the bars are touching because this represents _continuous_ data
+
+- we know that there were `r barHt` measurements around `r layD$x`
+  + strictly, between `r layD$xmin` and `r layD$xmax`
+]
+.pull-right[
+```{r redhist, echo=FALSE, fig.asp=0.6}
+p + geom_rect(xmin=layD$xmin,xmax=layD$xmax,ymin=0,ymax=barHt,fill="red")
+```
+]
+
+---
+# Histograms (2)
+
+.pull-left[
+- note that the _bin width_ of the histogram matters
+
+- these show same data as on the previous slide
+]
+.pull-right[
+```{r hist2, echo=FALSE, fig.asp=0.6}
+stick %>% ggplot(aes(x=x)) + geom_histogram(binwidth=0.002) +
+  scale_x_continuous(limits=c(minx,maxx),breaks=seq(68,84,by=2)/1000) + xlab('measurement')
+```
+
+]
+---
+count: false
+# Histograms (2)
+
+.pull-left[
+- note that the _bin width_ of the histogram matters
+
+- these show same data as on the previous slide
+]
+.pull-right[
+```{r hist3, echo=FALSE, fig.asp=0.6}
+stick %>% ggplot(aes(x=x)) + geom_histogram(binwidth=0.0005) +
+  scale_x_continuous(limits=c(minx,maxx),breaks=seq(68,84,by=2)/1000) + xlab('measurement')
+```
+
+]
+
+---
+# Histograms in R
+
+.pull-left[
+```{r stix,echo=FALSE}
+notches <- stick$x
+```
+```{r histstix, fig.asp=.6, fig.show='hide'}
+head(notches) # some measurements
+
+hist(notches)
+```
+]
+.pull-right[
+`r include_graphics('lecture_2_files/figure-html/histstix-1.svg')`
+]
+
+.flex.items-center[
+.w-5.pa1[
+![:scale 70%](lecture_1_files/img/danger.svg)
+]
+.w-95.pa1[
+- you can make prettier graphs using `ggplot()`
+- `hist()` and friends are useful for exploring data
+]]
+---
+class: inverse, center, middle, animated, swing
+
+# End of Part 1
+
+---
+class: inverse, center, middle
+
+# Part 2
+
+## The Normal Distribution
+---
+# Histograms
+
+.flex.items-top[
+.w-50.br3.pa2.bg-light-green[
+### The Good
+
+- way to examine the _distribution_ of data
+
+- easy to interpret ( $y$ axis = counts )
+
+- sometimes helpful in spotting weird data
+
+]
+.w-50.br3.pa2.bg-light-red[
+### The Bad
+
+- changing bin width can completely change graph
+
+  + can lack precision if bins too wide
+
+  + can appear sparse if bins too narrow
+]]
+
+---
+# Density Plots
+
+.center[
+![](lecture_2_files/img/pusher.svg)
+]
+
+- can "squeeze" the bars until they're "infinitely thin"
+
+---
+# Density Plots
+
+.center[
+```{r dense1, echo=FALSE, fig.asp=.6}
+p <- stick %>% ggplot(aes(x=x)) + geom_density(size=2)
+p
+```
+]
+---
+count: false
+# Density Plots
+
+.center[
+```{r dense2, echo=FALSE, fig.asp=.6}
+p + geom_rug()
+```
+]
+- values are _interpolated_
+- depends on a kernel (smoothing) function
+---
+# Density Plots
+
+.center[
+```{r dense3, echo=FALSE, fig.asp=.6,fig.width=6}
+gp <- layer_data(p)
+gp <- gp %>% filter(x>.0755 & x<.0765)
+p + geom_area(data=gp, aes(x=x,y=y), fill="red") +
+  geom_density(size=2)
+```
+]
+
+- note that $y$ axis is no longer a count
+- multiplied by a _range_ on the $x$ axis, gives **proportion** of cases (`r stick %>% filter(x >= .0755 & x <=.0765) %>% nrow() /70` )
+- _total area_ under curve = "all possibilities" = **1**
+???
+- note that this isn't the whole curve, because the curve is **asymptotic**
+  + tiny possibility that someone will say the distance is -1000 or 873
+
+---
+# A Famous Density Plot
+
+.pull-left[
+- when we started thinking about measurement,
+  we thought things might look a bit like this
+
+- the so-called **normal curve**
+
+  + a hypothetical density plot
+]
+.pull-right[
+`r include_graphics("lecture_2_files/figure-html/normnorm-1.svg")`
+
+]
+???
+- in part 3, we'll look at where the normal curve comes from
+
+- for now, let's look at some of its features
+---
+# Normal Curves
+
+.center[
+```{r norms, echo=FALSE, fig.asp=.6,fig.width=6}
+t <- data.frame(x=c(0.06,0.09))
+p <- t %>% ggplot(aes(x)) +
+  stat_function(fun = dnorm, n =151, args=list(mean=.076116,sd=.0025)) +
+  stat_function(fun = dnorm, n =151, args=list(mean=.076116,sd=.0035)) +
+  stat_function(fun = dnorm, n =151, args=list(mean=.076116,sd=.001)) +
+  ylab("") +
+  geom_vline(xintercept = .076116,colour="red") +
+#  scale_y_continuous(breaks=NULL) +
+  xlab("measurement")
+p
+```
+]
+
+- normal curves are centred about the **mean** (or "true measurement")
+- the area under the (asymptotic) curve is always **1**
+???
+- the y value here is just what is needed to ensure that the area under the is 1
+---
+# Standard Deviation
+
+.pull-left[
+- normal curves can be defined in terms of _two parameters_
+
+- one is the centre or **mean** of the distribution ( $\bar{x}$, or sometimes $\mu$ )
+
+- the other is the **standard deviation** ( $\textrm{sd}$, or sometimes $\sigma$ )
+
+$$\textrm{sd}=\sqrt{\frac{\sum{(x-\bar{x})^2}}{n-1}}$$
+
+]
+.pull-right[
+```{r annotated, echo=FALSE, fig.asp=.6}
+p +
+  geom_segment(aes(x=0.0761, xend=0.0761+0.001, y=250, yend=250), col="red", size=1.5) +
+  geom_segment(aes(x=0.0761, xend=0.0761+0.0025, y=100, yend=100), col="red", size=1.5) +
+  geom_segment(aes(x=0.0761, xend=0.0761+0.0035, y=70, yend=70), col="red", size=1.5)
+```
+]
+
+.pt3.pa2[
+- standard deviation is the "average distance of observations from the mean"
+]
+---
+# The Standard Normal Curve
+
+.pull-left[
+- we can **standardize** any value on any normal curve by
+
+- subtracting the mean
+  + the effective mean is now **zero**
+
+- dividing by the standard deviation
+  + the effective standard deviation is now **one**
+]
+.pull-right[
+```{r snorm, echo=FALSE, fig.asp=.6}
+p <- ggplot(data=data.frame(x=c(-3.5,3.5)),aes(x=x)) +
+  stat_function(fun = dnorm, n =151,size=2) + ylab("") +
+  xlab("standard deviations")
+p
+```
+
+$$ z_i = \frac{x_i - \bar{x}}{\sigma} $$
+]
+
+---
+# The Standard Normal Curve
+
+.pull-left[
+- the normal curve is a _density plot_
+
+- the area between 1 standard deviation below the mean and 1 standard deviation above the mean is _always_ `r pnorm(1)-pnorm(-1)`
+]
+
+.pull-right[
+```{r snorm95, echo=FALSE, fig.asp=.6}
+d <- layer_data(p) %>% filter(x >=-1 & x <=1)
+p + geom_area(data=d, aes(x=x,y=y),fill="red") +
+  stat_function(fun = dnorm, n =151,size=2)
+```
+
+]
+
+---
+count: false
+# The Standard Normal Curve
+
+.pull-left[
+- the normal curve is a _density plot_
+
+- the area between 1 standard deviation below the mean and 1 standard deviation above the mean is _always_ `r pnorm(1)-pnorm(-1)`
+
+- we can ask the question the other way around:  _an area of .95_ lies between `r qnorm(.025)` and `r qnorm(.975)` standard deviations from the mean
+
+  + "95% of the predicted observations" (the 95% confidence interval)
+]
+
+.pull-right[
+```{r snorm68, echo=FALSE, fig.asp=.6}
+
+d <- layer_data(p) %>% filter(x >=qnorm(.025) & x <=qnorm(.975))
+p + geom_area(data=d, aes(x=x,y=y),fill="red") +
+  stat_function(fun = dnorm, n =151,size=2)
+```
+
+]
+---
+class: inverse, center, middle, animated, swing
+
+# End of Part 2
+---
+class: inverse, center, middle
+
+# Part 3
+
+## Sampling from a Population
+
+---
+background-image: url("lecture_2_files/img/playmo_pop.jpg")
+???
+We want to say something about the population, rather than about one stick.
+
+For example -- what's their average height?
+(We know this, it's on the packet, 7.5cm, but in the real world people differ...)
+
+Let's go into RStudio and do a little simulation.
+
+---
+class: inverse, center, middle, animated, swing
+
+# End of Part Three
+
+---
+class: inverse, center, middle
+# Part 4
+
+# Towards Statistical Testing
+---
+# Central Limit Theorem
+
+- what we have just see is a demonstration of **Central Limit Theorem**
+
+- lay version: _sample means will be normally distributed about the true mean_
+
+.br3.center.pa2.pt2.bg-gray.white.f3[
+the standard deviation ("width") of the distribution of sample means is referred to as the **standard error** of the distribution
+]
+
+---
+# Central Limit Theorem (2)
+
+- if you look up CLT on Wikipedia you'll see it's defined in terms of _adding two numbers_
+  + the sample mean is a sum of _many_ numbers, divided by $n$
+
+  + adding many numbers is like adding two numbers:
+.pt0[
+  $1 + 3 + 2 + 5 = (1 + 3 + 2) + 5 = 6 + 5$
+]
+
+  + dividing by something doesn't make any difference
+
+---
+# $n-1$
+
+- we've just shown how adding many numbers is equivalent to adding two numbers
+
+- so _if we know the sum_ of a bunch of numbers, $n-1$ of those numbers can be anything
+
+.center[
+```{r table,echo=FALSE}
+library(gt)
+t <- tibble(`sum of n-1 numbers`=c(90,102,67),`nth number`=c(10,-2,33),sum=c(100,100,100))
+t %>% gt()
+```
+]
+
+- so if we know a summary statistic (e.g., mean, sd) we know about the data with $n-1$ **degrees of freedom**
+
+---
+# Statistical Estimates
+
+- so far, we've talked about sampling repeatedly from a population
+
+- this might not be possible(!)
+
+- if we only have one sample we can make _estimates_ of the mean and standard error
+
+  + the estimated _mean_ is the sample mean (we have no other info)
+
+  + the estimated _standard error_ of the mean is defined in terms of the sample standard deviation
+
+  $$ \textrm{se} = \frac{\sigma}{\sqrt{n}} = \frac{\sqrt{\frac{\sum{(x-\bar{x})^2}}{n-1}}}{\sqrt{n}} $$
+
+---
+# Putting it Together
+
+- the _normal curve_ is a density plot with known properties
+
+  + it can be defined in terms of two parameters, mean, and standard deviation
+
+- if we repeatedly sample from a population and measure the mean of a population, we'll get a normal distribution
+
+  + the mean will be (close to) the population mean
+
+- if we sample once from a population which is approximately normal
+
+  + our estimated mean and sd for the population are the sample mean and sd
+
+  + the _standard error_, or standard deviation of the sample means can be estimated as $\sigma/\sqrt{n}$
+
+---
+# Can We Use This For Real?
+
+```{r get_data, include=FALSE}
+library(googlesheets4)
+clData <- read_sheet("1JacU9_yb9lt9FaHeiblZTw4vvFwLVOaCOiUIVdzmoPQ")
+hData <- lapply(clData[,4],as.character,simplify=T)[[1]]
+hData[hData=="NULL"] <- NA
+hData <- hData[!is.na(hData)]
+hData <- sub(' *cm','',hData)
+hData <- sub(',','.',hData)
+hData <- as.numeric(hData)
+hData[hData <100] <- hData[hData <100] * 100
+```
+
+- we have some survey data from the USMR class, including _height_ in cm
+
+- perhaps we're interested in the "average height of a young statistician" (!)
+
+  + "young statisticians" are a **population**
+
+  + the USMR class of 2020 is a **sample**
+
+.pt2[
+&nbsp;
+]
+
+.br3.center.pa2.pt2.bg-gray.white.f3[
+can we use the information from the sample of `r length(hData)` responses we have to say anything about the population?
+]
+
+---
+# Looking at the class data
+
+.pull-left[
+```{r doahist, fig.asp=.55, fig.show='hide'}
+# the class heights in cm are in hData
+hist(hData, xlab="height in cm")
+```
+]
+.pull-right[
+`r include_graphics("lecture_2_files/figure-html/doahist-1.svg")`
+]
+
+
+.flex.items-center[
+.w-5.pa1[
+![:scale 70%](lecture_1_files/img/danger.svg)
+]
+.w-95.pa1[
+- data taken directly from the class survey responses
+- uses the `googlesheets4` library
+]]
+
+---
+# Mean, Standard Deviation
+
+.pull-left[
+
+- information about the distribution of the sample
+
+```{r sd}
+mean(hData)
+
+sd(hData)
+```
+
+]
+.pull-right[
+```{r realnorm, echo=FALSE, fig.asp=.6}
+t <- data.frame(x=c(min(hData-15),max(hData+15)))
+p <- t %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(hData), sd=sd(hData)), size=1.5, colour="darkgrey") +
+  xlab("height in cm") + ylab("density")
+p
+```
+]
+
+---
+# Standard Error
+
+.pull-left[
+
+- **standard error** is the "standard deviation of the mean"
+
+- as we saw in the simulation
+
+- can be _estimated_ as $\frac{\sigma}{\sqrt{n}}$
+
+```{r se}
+n <- length(hData)
+# standard error
+sd(hData) / sqrt(n)
+```
+]
+.pull-right[
+```{r senorm,echo=FALSE, fig.asp=.6}
+se=sd(hData)/sqrt(n)
+p2 <- p +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(hData), sd=se), size=1.5)
+p2
+
+```
+
+]
+
+---
+# Statistically Useful Information
+
+.flex.items-center[.w-50.pa2[
+```{r senorm2,echo=FALSE, fig.asp=.6}
+fillme <- layer_data(p2,2) %>% filter(x >= mean(hData)-1.96*se & x <= mean(hData)+1.96*se)
+
+p2 + geom_area(data=fillme,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(hData), sd=se), size=1.5)
+
+```
+- we know that the area between $\bar{x}-1.96\sigma$ and $\bar{x}+1.96\sigma$ is 0.95
+]
+.w-50.pa2[
+.br3.center.pa2.pt2.bg-gray.white.f3[
+if we measure the mean height of `r length(hData)` people from the same population as the USMR class, we estimate that the answer we obtain will lie between `r round(mean(hData)-1.96*se,1)`cm and `r round(mean(hData)+1.96*se,1)`cm 95% of the time
+]
+
+]]
+
+---
+# The Aim of the Game
+
+- as statisticians, a major goal is to infer from **samples** to **populations**
+
+- more about how we do this next time
+
+
+---
+class: inverse, center, middle, animated, swing
+
+# End
+
+---
+# Acknowledgements
+
+- icons by Diego Lavecchia from the [Noun Project](https://thenounproject.com/)
