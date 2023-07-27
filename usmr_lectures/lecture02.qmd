@@ -84,6 +84,7 @@ more.
 ```{r}
 #| fig-asp: .55
 #| echo: false
+#| label: normnorm
 
 t <- data.frame(x=c(7.35,7.65))
 t %>% ggplot(aes(x)) +
@@ -91,7 +92,7 @@ t %>% ggplot(aes(x)) +
   ylab("") +
   geom_vline(xintercept = 7.5,colour="red",size=2) +
   scale_y_continuous(breaks=NULL) +
-  xlab("measurement")
+  xlab("height (cm)")
 ```
 
 
@@ -334,7 +335,6 @@ hist(heights)
 you can make prettier graphs using `ggplot()`, but `hist()` is useful for exploring data
 :::
 
-# The Normal Distribution
 
 ## Histograms
 
@@ -355,44 +355,369 @@ you can make prettier graphs using `ggplot()`, but `hist()` is useful for explor
 
 - changing bin width can completely change graph
 
-  + can lack precision if bins too wide
+- only gives info about distribution and mode
 
-  + can appear sparse if bins too narrow
+  - not, e.g., mean or median
+
 :::
 
 ::::
 
 ## Histograms
 
+:::: {.columns}
+
+::: {.column width="40%"}
+```{r}
+#| echo: false
+
+pm2 <- rbind(pm,data.frame(x=c(4.196,4.199)))
+sample(pm2$x)
+```
+:::
+
+::: {.column width="60%" .fragment}
 ```{r}
 #| echo: false
 #| fig-asp: .6
 
-pm2 <- rbind(pm,data.frame(x=c(10.2,10.2)))
 p <- pm2 |> ggplot(aes(x)) + geom_histogram(binwidth=0.05) +
   scale_x_continuous() + xlab('height (cm)')
-layD <- layer_data(p) |> filter(x>=10.2)
+layD <- layer_data(p) |> filter(x<=4.201)
 p + geom_rect(xmin=layD$xmin,xmax=layD$xmax,ymin=0,ymax=layD$y,fill="red")
 ```
+:::
+::::
 
 ## Density Plots
 
+:::: {.columns}
 
+::: {.column width="60%"}
+:::: r-stack
+
+::: {#1}
 ```{r}
 #| echo: false
 #| fig-asp: .6
 p <- pm |> ggplot(aes(x=x)) + geom_density(size=2) +
-  xlab("height (cm)")
+  xlab("height (cm)") + ylim(0,10)
 p
 ```
+:::
 
-
-## Density Plots {visibility="uncounted"}
-
+::: {.fragment fragment-index=1}
 ```{r}
+#| label: dg
 #| echo: false
 #| fig-asp: .6
 p + geom_rug()
 ```
+:::
+
+::: {.fragment fragment-index=2}
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+pm |> ggplot(aes(x=x)) +
+  geom_density(bw=.006,size=2) +
+  geom_rug() +
+  xlab("height (cm)") +
+  ylim(0,10)
+```
 
 
+:::
+::::
+
+:::
+
+::: {.column width="40%" .fragment fragment-index=1}
+
+- density plots depend on a _smoothing function_
+
+- essentially, they're making guesses where there is no data
+
+:::
+
+::::
+
+
+## Density Plots
+
+:::: {.columns}
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+<<dg>>
+```
+
+:::
+::: {.column width="40%"}
+
+- $y$ axis is no longer a count
+- _total area_ under curve = "all possibilities" = **1**
+:::
+::::
+
+## Density Plots
+
+:::: {.columns}
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+gp <- layer_data(p)
+gp <- gp |> filter( x>=7.5 &  x<7.525)
+p + geom_area(data=gp, aes(x=x,y=y), fill="red") +
+  geom_density(size=2) + ylab("density")
+
+dens <- density(pm$x)
+prop <- sum(dens$y[dens$x>=7.5 & dens$x<7.525]) / sum(dens$y)
+```
+
+:::
+
+::: {.column width="40%"}
+- partial area under the curve gives _proportion_ of cases (here, `r prop` ≥ 7.500 and < 7.525)
+:::
+
+::::
+
+::: {.myblock .fragment}
+this is equivalent to saying that if I pick an observation $x_i$ from this sample at random, there is a probability of `r prop` that $7.500 \le x_i < 7.525$
+:::
+
+# The Normal Distribution
+
+## A Famous Density Plot
+
+:::: {.columns}
+
+::: {.column width="40%"}
+- when we started thinking about measurement,
+  we thought things might look a bit like this
+
+- the so-called **normal curve**
+:::
+
+::: {.column width="60%"}
+![](`r knitr::fig_chunk('normnorm','svg')`)
+:::
+
+::::
+::: {.myblock .fragment}
+the normal curve is a _hypothetical_, asymptotic, density plot, with an area under the curve of **1**
+:::
+
+::: notes
+- in part 3, we'll look at where the normal curve comes from
+
+- for now, let's look at some of its features
+:::
+
+## Normal Curves: Mean
+
+:::: {.columns}
+
+::: {.column width="40%"}
+- normal curves can be defined in terms of _two parameters_
+
+- one is the centre or **mean** of the distribution ($\bar{x}$, or sometimes $\mu$)
+
+:::
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+#| label: norms
+#| fig-asp: .6
+
+t <- data.frame(x=c(6,9))
+p <- t %>% ggplot(aes(x)) +
+  stat_function(fun = dnorm, n =151, args=list(mean=6.9,sd=.25),size=2) +
+  stat_function(fun = dnorm, n =151, args=list(mean=7.5,sd=.25),size=2) +
+  stat_function(fun = dnorm, n =151, args=list(mean=8.1,sd=.25),size=2) +
+  ylab("") +
+#  scale_y_continuous(breaks=NULL) +
+  xlab("height (cm)")
+p + geom_vline(xintercept = 7.5,colour="red",size=1.5) +
+  geom_vline(xintercept = 6.9,colour="red",size=1.5) +
+  geom_vline(xintercept = 8.1,colour="red",size=1.5)
+```
+
+:::
+::::
+
+::: notes
+- the y value here is just what is needed to ensure that the area under the is 1
+:::
+
+## Standard Deviation
+
+:::: {.columns}
+
+::: {.column width="40%"}
+
+
+- the other is the **standard deviation** (sd, or sometimes $\sigma$)
+
+$$\textrm{sd}=\sqrt{\frac{\sum{(x-\bar{x})^2}}{n-1}}$$
+
+:::
+
+::: {.column width="60%"}
+```{r annotated, echo=FALSE, fig.asp=.6}
+p <- t %>% ggplot(aes(x)) +
+  stat_function(fun = dnorm, n =151, args=list(mean=7.5,sd=.1),size=2) +
+  stat_function(fun = dnorm, n =151, args=list(mean=7.5,sd=.25),size=2) +
+  stat_function(fun = dnorm, n =151, args=list(mean=7.5,sd=.5),size=2) +
+  ylab("") +
+#  scale_y_continuous(breaks=NULL) +
+  xlab("height (cm)")
+p +
+  geom_vline(xintercept = 7.5, col=alpha("red",.5)) +
+  geom_segment(aes(x=7.5, xend=7.5+.1, y=dnorm(7.5+.1,7.5,.1),yend=dnorm(7.5+.1,7.5,.1)), col="red", size=2) +
+  geom_segment(aes(x=7.5, xend=7.5+.25, y=dnorm(7.5+.25,7.5,.25),yend=dnorm(7.5+.25,7.5,.25)), col="red", size=2) +
+  geom_segment(aes(x=7.5, xend=7.5+.5, y=dnorm(7.5+.5,7.5,.5),yend=dnorm(7.5+.5,7.5,.5)), col="red", size=2) 
+```
+:::
+
+::::
+
+
+- standard deviation is the "average distance of observations from the mean"
+
+
+## Why Does the Height Vary?
+
+::: {layout="[1,1]"}
+```{r}
+#| echo: false
+#| fig-asp: .5
+
+p <- t |> ggplot(aes(x)) +
+  stat_function(fun = dnorm, n =151, args=list(mean=7.5,sd=.1),size=0) +
+  ylab("") +
+#  scale_y_continuous(breaks=NULL) +
+  xlab("height (cm)")
+layD <- layer_data(p) |> filter(x>=7.4 & x<=7.6)
+p + geom_area(data=layD,aes(x=x,y=y),fill="red") +
+  stat_function(fun = dnorm, n =151, args=list(mean=7.5,sd=.1),size=2) +
+  ylim(0,4)
+```
+
+```{r}
+#| echo: false
+#| fig-asp: .5
+
+p <- t |> ggplot(aes(x)) +
+  stat_function(fun = dnorm, n =151, args=list(mean=7.5,sd=.5),size=0) +
+  ylab("") +
+#  scale_y_continuous(breaks=NULL) +
+  xlab("height (cm)")
+layD <- layer_data(p) |> filter(x>=7.0 & x<=8.0)
+p + geom_area(data=layD,aes(x=x,y=y),fill="red") +
+  stat_function(fun = dnorm, n =151, args=list(mean=7.5,sd=.5),size=2) +
+  ylim(0,4)
+```
+:::
+
+- area under the curve is always the same by sd
+
+- for ± 1 sd it's `r 1-2*pnorm(1,lower.tail=F)`
+
+. . .
+
+::: myblock
+there is a 68% chance of obtaining data within 1 sd of the mean
+:::
+
+::: notes
+- remember though that we're in _hypothetical_ world!
+:::
+
+
+## The Standard Normal Curve
+
+:::: {.columns}
+::: {.column width="50%"}
+- we can **standardize** any value on any normal curve by
+
+- subtracting the mean
+  + the effective mean is now **zero**
+
+- dividing by the standard deviation
+  + the effective standard deviation is now **one**
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+p <- ggplot(data=data.frame(x=c(-3.5,3.5)),aes(x=x)) +
+  stat_function(fun = dnorm, n =151,size=2) + ylab("") +
+  xlab("standard deviations (z)")
+p
+```
+
+:::: {.fragment}
+
+$$ z_i = \frac{x_i - \bar{x}}{\sigma} $$
+::::
+:::
+::::
+
+## The Standard Normal Curve
+
+:::: {.columns}
+::: {.column width="50%"}
+- the area between 1 standard deviation below the mean and 1 standard deviation above the mean is, as we know, [`r pnorm(1)-pnorm(-1)`]{.fragment fragment-index=1}
+:::
+
+::: {.column width="50%"}
+
+:::: r-stack
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+d <- layer_data(p) |> filter(x >=-1 & x <=1)
+p + geom_area(data=d, aes(x=x,y=y),fill="red") +
+  stat_function(fun = dnorm, n =151,size=2)
+```
+
+::: {.fragment fragment-index=2}
+```{r}
+#| echo: false
+#| fig-asp: .6
+d <- layer_data(p) |> filter(x >=qnorm(.025) & x <=qnorm(.975))
+p + geom_area(data=d, aes(x=x,y=y),fill="red") +
+  stat_function(fun = dnorm, n =151,size=2)
+```
+:::
+::::
+:::
+::::
+
+:::: {.fragment fragment-index=2}
+- we can ask the question the other way around:  _an area of .95_ lies between `r qnorm(.025)` and `r qnorm(.975)` standard deviations from the mean
+
+::: myblock
+95% of the hypothetical observations (95% confidence interval)
+:::
+
+::::
+
+# Sampling from a Population
+
+## {background-image="img/playmo_pop.jpg"}
