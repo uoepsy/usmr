@@ -721,3 +721,345 @@ p + geom_area(data=d, aes(x=x,y=y),fill="red") +
 # Sampling from a Population
 
 ## {background-image="img/playmo_pop.jpg"}
+
+## Samples vs Populations
+
+:::: {.columns}
+
+::: {.column width="40%"}
+
+- **population**: all members of group you are hypothesizing about
+
+:::: {.fragment fragment-index=1}
+
+- **sample**: the subset of the population you're testing
+::::
+
+:::
+
+::: {.column width="60%"}
+
+![](img/playmo_pop.jpg)
+
+
+:::
+
+::::
+
+## **Central Limit Theorem**
+
+- lay version: _sample means will be normally distributed about the true mean_
+
+
+- if we repeatedly sample from a population, we'll get a _normal distribution_ of means
+
+- the _mean of the distribution of means_ will be (close to) the population mean
+
+
+::: myblock
+the standard deviation ("width") of the distribution of sample means is referred to as the **standard error** of the distribution
+:::
+
+## Central Limit Theorem (2)
+
+- if you look up CLT on Wikipedia you'll see it's defined in terms of _adding two numbers_
+  + the sample mean is a sum of _many_ numbers, divided by $n$
+
+  + adding many numbers is like adding two numbers:
+
+  $$\color{red}{1 + 3 + 2} + 5 = \color{red}{(1 + 3 + 2)} + 5 = \color{red}{6} + 5$$
+
+
+  + dividing by something doesn't make any difference
+
+## $n-1$
+
+- we've just shown how adding many numbers is equivalent to adding two numbers
+
+- so _if we know the sum_ of a bunch of numbers, $n-1$ of those numbers can be anything
+
+
+```{r}
+#| echo: false
+
+library(gt)
+t <- tibble(`sum of n-1 numbers`=c(90,102,67),`nth number`=c(10,-2,33),sum=c(100,100,100))
+t %>% gt()
+```
+
+- so if we know a summary statistic (e.g., mean, sd) we know about the data with $n-1$ **degrees of freedom**
+
+## Statistical Estimates
+
+- if we only have one sample (e.g., from an experiment) we can make _estimates_ of the mean and standard error
+
+  + the estimated _mean_ is the sample mean (we have no other info)
+
++ the estimated _standard error_ of the mean is defined in terms of the _sample standard deviation_
+
+  $$ \textrm{se} = \frac{\sigma}{\sqrt{n}} = \frac{\sqrt{\frac{\sum{(x-\bar{x})^2}}{n-1}}}{\sqrt{n}} $$
+
+## Putting it Together {.smaller}
+
+- the _normal curve_ is a density plot with known properties
+
+  + it can be defined in terms of two parameters: mean, and standard deviation
+
+- if we repeatedly sample from a population and measure the mean, we'll get a normal distribution
+
+  + the mean of means will be (close to) the population mean
+
+- if we sample once from a population which is approximately normal
+
+  + our estimated mean and sd for the population are the sample mean and sd
+
+  + the _standard error_, or standard deviation of the sample means, can be estimated as $\sigma/\sqrt{n}$
+
+## Can We Use This For Real?
+
+```{r}
+#| include: false
+
+# library(googlesheets4)
+# clData <- read_sheet("1JacU9_yb9lt9FaHeiblZTw4vvFwLVOaCOiUIVdzmoPQ")
+# hData <- lapply(clData[,4],as.character,simplify=T)[[1]]
+# hData[hData=="NULL"] <- NA
+# hData <- hData[!is.na(hData)]
+# hData <- sub(' *cm','',ignore.case=T,hData)
+# hData <- sub(',','.',hData)
+# hData <- as.numeric(hData)
+# hData[hData <100] <- hData[hData <100] * 100
+survey <- read_csv('https://uoepsy.github.io/data/surveydata_allcourse22.csv') |> select(course,height) |> drop_na()
+uheights <- survey |> filter(course=='usmr') |> pull(height)
+```
+
+- we have some survey data from the last couple of USMR classes, including _height_ in cm
+
+- perhaps we're interested in the "average height of a young statistician" (!)
+
+  + "young statisticians" are a **population**
+
+  + the USMR classes are a **sample**
+
+::: myblock
+can we use the information from the sample of `r length(uheights)` responses we have to say anything about the population?
+:::
+
+## Looking at the Class Data
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+
+# the class heights are in uheights
+hist(uheights,xlab="height (cm)")
+```
+
+- histogram suggests that the heights are (approximately) normally distributed
+
+::: aside
+survey data from google forms can be read in directly with the `googlesheets4` library
+:::
+
+## Mean, Standard Deviation
+
+:::: {.columns}
+
+::: {.column width="40%"}
+- information about the distribution of the sample
+
+```{r}
+mean(uheights)
+
+sd(uheights)
+```
+
+:::
+
+::: {.column width="60%"}
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+t <- data.frame(x=c(min(uheights-15),max(uheights+15)))
+p <- t %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(uheights), sd=sd(uheights)), size=1.5, colour="darkgrey") +
+  xlab("height (cm)") + ylab("density")
+p
+```
+
+:::
+
+::::
+
+## Standard Error
+
+:::: {.columns}
+
+::: {.column width="40%"}
+- **standard error** is the "standard deviation of the mean"
+
+- as we saw in the simulation
+
+- can be _estimated_ as $\frac{\sigma}{\sqrt{n}}$
+
+```{r}
+n <- length(uheights)
+# standard error
+sd(uheights) / sqrt(n)
+```
+:::
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+se=sd(uheights)/sqrt(n)
+p2 <- p +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(uheights), sd=se), size=1.5) +
+  xlim(min(uheights),max(uheights))
+p2
+```
+
+:::
+
+::::
+
+## Statistically Useful Information
+
+
+:::: {.columns}
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+fillme <- layer_data(p2,2) %>% filter(x >= mean(uheights)-1.96*se & x <= mean(uheights)+1.96*se)
+
+p2 + geom_area(data=fillme,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(uheights), sd=se), size=1.5)
+```
+
+- we know that the area between $\bar{x}-1.96\sigma$ and $\bar{x}+1.96\sigma$ is 0.95
+
+:::
+
+::: {.column width="40%"}
+
+:::: myblock
+if we measure the mean height of `r length(uheights)` people from the same population as the USMR class, we estimate that the answer we obtain will lie between `r .rround(mean(uheights)-1.96*se,1)`cm and `r .rround(mean(uheights)+1.96*se,1)`cm 95% of the time
+::::
+
+:::
+
+::::
+
+## Statistically Useful Information
+
+- we also have information from 3 other statistics courses
+
+```{r}
+#| echo: false
+
+survey |> group_by(course) |>
+  summarise(mean=mean(height),se=sd(height)/sqrt(n()), n=n()) |>
+  gt() |>
+  tab_options(table.font.size=pct(70))
+```
+
+::: aside
+```r
+survey |> group_by(course) |> summarise(mean=mean(height),se=sd(height)/sqrt(n()), n=n())
+```
+:::
+
+- are the young statisticians on those courses from different populations? (in terms of height)
+
+## Standard Errors (again)
+
+```{r}
+#| include: false
+
+h2 <- survey |> filter(course=='dapr2') |> pull(height)
+se2 <- sd(h2)/sqrt(length(h2))
+```
+
+
+:::: {.columns}
+
+::: {.column width="20%"}
+
+[USMR]{.red}
+
+$\bar{x}=`r .rround(mean(uheights),1)`$ 
+
+$\text{se}=`r .rround(se,2)`$
+
+::: {.fragment fragment-index=1}
+[DAPR2]{.blue}
+
+$\bar{x}=`r .rround(mean(h2),1)`$ 
+
+$\text{se}=`r .rround(se2,2)`$
+:::
+
+
+:::
+
+::: {.column width="80%"}
+
+::: r-stack
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+t <- survey |> group_by(course) |> summarise(min=mean(height)-sd(height)/sqrt(n()),
+          max=mean(height)+sd(height)/sqrt(n()))
+l <- min(t$min)
+u <- max(t$max)
+x <- .15*(u-l)
+t <- data.frame(x=c(l-2*x,u+2*x))
+p <- t |> ggplot(aes(x=x)) +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(uheights), sd=se),size=0) +
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(h2),sd=se2),size=0) +
+  xlab('height (cm)') + ylab('density')
+f1 <- layer_data(p,1) %>% filter(x >= mean(uheights)-1.96*se & x <= mean(uheights)+1.96*se)
+f2 <-  layer_data(p,2) %>% filter(x >= mean(h2)-1.96*se2 & x <= mean(h2)+1.96*se2)
+p2 <- p + geom_area(data=f1,aes(x=x,y=y),fill=alpha("red",.5)) + 
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(uheights), sd=se),size=2,colour=alpha('red',.7)) +
+  geom_vline(xintercept = mean(uheights),size=2,colour=alpha('red',.7))
+
+p2
+```
+:::: {.fragment fragment-index=1}
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+p2 +   geom_area(data=f2,aes(x=x,y=y),fill=alpha("blue",.5)) + 
+  stat_function(fun=dnorm, n=151, args=list(mean=mean(h2), sd=se2),size=2,colour=alpha('blue',.7)) +
+  geom_vline(xintercept=mean(h2),size=2,colour=alpha('blue',.7))
+
+
+```
+
+
+::::
+:::
+:::
+
+::::
+
+## Statistical Inference
+
+- not much evidence that DAPR2 and USMR come from different populations
+
+- inferring from **samples** to **populations** is a major goal of statistics
+
+- more about this next time
+
+# End
