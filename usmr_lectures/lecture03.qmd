@@ -12,26 +12,890 @@ library(tidyverse)
 source('_theme/theme_quarto.R')
 ```
 
+# Probability and the Normal Curve
+
 ## More about Height
+
+
+- last time we simulated the heights of a population of 10,000 people
+
+- mean height ($\bar{x}$) was 170; standard deviation ($\sigma$) was 12.
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+#| fig-asp: .65
+
+curve(
+  dnorm(x, 170, 12),
+  from = 120, to = 220
+)
+```
+
+## How Unusual is Casper?
+
+
+:::: {.columns}
+
+::: {.column width="20%"}
+
+![](img/playmo_tms.jpg)
+
+:::
+
+::: {.column width="30%"}
+- in his socks, Casper is 198 cm tall
+
+- how likely would we be to find someone Casper's height in our population?
+:::
+
+::: {.column width="50%" .fragment}
+```{r}
+#| label: normvline
+#| echo: false
+#| fig.asp: 0.7
+t <- tibble(x=c(120,220))
+p <- t %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,n=151,args=list(mean=170,sd=12),size=1.5) +
+  xlab("height (cm)") + ylab("density")
+p + geom_vline(xintercept=198,colour="red",size=1.5)
+```
+:::
+
+::::
+
+::: notes
+- we can mark Casper's height on our normal curve
+- but we can't do anything with this information
+  + technically the line has "no width" so we can't calculate area
+  + we need to reformulate the question
+:::
+
+
+## How Unusual is Casper (Take 2)?
 
 :::: {.columns}
 
 ::: {.column width="50%"}
-- last time we simulated the heights of a population of 10,000 people
+- in his socks, Casper is 198 cm tall
 
-- mean height ( $\bar{x}$ ) was 170; standard deviation ( $\sigma$ ) was 12.
-  
+- how likely would we be to find someone Casper's height _or more_ in our population?
+
+:::: {.fragment}
+
+- the area is `r (pp=pnorm(198,170,12,lower.tail=F))`
+
+- so the probability of finding someone in our population of Casper's height or greater is `r .pv(pp)` (or, $p=`r .pv(pp)`$ )
+
+::::
+:::
+
+::: {.column width="50%"}
 ```{r}
-#| label: pop
+#| label: normarea
+#| echo: false
 #| fig.asp: 0.6
-curve(dnorm(x,170,12),from = 120, to = 220)
+ld <- layer_data(p) %>% filter(x >= 198)
+q<- p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,n=151,args=list(mean=170,sd=12),size=1.5)
+q  
+```
+:::
+
+::::
+
+## Area under the Curve
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- so now we know that the area under the curve can be used to quantify **probability**
+
+- but how do we calculate area under the curve?
+
+- luckily, R has us covered, using (in this case) the `pnorm()` function
+
+```{r}
+#| label: pnorm
+#| tidy.opts: { width.cutoff: 24 }
+pnorm(198, mean = 170, sd=12,
+      lower.tail = FALSE)
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: tails
+#| echo: false
+#| fig-asp: 0.6
+df <- data.frame(lx=200,rx=196,lxe=215,rxe=181,y=.025)
+p + geom_vline(xintercept=198,colour="red") +
+  geom_segment(data=df,aes(x=lx,y=y,xend=lxe,yend=y),arrow=arrow(unit(35,"npc")),colour="red") +
+  annotate(geom="text",x=df$lx+10,y=.028,label="upper tail",size=8,colour="red") + geom_segment(data=df,aes(x=rx,y=y,xend=rxe,yend=y),arrow=arrow(unit(35,"npc")),colour="red") +
+  annotate(geom="text",x=df$rx-10,y=.028,label="lower tail",size=8,colour="red")
+
 ```
 
 :::
 
+::::
+
+## Tailedness
+
+:::: {.columns}
+
 ::: {.column width="50%"}
-![](lecture_3_files/img/playmo_tms.jpg)
+- we kind of knew that Casper was _tall_
+- it made sense to ask what the likelihood of finding someone 198 cm _or greater_ was
+
+:::
+
+::: {.column width="50%"}
+
+![](`r knitr::fig_chunk('normarea','svg')`)
+
+:::
+::::
+
+- this is called a **one-tailed hypothesis** (we're not expecting Casper to be well below average height!)
+
+
+
+## Tailedness (2)
+ 
+:::: {.columns}
+
+::: {.column width="50%"}
+ 
+- often our hypothesis might be vaguer
+- we expect Casper to be "different", but we're not sure how
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| label: normtwo
+#| echo: false
+#| fig-asp: 0.6
+ld <- layer_data(p) %>% filter(x <= 142)
+q + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,n=151,args=list(mean=170,sd=12),size=1.5) +
+  geom_vline(xintercept = 170) + 
+  annotate(geom="text",colour="red",x=175,y=.015,size=8,label="mean")
+```
+
+::: {.fragment}
+
+```{r}
+#| label: twot
+#| tidy.opts: { width.cutoff: 20 }
+
+2 * pnorm(198, 170, 12, lower.tail = FALSE)
+```
+
+:::
 
 :::
 
 ::::
+
+- we can capture this using a **two-tailed hypothesis**
+
+
+## So: Is Casper Special?
+
+- how surprised should we be that Casper is 198 cm tall?
+
+- given the population he's in, the probability that he's 28cm or more taller than the mean of 170 is `r .pv((pp=pnorm(198,170,12,lower.tail=FALSE)))` 
+  + NB., this is according to a _one-tailed hypothesis_
+  
+. . .
+
+- a more accurate way of saying this is that `r .pv(pp)` is the probability of selecting him (or someone even taller than him) from our population at random
+
+## A Judgement Call
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- if a `r (pc=round(100*pp,0))`% probability is _small enough_
+
+![](img/playmo_good.jpg){width="50%" .center-img}
+:::
+
+::: {.column width="50%"}
+- if a `r pc`% chance doesn't impress us much
+
+![](img/playmo_bad.jpg){width="50%" .center-img}
+:::
+
+::::
+
+- in either case, we have nothing (mathematical) to say about the _reasons_ for Casper's height
+
+
+::: notes
+- if a `r pc`% probability of selecting someone 28cm or more above the mean is enough to surprise us, then we should be surprised
+
+if, on the other hand, we think `r pc`% isn't particularly low, then we shouldn't be surprised
+
+- when it comes to comparing means, we'll see that there are conventions for the criteria we use, but they are just that:  conventions, because this is a judgement call.
+
+- Perhaps he's so tall because he's weightless, or perhaps he had a lot of milk in his diet:  That's the substance of the scientific paper we're going to write:  The statistical calculation just tells us that he's mildly unusual.
+
+- In the next part, we're going to look at how this works for group means as opposed to individuals, but the TL;DR is:  pretty much the same.
+
+:::
+
+# Group Means
+
+## Investment Strategies
+
+
+The Playmo Investors' Circle have been pursuing a special investment strategy over the past year.  By no means everyone has made a profit.  Is the strategy worth advertising to others?
+
+```{r}
+#| label: invest
+#| echo: false
+#| fig-asp: 0.4
+#| fig-width: 13.0
+set.seed(25)
+m <- tibble(profit=rnorm(12,20,20),color=if_else(profit <0,'A','B'),
+            names=c('Adam','Bill','Clare','Dave','Emma','Fred','Gina','Hal','Ian','Jane','Kim','Leo'))
+m %>% ggplot(aes(x=names,y=profit,fill=color)) +
+  geom_bar(stat="identity") +
+  scale_fill_manual(values=c("red","blue")) +
+  theme(legend.position = "none", axis.text.x = element_text(angle=45)) +
+  xlab("") + ylab("£ profit")
+profit <- round(m$profit,2)
+
+```
+
+## About the Investments
+
+:::: {.columns}
+
+::: {.column width="60%"}
+- there are 12 investors
+
+- the mean profit is £`r (pr=round(mean(profit),2))`
+
+- the standard deviation is £`r round(sd(profit),2)`
+
+- the standard error is $\sigma/\sqrt{12}$ which is `r sd(profit)/sqrt(12)`
+
+:::
+
+::: {.column width="40%"}
+![](img/playmo_investors.jpg)
+:::
+
+::::
+
+. . .
+
+- we are interested in the _probability of 12 people (from the same population) making at least a mean £`r pr` profit_
+
+
+## Using Standard Error
+
+:::: {.columns}
+
+::: {.column width="40%"}
+- together with the mean, the standard error describes a normal distribution
+
+- "likely distribution of means for other samples of 12"
+:::
+
+::: {.column width="60%"}
+```{r}
+#| label: segraph
+#| echo: false
+#| fig.asp: 0.6
+df <- tibble(x=c(-30,30))
+df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,n=151,args=list(mean=mean(profit),sd=sd(profit)/sqrt(12)),size=2) +
+  geom_vline(xintercept=mean(profit),colour="red",size=1.5) +
+  xlab("mean profit") + ylab("density")
+```
+:::
+
+::::
+
+## Using Standard Error (2)
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- last time, our **null hypothesis** ("most likely outcome") was "Casper is of average height"
+
+- this time, our null hypothesis is "there was no profit"
+
+
+:::
+
+::: {.column width="50%"}
+
+::: {data-id="g1"}
+```{r}
+#| label: segraph2
+#| echo: false
+#| fig.asp: 0.6
+ng <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,n=151,args=list(mean=mean(profit),sd=sd(profit)/sqrt(12)),size=1.5,colour="grey") +
+  xlab("mean profit") + ylab("density") +
+  stat_function(fun=dnorm,n=151,args=list(mean=0,sd=sd(profit)/sqrt(12)),size=2)+
+  geom_vline(xintercept=0,linetype=3,size=1.5)
+ng + geom_vline(xintercept=mean(profit),colour="red",size=1.5)
+```
+:::
+
+:::
+
+::::
+- easiest way to operationalize this:
+
+  + "the average profit was zero"
+  
+- so redraw the normal curve with _the same standard error_ and a _mean of zero_
+
+## Using Standard Error (3)
+
+::: {data-id="g1"}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| label: useme
+#| fig-width: 6
+
+ng
+```
+
+:::
+
+::: myblock
+the curve we would obtain if _nothing of interest had happened_ in a world which was as variable as the one we measured
+:::
+
+
+## Using Standard Error (4)
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- null hypothesis: $\mu=0$
+
+- probability of making a mean profit of £`r pr` or more:
+
+  + _one-tailed_ hypothesis
+  
+  + evaluated as relevant area under the curve
+  
+```{r}
+#| label: area
+#| tidy.opts: { width.cutoff: 20 }
+se=sd(profit)/sqrt(12)
+
+pnorm(mean(profit), mean=0, sd=se,
+      lower.tail=FALSE)
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: segraph3
+#| echo: false
+#| fig.asp: 0.6
+ld <- layer_data(ng,2) %>% filter(x>=mean(profit))
+ng + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  geom_vline(xintercept=mean(profit),colour="red",size=1.5) +
+  stat_function(fun=dnorm,n=151,args=list(mean=0,sd=sd(profit)/sqrt(12)),size=2)
+  
+```
+
+:::
+
+::::
+
+## The Standardized Version
+
+
+- last week we talked about the _standard normal curve_
+  + mean = 0; standard deviation = 1
+
+
+:::: {.columns}
+
+::: {.column width="50%"}
+$$z_i = \frac{x_i - \bar{x}}{\sigma}$$
+
+- our investors' curve is very easy to transform
+  
+- subtract 0; divide by standard error  
+
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('useme','svg')`)
+:::
+
+::::
+
+
+
+
+## The Standardized Version (2)
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| tidy.opts: { width.cutoff: 24 }
+
+pnorm(mean(profit)/se, mean=0, sd=1,
+      lower.tail=FALSE)
+```
+
+- `mean(profit)/se` (`r .rround(mean(profit)/se,2)`) is "number of standard errors from zero"
+
+
+
+:::
+
+
+::: {.column width="50%"}
+```{r}
+#| label: snc
+#| echo: false
+#| fig.asp: 0.6
+df <- tibble(x=c(-3.5,3.5))
+gr <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,n=451,size=2) +
+  xlab("standard errors") +
+  ylab("density") +
+  geom_vline(xintercept=mean(profit)/se,colour="red",size=1.5) +
+  annotate(geom="text",x=mean(profit)/se-1.3,y=.28,label=paste0(round(mean(profit)/se,2)," standard errors"),size=8,colour="red")
+ld <- layer_data(gr) %>% filter(x >= mean(profit)/se)
+gr + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,n=451,size=2)
+```
+:::
+
+::::
+
+- you can take _any_ mean, and _any_ standard deviation, and produce "number of standard errors from zero"
+
+- $z=\bar{x}/\sigma$
+
+
+## The Standard Normal Curve
+
+- $z=\bar{x}/\sigma$
+
+
+- the point of the calculation is to compare to the **standard normal curve**
+-  made "looking up probability" easier in the days of printed tables
+ 
+. . .
+
+- usual practice is to refer to standardised statistics
+
+  + _the name chosen for them comes from the relevant distribution_
+  
+- $z$ is assessed using the normal distribution
+
+
+## Which Means...
+- for $z=`r .rround(mean(profit)/se,2)`$, $p=`r .pv(pnorm(mean(profit/se),lower.tail=FALSE))`$
+
+::: myblock
+if you picked 12 people at random from the population of investors we sampled from, and the population were making no profit overall, there would be, roughly, a `r (pc=round(100*pnorm(mean(profit),0,sd(profit)/sqrt(12),lower.tail=F),0))`% chance that the 12 would have an average profit of £`r pr` or more
+:::
+
+. . .
+
+- is `r pc`% low enough for you to believe that _our investors'_ mean profit wasn't due to chance?
+
+  + again, it's a _judgement call_
+  
+  + but before we make that judgement...
+
+::: notes
+obviously here our "population of investors" means "investors like the Playmo Investors' Circle.
+
+One important thing about statistics is that you can only extrapolate to the relevant population (but it's a matter of interpretation what the relevant population is!)
+:::
+
+# The $t$-test
+
+## A Small Confession
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/playmo_liar.jpg)
+
+:::
+
+::: {.column width="50%"}
+#### part 2 wasn't entirely true
+
+- all of the principles are correct, but for smaller $n$ the normal curve isn't the best estimate
+
+- for that we use the $t$ distribution
+:::
+
+::::
+
+
+## The $t$ Distribution
+
+
+:::: {.columns}
+
+::: {.column width="30%"}
+![](img/gossett.jpg)
+
+"A. Student", or William Sealy Gossett
+:::
+
+::: {.column width="70%"}
+```{r}
+#| label: normvst
+#| echo: !expr F
+#| fig.asp: 0.6
+df <- tibble(x=c(-3.5,3.5))
+df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,n=151,colour="grey",size=1) +
+  stat_function(fun=dt,n=151,args=list(df=11),colour="red",size=1) +
+  xlab("standard deviations") + ylab("density") +
+  annotate(geom="text",x=1.7,y=.3,label="t(11)",colour="red",size=10)
+```
+
+- the shape changes according to _degrees of freedom_, hence $t(11)$
+:::
+
+::::
+
+
+
+::: notes
+- The official name for the $t$-distribution is "Student's t-distribution", after William Gossett's pen-name
+
+- Gossett specialised in statistics for relatively small numbers of observations, working with Pearson, Fisher, and others
+:::
+
+
+## The $t$ Distribution
+
+:::: {.columns}
+
+::: {.column width="60%"}
+- conceptually, the $t$ distribution increases uncertainty when the sample is small
+
+  + the probability of more extreme values is slightly higher
+  
+- exact shape of distribution depends on sample size
+  
+- the degrees of freedom are inherited from the standard error
+:::
+
+::: {.column width="40%"}
+```{r}
+#| label: ts
+#| echo: false
+#| fig.asp: 0.6
+df <- tibble(x=c(0,3.5))
+df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dt,n=151,args=list(df=11),colour="red",size=1) +
+  stat_function(fun=dt,n=151,args=list(df=5),colour="blue",size=1) +
+  stat_function(fun=dt,n=151,args=list(df=23),colour="black",size=1) +
+  xlab("standard deviations") + ylab("density") +
+  annotate(geom="text",x=1.7,y=.3,label="t(11)",colour="red",size=10) +
+  annotate(geom="text",x=1.7,y=.34,label="t(23)",colour="black",size=10) +
+  annotate(geom="text",x=1.7,y=.26,label="t(5)",colour="blue",size=10)
+  
+
+```
+::: {.fragment}
+$$ \textrm{se} = \frac{\sigma}{\sqrt{n}} = \frac{\sqrt{\frac{\sum{(\bar{x}-x)^2}}{\color{red}{n-1}}}}{\sqrt{n}} $$
+:::
+:::
+
+::::
+
+::: notes
+- here, I'm only showing the right-hand side of each distribution, so that you can see the differences between different degrees of freedom
+
+- the distributions are, of course, symmetrical
+:::
+
+
+## Using the $t$ Distribution
+
+- in part 2,mean profit was £`r pr`; standard error was `r se`
+
+- we used the formula $z=\bar{x}/\sigma$ to calculate $z$, and the standard normal curve to calculate probability
+
+. . .
+
+- **the formula for $t$ is the same as the formula for $z$ **
+
+  + what differs is the _distribution we are using to calculate probability_
+  
+  + we need to know the degrees of freedom (to get the right $t$-curve)
+  
+- so **$t(\textrm{df}) = \bar{x}/\sigma$**
+
+## $t$ and Probability
+:::: {.columns}
+
+::: {.column width="60%"}
+- for 12 people who made a mean profit of £`r pr` with an se of `r se`
+
+- $t(11) = `r pr`/`r se` = `r pr/se`$
+
+- instead of `pnorm()` we use `pt()` for the $t$ distribution
+  
+- `pt()` requires the degrees of freedom
+
+:::
+
+::: {.column width="40%"}
+```{r}
+#| label: tgraph
+#| echo: false
+#| fig.asp: 0.6
+df <- tibble(x=c(-3.5,3.5))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dt,n=151,args=list(df=11),size=2) +
+  xlab("standard deviations") + ylab("density")
+
+ld <- layer_data(g) %>% filter(x>= mean(profit)/se)
+g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dt,n=151,args=list(df=11),size=2) +
+  annotate(geom="text",x=2,y=.3,label="t(11)",size=10)
+```
+
+
+```{r}
+#| label: pt1
+#| tidy.opts: { width.cutoff: 22 }
+pt(mean(profit)/se,df=11,lower.tail=FALSE)
+```
+:::
+
+::::
+
+::: {.myblock .fragment}
+the chance that 12 random investors from our population show a mean profit of £`r pr` or more is actually around `r .rround(100*pt(mean(profit)/se,df=11,lower.tail=FALSE),0)`%
+:::
+
+## Did We Have to Do All That Work?
+
+
+:::: {.columns}
+
+::: {.column width="60%"}
+```{r}
+#| label: ttes1samp
+#| tidy.opts: { width.cutoff: 50 }
+head(profit)
+
+t.test(profit, mu=0, alternative = "greater")
+```
+
+:::
+
+::: {.column width="40%"}
+- **one-sample** $t$-test
+
+- compares a single sample against a hypothetical mean (`mu`)
+
+  - usually zero
+:::
+
+::::
+
+::: notes
+note the use of "alternative = greater" here.
+
+we'll talk about that on the next slide.
+:::
+
+## Types of Hypothesis
+
+```r
+t.test(profit, mu=0, alternative = "greater")
+```
+
+- note the use of `alternative = "greater"`
+
+- we've talked about the _null hypothesis_ (also **H~0~**)
+
+  + there is no profit (mean profit = 0)
+  
+- the **alternative hypothesis** (**H~1~**, **experimental hypothesis**) is the hypothesis we're interested in
+
+  + here, that the profit is reliably £`r pr` _or more_ (_one-tailed_ hypothesis)
+  
+- could also use `alternative = "less"` or `alternative = "two.sided"`
+
+
+## Experiments Involve Differences
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- but of course "profit" _is_ a difference between **paired samples**
+
+```{r}
+#| label: table
+#| echo: !expr F
+df <- tibble(before=runif(12,100,1000),after=before+profit,profit=profit)
+before=df$before
+after=df$after
+library(gt)
+df |> head() |> gt() |> fmt_currency(columns=everything(),currency="GBP") |>
+  tab_options(table.font.size=pct(70))
+```
+:::
+
+::: {.column width="50%"}
+- doesn't matter whether _values_ are approx. normal as long as _differences_ are
+
+```{r}
+#| label: hist
+#| fig.asp: 0.6
+hist(before)
+```
+
+:::
+
+::::
+
+## Equivalent $t$-tests
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| tidy.opts: { width.cutoff: 22 }
+
+t.test(profit, mu=0, 
+       alternative="greater")
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+#| tidy.opts: { width.cutoff: 22 }
+
+t.test(after, before, paired=TRUE,
+       alternative="greater")
+```
+
+:::
+
+::::
+
+::: aside
+a paired-samples $t$-test is actually (kind of) _multivariate_
+:::
+
+## Putting it Together
+
+- for $t(11)=`r mean(profit)/se`$, $p=`r .pv(pt(mean(profit/se),11,lower.tail=FALSE))`$
+
+::: myblock
+if you picked 12 people at random from the population of investors we sampled from, and the population were making no profit overall, there would be, roughly, a `r (pc=.rround(100*pt(mean(profit)/se,11,lower.tail=F),0))`% chance that the 12 would have an average profit of £`r pr` or more
+:::
+
+. . .
+
+- is `r pc`% low enough for you to believe that the mean profit wasn't due to chance?
+
+- perhaps we'd better face up to this question!
+
+## Setting the Alpha Level
+
+:::: {.columns}
+
+::: {.column width="60%"}
+- the $\alpha$ level is a criterion for $p$
+
+- if $p$ is lower than the $\alpha$ level
+
+  + we can (decide to) _reject H~0~_
+
+  + we can (implicitly) _accept H~1~_
+
+- what we set $\alpha$ to is a _matter of convention_
+
+- typically, in Psychology, $\color{red}{\alpha}$ [is set to .05]{.red}
+:::
+
+::: {.column width="40%"}
+```{r}
+#| label: twonorms
+#| echo: false
+#| fig.asp: 1.0
+library(patchwork)
+df <- tibble(x=c(-3.5,3.5))
+p <- df %>% ggplot(aes(x=x)) +
+  xlab("") + ylab("density") +
+  stat_function(fun=dnorm,n=151)
+ld <- layer_data(p) %>% filter(x>=qnorm(.95))
+p1 <- p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  ggtitle("one-tailed") +
+  stat_function(fun=dnorm,n=151,size=1)
+ld1 <- layer_data(p) %>% filter(x>=qnorm(.975))
+ld2 <- layer_data(p) %>% filter(x<=qnorm(.025))
+p2 <- p + geom_area(data=ld1,aes(x=x,y=y),fill="red") +
+  geom_area(data=ld2,aes(x=x,y=y),fill="red") +
+  xlab("std devs") + ggtitle("two-tailed") +
+  stat_function(fun=dnorm,n=151,size=1)
+p1/p2
+```
+:::
+
+::::
+
+- important to set _before_ any statistical analysis
+
+::: notes
+I've shown you here on the normal curve because it's a more general distribution than the $t$ distribution, which requires degrees of freedom, but the graphs would look quite similar, as you know
+
+- if we're testing a medicine, with possible side-effects, we want alpha to be low
+
+- for general psychology, meh...
+
+- no leading zeroes because $p$ is always less than 1
+
+- no cheating now!
+:::
+
+## $p < .05$
+
+- the $p$-value is the probability of finding our results under H~0~, the null hypothesis
+
+- H~0~ is essentially "&#128169; happens"
+  
+- $\alpha$ is the maximum level of $p$ at which we are prepared to conclude that H~0~ is false (and argue for H~1~)
+
+. . .
+
+::: myblock
+there is a 5% probability of falsely rejecting H~0~
+:::
+
+. . .
+
+- wrongly rejecting H~0~ (false positive) is a **type 1 error**
+
+- wrongly accepting H~0~ (false negative) is a **type 2 error**
+
+<!-- possibly add slide about inference etc. -->
+
+# End

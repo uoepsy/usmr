@@ -99,10 +99,18 @@ theme_set(theme_quarto())
   }
 }
 
-.rround <- function(x,d=2,drop.zero=F) {
-  y <- format(round(as.numeric(x),d),nsmall=d)
+.rround <- function(x,d=NA,drop.zero=F) {
+  if (!is.na(d)) {
+    y <- format(round(as.numeric(x),d),nsmall=d)
+  } else {
+    y <- format(x)
+  }
   if (drop.zero) {
     y <-  sub('^(-)?0\\.','\\1.',y)
   }
   y
+}
+
+.pv <- function(x) {
+  .rround(x,4,T)
 }
