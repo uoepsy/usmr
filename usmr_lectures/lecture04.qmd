@@ -1,0 +1,486 @@
+---
+title: "Nominal Data"
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+source('_theme/theme_quarto.R')
+```
+
+# Binomial Test
+
+## Last Week
+
+- the $t$-test and $z$-test deal with _interval_ (at least) data
+
+- they can compare continuous data to a distribution with
+  - known $\mu$ and $\sigma$ ($z$-test)
+  - known $\mu$ and unknown $\sigma$ (**one-sample** $t$-test)
+
+. . .
+  
+- they can compare continuous data from two samples
+  - independent groups (**independent-samples** $t$-test)
+  - related groups (**paired-samples** $t$-test)
+
+::: notes
+- these are formalisations of what we talked about last week
+
+- the one-sample and related-samples $t$-tests use essentially the same maths
+:::
+
+## Not Everything is Numbers
+
+:::: {.columns}
+
+::: {.column width="60%"}
+- sometimes the things we are interested in aren't numeric
+
+- fashionable or not?
+
+- heads or tails?
+
+- USMR student or not?
+:::
+
+::: {.column width="40%"}
+
+![](img/playmo_fash.jpg)
+:::
+
+::::
+
+## Binomial Distribution
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/50p_ht.jpg){width=60%}
+
+- two possible outcomes with fixed probabilities $p$ and $1-p$
+
+- with enough trials, proportion of outcomes will be $p$ and $1-p$
+:::
+
+::: {.column width="10%"}
+
+:::
+
+::: {.column width="40%" .fragment}
+- the number of trials ($n$) is fixed
+- each observation is independent
+- each observation has one of two outcomes
+- the probability of each outcome is consistent
+:::
+
+::::
+
+---
+<iframe src="https://app.wooclap.com/events/JCSETM/0" title="embedded wooclap poll" height="700" width="1050"></iframe>
+
+## Binomial Distribution
+
+:::: {.columns}
+
+::: {.column width="40%"}
+![](img/50p_ht.jpg){width=60%}
+
+- toss a coin 100 times
+- how many "successes" (=heads, say) are you likely to get?
+:::
+
+::: {.column width="60%"}
+
+```{r}
+#| echo: false
+#| fig-width: 7
+#| fig-asp: .6
+set.seed(2210)
+n <-  100
+p <-  0.5
+nSuccess = 1:n
+
+dat <- data.frame(nSuccess = nSuccess, prob = dbinom(nSuccess, size=n, prob=p))
+
+ggplot(dat, aes(nSuccess, prob)) + geom_col(width = 0.5) + 
+  labs(x = 'Number of Successes', y = 'Probability') + 
+  scale_x_continuous(breaks = seq(20, 80, 10), limits = c(20, 80)) +
+  ggtitle(label = paste0('Binomial Distribution (n = ', n, ', p = ', p, ')')) +
+  theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16, face = 'bold'),
+        title = element_text(size = 16, face = 'bold')) 
+```
+
+:::
+::::
+
+
+<!-- this isn't perfect but it moves the column up -->
+<style>
+.col-slide .columns {
+        position: relative;
+    }
+
+
+.col-slide .columns > div:nth-child(2) {
+      position: absolute;
+      top: -100px; /* Adjust this value as needed */
+    }
+
+</style>
+
+
+## Binomial Test {.col-slide}
+
+:::: {.columns}
+
+::: {.column width="50%"}
++ if you toss a coin 4 times, what's the probability of it landing on heads at least 3 times?
+
++ $2^4 = 16$ possible sequences of outcomes
+  
++ Of those 16, 5 outcomes include $\ge$ 3 heads 
+
++ $p = 5/16 = .3125$
+:::
+
+<!-- to move column up {.my-slide} above the width needs to be 100% for some reason -->
+::: {.column width="100%"}
+```{r}
+#| echo: false
+coins <- expand.grid(rep(list(c('H','T')),4))
+names(coins) <- c('Toss1','Toss2','Toss3', 'Toss4')
+coins$HEADS <- apply(coins[1:4],1, function(x) length(which(x=='H')))
+coins |> gt::gt() |>
+  gtExtras::gt_highlight_rows(rows=which(coins$HEADS>=3),fill="#ffc587")
+```
+
+:::
+
+::::
+
+## Binomial Test
+
+```{r}
+#| echo: true
+#| highlight.output: 5
+print(binom.test(3, 4, p = 0.5, alternative = 'greater'), digits = 7)
+```
+
+- don't be fooled by the `probability of success` which is just 3/4
+
+
+## Binomial Test (2)
+
+::: myblock
+approximately 9% of the world's population have blue eyes; is the USMR class of 2022--23 a representative sample?
+:::
+
+![](img/playmo_pop_eyes.jpeg){.center-img}
+
+
+## Eye Colours for USMR
+
+```{r}
+#| include: false
+
+statsClasses <- read.csv("https://uoepsy.github.io/data/surveydata_allcourse22.csv")
+usmrEyes <- statsClasses |> filter(course=="usmr", year==2022) |> pull(eyecolour) |> discard(is.na)
+```
+
+```{r}
+#| echo: true
+(eyes <- table(usmrEyes))
+```
+
+```{r}
+#| echo: false
+#| fig-asp: .3
+
+ggplot(as.data.frame(eyes), aes(usmrEyes, Freq, fill = usmrEyes)) +
+  geom_bar(stat='identity') +
+  labs(x='Eye Colour', y = 'Count') +
+  scale_fill_manual(values = c('#218BB2', '#593520', '#7CA69A', '#8C8C8C',
+                               '#5C643D', '#071726')) +
+  theme(legend.position = 'none', axis.text = element_text(size=14), 
+        axis.title=element_text(size=16, face = 'bold'))
+```
+
+::: aside
+putting `(eyes <- ...)` in parentheses assigns and prints at the same time
+:::
+
+## Binomial Test
+
+- approximately 9% of the world's population have blue eyes
+
+```{r}
+#| echo: true
+
+binom.test(eyes['blue'],
+           sum(eyes),
+           0.09,
+           alternative = "two.sided"
+          )
+```
+
+# THe $\chi^2$ Distribution
+
+## Goodness-of-Fit Test
+
+:::: {.columns}
+
+::: {.column width="20%"}
+![](img/one_red_die.svg)
+:::
+
+::: {.column width="80%"}
+- so what happens when we are interested in _more than two_ outcomes?
+
+- we have already talked about dice "numbers" being categories
+
+- we know that, in a fair die, the probability of getting each number is $\frac{1}{6}$ (**H~0~**)
+
+- can we assess the probability of getting a known set of throws if H~0~ is true?
+
+- if the _probability is low enough_ ($p<.05$) we can assert that the die is biased
+:::
+
+::::
+
+## Calculating $\chi^2$
+
+```{r}
+#| label: settings
+#| include: false
+throws=600
+```
+
+- let's assume we throw the die `r throws` times
+
+- if everything worked out _perfectly_ for an unbiased die, our **expected values** would be:
+
+```{r}
+(expected <- 600 * c(1/6,1/6,1/6,1/6,1/6,1/6))
+```
+
+- and we can calculate a $\chi^2$ statistic using the formula
+
+$$\chi^2 = \sum{\frac{(O_i-E_i)^2}{E_i}}$$ 
+where $O_i$ is the $i\textrm{th}$ _observed_ and $E_i$ is the $i\textrm{th}$ _expected_ value
+
+
+
+## Calculating $\chi^2$
+
+- we don't have to do this calculation by hand
+
+- we can do it piece-by-piece, starting with 600 throws I've 'recorded'
+
+```{r}
+#| label: t1
+#| include: false
+throws<-sample(1:6,prob = c(1,1.2,1,1,1,.8), 600, replace=TRUE)
+```
+```r
+throws
+```
+
+```{r}
+#| echo: false
+paste(c(head(throws,80),'...'),collapse=' ')
+```
+
+```{r}
+table(throws)
+```
+
+
+## Calculating $\chi^2$ {auto-animate=true}
+```{r}
+chiTab <- data.frame(
+  expected=expected, # from earlier calculation
+  observed=table(throws) |> as.integer()
+)
+chiTab
+```
+
+::: aside
+`as_integer()` chucks out irrelevant information from the table of `throws`, leaving the counts
+:::
+
+
+
+$$\chi^2 = \sum{\frac{(O_i-E_i)^2}{E_i}}$$
+
+
+
+
+
+## Calculating $\chi^2$ {auto-animate=true}
+
+:::: {.columns}
+
+::: {.column width="70%"}
+
+```{r}
+#| eval: false
+#| tidy.opts: { width.cutoff: 40 }
+chiTab <- chiTab |> mutate(
+  sq_diff=(observed-expected)^2)
+```
+
+:::
+
+::: {.column width="30%"}
+$$\chi^2 = \sum{\frac{\color{red}{(O_i-E_i)^2}}{E_i}}$$ 
+:::
+::: aside
+using the `tidyverse` way of doing things, where `mutate()` creates columns
+:::
+
+::::
+
+
+## Calculating $\chi^2$ {auto-animate=true visibility="uncounted"}
+
+:::: {.columns}
+
+::: {.column width="70%"}
+
+```{r}
+#| eval: false
+#| tidy.opts: { width.cutoff: 40 }
+chiTab <- chiTab |> mutate(
+  sq_diff=(observed-expected)^2,
+  std_sq_diff=(sq_diff/expected)
+  )
+```
+
+:::
+
+::: {.column width="30%"}
+$$\chi^2 = \sum{\color{red}{\frac{(O_i-E_i)^2}{E_i}}}$$ 
+:::
+::: aside
+using the `tidyverse` way of doing things, where `mutate()` creates columns
+:::
+
+::::
+
+## Calculating $\chi^2$ {auto-animate=true visibility="uncounted"}
+
+:::: {.columns}
+
+::: {.column width="70%"}
+
+```{r}
+#| eval: false
+#| tidy.opts: { width.cutoff: 40 }
+chiTab <- chiTab |> mutate(
+  sq_diff=(observed-expected)^2,
+  std_sq_diff=(sq_diff/expected)
+  )
+chiTab
+```
+
+:::
+
+::: {.column width="30%"}
+$$\chi^2 = \sum{\color{red}{\frac{(O_i-E_i)^2}{E_i}}}$$ 
+:::
+::: aside
+using the `tidyverse` way of doing things, where `mutate()` creates columns
+:::
+
+::::
+
+## Calculating $\chi^2$ {auto-animate=true visibility="uncounted"}
+
+:::: {.columns}
+
+::: {.column width="70%"}
+
+```{r}
+#| tidy.opts: { width.cutoff: 40 }
+chiTab <- chiTab |> mutate(
+  sq_diff=(observed-expected)^2,
+  std_sq_diff=(sq_diff/expected)
+  )
+chiTab
+```
+
+::: {.fragment fragment-index=1}
+
+```{r}
+sum(chiTab$std_sq_diff)
+```
+
+:::
+
+:::
+
+::: {.column width="30%"}
+:::: {.r-stack}
+
+::: {.fragment .fade-out fragment-index=1}
+$$\chi^2 = \sum{\color{red}{\frac{(O_i-E_i)^2}{E_i}}}$$ 
+:::
+
+::: {.fragment fragment-index=1}
+$$\chi^2 = \color{red}{\sum{\frac{(O_i-E_i)^2}{E_i}}}$$ 
+:::
+
+:::
+::::
+
+
+::: aside
+using the `tidyverse` way of doing things, where `mutate()` creates columns
+:::
+
+::::
+
+## Evaluating $\chi^2$
+
+- so for the particular random throws we did, $\chi^2=`r (xx=sum(chiTab$std_sq_diff))`$
+
+- what we want to know is how probable that value is in a world where chance governs dice throws
+
+. . .
+
+- we already know two important things
+
+  1. we're going to have to work out the distribution of $\chi^2$ and work out the probability of getting that value _or more_
+  
+  1. the reason we're calling the value we've calculated **$\chi^2$** is because we're going to compare it to the $\chi^2$ distribution
+  
+<!--   + the calculation is actually "Pearson's goodness-of-fit calculation"
+  
+- in R, there are `pchisq(), dchisq(), rchisq(), qchisq()` -->
+
+## Why do Things the Easy Way?
+
+- calculate and plot 10,000 600-dice-throw $\chi^2$s
+
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+#| fig-asp: .65
+diceChi <- function(n) {
+  dice <- sample(1:6, n, replace=TRUE)
+  chisq.test(table(dice))$statistic
+}
+
+chiDist <- replicate(10000,diceChi(600))
+
+plot(density(chiDist),
+     main="chisq(5)",lwd=2)
+```
+
+::: aside
+for more on `chisq.test(...)$statistic`, start with `str(chisq.test(...))`
+:::

@@ -1,247 +1,529 @@
+---
+# Calculating $\chi^2$
+
+```{r}
+#| label: settings
+#| include: false
+throws=600
+```
+
+- let's assume we throw the die `r throws` times
+
+- if everything worked out _perfectly_ for an unbiased die, our **expected values** would be:
+```{r}
+#| label: values
+ev <- 600 * c(1/6,1/6,1/6,1/6,1/6,1/6)
+ev
+```
+
+- and we can calculate a $\chi^2$ statistic using the formula
+$$ \chi^2 = \sum{\frac{(O_i-E_i)^2}{E_i}} $$
+where $O_i$ is the $i\textrm{th}$ observed value and $E_i$ is the $i\textrm{th}$ expected value
 
 ---
-class: inverse, middle, center
+# Calculating $\chi^2$
 
-# Part 3
+- we don't have to do this calculation by hand
 
-### The $t$-test
+- we can do it piece-by-piece
+
+```{r}
+#| label: t1
+# "throw a die 600 times"
+dice <- tibble(ov=sample(1:6, 600, replace=TRUE))
+
+# create a tibble of counts
+chiTab <- dice %>% count(ov)
+chiTab <- chiTab %>% mutate(ev=ev) # from our earlier calculation
+chiTab
+```
+???
+- note that I'm using the tidyverse way of doing things here, so the scary-sounding `mutate()` function is a way of adding columns to a tibble or dataframe (or of changing existing columns)
+---
+# Calculating $\chi^2$
+
+```{r}
+#| label: t2
+# calculate (O-E)^2 / E
+chiTab <- chiTab %>% mutate(sq_diff = (n-ev)^2, std_sq_diff=sq_diff/ev)
+chiTab
+
+# chisq value
+sum(chiTab$std_sq_diff)
+```
+---
+# Calculating $\chi^2$
+
+- so for the particular random throws we did $\chi^2=`r (xx=sum(chiTab$std_sq_diff))`$
+
+- what we want to know is how probable that value is in a world where chance governs dice throws
+
+--
+
+- we already know two important things
+
+  + we're going to have to work out the distribution of $\chi^2$ and work out the probability of getting that value _or more_
+
+  + the reason we're calling the value we've calculated ** $\chi^2$ ** is because we're going to compare it to the $\chi^2$ distribution
+
+
 
 ---
+# Why do Things the Easy Way?
 
-
-
----
-# The $t$ Distribution
+- build a general function to calculate chisq for lots of dice throws
 
 .pull-left[
+```{r}
+#| label: chisqfun
+#| fig.asp: 0.6
+#| fig.show: hide
+# compact function to calculate chi-squared
+# for n dice throws
+diceChi <- function(n) {
+  dice <- sample(1:6, n, replace=TRUE)
+  chisq.test(table(dice))$statistic
+}
+
+chiDist <- replicate(10000,diceChi(600))
+
+plot(density(chiDist),
+     main="chisq(5)")
+```
+]
+.pull-right[
+![](lecture_4_files/figure-html/chisqfun-1.svg)
+]
+.flex.items-center[
+.w-5.pa1[
+![:scale 70%](lecture_4_files/img/danger.svg)
+]
+.w-95.pa1[
+for more on `chisq.test(...)$statistic`, start with `str(chisq.test(...))`
+]]
+
+???
+- here I'm using a cheat's way to calculate the $\chi^2$ value, by relying on the R function to calculate it
+
+- note that the `density()` function isn't perfect here -- $\chi^2$ can never actually go below zero, because the numerators in the sum are squared
+
+---
+# The $\chi^2$ Distribution
+
 .center[
-![:scale 40%](lecture_3_files/img/gossett.jpg)
-
-"A. Student", or William Sealy Gossett
-]]
-
-.pull-right[
 ```{r}
-#| label: normvst
-#| echo: !expr F
-#| fig.asp: 0.6
-df <- tibble(x=c(-3.5,3.5))
-df %>% ggplot(aes(x=x)) +
-  stat_function(fun=dnorm,n=151,colour="grey") +
-  stat_function(fun=dt,n=151,args=list(df=11),colour="red") +
-  xlab("standard deviations") + ylab("density") +
-  annotate(geom="text",x=1.7,y=.3,label="t(11)",colour="red",size=8)
-```
-
-]
-
-.pt2[
-- note that the shape changes according to _degrees of freedom_, hence $t(11)$
-]
-???
-The official name for the $t$-distribution is "Student's t-distribution", after William Gossett's pen-name
-
-Gossett specialised in statistics for relatively small numbers of observations, working with Pearson, Fisher, and others
-
----
-
-]]
-
-???
-here, I'm only showing the right-hand side of each distribution, so that you can see the differences between different degrees of freedom
-
-the distributions are, of course, symmetrical
----
-
----
-# So What is the Probability of a £`r pr` Profit?
-.pull-left[
-- for 12 people who made a mean profit of £`r pr` with an se of `r se`
-
-- $t(11) = `r pr`/`r se` = `r pr/se`$
-
-- instead of `pnorm()` we use `pt()` for the $t$ distribution
-
-- `pt()` requires the degrees of freedom
-
-```{r}
-#| label: pt1
-pt(mean(profit)/se,df=11,lower.tail=FALSE)
-```
-]
-
-
-.pull-right[
-```{r}
-#| label: tgraph
+#| label: biggraph
+#| fig.asp: 0.35
 #| echo: false
-#| fig.asp: 0.6
-df <- tibble(x=c(-3.5,3.5))
-g <- df %>% ggplot(aes(x=x)) +
-  stat_function(fun=dt,n=151,args=list(df=11),size=2) +
-  xlab("standard deviations") + ylab("density")
-
-ld <- layer_data(g) %>% filter(x>= mean(profit)/se)
-g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
-  stat_function(fun=dt,n=151,args=list(df=11),size=2) +
-  annotate(geom="text",x=2,y=.3,label="t(11)",size=8)
-```
-
-]
----
----
-# Types of Hypothesis
-
-```{r}
-#| label: ttt
-#| eval: false
-t.test(profit, mu=0, alternative = "greater")
-```
-
-- note the use of `alternative="greater"`
-
-- we've talked about the _null hypothesis_ (also **H<sub>0</sub>**)
-
-  + there is no profit (mean profit = 0)
-
-- the **alternative hypothesis** (**H<sub>1</sub>**, **experimental hypothesis**) is the hypothesis we're interested in
-
-  + here, that the profit is reliably £`r pr` _or more_ (_one-tailed_ hypothesis)
-
-  + could also use `alternative = "less"` or `alternative = "two.sided"`
-
----
-# Putting it Together
-
-- for $t(11)=`r mean(profit)/se`$, $p=`r pt(mean(profit/se),11,lower.tail=FALSE)`$
-
-.br3.pa2.pt2.bg-gray.white.f3[
-If you picked 12 people at random from a population of investors who were making no profit, there would be a `r (pc=round(100*pt(mean(profit)/se,11,lower.tail=F),0))`% chance that their average profit would be £`r pr` or more.
-]
-
-.pt2[
-- is `r pc`% low enough for you to believe that the mean profit probably wasn't due to chance?
-
-- perhaps we'd better face up to this question!
-
-]
-
----
-# Setting the Alpha Level
-
-.pull-left[
-- the $\alpha$ level is a criterion for $p$
-
-- if $p$ is lower than the $\alpha$ level
-
-  + we can (decide to) _reject H<sub>0</sub>_
-
-  + we can (implicitly) _accept H<sub>1</sub>_
-
-- what we set $\alpha$ to is a _matter of convention_
-
-- typically, in Psychology, $\color{red}{\alpha}$ .red[is set to .05]
-
-- important to set _before_ any statistical analysis
-]
-.pull-right[
-```{r}
-#| label: twonorms
-#| echo: !expr F
-#| fig.asp: 0.8
+#| fig.width: 10.0
 library(patchwork)
-p <- df %>% ggplot(aes(x=x)) +
-  xlab("") + ylab("density") +
-  stat_function(fun=dnorm,n=151)
-ld <- layer_data(p) %>% filter(x>=qnorm(.95))
-p1 <- p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
-  ggtitle("one-tailed") +
-  stat_function(fun=dnorm,n=151,size=1)
-ld1 <- layer_data(p) %>% filter(x>=qnorm(.975))
-ld2 <- layer_data(p) %>% filter(x<=qnorm(.025))
-p2 <- p + geom_area(data=ld1,aes(x=x,y=y),fill="red") +
-  geom_area(data=ld2,aes(x=x,y=y),fill="red") +
-  xlab("std devs") + ggtitle("two-tailed") +
-  stat_function(fun=dnorm,n=151,size=1)
-p1/p2
-```
-]
-???
-I've shown you here on the normal curve because it's a more general distribution than the $t$ distribution, which requires degrees of freedom, but the graphs would look quite similar, as you know
+x <- tibble(x=c(0,20))
 
-- if we're testing a medicine, with possible side-effects, we want alpha to be low
+p <- x %>% ggplot(aes(x=x)) +
+  xlab(expression(chi^2)) + ylab("density") +
+  ylim(0,.3) + theme_presentation(10)
 
-- for general psychology, meh...
+q <- p + ggtitle("1 df") +
+  stat_function(fun=dchisq,n=151,args=list(df=1),size=1.5,colour="purple")
 
-- no leading zeroes because $p$ is always less than 1
+r <- p + ggtitle("2 df") +
+  stat_function(fun=dchisq,n=151,args=list(df=2),size=1.5,colour="purple")
 
-- no cheating now!
+s <- p + ggtitle("5 df") +
+  stat_function(fun=dchisq,n=151,args=list(df=5),size=1.5,colour="purple")
 
----
+t <- p + ggtitle("9 df") +
+  stat_function(fun=dchisq,n=151,args=list(df=9),size=1.5,colour="purple")
 
-???
----
-# Most Experiments Involve Differences
+(q + r) / (s + t)
 
-.pull-left[
-- but of course "profit" _is_ a difference between **paired samples**
-
-```{r}
-#| label: table
-#| echo: !expr F
-df <- tibble(before=runif(12,100,1000),after=before+profit,profit=profit)
-before=df$before
-after=df$after
-library(gt)
-df %>% head() %>% gt() %>% fmt_currency(columns=everything(),currency="GBP")
-```
-]
-
-.pull-right[
-- doesn't matter whether _values_ are approx. normal as long as _differences_ are
-
-```{r}
-#| label: hist
-#| fig.asp: 0.6
-hist(before)
-```
-]
----
-# Equivalent $t$-tests
-
-.pull-left[
-```{r}
-#| label: ttest1
-t.test(profit, mu=0,
-       alternative="greater")
-```
-
-]
-.pull-right[
-```{r}
-#| label: ttests
-t.test(after, before, paired=TRUE,
-       alternative="greater")
 ```
 ]
 .flex.items-center[
 .w-5.pa1[
-![:scale 70%](lecture_1_files/img/danger.svg)
+![:scale 70%](lecture_4_files/img/danger.svg)
 ]
 .w-95.pa1[
-- note that a paired-samples $t$-test is actually (kind of) _multivariate_ (>1 measure per person)
+the "squared" in $\chi^2$ is because $\chi^2$ is derived from squared normal distributions
 ]]
+---
 
-???
-- note that the $t$-values have different signs
+# $\chi^2$ probability
 
-- this is essentially irrelevant
+.pull-left[
+- for our random 600 dice throws a couple of slides back
 
-  + it just reflects which column was subtracted from which
+  + $\chi^2=`r xx`$, $\textrm{df} = 5$
 
+- we can use `pchisq()` to find $p$
+
+
+```{r}
+#| results: asis
+#| echo: false
+cat("```r\n")
+cat(paste0("pchisq(",xx,", 5, lower.tail=FALSE)"),"\n")
+cat("```\n")
+```
+
+```{r}
+#| label: pchisq
+#| echo: false
+pchisq(xx, 5, lower.tail=FALSE)
+```
+
+- looks like we can conclude that our die is `r ifelse(pchisq(xx, 5, lower.tail=FALSE)<.05,"_unlikely_","likely")` to be fair
+
+]
+
+.pull-right[
+```{r}
+#| label: chisqf2
+#| echo: false
+#| fig.asp: 0.6
+#| cache: false
+x <- tibble(x=c(0,20))
+p <- x %>% ggplot(aes(x=x)) +
+  xlab(expression(paste(chi^2, "(5)"))) + ylab("density") +
+  stat_function(fun=dchisq,n=151,args=list(df=5),size=2)
+ld <- layer_data(p) %>% filter(x>=xx)
+p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dchisq,n=151,args=list(df=5),size=2)
+```
+]
 
 ---
-class: inverse, center, middle, animated, rubberBand
+
+class: animated, bounceInLeft
+# How Many Throws?
+
+.pull-left[
+- I give you a die, and you suspect it's biased
+
+- you decide to go away and throw the die lots of times
+
+- how many times should you throw it before you're satisfied you have an answer?
+]
+.pull-right[
+.center[
+![:scale 60%](lecture_4_files/img/playmo_dice.jpg)
+]
+]
+---
+# Type 1 and Type 2 Errors again
+
+### Type 1 Errors
+
+- we falsely reject H<sub>0</sub> (and accept H<sub>1</sub>) although H<sub>0</sub> is true
+
+- by convention, we accept a 5% probability of this happening ( $\alpha=.05$ )
+
+### Type 2 Errors
+
+- we falsely _accept_ H<sub>0</sub> (and reject H<sub>1</sub>) although H<sub>1</sub> is true
+
+  + this is less "dangerous", so we can be more conservative
+
+  + a typical value for the probability we accept is 20%
+
+- expressed as _the probability of correctly detecting H<sub>1</sub> when true_, or ** $\beta=.80$ **
+
+---
+# So, How Many Throws?
+
+- reformulated: How many throws to detect a _genuine bias_ with 80% accuracy?
+
+- first, let's set up a "genuinely unfair" die
+```{r}
+#| label: dicey
+# return a p-value representing chi^2 compared to fair dice
+unfairDie <- function(throws) {
+  d <- sample(1:6,throws,replace=TRUE,prob=c(1,1,1,1,1,2)) #<<
+  chisq.test(table(d))$p.value
+}
+```
+???
+- see the "prob" in the sample?  I've basically told the sampling function to be twice as likely to select the sixth value (OK, 6) as any other value for the dice.  So our dice is genuinely biased, compared to the default which is that all numbers would be chosen with equal probability.
+
+- in this function we've directly calculated the $\chi^2$ value, and are simply recording the p value
+
+--
+
+- next, repeat the experiment with 30 dice and count up how many times $p<.05$
+```{r}
+#| label: dicey2
+pValues <- replicate(1000,unfairDie(30))
+sum(pValues < .05)/1000
+```
+- (by simulation), there is a `r sum(pValues <.05)/1000` probability of detecting that the die is biased
+???
+- so here we're throwing the biased die 30 times, and recording the $p$ value from the $\chi^2$ test.  We're doing that 1,000 times to create a vector of $p$ values.
+
+- in the final line which begins with `sum()` we're working out the proportion out of 1000 times that we found a $p$ value of less than .05
+
+- that number is well below 0.8, which is the criterion we set.  So on the next slide, we're going to try it with higher and higher numbers
+---
+# How Many?
+
+.center[
+```{r}
+#| label: dicey3
+#| fig.asp: 0.6
+#| echo: !expr F
+#| fig.width: 5.0
+propP <- Vectorize(function(throws) {
+  sum(replicate(1000,unfairDie(throws))<.05)/1000
+})
+die <- tibble(throws=seq(30,200,by=10))
+die <- die %>% mutate(power = propP(throws))
+die %>% ggplot(aes(x=throws,y=power)) +
+  geom_hline(yintercept=.8, colour="red", size=1) +
+  geom_line(size=2)
+```
+]
+
+- would have to throw die around 140 times to be reasonably sure it was biased
+- (but this obviously depends on _how biased_ it is in the first place)
+???
+- we're not going to delve further into statistical power just now.
+
+- we've seen that we can estimate power by simulation; for simple designs such as $\chi^2$ there are also straightforward mathematical ways of doing it.
+
+---
+# A Very Biased Die
+
+- the important thing to remember is that the **effect size** and the **sample size** interact to affect the probability you have of finding an effect if it's there.
+
+.flex.items-top[.w-30[
+- for this die, 6 is _3_ times as likely as the other values
+
+- would take around _50 throws_ to reliably detect bias
+]
+.w-70.pa2[
+.center[
+```{r}
+#| label: diceyn
+#| fig.asp: 0.6
+#| echo: !expr F
+#| fig.width: 4.5
+propP <- Vectorize(
+  function(throws) {
+  sum(replicate(1000,chisq.test(table(sample(1:6,throws,
+      prob=c(1,1,1,1,1,3),replace=T)))$p.value)<.05)/1000
+})
+die <- tibble(throws=seq(30,200,by=10))
+die <- die %>% mutate(power = propP(throws))
+die %>% ggplot(aes(x=throws,y=power)) +
+  geom_hline(yintercept=.8, colour="red", size=1) +
+  geom_line(size=2) + theme_presentation(16)
+```
+]]]
+
+---
+class: inverse, center, middle, animated, rollIn
+
+# End of Part 2
+
+---
+
+class: animated, center, middle
+background-image: url(lecture_4_files/img/playmo_world.jpg)
+.br3.pa2.bg-white-80[
+# Part 3
+
+## Where Are You All?
+]
+
+
+```{r}
+#| label: readData
+#| include: false
+sc <- statsClasses %>% select(course,in_uk)
+```
+
+---
+# Where Are You?
+
+- data from all of the stats modules in Psychology
+
+```{r}
+#| label: tab1
+statsClasses %>% select(course,in_uk) %>% table()
+statsClasses %>% select(course,in_uk) %>% table() %>% addmargins()
+```
+
+???
+- in the second version, I've added the `addmargins()` function to give useful summary statistics.  I can also use functions like `rowSums()` which I'll show you in the next slide
+---
+# Under the Null Hypothesis:
+
+.flex.items-top[
+.w-60.pa2.pt3[
+- students on each module would be _equally likely_ to come from the UK (or "Elsewhere")
+
+- in other words, of the `r rowSums(table(sc))[1]` students on dapr1, $\frac{`r colSums(table(sc))[1]`}{`r sum(table(sc))`}\times{}`r rowSums(table(sc))[1]`$, or approx `r round(rowSums(table(sc))[1]*colSums(table(sc))[1]/sum(table(sc)),2)` students should come from Elsewhere under H<sub>0</sub>
+
+]
+.w-40.pa5[
+```{r}
+#| label: tab3
+#| echo: !expr F
+statsClasses %>% select(course,in_uk) %>% table() %>% addmargins()
+```
+
+]]
+---
+count: false
+# Under the Null Hypothesis:
+
+.flex.items-top[
+.w-60.pa2.pt3[
+- students on each module would be _equally likely_ to come from the UK (or "Elsewhere")
+
+- in other words, of the `r rowSums(table(sc))[1]` students on dapr1, ** $\frac{`r colSums(table(sc))[1]`\times{}`r rowSums(table(sc))[1]`}{`r sum(table(sc))`}$ **, or approx `r round(rowSums(table(sc))[1]*colSums(table(sc))[1]/sum(table(sc)),2)` students should come from Elsewhere under H<sub>0</sub>
+
+- we can repeat this calculation for each cell of the table, to give "expected values"
+
+  + like the probability-based values for dice
+
+]
+.w-40.pa5[
+```{r}
+#| label: tab3a
+#| echo: !expr F
+<<tab3>>
+```
+]]
+---
+# Expected Values
+
+- repeating the calculation is easy using the "outer product ( $\otimes$ )" operator `%o%` in R (this takes two vectors and multiplies them out into a matrix)
+.pt4[
+$$
+(a,b) \otimes (y, z) =
+\begin{bmatrix}
+a \times y & b \times y \\
+a \times z & b \times z \\
+\end{bmatrix}
+$$
+]
+---
+count: false
+# Expected Values
+
+- repeating the calculation is easy using the "outer product" operator `%o%` in R (this takes two vectors and multiplies them out into a matrix)
+
+.pull-left[
+```{r}
+#| label: tab5
+t <- statsClasses %>%
+  select(course,in_uk) %>% table()
+t
+```
+]
+.pull-right[
+```{r}
+#| label: tab6
+# expected values
+e <- rowSums(t) %o% colSums(t) / sum(t)
+e
+```
+]
+
+---
+# Restating the Null Hypothesis
+
+.flex.items-top[
+.w-60.pa2[
+- under H<sub>0</sub>:
+
+  + knowing which class people are in gives no additional information about where they come from
+
+  + knowing where they're from gives no additional information about which class they're in
+
+- ** $\chi^2$ test of independence ** (of the two variables)
+
+$$ \chi^2 = \sum{\frac{(O_i-E_i)^2}{E_i}} $$
+
+]
+.w-40.pa5[
+observed
+```{r}
+#| label: tab7a
+#| echo: !expr F
+as.matrix(t)
+```
+
+expected
+```{r}
+#| label: tab7
+#| echo: !expr F
+e
+```
+
+]]
+
+---
+# We Can Illustate our Tables Using `plot()`
+
+.pull-left[
+```{r}
+#| label: p1
+#| fig.asp: 0.55
+plot(t)
+```
+]
+.pull-right[
+```{r}
+#| label: p2
+#| fig.asp: 0.55
+plot(as.table(e))
+```
+
+]
+.flex.items-center[
+.w-5.pa1[
+![:scale 70%](lecture_4_files/img/danger.svg)
+]
+.w-95.pa1[
+`e` was actually created as a `matrix` (using `%o%`) but here we tell R to treat it as a table
+]]
+???
+here we're feeding tables to `plot()`.  It's looking at its arguments and choosing an appropriate way to plot them:  This is an example of the _object-oriented_ nature of R.
+---
+# Are There Differences Between Courses?
+
+.pull-left[
+```{r}
+#| label: uk1
+chisq.test(t)
+```
+- might need to look more closely
+```{r}
+#| label: uk3
+chisq.test(t)$p.value
+```
+- no difference between classes
+]
+.pull-right[
+```{r}
+#| label: uk2
+#| fig.asp: 0.6
+#| echo: false
+x <- tibble(x=c(0,20))
+p <- x %>% ggplot(aes(x=x)) +
+  stat_function(fun=dchisq,n=151,args=list(df=3)) +
+  xlab(expression(paste(chi^2, "(3)"))) + ylab("density")
+ld <- layer_data(p) %>% filter(x >= chisq.test(t)$statistic)
+p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dchisq,n=151,args=list(df=3),size=2)
+
+```
+]
+???
+- before you get too excited by these results, remember that there are well over 800 students on our stats courses, but only 166 identifiable responses about where people are.
+---
+class: inverse, center, middle, animated, rollIn
 
 # End
 
