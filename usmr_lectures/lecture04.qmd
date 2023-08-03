@@ -150,6 +150,7 @@ ggplot(dat, aes(nSuccess, prob)) + geom_col(width = 0.5) +
 ::: {.column width="100%"}
 ```{r}
 #| echo: false
+
 coins <- expand.grid(rep(list(c('H','T')),4))
 names(coins) <- c('Toss1','Toss2','Toss3', 'Toss4')
 coins$HEADS <- apply(coins[1:4],1, function(x) length(which(x=='H')))
@@ -198,6 +199,7 @@ usmrEyes <- statsClasses |> filter(course=="usmr", year==2022) |> pull(eyecolour
 ```{r}
 #| echo: false
 #| fig-asp: .3
+#| label: ecfig
 
 ggplot(as.data.frame(eyes), aes(usmrEyes, Freq, fill = usmrEyes)) +
   geom_bar(stat='identity') +
@@ -282,7 +284,13 @@ where $O_i$ is the $i\textrm{th}$ _observed_ and $E_i$ is the $i\textrm{th}$ _ex
 ```{r}
 #| label: t1
 #| include: false
-throws<-sample(1:6,prob = c(1,1.2,1,1,1,.8), 600, replace=TRUE)
+repeat {
+  throws<-sample(1:6,prob = c(1,1.2,1,1,.8,1), 600, replace=TRUE)
+  xx <- chisq.test(table(throws))$statistic
+  if (xx> qchisq(.95,5) & xx < 15) {
+    break
+  }
+}
 ```
 ```r
 throws
@@ -290,7 +298,7 @@ throws
 
 ```{r}
 #| echo: false
-paste(c(head(throws,80),'...'),collapse=' ')
+cat(paste(c(head(throws,80),'...'),collapse=' '))
 ```
 
 ```{r}
@@ -468,7 +476,7 @@ using the `tidyverse` way of doing things, where `mutate()` creates columns
 
 ## Why do Things the Easy Way?
 
-- calculate and plot 10,000 600-dice-throw $\chi^2$s
+- calculate and plot 10,000 random 600-fair-dice-throw $\chi^2$s
 
 
 ```{r}
@@ -513,3 +521,328 @@ ggplot(data.frame(x = c(0, 20)), aes(x = x)) +
 ::: aside
 the "squared" in $\chi^2$ is because $\chi^2$ is derived from squared normal distributions
 :::
+
+## $\chi^2$ Probability
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- for our random 600 dice throws a couple of slides back
+
+  + $\chi^2=`r xx`$, $\textrm{df} = 5$
+
+- we can use `pchisq()`
+
+
+```{r}
+#| results: asis
+#| echo: false
+cat("```r\n")
+cat(paste0("pchisq(",xx,", 5, lower.tail=FALSE)"),"\n")
+cat("```\n")
+```
+
+```{r}
+#| label: pchisq
+#| echo: false
+pchisq(xx, 5, lower.tail=FALSE)
+```
+
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: chisqf2
+#| echo: false
+#| fig.asp: 0.6
+df <- tibble(x=c(0,20))
+p <- df %>% ggplot(aes(x=x)) +
+  xlab(expression(paste(chi^2, "(5)"))) + ylab("density") +
+  stat_function(fun=dchisq,n=151,args=list(df=5),linewidth=2)
+ld <- layer_data(p) %>% filter(x>=xx)
+p + geom_area(data=ld, aes(x=x,y=y),fill="red") +
+  stat_function(fun=dchisq,n=151,args=list(df=5),linewidth=2)
+```
+:::
+
+::::
+
+- looks like we can conclude that our die is `r ifelse(pchisq(xx, 5, lower.tail=FALSE)<.05,"_unlikely_","likely")` to be fair
+
+# Two-Dimensional $\chi^2$
+
+## Types of $\chi^2$ Test
+
+- what we've just seen is a **goodness of fit** calculation
+
+  - do the data come from a specific distribution?
+
+
+  
+. . .
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- **test of homogeneity**
+
+  - do groups have same distribution of a variable of interest?
+
+- **test of independence**
+
+  - are categorical variables associated with each other?
+:::
+
+::: {.column width="50%"}
+```{r}
+#| echo: false
+statsClasses  |> group_by(course,in_uk) |> summarise(students=n())|>
+  pivot_wider(names_from=in_uk,values_from = students) |> select(-`NA`) -> tData
+tData |> ungroup() |> gt::gt() |> gt::tab_options(table.font.size=gt::pct(70))
+```
+
+
+:::
+
+::::
+
+## Where are You From? {background-image="img/playmo_world.jpg" background-opacity=.3}
+
+- data from all of the stats modules in Psychology
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| tidy.opts: { width.cutoff: 24 }
+statsClasses |> select(course,in_uk) |> table()
+
+```
+
+:::
+
+::: {.column width="50%" .fragment fragment-index=1}
+```{r}
+#| tidy.opts: { width.cutoff: 24 }
+statsClasses |> select(course,in_uk) |> table() |> addmargins()
+
+```
+:::
+
+::::
+
+- contingency tables
+
+::: notes
+in the second version, I've added the `addmargins()` function to give useful summary statistics.  I can also use functions like `rowSums()` which I'll show you in the next slide
+:::
+
+## Under the Null Hypothesis
+
+
+```{r}
+#| label: readData
+#| include: false
+sc <- statsClasses %>% select(course,in_uk)
+```
+
+:::: {.columns}
+
+::: {.column width="60%"}
+- students on each module would be _equally likely_ to come from the UK
+
+- in other words, of the `r rowSums(table(sc))[1]` students on dapr1, $\frac{`r colSums(table(sc))[2]`}{`r sum(table(sc))`}\times{}`r rowSums(table(sc))[1]`$, or approx `r round(rowSums(table(sc))[1]*colSums(table(sc))[2]/sum(table(sc)),2)` students, should come from the UK under H~0~
+:::
+
+::: {.column width="40%"}
+```{r}
+#| echo: false
+
+sc |> table() |> addmargins()
+```
+
+:::
+
+::::
+
+. . .
+
+- we can repeat this calculation for each cell of the table, to give "expected values"
+
+  + like the probability-based values for dice
+  
+## Expected Values
+
+- repeating the calculation is easy using the "outer product ($\otimes$)" operator `%o%` in R (this takes two vectors and multiplies them out into a matrix)
+
+
+$$
+(a,b) \otimes (y, z) =
+\begin{bmatrix}
+a \times y & b \times y \\
+a \times z & b \times z \\
+\end{bmatrix}
+$$
+
+## Expected Values
+
+- repeating the calculation is easy using the "outer product ($\otimes$)" operator `%o%` in R (this takes two vectors and multiplies them out into a matrix)
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| label: tab5
+t <- statsClasses |>
+  select(course,in_uk) |> table()
+t
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: tab6
+# expected values
+e <- rowSums(t) %o% colSums(t) / sum(t)
+e
+```
+:::
+
+::::
+
+## Restating the Null Hypothesis
+
+:::: {.columns}
+
+::: {.column width="60%"}
+- under H~0~:
+
+  + knowing which class people are in gives no additional information about where they come from
+
+  + knowing where they're from gives no additional information about which class they're in
+
+<!--$$\chi^2 = \sum{\frac{(O_i-E_i)^2}{E_i}}$$-->
+:::
+
+::: {.column width="40%"}
+
+observed
+
+```{r}
+#| label: tab7a
+#| echo: false
+as.matrix(t)
+```
+
+expected
+
+```{r}
+#| label: tab7
+#| echo: false
+e
+```
+
+:::
+
+::::
+
+## Using `plot()`
+
+
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| label: p1
+#| fig.asp: 0.7
+plot(t)
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: p2
+#| fig.asp: 0.7
+plot(as.table(e))
+```
+:::
+
+::::
+
+::: aside
+`e` was created as a `matrix` (using `%o%`) so here we tell R to treat it as a table
+:::
+
+## Are The Courses Different?
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| label: uk1
+chisq.test(t)
+```
+
+- might need to look more closely
+
+```{r}
+#| label: uk3
+chisq.test(t)$p.value
+```
+
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: uk2
+#| fig.asp: 0.6
+#| echo: false
+x <- tibble(x=c(0,20))
+p <- x %>% ggplot(aes(x=x)) +
+  stat_function(fun=dchisq,n=151,args=list(df=3)) +
+  xlab(expression(paste(chi^2, "(3)"))) + ylab("density")
+ld <- layer_data(p) %>% filter(x >= chisq.test(t)$statistic)
+p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dchisq,n=151,args=list(df=3),size=2)
+
+```
+:::
+
+::::
+
+## Bonus: Eye Colours
+
+![](`r knitr::fig_chunk('ecfig','svg')`)
+
+- are USMR eyes different from estimated world proportions?
+
+
+## Bonus: Eye Colours
+
+```{r}
+#| echo: false
+library(ggmosaic)
+ec <- statsClasses |> select(course,eyecolour) |>
+  filter(!is.na(eyecolour))
+
+ec |> ggplot() +
+  geom_mosaic(aes(x=product(eyecolour,course),fill=eyecolour)) +
+  scale_fill_manual(values=c("blue"='#218BB2',
+                    "brown"='#593520',
+                    "green"='#7CA69A',
+                    "grey"= '#8C8C8C',
+                    "hazel"='#5C643D',
+                    "other"='#071726',
+                    "amber"='#b36800')) +
+  theme(legend.position = "none")
+                      
+```
+- are eye colours different between stats classes?
+
+```{r}
+chisq.test(table(ec))
+```
+
+
