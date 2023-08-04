@@ -1,533 +1,432 @@
----
-# Calculating $\chi^2$
-
-```{r}
-#| label: settings
-#| include: false
-throws=600
-```
-
-- let's assume we throw the die `r throws` times
-
-- if everything worked out _perfectly_ for an unbiased die, our **expected values** would be:
-```{r}
-#| label: values
-ev <- 600 * c(1/6,1/6,1/6,1/6,1/6,1/6)
-ev
-```
-
-- and we can calculate a $\chi^2$ statistic using the formula
-$$ \chi^2 = \sum{\frac{(O_i-E_i)^2}{E_i}} $$
-where $O_i$ is the $i\textrm{th}$ observed value and $E_i$ is the $i\textrm{th}$ expected value
 
 ---
-# Calculating $\chi^2$
-
-- we don't have to do this calculation by hand
-
-- we can do it piece-by-piece
-
-```{r}
-#| label: t1
-# "throw a die 600 times"
-dice <- tibble(ov=sample(1:6, 600, replace=TRUE))
-
-# create a tibble of counts
-chiTab <- dice %>% count(ov)
-chiTab <- chiTab %>% mutate(ev=ev) # from our earlier calculation
-chiTab
-```
-???
-- note that I'm using the tidyverse way of doing things here, so the scary-sounding `mutate()` function is a way of adding columns to a tibble or dataframe (or of changing existing columns)
 ---
-# Calculating $\chi^2$
 
-```{r}
-#| label: t2
-# calculate (O-E)^2 / E
-chiTab <- chiTab %>% mutate(sq_diff = (n-ev)^2, std_sq_diff=sq_diff/ev)
-chiTab
-
-# chisq value
-sum(chiTab$std_sq_diff)
-```
 ---
-# Calculating $\chi^2$
 
-- so for the particular random throws we did $\chi^2=`r (xx=sum(chiTab$std_sq_diff))`$
+---
 
-- what we want to know is how probable that value is in a world where chance governs dice throws
-
---
-
-- we already know two important things
-
-  + we're going to have to work out the distribution of $\chi^2$ and work out the probability of getting that value _or more_
-
-  + the reason we're calling the value we've calculated ** $\chi^2$ ** is because we're going to compare it to the $\chi^2$ distribution
-
+---
 
 
 ---
-# Why do Things the Easy Way?
+class: inverse, center, middle, animated, bounceInUp
 
-- build a general function to calculate chisq for lots of dice throws
+# Intermission
+
+---
+class: inverse, center, middle
+
+# Part 1a
+
+## Correlations Contd.
+
+---
+# Significance of a Correlation
 
 .pull-left[
+![](lecture_5_files/figure-html/ba-1.svg)
+$$ r = `r cor(dat$BloodAlc,dat$RT)` $$
+]
+.pull-right[
+![](lecture_5_files/img/playmo_police.jpg)
+]
+???
+- the police have stopped our friends and measured their blood alcohol
+
+- is their evidence sufficient to conclude that there is likely to be a relationship between blood alcohol and reaction time?
+---
+# Significance of a Correlation
+
+- we can measure a correlation using $r$
+
+- we want to know whether that correlation is **significant**
+
+  + i.e., whether the probability of finding it by chance is low enough
+
+.pt2[
+- cardinal rule in NHST:  compare everything to chance
+
+- let's investigate...
+]
+---
+# Random Correlations
+
+- function to pick some pairs of numbers entirely at random, return correlation
+
+- arbitrarily, I've picked numbers uniformly distributed between 0 and 100
+
 ```{r}
-#| label: chisqfun
+#| label: pcor0
+x <- runif(5, min=0, max=100)
+y <- runif(5, min=0, max=100)
+cbind(x,y)
+cor(x,y)
+```
+
+---
+count: false
+# Random Correlations
+
+- function to pick some pairs of numbers entirely at random, return correlation
+
+- arbitrarily, I've picked numbers uniformly distributed between 0 and 100
+
+.flex.items-top[
+.w-50.pa2[
+
+```{r}
+#| label: pcor
 #| fig.asp: 0.6
 #| fig.show: hide
-# compact function to calculate chi-squared
-# for n dice throws
-diceChi <- function(n) {
-  dice <- sample(1:6, n, replace=TRUE)
-  chisq.test(table(dice))$statistic
+randomCor <- function(size) {
+  x <- runif(size, min=0, max=100)
+  y <- runif(size, min=0, max=100)
+  cor(x,y) # calculate r
 }
 
-chiDist <- replicate(10000,diceChi(600))
+# then we can use the usual trick:
+rs <- replicate(1000, randomCor(5))
+hist(rs)
+```
 
-plot(density(chiDist),
-     main="chisq(5)")
+]
+.w-50.pa2[
+![](lecture_5_files/figure-html/pcor-1.svg)
+]]
+
+---
+# Random Correlations
+
+.pull-left[
+
+```{r}
+#| label: pcor2
+#| echo: false
+#| fig.asp: 0.8
+t <- tibble(r=replicate(1000,randomCor(15)))
+t %>% ggplot(aes(x=r)) + geom_density(size=2) +
+  ggtitle("1000 correlations of 15 random pairs") +
+  ylim(0,2.5) + xlim(-.8,.8) +
+  geom_segment(aes(x=quantile(r,.025),xend=quantile(r,.975),y=1.5,yend=1.5),colour="red",size=1,arrow=arrow(type="open",ends="both")) +
+  annotate("text",x=0,y=1.65,label="95% of observations",size=6,colour="red")
+```
+
+]
+.pull-right[
+```{r}
+#| label: pcor3
+#| echo: false
+#| fig.asp: 0.8
+t <- tibble(r=replicate(1000,randomCor(30)))
+t %>% ggplot(aes(x=r)) + geom_density(size=2) +
+  ggtitle("1000 correlations of 30 random pairs") +
+  ylim(0,2.5) + xlim(-.8,.8) +
+  geom_segment(aes(x=quantile(r,.025),xend=quantile(r,.975),y=1.5,yend=1.5),colour="red",size=1,arrow=arrow(type="open",ends="both")) +
+  annotate("text",x=0,y=1.65,label="95% of observations",size=6,colour="red")
+```
+
+]
+---
+# Larger Sample Size
+
+.pull-left[
+```{r}
+#| label: pcor4
+#| echo: false
+#| fig.asp: 0.8
+t <- tibble(r=replicate(10000,randomCor(30)))
+rt <- function(r,n) {r*sqrt((n-2)/(1-r^2))}
+dtr <- function(r,n) {dt(rt(r,n),n-2)*sqrt((n-2)/(1-r^2))}
+p <- t %>% ggplot(aes(x=r)) + geom_density(size=2) +
+  ggtitle("10000 correlations of 30 random pairs") +
+  ylim(0,2.5) + xlim(-.8,.8)
+p + stat_function(fun=dtr,colour="red",args=list(n=30))
 ```
 ]
 .pull-right[
-![](lecture_4_files/figure-html/chisqfun-1.svg)
-]
-.flex.items-center[
-.w-5.pa1[
-![:scale 70%](lecture_4_files/img/danger.svg)
-]
-.w-95.pa1[
-for more on `chisq.test(...)$statistic`, start with `str(chisq.test(...))`
-]]
+- distribution of random $r$s is $t$ distribution, with $n-2$ df
 
-???
-- here I'm using a cheat's way to calculate the $\chi^2$ value, by relying on the R function to calculate it
+$$ t= r\sqrt{\frac{n-2}{1-r^2}} $$
 
-- note that the `density()` function isn't perfect here -- $\chi^2$ can never actually go below zero, because the numerators in the sum are squared
+- makes it "easy" to calculate probability of getting $\ge{}r$ for sample size $n$ by chance
+]
 
 ---
-# The $\chi^2$ Distribution
+# Pirates and Global Warming
+
+.center[
+![:scale 55%](lecture_5_files/img/fsm.png)
+]
+
+- clear _negative_ correlation between number of pirates and mean global temperature
+- we need pirates to combat global warming
+
+---
+# Simpson's Paradox
 
 .center[
 ```{r}
-#| label: biggraph
-#| fig.asp: 0.35
-#| echo: false
-#| fig.width: 10.0
-library(patchwork)
-x <- tibble(x=c(0,20))
-
-p <- x %>% ggplot(aes(x=x)) +
-  xlab(expression(chi^2)) + ylab("density") +
-  ylim(0,.3) + theme_presentation(10)
-
-q <- p + ggtitle("1 df") +
-  stat_function(fun=dchisq,n=151,args=list(df=1),size=1.5,colour="purple")
-
-r <- p + ggtitle("2 df") +
-  stat_function(fun=dchisq,n=151,args=list(df=2),size=1.5,colour="purple")
-
-s <- p + ggtitle("5 df") +
-  stat_function(fun=dchisq,n=151,args=list(df=5),size=1.5,colour="purple")
-
-t <- p + ggtitle("9 df") +
-  stat_function(fun=dchisq,n=151,args=list(df=9),size=1.5,colour="purple")
-
-(q + r) / (s + t)
-
-```
-]
-.flex.items-center[
-.w-5.pa1[
-![:scale 70%](lecture_4_files/img/danger.svg)
-]
-.w-95.pa1[
-the "squared" in $\chi^2$ is because $\chi^2$ is derived from squared normal distributions
-]]
----
-
-# $\chi^2$ probability
-
-.pull-left[
-- for our random 600 dice throws a couple of slides back
-
-  + $\chi^2=`r xx`$, $\textrm{df} = 5$
-
-- we can use `pchisq()` to find $p$
-
-
-```{r}
-#| results: asis
-#| echo: false
-cat("```r\n")
-cat(paste0("pchisq(",xx,", 5, lower.tail=FALSE)"),"\n")
-cat("```\n")
-```
-
-```{r}
-#| label: pchisq
-#| echo: false
-pchisq(xx, 5, lower.tail=FALSE)
-```
-
-- looks like we can conclude that our die is `r ifelse(pchisq(xx, 5, lower.tail=FALSE)<.05,"_unlikely_","likely")` to be fair
-
-]
-
-.pull-right[
-```{r}
-#| label: chisqf2
-#| echo: false
+#| label: simpson
+#| echo: !expr F
 #| fig.asp: 0.6
-#| cache: false
-x <- tibble(x=c(0,20))
-p <- x %>% ggplot(aes(x=x)) +
-  xlab(expression(paste(chi^2, "(5)"))) + ylab("density") +
-  stat_function(fun=dchisq,n=151,args=list(df=5),size=2)
-ld <- layer_data(p) %>% filter(x>=xx)
-p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
-  stat_function(fun=dchisq,n=151,args=list(df=5),size=2)
+#| fig.width: 6.0
+set.seed(13)
+dat <- correlation::simulate_simpson(n=50,r=-.5,groups=3) %>% mutate(prob=(V1-min(V1))/(max(V1)-min(V1)),hours=(V2-min(V2))/(max(V2)-min(V2))*10) %>% mutate(group=factor(Group,labels=c('younger','middle','older')))
+p <- dat %>% ggplot(aes(x=hours,y=prob)) +
+  geom_point(size=2) +
+  geom_smooth(method="lm") +
+  xlab("hours of exercise") +
+  ylab("prob of disease") + theme_presentation(14)
+p
 ```
 ]
 
+- the more hours of exercise, the greater the risk of disease
 ---
+# Simpson's Paradox
 
-class: animated, bounceInLeft
-# How Many Throws?
+.center[
+```{r}
+#| label: simpson2
+#| fig.asp: 0.6
+#| echo: !expr F
+#| fig.width: 6.0
+p + geom_point(aes(colour=group)) +
+  geom_smooth(aes(colour=group),method="lm")
+```
+]
+
+- age groups mixed together
+- an example of a _mediating variable_
+
+---
+# Interpreting Correlation
+
+- correlation does not imply causation
+
+- correlation simply suggests that two variables are related
+
+  + there may be mediating variables
+
+- interpretation of that relationship is key
+
+- never rely on statistics such as $r$ without
+
+  + looking at your data
+
+  + thinking about the real world
+
+---
+class: inverse, center, middle, animated, bounceInUp
+
+# End of Part 1
+
+---
+class: inverse, center, middle
+
+# Part 2
+
+---
+# Has Statistics Got You Frazzled?
 
 .pull-left[
-- I give you a die, and you suspect it's biased
+![:scale 70%](lecture_5_files/img/playmo_frazzled.jpg)
+]
 
-- you decide to go away and throw the die lots of times
+.pull-right[
+- we've bandied a lot of terms around in quite a short time
 
-- how many times should you throw it before you're satisfied you have an answer?
+- we've tended to introduce them by example
+
+- time to step back...
+]
+---
+class: inverse, center, middle
+# Part Z:  The Zen of Stats
+
+.center[
+![:scale 70%](lecture_5_files/img/zen.png)
+]
+
+---
+# What is NHST all about?
+
+## **N**ull **H**ypothesis **S**tatistical **T**esting
+
+- two premises
+
+  1. much of the variation in the universe is due to _chance_
+
+  1. we can't _prove_ a hypothesis that something else is the cause
+
+---
+# Chance
+
+.pull-left[
+- when we say _chance_, what we really mean is "stuff we didn't measure"
+
+- we believe that "pure" chance conforms approximately to predictable patterns (like the normal and $t$ distributions)
+
+  - if our data isn't in a predicted pattern, perhaps we haven't captured all of the non-chance elements
+]
+
+.pull-right[
+### pattens attributable to
+
+```{r}
+#| label: chance
+#| echo: !expr F
+#| fig.asp: 0.6
+x <- tibble(x=c(-4,4))
+p1 <- x %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,size=1) +
+  xlab("SDs") + ylab("density") +
+  ggtitle("Chance")
+
+db <- function(x) {dnorm(x-2)+dnorm(x+1)}
+p2 <- x %>% ggplot(aes(x=x)) +
+  stat_function(fun=db,size=1) +
+  xlab("SDs") + ylab("") +
+  ggtitle("Something Else")
+
+p1+p2
+```
+]
+???
+- we'll come back to looking at the patterns later on; essentially there is always going to be some part of any variation we can't explain
+---
+# Proof
+
+.pull-left[
+![](lecture_5_files/img/playmo_sun.jpg)
+
 ]
 .pull-right[
-.center[
-![:scale 60%](lecture_4_files/img/playmo_dice.jpg)
+- can't prove a hypothesis to be true
+
+- "the sun will rise tomorrow"
 ]
-]
----
-# Type 1 and Type 2 Errors again
 
-### Type 1 Errors
-
-- we falsely reject H<sub>0</sub> (and accept H<sub>1</sub>) although H<sub>0</sub> is true
-
-- by convention, we accept a 5% probability of this happening ( $\alpha=.05$ )
-
-### Type 2 Errors
-
-- we falsely _accept_ H<sub>0</sub> (and reject H<sub>1</sub>) although H<sub>1</sub> is true
-
-  + this is less "dangerous", so we can be more conservative
-
-  + a typical value for the probability we accept is 20%
-
-- expressed as _the probability of correctly detecting H<sub>1</sub> when true_, or ** $\beta=.80$ **
 
 ---
-# So, How Many Throws?
+count: false
+# Proof
 
-- reformulated: How many throws to detect a _genuine bias_ with 80% accuracy?
+.pull-left[
+![](lecture_5_files/img/playmo_nosun.jpg)
 
-- first, let's set up a "genuinely unfair" die
-```{r}
-#| label: dicey
-# return a p-value representing chi^2 compared to fair dice
-unfairDie <- function(throws) {
-  d <- sample(1:6,throws,replace=TRUE,prob=c(1,1,1,1,1,2)) #<<
-  chisq.test(table(d))$p.value
-}
-```
-???
-- see the "prob" in the sample?  I've basically told the sampling function to be twice as likely to select the sixth value (OK, 6) as any other value for the dice.  So our dice is genuinely biased, compared to the default which is that all numbers would be chosen with equal probability.
+]
+.pull-right[
+- can't prove a hypothesis to be true
 
-- in this function we've directly calculated the $\chi^2$ value, and are simply recording the p value
+- "the sun will rise tomorrow"
+
+- _just takes one counterexample_
+]
+
+---
+# Chance and Proof
+
+.br3.pa2.bg-gray.white[if the likelihood that the pattern of data we've observed would be found _by chance_ is low enough, propose an alternative explanation
+]
+
+- work from summaries of the data (e.g., $\bar{x}$, $\sigma$)
+
+- use these to approximate chance (e.g., $t$ distribution)
 
 --
 
-- next, repeat the experiment with 30 dice and count up how many times $p<.05$
-```{r}
-#| label: dicey2
-pValues <- replicate(1000,unfairDie(30))
-sum(pValues < .05)/1000
-```
-- (by simulation), there is a `r sum(pValues <.05)/1000` probability of detecting that the die is biased
-???
-- so here we're throwing the biased die 30 times, and recording the $p$ value from the $\chi^2$ test.  We're doing that 1,000 times to create a vector of $p$ values.
+  + catch: we can't estimate the probability of an exact value (this is an example of the measurement problem)
 
-- in the final line which begins with `sum()` we're working out the proportion out of 1000 times that we found a $p$ value of less than .05
-
-- that number is well below 0.8, which is the criterion we set.  So on the next slide, we're going to try it with higher and higher numbers
----
-# How Many?
-
-.center[
-```{r}
-#| label: dicey3
-#| fig.asp: 0.6
-#| echo: !expr F
-#| fig.width: 5.0
-propP <- Vectorize(function(throws) {
-  sum(replicate(1000,unfairDie(throws))<.05)/1000
-})
-die <- tibble(throws=seq(30,200,by=10))
-die <- die %>% mutate(power = propP(throws))
-die %>% ggplot(aes(x=throws,y=power)) +
-  geom_hline(yintercept=.8, colour="red", size=1) +
-  geom_line(size=2)
-```
-]
-
-- would have to throw die around 140 times to be reasonably sure it was biased
-- (but this obviously depends on _how biased_ it is in the first place)
-???
-- we're not going to delve further into statistical power just now.
-
-- we've seen that we can estimate power by simulation; for simple designs such as $\chi^2$ there are also straightforward mathematical ways of doing it.
+  + estimate the probability of finding the measured difference _or more_
 
 ---
-# A Very Biased Die
+# Alpha and Beta
 
-- the important thing to remember is that the **effect size** and the **sample size** interact to affect the probability you have of finding an effect if it's there.
+- we need an agreed "standard" for proposing an alternative explanation
 
-.flex.items-top[.w-30[
-- for this die, 6 is _3_ times as likely as the other values
+  + typically in psychology, we set $\alpha$ to 0.05
 
-- would take around _50 throws_ to reliably detect bias
-]
-.w-70.pa2[
-.center[
-```{r}
-#| label: diceyn
-#| fig.asp: 0.6
-#| echo: !expr F
-#| fig.width: 4.5
-propP <- Vectorize(
-  function(throws) {
-  sum(replicate(1000,chisq.test(table(sample(1:6,throws,
-      prob=c(1,1,1,1,1,3),replace=T)))$p.value)<.05)/1000
-})
-die <- tibble(throws=seq(30,200,by=10))
-die <- die %>% mutate(power = propP(throws))
-die %>% ggplot(aes(x=throws,y=power)) +
-  geom_hline(yintercept=.8, colour="red", size=1) +
-  geom_line(size=2) + theme_presentation(16)
-```
-]]]
+  + "if the probability of finding this difference or more under chance is $\alpha$ (e.g., 5%) or less, propose an alternative"
+
+- we also need to understand the quality of evidence we're providing
+
+  + can be measured using $\beta$ (psychologists typically aim for 0.80)
+
+  + "given that an effect truly exists in a population, what is the probability of finding $p<\alpha$ in a sample (of size $n$ etc.)?"
 
 ---
-class: inverse, center, middle, animated, rollIn
+class: middle
+background-image: url(lecture_5_files/img/nuts-and-bolts.jpg)
 
-# End of Part 2
-
----
-
-class: animated, center, middle
-background-image: url(lecture_4_files/img/playmo_world.jpg)
 .br3.pa2.bg-white-80[
-# Part 3
+# The Rest is Just Nuts and Bolts
 
-## Where Are You All?
-]
+- type of measurement
 
+- relevant laws of chance
 
-```{r}
-#| label: readData
-#| include: false
-sc <- statsClasses %>% select(course,in_uk)
-```
+- suitable estimated distribution (normal, $t$, $\chi^2$, etc.)
 
----
-# Where Are You?
+- suitable summary statistic ( $z$, $t$, $\chi^2$, $r$, etc.)
 
-- data from all of the stats modules in Psychology
+- use statistic and distribution to calculate $p$ and compare to $\alpha$
 
-```{r}
-#| label: tab1
-statsClasses %>% select(course,in_uk) %>% table()
-statsClasses %>% select(course,in_uk) %>% table() %>% addmargins()
-```
-
-???
-- in the second version, I've added the `addmargins()` function to give useful summary statistics.  I can also use functions like `rowSums()` which I'll show you in the next slide
----
-# Under the Null Hypothesis:
-
-.flex.items-top[
-.w-60.pa2.pt3[
-- students on each module would be _equally likely_ to come from the UK (or "Elsewhere")
-
-- in other words, of the `r rowSums(table(sc))[1]` students on dapr1, $\frac{`r colSums(table(sc))[1]`}{`r sum(table(sc))`}\times{}`r rowSums(table(sc))[1]`$, or approx `r round(rowSums(table(sc))[1]*colSums(table(sc))[1]/sum(table(sc)),2)` students should come from Elsewhere under H<sub>0</sub>
+- rinse, repeat
 
 ]
-.w-40.pa5[
-```{r}
-#| label: tab3
-#| echo: !expr F
-statsClasses %>% select(course,in_uk) %>% table() %>% addmargins()
-```
-
-]]
 ---
-count: false
-# Under the Null Hypothesis:
-
-.flex.items-top[
-.w-60.pa2.pt3[
-- students on each module would be _equally likely_ to come from the UK (or "Elsewhere")
-
-- in other words, of the `r rowSums(table(sc))[1]` students on dapr1, ** $\frac{`r colSums(table(sc))[1]`\times{}`r rowSums(table(sc))[1]`}{`r sum(table(sc))`}$ **, or approx `r round(rowSums(table(sc))[1]*colSums(table(sc))[1]/sum(table(sc)),2)` students should come from Elsewhere under H<sub>0</sub>
-
-- we can repeat this calculation for each cell of the table, to give "expected values"
-
-  + like the probability-based values for dice
-
-]
-.w-40.pa5[
-```{r}
-#| label: tab3a
-#| echo: !expr F
-<<tab3>>
-```
-]]
----
-# Expected Values
-
-- repeating the calculation is easy using the "outer product ( $\otimes$ )" operator `%o%` in R (this takes two vectors and multiplies them out into a matrix)
-.pt4[
-$$
-(a,b) \otimes (y, z) =
-\begin{bmatrix}
-a \times y & b \times y \\
-a \times z & b \times z \\
-\end{bmatrix}
-$$
-]
----
-count: false
-# Expected Values
-
-- repeating the calculation is easy using the "outer product" operator `%o%` in R (this takes two vectors and multiplies them out into a matrix)
+# The Most Useful Tool
 
 .pull-left[
-```{r}
-#| label: tab5
-t <- statsClasses %>%
-  select(course,in_uk) %>% table()
-t
-```
+![:scale 70%](lecture_5_files/img/playmo_spanner.jpg)
 ]
 .pull-right[
-```{r}
-#| label: tab6
-# expected values
-e <- rowSums(t) %o% colSums(t) / sum(t)
-e
-```
+- $t$ (or $z$) statistics are really ubiquitous
+
+- formally, mean difference divided by standard error
+
+- conceptually:
+
+  + what is the difference?
+  + what is the range of differences I would get by chance?
+  + how extreme is this difference compared to the range?
+
+- expressed in terms of _numbers of standard errors_ from the most likely difference (usually, by hypothesis, zero)
+]
+---
+class: inverse, center, middle
+# Part N: Nirvana
+
+.center[
+![:scale 45%](lecture_5_files/img/nirvana.png)
 ]
 
 ---
-# Restating the Null Hypothesis
+# .red[Announcement]
 
-.flex.items-top[
-.w-60.pa2[
-- under H<sub>0</sub>:
-
-  + knowing which class people are in gives no additional information about where they come from
-
-  + knowing where they're from gives no additional information about which class they're in
-
-- ** $\chi^2$ test of independence ** (of the two variables)
-
-$$ \chi^2 = \sum{\frac{(O_i-E_i)^2}{E_i}} $$
-
-]
-.w-40.pa5[
-observed
-```{r}
-#| label: tab7a
-#| echo: !expr F
-as.matrix(t)
-```
-
-expected
-```{r}
-#| label: tab7
-#| echo: !expr F
-e
-```
-
-]]
-
----
-# We Can Illustate our Tables Using `plot()`
-
-.pull-left[
-```{r}
-#| label: p1
-#| fig.asp: 0.75
-plot(t)
-```
-]
-.pull-right[
-```{r}
-#| label: p2
-#| fig.asp: 0.75
-plot(as.table(e))
-```
-
-]
 .flex.items-center[
-.w-5.pa1[
-![:scale 70%](lecture_4_files/img/danger.svg)
+.w-50.pa2[
+- no lecture or lab released in week 6 (25-29 October)
+
+- quiz 2 due on Friday 29th
+
+- after the break: linear models
+
+- in the meantime, have a good break and a Happy Halloween
 ]
-.w-95.pa1[
-`e` was created as a `matrix` (using `%o%`) so here we tell R to treat it as a table
+.w-50.pa2[
+![:scale 70%](lecture_5_files/img/playmo_hallow.jpg)
 ]]
-???
-here we're feeding tables to `plot()`.  It's looking at its arguments and choosing an appropriate way to plot them:  This is an example of the _object-oriented_ nature of R.
 ---
-# Are There Differences Between Courses?
-
-.pull-left[
-```{r}
-#| label: uk1
-chisq.test(t)
-```
-- might need to look more closely
-```{r}
-#| label: uk3
-chisq.test(t)$p.value
-```
-- no difference between classes
-]
-.pull-right[
-```{r}
-#| label: uk2
-#| fig.asp: 0.6
-#| echo: false
-x <- tibble(x=c(0,20))
-p <- x %>% ggplot(aes(x=x)) +
-  stat_function(fun=dchisq,n=151,args=list(df=3)) +
-  xlab(expression(paste(chi^2, "(3)"))) + ylab("density")
-ld <- layer_data(p) %>% filter(x >= chisq.test(t)$statistic)
-p + geom_area(data=ld,aes(x=x,y=y),fill="red") +
-  stat_function(fun=dchisq,n=151,args=list(df=3),size=2)
-
-```
-]
-???
-- before you get too excited by these results, remember that there are well over 800 students on our stats courses, but only 166 identifiable responses about where people are.
----
-class: inverse, center, middle, animated, rollIn
+class: inverse, center, middle, animated, bounceInUp
 
 # End
 
 ---
 # Acknowledgements
+
+- the [papaja package](https://github.com/crsh/papaja) helps with the preparation of APA-ready manuscripts
 
 - icons by Diego Lavecchia from the [Noun Project](https://thenounproject.com/)

@@ -1,0 +1,388 @@
+---
+title: "Correlations"
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+source('_theme/theme_quarto.R')
+```
+
+## Blood Alcohol and Reaction Time
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| label: ba
+#| fig.asp: 0.6
+#| echo: false
+
+set.seed(29)
+dat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=.4,
+                   varnames=c('BloodAlc','RT'))
+dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=3)
+```
+- data from 100 drivers
+- are blood alcohol and RT (linearly) related?
+
+:::
+
+::: {.column width="50%"}
+![](img/playmo_car.jpg)
+
+:::
+
+::::
+
+
+::: notes
+- the playmo crew have been out joyriding and were caught in a police speed trap
+
+- the police measured 100 people's blood alcohol and their reaction times
+
+- how would we go about telling whether two variables like this were related?
+:::
+
+
+## A Simplified Case
+
+:::: r-stack
+
+::: {#0}
+
+```{r}
+#| label: cor5
+#| echo: false
+#| fig.asp: 0.5
+#| fig-width: 6
+dat2 <- faux::rnorm_multi(n=5,
+                    mu=c(5,5),
+                    sd=c(2,2),
+                    r=.70,
+                    varnames=c('x','y'))
+p<- dat2 %>% ggplot(aes(x=x,y=y)) +
+  geom_point(size=5)
+p
+```
+:::
+
+
+::: {.fragment fragment-index=2}
+```{r}
+#| label: cor5a
+#| echo: false
+#| fig.asp: 0.5
+#| fig-width: 6
+dat2$xm <- mean(dat2$x)
+dat2$ym <- mean(dat2$y)
+p2 <- p +
+  geom_vline(xintercept=mean(dat2$x),colour="blue",linewidth=1.5) +
+  geom_segment(data=dat2,aes(xend=xm,yend=y),colour="blue",linetype="dotted",linewidth=1.5)
+p2
+```
+:::
+
+::: {.fragment fragment-index=3}
+```{r}
+#| label: cor5b
+#| echo: !expr F
+#| fig.asp: 0.5
+#| fig-width: 6
+p2 + geom_hline(yintercept=mean(dat2$y),colour="red",linewidth=1.5) +
+  geom_segment(data=dat2,aes(xend=x,yend=ym),colour="red",linetype="dotted",linewidth=1.5)
+```
+:::
+
+::::
+
+- does $y$ vary linearly with $x$?
+
+::: {.fragment fragment-index=1}
+
+- equivalent to asking "does $y$ differ from its mean in the same way that $x$ does?"
+
+:::
+
+:::: notes
+- here are the ways in which the values of $x$ differ from `mean(x)`
+- and here are the ways in which $y$ varies from its mean
+::::
+
+##  Covariance
+```{r}
+#| label: covlines
+#| echo: false
+#| fig.asp: 0.4
+#| fig.width: 10.0
+library(patchwork)
+dat2 <- dat2 %>% mutate(yd=y-ym, xd=x-xm)
+g1 <- dat2 %>% ggplot(aes(x=1:5,y=yd,fill="r")) +
+  scale_fill_manual(values=c("red")) +
+  scale_x_discrete(limit=1:5,labels=round(dat2$yd,2)) +
+  guides(fill=FALSE) +
+  geom_bar(stat="identity") +
+  xlab("") + ylab("y diff") + ylim(-4,3)
+g2 <- dat2 %>% ggplot(aes(x=1:5,y=xd,fill="r")) +
+  scale_fill_manual(values=c("blue")) +
+  scale_x_discrete(limit=1:5,labels=round(dat2$xd,2)) +
+  guides(fill=FALSE) +
+  geom_bar(stat="identity") +
+  xlab("") + ylab("x diff") + ylim(-4,3)
+g1/g2
+```
+
+- it's likely the variables are related **if observations differ proportionately from their means**
+
+
+## Covariance
+
+**variance**
+
+::: myblock
+$$ s^2 = \frac{\sum{(x-\bar{x})^2}}{n} = \frac{\sum{(x-\bar{x})(x-\bar{x})}}{n} $$
+:::
+
+
+
+:::: {.fragment}
+
+**covariance**
+
+::: myblock
+
+$$ \textrm{cov}(x,y) = \frac{\sum{\color{blue}{(x-\bar{x})}\color{red}{(y-\bar{y})}}}{n} $$
+:::
+
+::::
+
+::: notes
+- here we're using $n$, not $n-1$, because this is the whole population
+
+- for any (x,y), $x-\bar{x}$ might be positive and $y-\bar{y}$ might be positive, so the covariance could be a negative number
+:::
+
+## Covariance
+
+```{r}
+#| label: table
+#| include: false
+
+t <- dat2 |> select(xd,yd) |> mutate(xy=xd * yd) |> round(2)
+```
+
+| $\color{blue}{x-\bar{x}}$ | $\color{red}{y-\bar{y}}$ | $\color{blue}{(x-\bar{x})}\color{red}{(y-\bar{y})}$ |
+|------------:|------------:|-------------------------:|
+| `r t$xd[1]` | `r t$yd[1]` |              `r t$xy[1]` |
+| `r t$xd[2]` | `r t$yd[2]` |              `r t$xy[2]` |
+| `r t$xd[3]` | `r t$yd[3]` |              `r t$xy[3]` |
+| `r t$xd[4]` | `r t$yd[4]` |              `r t$xy[4]` |
+| `r t$xd[5]` | `r t$yd[5]` |              `r t$xy[5]` |
+|             |             |        **`r sum(t$xy)`** |
+
+
+
+$$\textrm{cov}(x,y) = \frac{\sum{(x-\bar{x})(y-\bar{y})}}{n} = \frac{`r sum(t$xy)`}{5} \simeq \color{red}{`r round(sum(t$xy)/5,2)`}$$
+
+
+::: notes
+I've rounded the numbers at the end to make this a bit neater on the slide
+:::
+
+
+## The Problem With Covariance {.smaller}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+**miles**
+
+| $x-\bar{x}$ | $y-\bar{y}$ | $(x-\bar{x})(y-\bar{y})$ |
+|------------:|------------:|-------------------------:|
+| `r t$xd[1]` | `r t$yd[1]` |              `r t$xy[1]` |
+| `r t$xd[2]` | `r t$yd[2]` |              `r t$xy[2]` |
+| `r t$xd[3]` | `r t$yd[3]` |              `r t$xy[3]` |
+| `r t$xd[4]` | `r t$yd[4]` |              `r t$xy[4]` |
+| `r t$xd[5]` | `r t$yd[5]` |              `r t$xy[5]` |
+|             |             |        **`r sum(t$xy)`** |
+
+$$\textrm{cov}(x,y)=\frac{`r sum(t$xy)`}{5}\simeq `r round(sum(t$xy)/5,2)`$$
+
+:::
+
+::: {.column width="50%"}
+
+**kilometres**
+
+```{r}
+#| label: mkm
+#| include: !expr F
+tk <- dat2 %>% select(xd,yd) %>% mutate(xd=xd * 1.60934,yd=yd * 1.60934) %>% mutate(xy=xd*yd) %>% round(2)
+```
+
+| $x-\bar{x}$ | $y-\bar{y}$ | $(x-\bar{x})(y-\bar{y})$ |
+|------------:|------------:|-------------------------:|
+| `r tk$xd[1]` | `r tk$yd[1]` |              `r tk$xy[1]` |
+| `r tk$xd[2]` | `r tk$yd[2]` |              `r tk$xy[2]` |
+| `r tk$xd[3]` | `r tk$yd[3]` |              `r tk$xy[3]` |
+| `r tk$xd[4]` | `r tk$yd[4]` |              `r tk$xy[4]` |
+| `r tk$xd[5]` | `r tk$yd[5]` |              `r tk$xy[5]` |
+|             |             |        **`r sum(tk$xy)`** |
+
+$$ \textrm{cov}(x,y)=\frac{`r sum(tk$xy)`}{5}\simeq `r round(sum(tk$xy)/5,2)` $$
+
+:::
+
+::::
+
+::: notes
+- these are exactly the same 'values' so they should each be as correlated as the other
+
+- so we need to divide covariance by something to represent the overall "scale" of the units
+:::
+
+## Correlation Coefficient ($r$)
+
+$$r = \frac{\textrm{covariance}(x,y)}{\textrm{standard deviation}(x)\cdot\textrm{standard deviation}(y)}$$
+
+
+:::: r-stack
+
+::: {.fragment}
+
+$$r=\frac{\frac{\sum{(x-\bar{x})(y-\bar{y})}}{n}}{\sqrt{\frac{\sum{(x-\bar{x})^2}}{n}}\sqrt{\frac{\sum{(y-\bar{y})^2}}{n}}}$$
+:::
+
+::: {.fragment}
+
+$$r=\frac{\frac{\sum{(x-\bar{x})(y-\bar{y})}}{\color{red}{n}}}{\sqrt{\frac{\sum{(x-\bar{x})^2}}{\color{red}{n}}}\sqrt{\frac{\sum{(y-\bar{y})^2}}{\color{red}{n}}}}$$
+:::
+
+::::
+
+::: {.fragment}
+
+$$r=\frac{\sum{(x-\bar{x})(y-\bar{y})}}{\sqrt{\sum{(x-\bar{x})^2}}\sqrt{\sum{(y-\bar{y})^2}}}$$
+
+:::
+
+::: notes
+standardised covariance, ensuring that units have no effect
+:::
+
+## Correlation Coefficient
+
+- measure of _how related_ two variables are
+
+- $-1 \le r \le 1$ ($\pm 1$ = perfect fit; $0$ = no fit)
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('ba','svg')`)
+$$ r=`r cor(dat$BloodAlc,dat$RT)` $$
+
+:::
+
+::: {.column width="50%"}
+
+:::: r-stack
+
+::: {.fragment .fade-out fragment-index=1}
+![](img/playmo_car.jpg){width=70%}
+
+:::
+
+::: {.fragment fragment-index=1}
+
+```{r}
+#| label: ba2
+#| fig.asp: 0.6
+#| echo: false
+dat3 <- dat |> mutate(Blood = max(BloodAlc)-BloodAlc+min(BloodAlc))
+dat3 |> ggplot(aes(x=Blood,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=3)
+```
+
+$$ r=`r cor(dat3$Blood,dat$RT)` $$
+
+:::
+
+::::
+
+:::
+
+::::
+
+::: notes
+- on the left, we have the drunken drivers from our first slide, and you can see that there is a moderate positive correlation
+  + the higher your blood alcohol, the slower your RT
+  
+- on the right, we have a negative correlation: what the drivers _think_ happens
+  + the higher your blood alcohol, the _faster_ your RT
+:::
+
+
+## What Does the Value of _r_ Mean?
+
+```{r}
+#| label: lots
+#| fig.asp: 0.5
+#| echo: false
+#| fig-width: 18.0
+set.seed(13)
+ndat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p1 <- ndat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0") +
+  theme(plot.title = element_text(size = 30, colour="red")) +
+  ylim(500,850)
+ndat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0.2,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p2 <- ndat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0.2") +
+  theme(plot.title = element_text(size = 30, colour="red")) +
+  ylim(500,850)
+ndat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0.5,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p3 <- ndat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0.5") +
+  theme(plot.title = element_text(size = 30, colour="red")) +
+  ylim(500,850)
+ndat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0.9,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p4 <- ndat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0.9") +
+  theme(plot.title = element_text(size = 30, colour="red")) +
+  ylim(500,850)
+(p1 + p2) / (p3 + p4)
+```
