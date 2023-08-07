@@ -19,12 +19,46 @@ set.seed(017)
 This reading:  
 
 - What are the basic hypothesis tests that we can conduct when we are interested in variables that have categories instead of numbers?  
+  - Tests of the distribution of a single categorical variable
+  - Tests of the relationship between two categorical variables
+
 
 :::
 
+```{r}
+#| include: false
+set.seed(257)
+timehands <- expand_grid(
+  handed = c("left","right","ambi"),
+  ampm = c("morning","night")
+) |>
+  mutate(
+    n = ceiling(c(c(.8, .2)*.1, c(.5,.5)*.87, c(.2,.8)*.03) * 1000)
+  ) |> uncount(n) |>
+  sample_n(n())
+#write_csv(timehands,"../../data/timehands.csv")
+```
 
-Here we continue with our brief explainers of different basic statistical tests. The past few weeks have focused on tests for __numeric__ outcome variables, where we have been concerned with the mean of that variable (e.g. whether that mean is different from some specific value, or whether it is different between two groups). 
+Just like we did with the various types of $t$-test, we're going to continue with some more brief explainers of different basic statistical tests. The past few weeks have focused on tests for __numeric__ outcome variables, where we have been concerned with the mean of that variable (e.g. whether that mean is different from some specific value, or whether it is different between two groups). 
 We now turn to investigate tests for __categorical__ outcome variables. 
+
+When studying categorical variables, we tend to be interested in __counts__ (or "frequencies"). These can be presented in tables. With 1 variable, we have a 1 dimensional table.  
+For example, how many people in the data are left-handed, right-handed, or ambidextrous:  
+
+```{r}
+# TODO uncomment timehands <- read_csv("https://uoepsy.github.io/data/timehands.csv")
+table(timehands$handed)
+```
+
+and with 2 variables, we have a 2-dimensional table (also referred to as a 'contingency table'). For instance, splitting up those left/right/ambidextrous groups across whether they prefer the morning or night:  
+```{r}
+table(timehands$handed, timehands$ampm)
+```
+
+We can perform tests to examine things such as:  
+
+a) how likely we are to see our sample frequencies in a single categorical variable, if some some hypothesised null distribution were true (e.g. how likely are we to see the numbers of left/right/ambi people in our sample if in bigger population we expect a 1/3 chance of each?)  
+b) how likely we are to see our sample frequencies across two categorical variables, if these variables are _independent_ in the population. (e.g. how likely are we to see the counts in the 2x2 table above, if being left/right/ambi has _nothing to do with_ whether you are a morning or night person).  
 
 The test-statistics for these tests (denoted $\chi^2$, spelled *chi-square*, pronounced "kai-square") are obtained by adding up the standardized squared deviations in each cell of a table of frequencies:  
 
@@ -37,7 +71,24 @@ where:
 - $\text{Expected}$ = expected count for a cell
 
 
+Just like the $t$-statistics we calculate follow $t$-distributions, the $\chi^2$-statistics follow $\chi^2$ distributions! If you look carefully at the formula above, it can never be negative (because the value on top of the fraction is squared, and so is always positive). 
+For a given cell of the table, if we observe exactly what we expect, then $\text{(Observed - Expected)}^2$ becomes zero. The further away the observed count is from the expected count, the larger it becomes.  
+
+This means that under the null hypothesis, larger values are less likely. And the shape of our $\chi^2$ distributions follow this logic. They have higher probability for small values, getting progressively less likely for large values. $\chi^2$-distributions _also_ have a degrees of freedom, because with more cells in a table, there are more chances for random deviations between "observed and expected" to come in, meaning we are more likely to see higher test statistics when we have more cells in the table (and therefore more degrees of freedom).   
+
+You can see the distribution of $\chi^2$ statistics with different degrees of freedom below.  
+```{r}
+#| label: fig-chidist1
+#| echo: false
+#| fig.cap: "Chi-Square Distributions"
+knitr::include_graphics("https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Chi-square_pdf.svg/1200px-Chi-square_pdf.svg.png")
+```
+
+
 # $\chi^2$ Goodness of Fit Test
+
+
+:::statbox
 
 __Purpose__
 
@@ -55,6 +106,7 @@ __Assumptions__
 2. Data should be at the categorical or nominal level - goodness-of-fit test is not appropriate for continuous level data. 
 3. Expected counts should be *at least* 5. 
 
+:::
 
 <!-- :::statbox -->
 <!-- __Hypotheses:__ -->
@@ -104,8 +156,6 @@ __Assumptions__
 
 <!-- ::: -->
 
-## Example
-
 ```{r}
 #| eval: false
 #| echo: false
@@ -118,7 +168,10 @@ df$fam_hist <- sample(c("n","y"),1000, replace=T,prob=c(.7,.3))
 # write_csv(df, "../../data/usmr_chisqdep.csv")
 ```
 
-:::frame
+
+::: {.callout-note collapse="true"}
+### Research Question & Data
+
 > **Research Question:** Have proportions of adults suffering no/mild/moderate/severe depression changed from 2019?  
 
 In 2019, it was reported that 80% of  adults (18+) experienced no symptoms of depression, 12% experienced mild symptoms, 4% experienced moderate symptoms, and 4% experienced severe symptoms.  
@@ -133,9 +186,12 @@ We can see our table of observed counts with the `table()` function:
 table(depdata$dep)
 ```
 
+
+
 :::
 
-`r optbegin("The quick and easy way", olabel=F)`
+::: {.callout-note collapse="true"}
+### Quick and easy `chisq.test()`
 
 We can perform the $\chi^2$ test very easily, by simply passing the table to the `chisq.test()` function, and passing it the hypothesised proportions. If we don't give it any, it will assume they are equal. 
 
@@ -171,9 +227,11 @@ $$
 \text{residual} = \frac{\text{observed} - \text{expected}}{\sqrt{expected}}
 $$
 
-`r optend()`
+:::
 
-`r optbegin("Manually", olabel=FALSE)`
+::: {.callout-note collapse="true"}
+### Step-by-step calculations
+
 First we calculate the observed counts: 
 ```{r}
 depdata %>% 
@@ -233,12 +291,12 @@ We calculate our p-value by using `pchisq()` and we have 4 levels of depression,
 pchisq(9.959583, df=3, lower.tail=FALSE)
 ```
 
-`r optend()`
+:::
 
 
 # $\chi^2$ Test of Independence  
 
-
+:::statbox
 __Purpose__
 
 The $\chi^2$ Test of Independence is used to determine whether or not there is a significant association between two categorical variables. To examine the independence of two categorical variables, we have a contingency table:  
@@ -269,6 +327,7 @@ __Assumptions__
     + expected frequencies should be at least 5 for the majority (80%) of cells 
     
 
+:::
 
 <!-- :::statbox -->
 <!-- __Hypotheses:__ -->
@@ -320,9 +379,9 @@ __Assumptions__
 
 <!-- ::: -->
 
-## Example
+::: {.callout-note collapse="true"}
+### Research Question & Data
 
-:::frame
 > **Research Question:** Is severity of depression associated with having a family history of depression?  
 
 The dataset accessible at [https://uoepsy.github.io/data/usmr_chisqdep.csv](https://uoepsy.github.io/data/usmr_chisqdep.csv) contains data from 1000 people to whom the PHQ-9 depression scale was administered in 2022, and for which respondents were asked a brief family history questionnaire to establish whether they had a family history of depression.  
@@ -340,12 +399,10 @@ And even create a quick and dirty visualisation of this too:
 plot(table(depdata$dep, depdata$fam_hist))
 ```
 
-
-
 :::
 
-
-`r optbegin("The quick and easy way", olabel=FALSE)`
+::: {.callout-note collapse="true"}
+### Quick and easy `chisq.test()`
 
 Again, we can perform this test very easily by passing the table to the `chisq.test()` function. We don't need to give it any hypothesised proportions here - it will work them out based on the null hypothesis that the two variables are independent.  
 
@@ -364,9 +421,12 @@ We can see the expected and observed counts:
 chisq.test(table(depdata$dep, depdata$fam_hist))$expected
 chisq.test(table(depdata$dep, depdata$fam_hist))$observed
 ```
-`r optend()`
 
-`r optbegin("Manually", olabel=FALSE)`
+:::
+
+::: {.callout-note collapse="true"}
+### Step-by-step calculations
+
 We have our observed table:
 ```{r}
 table(depdata$dep, depdata$fam_hist)
@@ -400,4 +460,4 @@ We have 4 rows, and 2 columns, so $df = (4-1) \times (2-1) = 3$.
 pchisq(1.066686, df = 3, lower.tail=FALSE)
 ```
 
-`r optend()`
+:::
