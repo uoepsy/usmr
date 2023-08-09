@@ -120,8 +120,9 @@ p2 + geom_hline(yintercept=mean(dat2$y),colour="red",linewidth=1.5) +
 ```{r}
 #| label: covlines
 #| echo: false
-#| fig.asp: 0.4
-#| fig.width: 10.0
+#| fig-asp: 0.4
+#| fig-width: 10.0
+
 library(patchwork)
 dat2 <- dat2 %>% mutate(yd=y-ym, xd=x-xm)
 g1 <- dat2 %>% ggplot(aes(x=1:5,y=yd,fill="r")) +
@@ -256,7 +257,7 @@ $$r = \frac{\textrm{covariance}(x,y)}{\textrm{standard deviation}(x)\cdot\textrm
 
 :::: r-stack
 
-::: {.fragment}
+::: {.fragment .fade-in-then-out}
 
 $$r=\frac{\frac{\sum{(x-\bar{x})(y-\bar{y})}}{n}}{\sqrt{\frac{\sum{(x-\bar{x})^2}}{n}}\sqrt{\frac{\sum{(y-\bar{y})^2}}{n}}}$$
 :::
@@ -386,3 +387,241 @@ p4 <- ndat |> ggplot(aes(x=BloodAlc,y=RT)) +
   ylim(500,850)
 (p1 + p2) / (p3 + p4)
 ```
+
+# Significance
+
+## Significance of a Correlation
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+![](`r knitr::fig_chunk('ba','svg')`)
+
+$$ r = `r cor(dat$BloodAlc,dat$RT)` $$
+:::
+
+::: {.column width="50%"}
+![](img/playmo_police.jpg)
+:::
+
+::::
+
+
+::: notes
+- the police have stopped our friends and measured their blood alcohol
+
+- is their evidence sufficient to conclude that there is likely to be a relationship between blood alcohol and reaction time?
+
+:::
+
+## Significance of a Correlation
+
+- we can measure a correlation using $r$
+
+- we want to know whether that correlation is **significant**
+
+  + i.e., whether the probability of finding it by chance is low enough
+
+
+- cardinal rule in NHST:  compare everything to chance
+
+- let's investigate...
+
+## Random Correlations
+
+- pick some pairs of numbers at random, return correlation
+
+- _arbitrarily_, I've picked numbers uniformly distributed between 0 and 100
+
+```{r}
+#| label: pcor0
+x <- runif(5, min=0, max=100)
+y <- runif(5, min=0, max=100)
+cbind(x,y)
+cor(x,y)
+```
+
+
+## Random Correlations
+
+- pick some pairs of numbers at random, return correlation
+
+  - repeat 1000 times
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+
+randomCor <- function(size) {
+  x <- runif(size, min=0, max=100)
+  y <- runif(size, min=0, max=100)
+  cor(x,y) # calculate r
+}
+
+# then we can use the usual trick:
+rs <- replicate(1000, randomCor(5))
+hist(rs)
+```
+
+## Random Correlations
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| label: pcor2
+#| echo: false
+#| fig.asp: 0.8
+t <- tibble(r=replicate(1000,randomCor(15)))
+t %>% ggplot(aes(x=r)) + geom_density(size=2) +
+  ggtitle("1000 correlations of 15 random pairs") +
+  ylim(0,2.5) + xlim(-.8,.8) +
+  geom_segment(aes(x=quantile(r,.025),xend=quantile(r,.975),y=1.5,yend=1.5),colour="red",size=1,arrow=arrow(type="open",ends="both")) +
+  annotate("text",x=0,y=1.65,label="95% of observations",size=9,colour="red") +
+  ylab("density")
+```
+
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: pcor3
+#| echo: false
+#| fig.asp: 0.8
+t <- tibble(r=replicate(1000,randomCor(30)))
+t %>% ggplot(aes(x=r)) + geom_density(size=2) +
+  ggtitle("1000 correlations of 30 random pairs") +
+  ylim(0,2.5) + xlim(-.8,.8) +
+  geom_segment(aes(x=quantile(r,.025),xend=quantile(r,.975),y=1.5,yend=1.5),colour="red",size=1,arrow=arrow(type="open",ends="both")) +
+  annotate("text",x=0,y=1.65,label="95% of observations",size=9,colour="red") +
+  ylab("density")
+```
+:::
+
+::::
+
+
+## Calculating Probability
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+:::: r-stack
+
+::: {#hello}
+
+```{r}
+#| echo: false
+#| fig.asp: 0.8
+t <- tibble(r=replicate(10000,randomCor(30)))
+p <- t %>% ggplot(aes(x=r)) + geom_density(size=2) +
+  ggtitle("10000 correlations of 30 random pairs") +
+  ylim(0,2.5) + xlim(-.8,.8)
+p
+```
+
+:::
+
+::: {.fragment fragment-index=1}
+```{r}
+#| echo: false
+#| fig.asp: 0.8
+rt <- function(r,n) {r*sqrt((n-2)/(1-r^2))}
+dtr <- function(r,n) {dt(rt(r,n),n-2)*sqrt((n-2)/(1-r^2))}
+p + stat_function(fun=dtr,colour="red",args=list(n=30),linewidth=2) +
+  ylab("density")
+```
+
+:::
+
+::::
+
+:::
+::: {.column width="50%"}
+- distribution of random $r$s is $t$ distribution, with $n-2$ df
+
+::: {.fragment fragment-index=1}
+
+:::: myblock
+$$t= r\sqrt{\frac{n-2}{1-r^2}}$$
+::::
+
+- makes it "easy" to calculate probability of getting $\ge{}r$ for sample size $n$ by chance
+:::
+
+:::
+
+::::
+
+## Calculating Probability
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+**calculate $t$**
+
+```{r}
+#| results: asis
+#| echo: false
+cat("```r\n")
+cat("r_to_t <- function (r,n) {\n")
+cat("  r * sqrt((n-2) / (1-r^2))\n")
+cat("}\n\n")
+cat(paste0("r_to_t(",.rround(cor(dat$BloodAlc,dat$RT),4),", 50)\n\n"))
+cat("```\n")
+```
+
+```{r}
+#| echo: false
+(tv<-rt(cor(dat$BloodAlc,dat$RT),50))
+```
+
+:::: {.fragment fragment-index=1}
+
+**calculate $p$**
+
+```{r}
+#| results: asis
+#| echo: false
+cat("```r\n")
+cat(paste0("2 * pt(",.rround(tv,3),", 48, lower.tail=F)\n"))
+cat("```\n")
+```
+
+```{r}
+#| echo: false
+
+2*pt(tv,48,lower.tail = F)
+```
+- note `2 * pt(...)` as this is a two-tailed hypothesis
+
+::::
+
+:::
+
+::: {.column width="50%"}
+
+:::: r-stack
+
+::: {.fragment .fade-out fragment-index=2}
+![](img/playmo_police.jpg){width=70%}
+
+$$r=`r cor(dat$RT,dat$BloodAlc)`$$
+:::
+
+::: {.fragment fragment-index=2}
+**or just be lazy**
+```{r}
+cor.test(dat$BloodAlc,dat$RT)
+```
+
+:::
+
+::::
+
+:::
+
+::::
