@@ -1,384 +1,881 @@
 
+```{r}
+#| label: recreate
+#| include: false
+library(faux)
+set.seed(29)
+dat <- rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=.4,
+                   varnames=c('BloodAlc','RT'))
+d20 <- dat %>% sample_n(20) # FIXME
+```
 ---
+# Back on the Road
+
+.pull-left[
+```{r}
+#| label: frecap
+#| fig.asp: 0.6
+#| echo: false
+p1 <- dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=3)
+p1
+  rd <- cor.test(dat$BloodAlc,dat$RT)
+```
+
+.center[
+$r= `r rd$estimate`$, $p = `r rd$p.value`$
+]
+]
+.pull-right[
+![](lecture_6_files/img/playmo_police.jpg)
+]
+???
+- is there anything more the police' data about blood alcohol and reaction time can tell us?
+
+- so far we know they're correlated, but it would be good if we could something about _how bad_ blood alcohol is
+
+  + how much worse does drinking more make things?
 ---
+# Back on the Road (2)
+
+.pull-left[
+```{r}
+#| label: frecap2
+#| fig.asp: 0.6
+#| echo: false
+p1 + geom_smooth(method="lm")
+m1 <- lm(RT~BloodAlc, data=dat)
+```
+
+.tc[
+"for every extra 0.01% blood alcohol, reaction time slows down by around `r round(coef(m1)[2]*0.01,0)` ms"
+]
+]
+.pull-right[
+![](lecture_6_files/img/playmo_police.jpg)
+
+]
+???
+- this kind of information is based on the assumption that the relationship between blood alcohol and RT is _linear_
+
+- that is, that each additional unit of blood alcohol affects reaction time by the same amount
+
 
 ---
+# The Only Equation You Will Ever Need
+
+.br3.pa2.f2.white.bg-gray[
+$$ \textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i $$
+]
+
+.center.pt2[
+![:scale 25%](lecture_6_files/img/model_error.svg)
+]
 
 ---
+count: false
+# The Only Equation You Will Ever Need
+
+.br3.pa2.f2.white.bg-gray[
+$$ \textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i $$
+]
+
+- to get any further, we need to make _assumptions_
+
+- nature of the **model** .tr[
+(linear)
+]
+
+- nature of the **errors** .tr[
+(normal)
+]
 
 ---
+# A Linear Model
 
+.flex.items-top[
+.w-40.pa2[
+$$ \color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i $$
+$$ \color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i $$
+.center[
+so the linear model itself is...
+]
+
+$$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
+.center[
+![:scale 30%](lecture_6_files/img/formula.svg)
+]
+]
+.w-60[
+&nbsp;
+]]
+---
+count: false
+# A Linear Model
+
+.flex.items-top[
+.w-40.pa2[
+$$ \color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i $$
+$$ \color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i $$
+.center[
+so the linear model itself is...
+]
+
+$$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
+.center[
+![:scale 30%](lecture_6_files/img/formula.svg)
+]]
+.w-60.pa2[
+```{r}
+#| label: bb
+#| echo: !expr F
+#| fig.asp: 0.6
+x <- tibble(x=c(-1,4))
+f <- function(x) {5+2*x}
+p1 <- x %>% ggplot(aes(x=x)) +
+  stat_function(fun=f,size=1) +
+  geom_segment(aes(x=0,xend=0,y=0,yend=f(0)),arrow=arrow(ends="both",length=unit(.05,"native")),colour="blue") +
+  geom_segment(aes(x=1,xend=2,y=f(1),yend=f(1)),linetype="dotted") +
+  geom_segment(aes(x=2,y=f(1),xend=2,yend=f(2)),arrow=arrow(ends="both",length=unit(.05,"native")),colour="blue") +
+  annotate("text",x=.6,y=2.5,label="b[0]~(intercept)",
+           size=5,parse=TRUE) +
+  annotate("text",x=2.6,y=7.5,label="b[1]~(slope)",
+           size=5,parse=TRUE) +
+    ggtitle(expression(paste(b[0]," = 5, ",b[1]," = 2")))
+
+p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
+  theme(axis.title.y = element_text(colour = "blue"))
+```
+
+]]
+---
+count: false
+# A Linear Model
+
+.flex.items-top[
+.w-40.pa2[
+$$ \color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i $$
+$$ \color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i $$
+.center[
+so the linear model itself is...
+]
+
+$$ \hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} $$
+.center[
+![:scale 30%](lecture_6_files/img/formula.svg)
+]
+.br3.pa3.bg-light-yellow[
+$$ \hat{y} = \color{blue}{b_0 + b_1 \cdot{} x_i} $$
+.center[
+![:scale 30%](lecture_6_files/img/formula2.svg)
+]]
+]
+.w-60.pa2[
+```{r}
+#| label: bb2
+#| fig.asp: 0.6
+#| echo: !expr F
+p1 + ylab(expression(paste(hat(y)," = ",5 + 2 %.% x))) +
+  theme(axis.title.y = element_text(colour = "blue"))
+```
+
+]]
+---
+# Take An Observation
+
+.flex.items-top[
+.w-40.pa2[
+
+.br3.bg-gray.white.f2.pa2.tc[
+x<sub>i</sub> = 1.2, y<sub>i</sub> = 9.9
+]
+```{r}
+#| label: vals
+#| include: !expr F
+xX <-1.2
+yY <- 9.9
+```
+
+$$ \hat{y}_i = b_0 + b_1\cdot{}x_i = 7.4 $$
+$$ y_i = \hat{y}_i + \epsilon_i = 7.4 + \color{red}{2.5} $$
+
+]
+.w-60.pa2[
+```{r}
+#| label: errplot
+#| fig.asp: 0.6
+#| echo: false
+p1 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
+  geom_point(aes(x=xX,y=yY),size=3,colour="red") +
+  geom_segment(aes(x=xX,xend=xX,y=f(xX),yend=yY),linetype="dotted",colour="red") +
+  annotate("text",.8,8.6,label=expression(paste(epsilon[i]," (error)")),colour="red",size=5)
+```
+]
+]
+???
+- $\hat{y}_i$ is what the model _predicts_ for $x_i$
+
+- $y_i$ is the actual value that was observed for $x_i$
+
+- why would we care?
+
+  + for one thing, the model can predict $\hat{y}$ for values of $x$ that we have never observed
 
 ---
-class: inverse, center, middle, animated, bounceInUp
+# Simplifying the Data
 
-# Intermission
-
----
-class: inverse, center, middle
-
-# Part 1a
-
-## Correlations Contd.
-
----
-
-# Random Correlations
-
-- function to pick some pairs of numbers entirely at random, return correlation
-
-- arbitrarily, I've picked numbers uniformly distributed between 0 and 100
+.pull-left[
+- **NB** we're doing this for illustrative purposes only
 
 ```{r}
-#| label: pcor0
-x <- runif(5, min=0, max=100)
-y <- runif(5, min=0, max=100)
-cbind(x,y)
-cor(x,y)
+#| label: simple
+ourDat <- dat %>% sample_n(20)
+  # take 20 data points
+```
+
+```{r}
+#| label: s2
+#| include: false
+lmp <- function(x) {
+  m <- lm(RT~BloodAlc,data=x)
+  summary(m)$coefficients[2,4]
+}
+while(lmp(ourDat) > .05) {
+ ourDat <- dat %>% sample_n(20)
+}
+```
+
+]
+.pull-right[
+```{r}
+#| label: plot1
+#| fig.asp: 0.6
+#| echo: !expr F
+ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3)
+```
+]
+
+---
+count: false
+# Simplifying the Data
+.pull-left[
+- **NB** we're doing this for illustrative purposes only
+
+```{r}
+#| label: simple1
+#| eval: !expr F
+ourDat <- dat %>% sample_n(20)
+  # take 20 data points
+```
+```{r}
+#| label: simple2
+ourDat <- ourDat %>%
+  mutate(BloodAlc = BloodAlc*100)
+```
+
+```{r}
+#| label: modh
+#| include: false
+m1 <- lm(RT ~ BloodAlc,data=ourDat)
+```
+
+]
+.pull-right[
+```{r}
+#| label: plot3
+#| fig.asp: 0.6
+#| echo: !expr F
+ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3) +
+  theme(axis.text.x = element_text(colour = "red"))
+```
+]
+---
+count: false
+# Simplifying the Data
+.pull-left[
+- **NB** we're doing this for illustrative purposes only
+
+```{r}
+#| label: simple1a
+#| eval: !expr F
+ourDat <- dat %>% sample_n(20)
+  # take 20 data points
+```
+```{r}
+#| label: simple2a
+#| eval: !expr F
+ourDat <- ourDat %>%
+  mutate(BloodAlc = BloodAlc*100)
+```
+.center[
+"for every extra unit blood alcohol, reaction time slows down by around `r round(coef(m1)[2],0)` ms"
+]
+
+]
+.pull-right[
+```{r}
+#| label: plot2
+#| fig.asp: 0.6
+#| echo: !expr F
+ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3) +
+  geom_smooth(method="lm")
+
+```
+]
+
+--
+
+.center.f3.pt3[
+but how can we evaluate our model?
+]
+---
+# Linear Models in R
+
+```{r}
+#| label: lm1
+#| eval: !expr F
+mod <- lm(RT ~ BloodAlc, data=ourDat)
 ```
 
 ---
 count: false
-# Random Correlations
-
-- function to pick some pairs of numbers entirely at random, return correlation
-
-- arbitrarily, I've picked numbers uniformly distributed between 0 and 100
-
-.flex.items-top[
-.w-50.pa2[
+# Linear Models in R
 
 ```{r}
-#| label: pcor
+#| label: lm2
+#| highlight.output: !expr c(11, 12)
+mod <- lm(RT ~ BloodAlc, data=ourDat)
+summary(mod)
+```
+
+---
+# Intercept and Slope Again
+
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+.center[
+```{r}
+#| label: git
+#| echo: !expr F
 #| fig.asp: 0.6
-#| fig.show: hide
-randomCor <- function(size) {
-  x <- runif(size, min=0, max=100)
-  y <- runif(size, min=0, max=100)
-  cor(x,y) # calculate r
+p1 <- ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlim(c(-1,12)) + ylim(300,800) +
+  geom_segment(aes(x=0,y=300,xend=0,yend=coef(mod)[1]),colour="red") +
+  annotate("text",x=.4,y=310,label=expression(b[0]),size=5,colour="red")
+p1
+```
+]
+???
+- $b_0$ is the the predicted value, $\bar{y}$, when $x=0$.  Here I've represented it as a line, so where the top is the intercept value of `r coef(mod)[1]`
+---
+count: false
+# Intercept and Slope Again
+
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+.center[
+```{r}
+#| label: git2
+#| echo: !expr F
+#| fig.asp: 0.6
+lmf <- function(x) {
+  coef(mod)[1]+coef(mod)[2]*x
 }
-
-# then we can use the usual trick:
-rs <- replicate(1000, randomCor(5))
-hist(rs)
+p2 <- p1 +
+  geom_segment(aes(x=4,xend=5,y=lmf(4),yend=lmf(4)),
+               arrow=arrow(ends = "both",length = unit(.03,"native"))) +
+  annotate("text",x=4.5,y=435,label="1",size=5) +
+  geom_segment(aes(x=5,xend=5,y=lmf(4),yend=lmf(5)),
+               colour="red") +
+  annotate("text",x=5.4,y=475,label=expression(b[1]),colour="red",size=5) +  geom_segment(aes(x=0,xend=1,y=lmf(0),yend=lmf(0)),
+               arrow=arrow(ends = "both",length = unit(.03,"native"))) +
+  geom_segment(aes(x=1,xend=1,y=lmf(0),yend=lmf(1)),
+               colour="red") +
+  annotate("text",x=1.4,y=335,label=expression(b[1]),colour="red",size=5)
+p2
 ```
-
-]
-.w-50.pa2[
-![](lecture_5_files/figure-html/pcor-1.svg)
-]]
-
----
-# Random Correlations
-
-.pull-left[
-
-
-]
-.pull-right[
-
-
 ]
 ---
-# Larger Sample Size
+count: false
+# Intercept and Slope Again
 
-.pull-left[
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
+.center[
 ```{r}
-#| label: pcor4
+#| label: git3
 #| echo: false
-#| fig.asp: 0.8
-t <- tibble(r=replicate(10000,randomCor(30)))
-rt <- function(r,n) {r*sqrt((n-2)/(1-r^2))}
-dtr <- function(r,n) {dt(rt(r,n),n-2)*sqrt((n-2)/(1-r^2))}
-p <- t %>% ggplot(aes(x=r)) + geom_density(size=2) +
-  ggtitle("10000 correlations of 30 random pairs") +
-  ylim(0,2.5) + xlim(-.8,.8)
-p + stat_function(fun=dtr,colour="red",args=list(n=30))
+#| fig.asp: 0.6
+p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2)
 ```
 ]
-.pull-right[
-- distribution of random $r$s is $t$ distribution, with $n-2$ df
-
-$$ t= r\sqrt{\frac{n-2}{1-r^2}} $$
-
-- makes it "easy" to calculate probability of getting $\ge{}r$ for sample size $n$ by chance
-]
-
 ---
-# Pirates and Global Warming
+count: false
+# Intercept and Slope Again
 
-.center[
-![:scale 55%](lecture_5_files/img/fsm.png)
-]
-
-- clear _negative_ correlation between number of pirates and mean global temperature
-- we need pirates to combat global warming
-
----
-# Simpson's Paradox
-
+$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
 .center[
 ```{r}
-#| label: simpson
-#| echo: !expr F
+#| label: git4
+#| echo: false
 #| fig.asp: 0.6
-#| fig.width: 6.0
-set.seed(13)
-dat <- correlation::simulate_simpson(n=50,r=-.5,groups=3) %>% mutate(prob=(V1-min(V1))/(max(V1)-min(V1)),hours=(V2-min(V2))/(max(V2)-min(V2))*10) %>% mutate(group=factor(Group,labels=c('younger','middle','older')))
-p <- dat %>% ggplot(aes(x=hours,y=prob)) +
-  geom_point(size=2) +
-  geom_smooth(method="lm") +
-  xlab("hours of exercise") +
-  ylab("prob of disease") + theme_presentation(14)
-p
+p2 +
+  geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2) + geom_point(size=3)
 ```
 ]
+???
+- note that the intercept is really very far from the data we're interested in.
 
-- the more hours of exercise, the greater the risk of disease
+- it may be pretty meaningless to talk about the reaction time of someone with zero blood alcohol
 ---
-# Simpson's Paradox
-
-.center[
-```{r}
-#| label: simpson2
-#| fig.asp: 0.6
-#| echo: !expr F
-#| fig.width: 6.0
-p + geom_point(aes(colour=group)) +
-  geom_smooth(aes(colour=group),method="lm")
-```
-]
-
-- age groups mixed together
-- an example of a _mediating variable_
-
----
-# Interpreting Correlation
-
-- correlation does not imply causation
-
-- correlation simply suggests that two variables are related
-
-  + there may be mediating variables
-
-- interpretation of that relationship is key
-
-- never rely on statistics such as $r$ without
-
-  + looking at your data
-
-  + thinking about the real world
-
----
-class: inverse, center, middle, animated, bounceInUp
-
+class: inverse, center, middle, animated, fadeInDownBig
 # End of Part 1
 
 ---
 class: inverse, center, middle
 
 # Part 2
-
+## Significance
 ---
-# Has Statistics Got You Frazzled?
-
-.pull-left[
-![:scale 70%](lecture_5_files/img/playmo_frazzled.jpg)
-]
-
-.pull-right[
-- we've bandied a lot of terms around in quite a short time
-
-- we've tended to introduce them by example
-
-- time to step back...
-]
----
-class: inverse, center, middle
-# Part Z:  The Zen of Stats
-
-.center[
-![:scale 70%](lecture_5_files/img/zen.png)
-]
-
----
-# What is NHST all about?
-
-## **N**ull **H**ypothesis **S**tatistical **T**esting
-
-- two premises
-
-  1. much of the variation in the universe is due to _chance_
-
-  1. we can't _prove_ a hypothesis that something else is the cause
-
----
-# Chance
-
-.pull-left[
-- when we say _chance_, what we really mean is "stuff we didn't measure"
-
-- we believe that "pure" chance conforms approximately to predictable patterns (like the normal and $t$ distributions)
-
-  - if our data isn't in a predicted pattern, perhaps we haven't captured all of the non-chance elements
-]
-
-.pull-right[
-### pattens attributable to
+# Intercept and Slope
 
 ```{r}
-#| label: chance
-#| echo: !expr F
-#| fig.asp: 0.6
-x <- tibble(x=c(-4,4))
-p1 <- x %>% ggplot(aes(x=x)) +
-  stat_function(fun=dnorm,size=1) +
-  xlab("SDs") + ylab("density") +
-  ggtitle("Chance")
-
-db <- function(x) {dnorm(x-2)+dnorm(x+1)}
-p2 <- x %>% ggplot(aes(x=x)) +
-  stat_function(fun=db,size=1) +
-  xlab("SDs") + ylab("") +
-  ggtitle("Something Else")
-
-p1+p2
+#| label: lm5
+#| highlight.output: !expr c(11, 12)
+<<lm2>>
 ```
-]
-???
-- we'll come back to looking at the patterns later on; essentially there is always going to be some part of any variation we can't explain
----
-# Proof
-
-.pull-left[
-![](lecture_5_files/img/playmo_sun.jpg)
-
-]
-.pull-right[
-- can't prove a hypothesis to be true
-
-- "the sun will rise tomorrow"
-]
-
 
 ---
-count: false
-# Proof
+# Are We Impressed?
 
-.pull-left[
-![](lecture_5_files/img/playmo_nosun.jpg)
+```{r}
+#| label: getvals
+#| include: false
+m.i <- round(coef(mod)[1],1)
+m.s <- round(coef(mod)[2],1)
+```
 
-]
-.pull-right[
-- can't prove a hypothesis to be true
+- we have an intercept of `r m.i` and a slope of `r m.s`
 
-- "the sun will rise tomorrow"
-
-- _just takes one counterexample_
-]
-
----
-# Chance and Proof
-
-.br3.pa2.bg-gray.white[if the likelihood that the pattern of data we've observed would be found _by chance_ is low enough, propose an alternative explanation
-]
-
-- work from summaries of the data (e.g., $\bar{x}$, $\sigma$)
-
-- use these to approximate chance (e.g., $t$ distribution)
+- in NHST world, our pressing question is
 
 --
 
-  + catch: we can't estimate the probability of an exact value (this is an example of the measurement problem)
-
-  + estimate the probability of finding the measured difference _or more_
-
----
-# Alpha and Beta
-
-- we need an agreed "standard" for proposing an alternative explanation
-
-  + typically in psychology, we set $\alpha$ to 0.05
-
-  + "if the probability of finding this difference or more under chance is $\alpha$ (e.g., 5%) or less, propose an alternative"
-
-- we also need to understand the quality of evidence we're providing
-
-  + can be measured using $\beta$ (psychologists typically aim for 0.80)
-
-  + "given that an effect truly exists in a population, what is the probability of finding $p<\alpha$ in a sample (of size $n$ etc.)?"
-
----
-class: middle
-background-image: url(lecture_5_files/img/nuts-and-bolts.jpg)
-
-.br3.pa2.bg-white-80[
-# The Rest is Just Nuts and Bolts
-
-- type of measurement
-
-- relevant laws of chance
-
-- suitable estimated distribution (normal, $t$, $\chi^2$, etc.)
-
-- suitable summary statistic ( $z$, $t$, $\chi^2$, $r$, etc.)
-
-- use statistic and distribution to calculate $p$ and compare to $\alpha$
-
-- rinse, repeat
-
+.pt4[
+&nbsp;
 ]
----
-# The Most Useful Tool
 
-.pull-left[
-![:scale 70%](lecture_5_files/img/playmo_spanner.jpg)
+.br3.bg-gray.pa2.white.tc[
+how likely would we have been to find these parameters under the null hypothesis?
 ]
-.pull-right[
-- $t$ (or $z$) statistics are really ubiquitous
 
-- formally, mean difference divided by standard error
-
-- conceptually:
-
-  + what is the difference?
-  + what is the range of differences I would get by chance?
-  + how extreme is this difference compared to the range?
-
-- expressed in terms of _numbers of standard errors_ from the most likely difference (usually, by hypothesis, zero)
-]
 ---
-class: inverse, center, middle
-# Part N: Nirvana
+# Testing Chance
 
 .center[
-![:scale 45%](lecture_5_files/img/nirvana.png)
+```{r}
+#| label: chanceg
+#| echo: !expr F
+#| fig.asp: 0.6
+#| fig.width: 5.5
+iS <- function(size) {
+  tt <- dat %>% sample_n(size) %>% mutate(BloodAlc = BloodAlc * 100)
+  m <- lm(RT~BloodAlc,data=tt)
+  return(coef(m))
+}
+
+cS <- as_tibble(t(replicate(10000,iS(20))))
+
+dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlim(c(8.5,12)) + ylim(c(500,800)) +
+  geom_abline(data=cS,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.01,colour="blue")
+```
+]
+
+- repeatedly sampling 20~datapoints from the population
+
+  + variability in _height_ of line = variability in intercept ( $b_0$ )
+  + variability in _angle_ of line = variability in slope ( $b_1$ )
+---
+# We've Seen This Before
+
+.center[
+```{r}
+#| label: figfig
+#| fig.asp: 0.6
+#| fig.width: 5.5
+#| echo: !expr F
+ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3) +
+  geom_smooth(method="lm")
+```
+]
+- shaded area represents "95% confidence interval"
+
+  + if we repeatedly sampled 20 items from the population...
+  + assumes that the 20 we have are the _best estimate_ of the population
+
+???
+- if you were able to lay these graphs over each other, they wouldn't be the same
+- in the simulation graph, we _know_ the entire population (of 50 drink-drivers) we're repeatedly sampling 20 from
+- in this graph, the only information we have is that our 20 drink-drivers represent "the population" but we have no other information about that population
+  + so the 20 are our "best estimate" of the population
+  + **just like means and standard errors** (here the edges of the grey regions are `r -qt(.025,18)` standard errors from the line)
+
+
+---
+
+# The Good Old _t_-Test
+
+```{r}
+#| label: pp
+#| echo: !expr F
+.pp(summary(mod),l=list(c(10:12)))
+
+```
+
+
+- for each model parameter we are interested in whether it is _different from zero_
+
+- **intercept**: just like a mean
+
+- **slope**: does the best-fit line differ from horizontal?
+
+--
+
+- these are just (two-tailed) one-sample $t$-tests
+
+  + **standard error** is the standard deviation of doing these lots of times
+  + **t value** is $\frac{\textrm{Estimate}}{\textrm{Std. Error}}$
+  + to calculate $p$, we need to know the _degrees of freedom_
+
+---
+# Degrees of Freedom
+
+.center[
+```{r}
+#| label: plotdat
+#| fig.asp: 0.6
+#| echo: false
+## function to work out the "last two" points on for a given best fit
+## line, by working out the residuals for given x and y
+## (maths courtesy of Umberto Noè)
+library(patchwork)
+plot_dat <- function() {
+  df <- tibble(
+      x = sample(2:14,8),
+      y = 20 + runif(8,-15,15),
+      resid = y - (5+2*x),
+      colour="a"
+  )
+
+  df <- df %>% mutate(xprod=x*resid)
+
+  sr <- sum(df$resid)
+  sp <- sum(df$xprod)
+
+  df2 <- tibble(
+    x= c(1,15),
+    yhat = 5 + 2 * x
+  )
+
+  r2 <- sr*df2$x[1] - sp
+  r1 <- -sr - r2
+
+  df2 <- df2 %>% mutate(
+    resid=c(r1,r2),
+    y=yhat+resid,
+    colour="b"
+  ) %>% relocate(y, .after=yhat)
+
+  df %>% bind_rows(df2) %>% select(-xprod) %>% select(-yhat)
+}
+
+pd1 <- plot_dat()
+pd2 <- plot_dat()
+pd3 <- plot_dat()
+pd4 <- plot_dat()
+
+do_p <- function(x) {
+x %>% filter(colour=="a") %>% ggplot(aes(x=x,y=y)) +
+  theme_presentation(14) +
+  geom_point(size=3) +
+  xlim(c(0,15)) +
+  geom_smooth(method="lm",se=FALSE)
+}
+
+p1 <- do_p(pd1)
+p2 <- do_p(pd2)
+p3 <- do_p(pd3)
+p4 <- do_p(pd4)
+
+( p1 + p2 ) / ( p3 + p4 )
+```
+]
+---
+count: false
+# Degrees of Freedom
+
+.center[
+```{r}
+#| label: dfplots2
+#| fig.asp: 0.6
+#| echo: !expr F
+do_p <- function(x) {
+x %>% ggplot(aes(x=x,y=y)) +
+  theme_presentation(14) +
+  geom_point(aes(colour=colour),size=3) +
+  xlim(c(0,15)) +
+  scale_colour_manual(values=c('a'='darkgrey','b'='red')) +
+  theme(legend.position = "none") +
+  geom_smooth(method="lm",se=FALSE)
+}
+
+p1 <- do_p(pd1)
+p2 <- do_p(pd2)
+p3 <- do_p(pd3)
+p4 <- do_p(pd4)
+
+( p1 + p2 ) / ( p3 + p4 )
+```
+]
+
+???
+- we can always add in two points to make the straight line that we want to see
+- this is one way of showing that for $n$ data points, there are $n-2$ degrees of freedom
+---
+# Degrees of Freedom
+
+- in fact we subtract 2 degrees of freedom because we "know" two things
+
+  + intercept ( $b_0$ )
+
+  + slope ( $b_1$ )
+
+- the remaining degrees of freedom are the _residual_ degrees of freedom
+
+--
+
+- the _model_ also has associated degrees of freedom
+
+  + 2 (intercept, slope) - 1 (knowing one affects the other)
+
+.br3.bg-gray.pa2.white.tc[
+the models we have been looking at have 20 observations and 1 predictor
+
+**(1, 18)** degrees of freedom
+]
+---
+# Linear Models in R
+
+```{r}
+#| label: lm3
+#| highlight.output: !expr c(17, 18)
+<<lm2>>
+```
+
+---
+# Total Sum of Squares
+
+$$ \textrm{total SS}=\sum{(y - \bar{y})^2} $$
+
+.pull-left[
+- sum of squares between observed $y$ and mean $\bar{y}$
+
+- represents the total amount of variance in the model
+
+- how much does the observed data vary from a model which says "there is no effect of $x$" (**null model**)?
+]
+.pull-right[
+```{r}
+#| label: totss
+#| echo: !expr F
+#| fig.asp: 0.6
+ourDat <- ourDat %>% mutate(pred=predict(m1),mRT=mean(RT))
+p1 <- ourDat %>% ggplot(aes(x=BloodAlc,y=RT,yend=pred))
+
+pTot <- p1 + geom_abline(intercept=mean(ourDat$RT),slope=0,size=1) +
+  geom_segment(aes(yend=mean(mRT),xend=BloodAlc),linetype="dotted",colour="red",size=1) +
+  geom_point(size=3)
+pTot
+```
+
+]
+---
+# Residual Sum of Squares
+
+$$ \textrm{residual SS} = \sum{(y - \hat{y})^2} $$
+.pull-left[
+- sum of squared differences between observed $y$ and predicted $\hat{y}$
+
+- represents the unexplained variance in the model
+
+- how much does the observed data vary from the existing model?
+]
+.pull-right[
+```{r}
+#| label: residp
+#| echo: !expr F
+#| fig.asp: 0.6
+pRes<- p1 + geom_segment(aes(xend=BloodAlc),linetype="dotted",colour="red",size=1) +
+  geom_smooth(method="lm",se=FALSE) +
+  geom_point(size=3)
+pRes
+```
+]
+---
+# Model Sum of Squares
+
+$$ \textrm{model SS} = \sum{(\hat{y} - \bar{y})^2} $$
+
+.pull-left[
+- sum of squared differences between predicted $\hat{y}$ and mean $\bar{y}$
+
+- represents the additional variance explained by the current model over the null model
+]
+.pull-right[
+```{r}
+#| label: modp
+#| echo: !expr F
+#| fig.asp: 0.6
+pMod <- p1 + geom_segment(aes(y=mRT,xend=BloodAlc),colour="red",linetype="dotted",size=1) +
+  geom_hline(yintercept = mean(ourDat$RT),size=1) +
+  geom_smooth(method="lm",se=FALSE) +
+  geom_point(size=3)
+pMod
+```
+
 ]
 
 ---
-# .red[Announcement]
+# Testing the Model: _R_<sup>2</sup>
+
+.pull-left[
+$$ R^2 = \frac{\textrm{model SS}}{\textrm{total SS}} = \frac{\sum{(\hat{y}-\bar{y})^2}}{\sum{(y-\bar{y})^2}} $$
+
+
+
+"how much the model improves over the null"
+
+
+.pt3[
+- $0 \le R^2 \le 1$
+
+- we want $R^2$ to be large
+
+- for a single predictor, $\sqrt{R^2} = |r|$
+
+]]
+
+.pull-right[
+```{r}
+#| echo: !expr F
+#| fig.asp: 0.8
+library(patchwork)
+pMod/pTot
+```
+
+]
+---
+# Testing the Model: _F_
+
+.pull-left[
+$F$ ratio depends on **mean squares** <br/>
+.tc[
+( $\textrm{MS}_x = \textrm{SS}_x/\textrm{df}_x$ )
+]
+
+$$F=\frac{\textrm{model MS}}{\textrm{residual MS}}=\frac{\sum{(\hat{y}-\bar{y})^2}/\textrm{df}_m}{\sum{(y-\hat{y})^2}/\textrm{df}_r}$$
+
+
+
+"how much the model improves over chance"
+
+
+.pt3[
+- $0 < F$
+
+- we want $F$ to be large
+
+- significance of $F$ does not always equate to a large (or theoretically sensible) effect
+
+]]
+
+.pull-right[
+```{r}
+#| echo: !expr F
+#| fig.asp: 0.8
+library(patchwork)
+pMod/pRes
+```
+
+]
+
+
+---
+# A Linear Model for 20 Drinkers
+
+.center[
+```{r}
+#| label: mod
+#| fig.asp: 0.55
+#| echo: false
+#| fig.width: 6.0
+pRes
+```
+]
+
+- a linear model describes the **best-fit line** through the data
+
+- minimises the error terms $\epsilon$ or **residuals**
+---
+# Two Types of Significance
+
+```{r}
+#| label: lmlm
+#| highlight.output: !expr c(11, 12, 17, 18)
+<<lm2>>
+```
+---
+# The Good, the Bad, and the Ugly
 
 .flex.items-center[
-.w-50.pa2[
-- no lecture or lab released in week 6 (25-29 October)
+.w-50.br3.bg-washed-green.pa2[
+- we can easily extend this approach
 
-- quiz 2 due on Friday 29th
+  + use more than one predictor
 
-- after the break: linear models
-
-- in the meantime, have a good break and a Happy Halloween
+  + generalised linear model
 ]
-.w-50.pa2[
-![:scale 70%](lecture_5_files/img/playmo_hallow.jpg)
+.w-50.br3.bg-washed-red.pa2[
+- not a panacea
+
+  + depends on _assumptions_ about the data
+
+  + depends on _decisions_ about analysis
 ]]
+
+--
+
+.flex.items-center[
+.w-70.br3.pa2.bg-gray.white[
+- like other statistics, linear models don't tell you "about" your data
+
+- they simply assess what is (un)likely to be due to chance
+
+- the key to good statistics is _common sense and good interpretation_
+]
+.w-30.center[
+![:scale 70%](lecture_6_files/img/playmo_clown.jpg)
+]
+]
+
 ---
-class: inverse, center, middle, animated, bounceInUp
+class: inverse, center, middle, animated, fadeInDownBig
 
 # End
 
----
-# Acknowledgements
-
-- the [papaja package](https://github.com/crsh/papaja) helps with the preparation of APA-ready manuscripts
-
-- icons by Diego Lavecchia from the [Noun Project](https://thenounproject.com/)
