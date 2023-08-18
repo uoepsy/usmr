@@ -30,7 +30,8 @@ dat <- faux::rnorm_multi(n=50,
                    varnames=c('BloodAlc','RT'))
 dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
   xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
-  geom_point(size=3)
+  geom_point(size=3) -> dp
+dp # saved for much later
 ```
 - data from 100 drivers
 - are blood alcohol and RT (linearly) related?
@@ -651,6 +652,16 @@ $$r= `r rd$estimate`, p = `r rd$p.value`$$
 <!-- possibly add policeman image -->
 
 ::: {.column width="40%"}
+
+::: r-stack
+
+:::: {.fragment .fade-out fragment-index=1}
+![](img/playmo_traffic.jpg)
+
+::::
+
+:::: {.fragment fragment-index=1}
+
 :::: myblock
 reaction time is positively associated with blood alcohol
 ::::
@@ -659,11 +670,428 @@ reaction time is positively associated with blood alcohol
 
 - _how much_ does alcohol affect RT?
 
+::::
+
+:::
+
 :::
 
 ::::
 
+## [The Only Equation You Will Ever Need]{.r-fit-text}
+
+::: myblock
+
+$$\textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i$$
+:::
+
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+t <- lm(RT~BloodAlc,dat)
+px <- which.min(abs(dat$BloodAlc-0.095))
+dat <- dat |> mutate(col='black', size=2, alpha=0)
+dat$col[px] <- 'red'
+dat$size[px] <- 3
+dat$alpha[px] <- 1
+
+p <- dat |> ggplot(aes(x=BloodAlc,y=RT,colour=col)) +
+  scale_colour_manual(values=c('black','red')) +
+  scale_size(range=c(2,4))+
+  theme(legend.position = "none") +
+  ylab("RT (ms)") +
+  xlab("Blood Alcohol %/vol")
+p + geom_point(aes(size=size))
+
+xv <- tibble(BloodAlc=dat$BloodAlc[px])
+xv$RT <- predict(t,xv)
+```
+
+## [The Only Equation You Will Ever Need]{.r-fit-text}
+
+::: myblock
+
+$$\textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i$$
+:::
+
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+ymin <- layer_scales(p)$y$range$range[1]
+
+p2 <- p + geom_point(aes(size=size,alpha=alpha)) +
+  annotate(geom="text",colour="blue",x=.1,y=550,label=expression(model[i]),size=9) +
+  annotate(geom="text",colour="blue",x=.1,y=520,label="= f(0.095)",size=8) +
+  geom_segment(aes(x=.095,xend=.095,y=ymin,yend=xv$RT),colour="blue",
+               size=1.5,arrow=arrow())
+p2
+```
+
+## [The Only Equation You Will Ever Need]{.r-fit-text}
+
+::: myblock
+
+$$\textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i$$
+:::
+
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+p3 <- p2 +
+  geom_segment(aes(x=.095,xend=.095,y=xv$RT,yend=RT[px]),colour="black",size=1.5,arrow=arrow()) +
+  annotate(geom="text",colour="black",x=.1,y=650,label=expression(error[i]),size=9)
+p3
+```
+
+## [The Only Equation You Will Ever Need]{.r-fit-text}
+
+::: myblock
+
+$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+:::
+
+
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+p + geom_point(aes(size=size,alpha=alpha)) +
+  annotate(geom="text",colour="blue",x=.1,y=550,label=expression(model[i]),size=9,alpha=.2) +
+  annotate("segment",x=.095,xend=.095,y=ymin,yend=xv$RT,size=1.5,colour="blue",arrow=arrow(),alpha=.2) +
+  geom_smooth(method=lm,colour="blue")
+```
+
+## The Aim of the Game
+
+::: myblock
+$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+:::
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+p + geom_point(aes(size=size,alpha=alpha)) +
+  annotate(geom="text",colour="blue",x=.1,y=550,label="BIG",size=9) +
+  geom_segment(aes(x=.095,xend=.095,y=ymin,yend=xv$RT),colour="blue",
+               size=1.5,arrow=arrow()) +
+  geom_segment(aes(x=.095,xend=.095,y=xv$RT,yend=RT[px]),colour="black",size=1.5,arrow=arrow()) +
+  annotate(geom="text",colour="black",x=.1,y=650,label="small",size=9)
+```
+
+:::
+
+::: {.column width="50%"}
+- maximise the explanatory worth of the [model]{.blue}
+
+- minimise the amount of unexplained [error]{.red}
+
+:::
+
+::::
+
+
+## The Aim of the Game
+
+
+::: myblock
+$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+:::
+
+- **to get any further, we need to make _assumptions_**
+
+
+::: {layout="[4,1],[4,1]"}
+- nature of the [model]{.blue}
+
+(linear)
+
+- nature of the [errors]{.red}
+
+(normal)
+:::
+
+## A Linear Model {.smaller auto-animate=true}
+
+:::: {.columns}
+
+::: {.column width="40%"}
+$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+$$\color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i$$
+so the linear [model]{.blue} itself is...
+
+:::: {data-id="formula"}
+$$\hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i}$$
+::::
+
+
+:::
+
+::: {.column width="60%"}
+```{r}
+#| label: bb
+#| echo: false
+#| fig-asp: 0.6
+#| fig-align: center
+x <- tibble(x=c(-1,4))
+f <- function(x) {5+2*x}
+p0 <- x %>% ggplot(aes(x=x)) +
+  stat_function(fun=f,size=1) +
+  geom_segment(aes(x=0,xend=0,y=0,yend=f(0)),arrow=arrow(ends="both",length=unit(.05,"native")),colour="blue") +
+  geom_segment(aes(x=1,xend=2,y=f(1),yend=f(1)),linetype="dotted") +
+  geom_segment(aes(x=2,y=f(1),xend=2,yend=f(2)),arrow=arrow(ends="both",length=unit(.05,"native")),colour="blue") +
+  annotate("text",x=.6,y=2.5,label="b[0]~(intercept)",
+           size=7,parse=TRUE) +
+  annotate("text",x=2.6,y=7.5,label="b[1]~(slope)",
+           size=7,parse=TRUE) +
+    ggtitle(expression(paste(b[0]," = 5, ",b[1]," = 2")))
+
+p0 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
+  theme(axis.title.y = element_text(colour = "blue",angle=90,size=30))
+```
+
+:::
+
+::::
+
+## A Linear Model {auto-animate=true}
+
+:::: {data-id="formula"}
+$$\hat{y}_i = \color{blue}{b_0 \cdot{}}\color{orange}{1} \color{blue}{+b_1 \cdot{}} \color{orange}{x_i}$$
+:::
+
+- [values of the linear model (coefficients)]{.blue}
+
+- [values _we_ provide (inputs)]{.orange}
+
+. . .
+
+- maps directly to R "formula" notation
+
+![](img/formula.svg){.center-img data-id="image"}
+
+## A Linear Model {.smaller}
+
+:::: {.columns}
+
+::: {.column width="40%"}
+$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+$$\color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i$$
+so the linear [model]{.blue} itself is...
+
+$$\hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i}$$
+
+
+![](img/formula.svg){width=35% data-id="image" .center-img}
+
+
+:::: {.myyellowblock .fragment}
+$$\hat{y} = \color{blue}{b_0 + b_1 \cdot{} x_i}$$
+![](img/formula2.svg){width=35% .center-img}
+::::
+
+:::
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+#| fig-asp: 0.6
+#| fig-align: center
+
+p0 + ylab(expression(paste(hat(y)," = ",5 + 2 %.% x))) +
+  theme(axis.title.y = element_text(colour = "blue",angle=90,size=30))
+```
+
+:::
+
+::::
+
+## Take An Observation
+
+
+:::: {.columns}
+
+::: {.column width="40%"}
+:::: myblock
+x~i~ = 1.2, y~i~ = 9.9
+::::
+
+$$\color{blue}{\hat{y}_i = b_0 + b_1\cdot{}x_i = 7.4}$$
+$$\color{red}{y_i} = \color{blue}{\hat{y}_i} + \epsilon_i = \color{blue}{7.4} + 2.5$$
+
+:::
+::: {.column width="5%"}
+
+:::
+
+::: {.column width="55%"}
+```{r}
+#| label: errplot
+#| fig-asp: 0.6
+#| echo: false
+
+xX <-1.2
+yY <- 9.9
+p0 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
+  geom_point(aes(x=xX,y=yY),size=3,colour="red") +
+  geom_segment(aes(x=xX,xend=xX,y=f(xX),yend=yY),linetype="dotted",colour="black") +
+  annotate("text",.8,8.6,label=expression(paste(epsilon[i]," (error)")),colour="black",size=7) +
+  theme(axis.title.y = element_text(colour = "blue",angle=90,size=30))
+```
+:::
+
+::::
+
+- the [model]{.blue} can predict $\hat{y}$ for values of $x$ we have never observed
+
+- the smaller the the average error, the more useful this is
+
+::: notes
+- $\hat{y}_i$ is what the model _predicts_ for $x_i$
+
+- $y_i$ is the actual value that was observed for $x_i$
+
+- why would we care?
+
+  + for one thing, the model can predict $\hat{y}$ for values of $x$ that we have never observed
+
+:::
+
+
 ## Back on the Road 2
+
+
+
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- simplify the data for illustrative purposes
+
+::: {.fragment fragment-index=1}
+```{r}
+ourDat <- dat |> slice_sample(n=20)
+```
+```{r}
+#| include: false
+
+lmp <- function(x) {
+  m <- lm(RT~BloodAlc,data=x)
+  summary(m)$coefficients[2,4]
+}
+while(lmp(ourDat) > .05) {
+ ourDat <- dat |> slice_sample(n=20)
+}
+```
+:::
+
+::: {.fragment fragment-index=2}
+```r
+ourDat <- ourDat |>
+  mutate(BloodAlc=BloodAlc*100)
+```
+:::
+
+:::
+
+::: {.column width="50%"}
+:::: r-stack
+
+
+::: {.fragment .fade-out fragment-index=1}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+yl <- range(dat$RT)
+xl <- range(dat$BloodAlc)
+
+dp + ylim(yl) + xlim(xl)
+```
+:::
+
+::: {.fragment .fade-in-then-out fragment-index=1}
+
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+ourDat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3) +
+  ylim(yl) + xlim(xl) +
+  xlab("Blood Alcohol %/vol") +
+  ylab("RT (ms)") -> dp2
+dp2
+```
+:::
+
+::: {.fragment .fade-in fragment-index=2}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+ourDat <- ourDat |> mutate(BloodAlc=BloodAlc*100)
+ourDat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3) +
+  ylim(yl) + xlim(xl*100) +
+  xlab("Blood Alcohol 100 * %/vol") +
+  ylab("RT (ms)") +
+  theme(axis.text.x = element_text(colour = "red"))
+
+```
+:::
+
+::::
+
+:::
+
+::::
+
+::: {.fragment fragment-index=3}
+
+```{r}
+mod <- lm(RT ~ BloodAlc, data=ourDat)
+```
+
+:::
+
+::: aside
+multiplying blood alcohol values is simple **scaling**, which we'll revisit next time
+:::
+
+
+::: notes
+
+note that there's no output from the R command, we've just created a model for interrogation
+
+:::
+
+## Linear Model Output
+
+```{r}
+summary(mod)
+```
+
+
+## Possibly Back on the Road
 
 :::: {.columns}
 
@@ -672,7 +1100,7 @@ reaction time is positively associated with blood alcohol
 #| echo: false
 #| fig-asp: .6
 
-p1 +geom_smooth(method="lm")
+dp +geom_smooth(method="lm")
 m1 <- lm(RT~BloodAlc, data=dat)
 ```
 
@@ -685,14 +1113,4 @@ for every extra 0.01% blood alcohol, reaction time slows down by around `r round
 :::
 
 ::::
-
-## The Only Equation You Will Ever Need
-
-::: myblock
-$$\textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i$$
-:::
-
-```{r}
-# draw graph then zoom in??
-```
 
