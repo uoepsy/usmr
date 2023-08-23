@@ -773,68 +773,6 @@ p + geom_point(aes(size=size,alpha=alpha)) +
 ```
 
 
-## [The Only Equation You Will Ever Need]{.r-fit-text}
-
-::: myblock
-
-$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
-:::
-
-
-```{r}
-#| echo: false
-#| fig-asp: .6
-#| out-width: 100%
-#| fig-align: center
-#| layout: [[3,2]]
-
-lhs <- p + geom_point(aes(size=size,alpha=alpha)) +
-  annotate("segment",x=.095,xend=.095,y=xv$RT,yend=dat$RT[px],size=1.5,colour="black",arrow=arrow(),alpha=.2) +
-  geom_smooth(method=lm,se=F,colour="blue") + annotate("segment",x=.095,xend=.095,y=ymin,yend=xv$RT,size=1.5,colour="blue",arrow=arrow(),alpha=.2)
-
-lhs
-
-ggplot() + theme_void()
-
-#lhs + rhs + plot_layout(widths=c(3,2))
-
-```
-
-## [The Only Equation You Will Ever Need]{.r-fit-text}
-
-::: myblock
-
-$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
-:::
-
-
-```{r}
-#| echo: false
-#| fig-asp: .6
-#| out-width: 100%
-#| fig-align: center
-#| layout: [[3,2]]
-
-lhs <- p + geom_point(aes(size=size,alpha=alpha)) +
-  annotate("segment",x=.095,xend=.095,y=xv$RT,yend=dat$RT[px],size=1.5,colour="black",arrow=arrow(),alpha=.2) +
-  geom_smooth(method=lm,se=F,colour="blue") + annotate("segment",x=.095,xend=.095,y=ymin,yend=xv$RT,size=1.5,colour="blue",arrow=arrow(),alpha=.2)
-
-
-lhs
-
-r <- tibble(error=resid(lm(BloodAlc~RT, data=dat)))
-
-rhs <- r |> ggplot(aes(x=error)) +
-  geom_histogram()
-
-rhs
-
-#lhs + rhs + plot_layout(widths=c(3,2))
-
-```
-
-
-
 ## The Aim of the Game
 
 ::: myblock
@@ -862,32 +800,110 @@ p + geom_point(aes(size=size,alpha=alpha)) +
 ::: {.column width="50%"}
 - maximise the explanatory worth of the [model]{.blue}
 
-- minimise the amount of unexplained [error]{.red}
+- minimise the amount of unexplained error
+
+- explain more than one outcome!
 
 :::
 
 ::::
 
+## Many Outcomes
 
-## The Aim of the Game
+- so far, have been talking about the i^th^ observation
+
+- we want to generalise ("for any i")
+
+$$\color{red}{\textrm{outcomes}}=\color{blue}{\textrm{(model)}}+\textrm{errors}$$
 
 
-::: myblock
-$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+
+## We need to make assumptions
+
+::: {#1}
+
+- [model]{.blue} is linear
+
 :::
 
-- **to get any further, we need to make _assumptions_**
+::: {.fragment fragment-index=1}
 
+- errors are from a normal distribution
 
-::: {layout="[4,1],[4,1]"}
-- nature of the [model]{.blue}
-
-(linear)
-
-- nature of the [errors]{.red}
-
-(normal)
 :::
+
+:::: r-stack
+
+::: {.fragment fragment-index=1 .fade-out}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| out-width: 100%
+#| fig-align: center
+#| layout: [[3,2]]
+
+lhs <- p + geom_point(aes(size=size,alpha=alpha)) +
+  annotate("segment",x=.095,xend=.095,y=xv$RT,yend=dat$RT[px],size=1.5,colour="black",arrow=arrow(),alpha=.2) +
+  geom_smooth(method=lm,se=F,colour="blue") + annotate("segment",x=.095,xend=.095,y=ymin,yend=xv$RT,size=1.5,colour="blue",arrow=arrow(),alpha=.2)
+
+lhs
+
+ggplot() + theme_void()
+
+#lhs + rhs + plot_layout(widths=c(3,2))
+
+```
+:::
+
+::: {.fragment fragment-index=1 .fade-in}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| out-width: 100%
+#| fig-align: center
+#| layout: [[3,2]]
+
+lhs <- p + geom_point(aes(size=size))
+
+mod <- lm(RT~BloodAlc,data=dat)
+y2 <- predict(mod)
+
+lhs <- lhs + geom_segment(aes(x=BloodAlc,y=y2,xend=BloodAlc,yend=RT),colour="black",alpha=.5,size=1.5,arrow=arrow(length=unit(.15,"inches"))) +
+  geom_smooth(method=lm,se=F,colour="blue")
+lhs
+
+
+r <- tibble(error=resid(lm(mod)))
+
+r |> ggplot(aes(x=error)) +
+  geom_histogram()
+
+#lhs + rhs + plot_layout(widths=c(3,2))
+
+```
+:::
+
+::: {.fragment .fade-in fragment-index=2}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| out-width: 100%
+#| fig-align: center
+#| layout: [[3,2]]
+
+lhs
+
+r |> ggplot(aes(x=error)) +
+  geom_density()
+
+```
+
+
+:::
+::::
+
+
+
 
 ## A Linear Model {.smaller auto-animate=true}
 
@@ -902,10 +918,16 @@ so the linear [model]{.blue} itself is...
 $$\hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i}$$
 ::::
 
+:::: {.myblock .fragment fragment-index=1}
 
+- arbitrary values:
+
+$$\color{blue}{b_0}=5, \color{blue}{b_1}=2$$
+
+::::
 :::
 
-::: {.column width="60%"}
+::: {.column width="60%" .fragment fragment-index=1}
 ```{r}
 #| label: bb
 #| echo: false
@@ -954,17 +976,17 @@ $$\hat{y}_i = \color{blue}{b_0 \cdot{}}\color{orange}{1} \color{blue}{+b_1 \cdot
 
 ::: {.column width="40%"}
 $$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
-$$\color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i$$
+$$\color{red}{y_i} = \color{blue}{b_0} \cdot{} \color{orange}{1} + \color{blue}{b_1} \cdot{} \color{orange}{x_i} + \epsilon_i$$
 so the linear [model]{.blue} itself is...
 
-$$\hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i}$$
+$$\hat{y}_i = \color{blue}{b_0} \cdot{} \color{orange}{1} + \color{blue}{b_1} \cdot{} \color{orange}{x_i}$$
 
 
 ![](img/formula.svg){width=35% data-id="image" .center-img}
 
 
 :::: {.myyellowblock .fragment}
-$$\hat{y} = \color{blue}{b_0 + b_1 \cdot{} x_i}$$
+$$\hat{y} = \color{blue}{b_0} + \color{blue}{b_1} \cdot{} \color{orange}{x_i}$$
 ![](img/formula2.svg){width=35% .center-img}
 ::::
 
