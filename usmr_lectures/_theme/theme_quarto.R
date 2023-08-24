@@ -53,8 +53,7 @@ options(digits=4,scipen=8)
 
 knitr::opts_chunk$set(
   tidy=TRUE,
-  tidy.opts=list(width.cutoff=70, arrow=TRUE, indent=2, args.newline=TRUE),
-  dev="svg"
+  tidy.opts=list(width.cutoff=70, arrow=TRUE, indent=2, args.newline=TRUE)
 )
 knitr::knit_hooks$set(crop = knitr::hook_pdfcrop)
 color_base <- '#FCa22d'
