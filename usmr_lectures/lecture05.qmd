@@ -926,11 +926,10 @@ r |> ggplot(aes(x=error)) +
 require(gganimate)
 
 myvals <- seq(-5,5,by=.5)
-ggplot() + geom_hline(yintercept=myvals,colour="blue",size=2) + xlim(-2,2) +
+ggplot() + geom_hline(yintercept=myvals,colour="darkgrey",size=2) + xlim(-2,2) +
   labs(title=("intercept = {closest_state}")) +
-  annotate("segment",x=0,xend=0,y=0,yend=myvals,size=1.5,colour="orange",arrow=arrow()) +
+  annotate("segment",x=0,xend=0,y=0,yend=myvals,size=1.5,colour="blue",arrow=arrow()) +
   transition_states(myvals)+ shadow_wake(wake_length=0.05)
-
 
 ```
 
@@ -948,10 +947,10 @@ ggplot() + geom_hline(yintercept=myvals,colour="blue",size=2) + xlim(-2,2) +
 #| cache: true
 
 myvals <- seq(-2,2,by=.25)
-ggplot() + geom_abline(intercept=0,slope=myvals,colour="blue",size=2) + xlim(-2,2) +
+ggplot() + geom_abline(intercept=0,slope=myvals,colour="darkgrey",size=2) + xlim(-2,2) +
   labs(title=("slope = {closest_state}")) +
   annotate("segment",x=0,xend=1,y=-2.5,yend=-2.5,colour="black",size=1.5) +
-  annotate("segment",x=1,xend=1,y=0,yend=myvals,size=1.5,colour="orange",arrow=arrow()) +
+  annotate("segment",x=1,xend=1,y=0,yend=myvals,size=1.5,colour="blue",arrow=arrow()) +
   annotate("text",x=.5,y=-2.3,label="1 unit",size=6) +
   transition_states(myvals) + shadow_wake(wake_length=0.05)
 ```
@@ -960,35 +959,22 @@ ggplot() + geom_abline(intercept=0,slope=myvals,colour="blue",size=2) + xlim(-2,
 
 ::::
 
-## Any Line
-
-$$y=\color{blue}{\textrm{intercept}} \cdot{} \color{orange}{1} + \color{blue}{\textrm{slope}} \cdot{} \color{orange}{x}$$
+## A Linear Model {.smaller auto-animate=true}
 
 ```{r}
-#| echo: false
-#| dev: png
-#| fig-asp: .6
-#| fig-align: center
-#| cache: true
-
-b0 <- seq(-4,4,by=1)
-b1 <- seq(-2,2,by=.5)
-vals <- as.data.frame(expand.grid(b0,b1))
-sv <- 1:length(vals[,1])
-
-ggplot() + xlim(-10,10) + ylim(-10,10) +
-  geom_abline(intercept=vals[sv,1],slope=vals[sv,2]) +
-  transition_states(sv) +
-  labs(title=("intercept = vals[{closest_state},1], slope = vals[{closest_state},2]"))
+#| include: false
+xX <-1.2
+yY <- 9.9
+f <- function(x) {5+2*x}
 ```
 
-
-## A Linear Model {.smaller auto-animate=true}
 
 :::: {.columns}
 
 ::: {.column width="40%"}
 $$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+$$\color{red}{y_i} = \color{blue}{\textrm{intercept}\cdot{}1+\textrm{slope}\cdot{}x_i}+\epsilon_i$$
+
 $$\color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i$$
 so the linear [model]{.blue} itself is...
 
@@ -997,10 +983,10 @@ $$\hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i}$$
 ::::
 
 :::: {.myblock .fragment fragment-index=1}
+$$\color{blue}{b_0=5}, \color{blue}{b_1=2}$$
+$$\color{orange}{x_i=`r xX`},\color{red}{y_i=`r yY`}$$
+$$\hat{y}_i=`r f(xX)`$$
 
-- arbitrary values:
-
-$$\color{blue}{b_0}=5, \color{blue}{b_1}=2$$
 
 ::::
 :::
@@ -1012,17 +998,21 @@ $$\color{blue}{b_0}=5, \color{blue}{b_1}=2$$
 #| fig-asp: 0.6
 #| fig-align: center
 x <- tibble(x=c(-1,4))
-f <- function(x) {5+2*x}
 p0 <- x %>% ggplot(aes(x=x)) +
-  stat_function(fun=f,size=1) +
-  geom_segment(aes(x=0,xend=0,y=0,yend=f(0)),arrow=arrow(ends="both",length=unit(.05,"native")),colour="blue") +
+  stat_function(fun=f,size=2,colour="darkgrey") +
+  geom_segment(aes(x=0,xend=0,y=0,yend=f(0)),arrow=arrow(length=unit(.05,"native")),colour="blue",size=1.5) +
   geom_segment(aes(x=1,xend=2,y=f(1),yend=f(1)),linetype="dotted") +
-  geom_segment(aes(x=2,y=f(1),xend=2,yend=f(2)),arrow=arrow(ends="both",length=unit(.05,"native")),colour="blue") +
-  annotate("text",x=.6,y=2.5,label="b[0]~(intercept)",
-           size=7,parse=TRUE) +
+  geom_segment(aes(x=2,y=f(1),xend=2,yend=f(2)),arrow=arrow(length=unit(.05,"native")),colour="blue",size=1.5) +
+  annotate("text",x=.7,y=2.5,label="b[0]~(intercept)",
+           size=8,parse=TRUE) +
   annotate("text",x=2.6,y=7.5,label="b[1]~(slope)",
-           size=7,parse=TRUE) +
+           size=8,parse=TRUE) +
     ggtitle(expression(paste(b[0]," = 5, ",b[1]," = 2")))
+
+p0 <- p0 + 
+  geom_point(aes(x=xX,y=yY),size=4,colour="red") +
+  geom_segment(aes(x=xX,xend=xX,y=f(xX),yend=yY),colour="black",arrow=arrow(length=unit(.05,"native")),size=1.5) +
+  annotate("text",.7,8.6,label=expression(paste(epsilon[i]," (error)")),colour="black",size=8)
 
 p0 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
   theme(axis.title.y = element_text(colour = "blue",angle=90,size=30))
@@ -1031,6 +1021,12 @@ p0 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 :::
 
 ::::
+
+::: notes
+
+so we can see that for this particular datapoint $(x_i,y_i)$ the error is `r yY-f(xX)`
+
+:::
 
 ## A Linear Model {auto-animate=true}
 
@@ -1054,6 +1050,7 @@ $$\hat{y}_i = \color{blue}{b_0 \cdot{}}\color{orange}{1} \color{blue}{+b_1 \cdot
 
 ::: {.column width="40%"}
 $$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+$$\color{red}{y_i} = \color{blue}{\textrm{intercept}}\cdot{}\color{orange}{1}+\color{blue}{\textrm{slope}}\cdot{}\color{orange}{x_i}+\epsilon_i$$
 $$\color{red}{y_i} = \color{blue}{b_0} \cdot{} \color{orange}{1} + \color{blue}{b_1} \cdot{} \color{orange}{x_i} + \epsilon_i$$
 so the linear [model]{.blue} itself is...
 
@@ -1064,7 +1061,7 @@ $$\hat{y}_i = \color{blue}{b_0} \cdot{} \color{orange}{1} + \color{blue}{b_1} \c
 
 
 :::: {.myyellowblock .fragment}
-$$\hat{y} = \color{blue}{b_0} + \color{blue}{b_1} \cdot{} \color{orange}{x_i}$$
+$$\hat{y}_i = \color{blue}{b_0} + \color{blue}{b_1} \cdot{} \color{orange}{x_i}$$
 ![](img/formula2.svg){width=35% .center-img}
 ::::
 
@@ -1084,7 +1081,7 @@ p0 + ylab(expression(paste(hat(y)," = ",5 + 2 %.% x))) +
 
 ::::
 
-## Take An Observation
+## Take An Observation {visibility="hidden"}
 
 
 :::: {.columns}
@@ -1144,28 +1141,11 @@ p0 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
 :::: {.columns}
 
 ::: {.column width="50%"}
-- simplify the data for illustrative purposes
+- simplify the data to make interpretation easier
 
 ::: {.fragment fragment-index=1}
 ```{r}
-ourDat <- dat |> slice_sample(n=20)
-```
-```{r}
-#| include: false
-
-lmp <- function(x) {
-  m <- lm(RT~BloodAlc,data=x)
-  summary(m)$coefficients[2,4]
-}
-while(lmp(ourDat) > .05) {
- ourDat <- dat |> slice_sample(n=20)
-}
-```
-:::
-
-::: {.fragment fragment-index=2}
-```r
-ourDat <- ourDat |>
+ourDat <- dat |>
   mutate(BloodAlc=BloodAlc*100)
 ```
 :::
@@ -1182,43 +1162,22 @@ ourDat <- ourDat |>
 #| fig-asp: .6
 #| fig-align: center
 
-yl <- range(dat$RT)
-xl <- range(dat$BloodAlc)
-
-dp + ylim(yl) + xlim(xl)
+dp
 ```
 :::
 
-::: {.fragment .fade-in-then-out fragment-index=1}
-
-
+::: {.fragment .fade-in fragment-index=1}
 ```{r}
 #| echo: false
 #| fig-asp: .6
 #| fig-align: center
-
-ourDat |> ggplot(aes(x=BloodAlc,y=RT)) +
+dp2 <- ourDat |> ggplot(aes(x=BloodAlc,y=RT)) +
   geom_point(size=3) +
-  ylim(yl) + xlim(xl) +
-  xlab("Blood Alcohol %/vol") +
-  ylab("RT (ms)") -> dp2
-dp2
-```
-:::
-
-::: {.fragment .fade-in fragment-index=2}
-```{r}
-#| echo: false
-#| fig-asp: .6
-#| fig-align: center
-ourDat <- ourDat |> mutate(BloodAlc=BloodAlc*100)
-ourDat |> ggplot(aes(x=BloodAlc,y=RT)) +
-  geom_point(size=3) +
-  ylim(yl) + xlim(xl*100) +
   xlab("Blood Alcohol 100 * %/vol") +
   ylab("RT (ms)") +
   theme(axis.text.x = element_text(colour = "red"))
 
+dp2
 ```
 :::
 
@@ -1237,14 +1196,13 @@ mod <- lm(RT ~ BloodAlc, data=ourDat)
 :::
 
 ::: aside
-multiplying blood alcohol values is simple **scaling**, which we'll revisit next time
+multiplying blood alcohol values is simple **scaling**, which we'll revisit
 :::
 
 
 ::: notes
 
 note that there's no output from the R command, we've just created a model for interrogation
-
 :::
 
 ## Linear Model Output
@@ -1262,17 +1220,254 @@ summary(mod)
 #| echo: false
 #| fig-asp: .6
 
-dp +geom_smooth(method="lm")
-m1 <- lm(RT~BloodAlc, data=dat)
+dp2 +geom_smooth(method="lm",se=F)
 ```
 
 :::
 
 ::: {.column width="40%"}
 :::: myblock
-for every extra 0.01% blood alcohol, reaction time slows down by around `r round(coef(m1)[2]*0.01,0)` ms
+for every extra 0.01% blood alcohol, reaction time slows down by around `r round(coef(mod)[2],0)` ms
 ::::
+
+- remember that one unit is 0.01%, because we multiplied by 100
+
 :::
 
 ::::
 
+# Significance
+
+
+## The Null Hypotheses
+
+- [b~0~]{.blue} won't be significantly different from zero
+
+  - not (always) interesting
+
+- [b~1~]{.blue} won't be significantly different from zero
+
+  - "knowing [x]{.orange} doesn't tell you anything about y"
+
+
+## Let's Simulate!
+
+::: r-stack
+
+:::: {.fragment .fade-out fragment-index=1}
+
+```{r}
+#| echo: false
+#| dev: png
+#| cache: true
+#| fig-asp: .6
+#| fig-align: center
+
+### NB.  This won't render with the global fig-output format set to svg
+###      (which is annoying, but hopefully resolved when it's cached)
+
+get_ab <- function() {
+  dat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0,
+                   varnames=c('BloodAlc','RT')) |>
+    mutate(BloodAlc=BloodAlc*100)
+  ab <- lm(RT~BloodAlc,data=dat) |> coef()
+}
+
+abs <- as_tibble(t(replicate(1000,get_ab())))
+
+p <- ggplot() +
+  ylim(500,800) + xlim(7,12) +
+  xlab("Blood Alcohol 100 * %/vol") +
+  ylab("RT (ms)") +
+  geom_abline(data=abs,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.1) +
+  transition_states(BloodAlc) + shadow_mark()
+
+animate(p,renderer=gifski_renderer(loop=FALSE))
+
+#animate(p,renderer=gifski_renderer(loop=FALSE))
+
+```
+::::
+
+:::: {.fragment fragment-index=1}
+```{r}
+#| echo: false
+#| fig-asp: .5
+#| fig-align: center
+#| fig-width: 13
+
+ab <- as_tibble(t(coef(mod)))
+
+ggplot() +
+  ylim(500,800) + xlim(7,12) +
+  xlab("Blood Alcohol 100 * %/vol") +
+  ylab("RT (ms)") +
+  geom_abline(data=abs,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.1) + geom_abline(data=ab,aes(intercept=`(Intercept)`,slope=BloodAlc),size=2,colour="blue")
+```
+
+::::
+
+:::
+
+## Significance
+
+
+- we've already seen something in the model summary
+
+```r
+summary(mod)
+```
+```{r}
+#| echo: false
+.pp(summary(mod),l = list(0,9:12,0))
+```
+- the logic is the same as for $t$ tests
+
+- $t$ value is $\frac{\textrm{estimate}}{\textrm{standard error}}$
+
+. . .
+
+- we need **degrees of freedom**...
+
+
+## Degrees of Freedom
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+## function to work out the "last two" points on for a given best fit
+## line, by working out the residuals for given x and y
+## (maths courtesy of Umberto Noè)
+require(patchwork)
+
+plot_dat <- function() {
+  # solve for y=5x+2
+  x1=1
+  x2=11
+  a_given=-7.5
+  b_given=3
+  
+  randline <- function (x) {
+    a<-runif(1,-5,5)
+    b<-runif(1,-3,7)
+    y<-a+b*x+runif(length(x),-20,20)
+  }
+  
+  x = sample(0:12,8)
+  y = randline(x)
+  x <- c(x,x1,x2)
+  
+  loss_function <- function(y_new) {
+    y_complete <- c(y, y_new[1], y_new[2])
+    fit <- lm(y_complete ~ x)
+    a_diff <- (fit$coefficients[1] - a_given)^2
+    b_diff <- (fit$coefficients[2] - b_given)^2
+    return(a_diff + b_diff)
+  }
+
+  # Use optimization to find y1 and y2
+  result <- optim(c(0, 0), loss_function)
+  
+  # Extract y1 and y2
+  y1 <- result$par[1]
+  y2 <- result$par[2]
+  
+  pd <- tibble(x=x,y=c(y,y1,y2),colour=c(rep("a",8),rep("b",2)))
+
+  return(pd)
+}
+
+pd1 <- plot_dat()
+pd2 <- plot_dat()
+pd3 <- plot_dat()
+pd4 <- plot_dat()
+
+yr<-range(c(pd1$y[pd1$colour=="a"],pd2$y[pd2$colour=="a"],pd3$y[pd3$colour=="a"],pd4$y[pd4$colour=="a"]))
+yr2<-range(c(pd1$y,pd2$y,pd3$y,pd4$y))
+
+do_p <- function(x) {
+x |> filter(colour=="a") |> ggplot(aes(x=x,y=y)) +
+  geom_point(size=3) +
+  xlim(c(0,15)) +
+    ylim(yr2) +
+  geom_smooth(method="lm",se=FALSE)
+}
+
+p1 <- do_p(pd1)
+p2 <- do_p(pd2)
+p3 <- do_p(pd3)
+p4 <- do_p(pd4)
+(p1 + p2) / (p3 + p4)
+```
+
+::: notes
+- let's talk about DF
+- here are random collections of 8 datapoints
+- each graph has 8 points, each graph has a line of best fit
+
+- now, for these collections of 8 points,
+- we can always add in another two points to each plot and make the best fit line the same in each
+:::
+
+## Degrees of Freedom {visibility="uncounted"}
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+
+
+do_p <- function(x) {
+x |> ggplot(aes(x=x,y=y)) +
+  geom_point(aes(colour=colour),size=3) +
+  xlim(c(0,15)) +
+    ylim(yr2) +
+  scale_colour_manual(values=c('a'='darkgrey','b'='red')) +
+  theme(legend.position = "none") +
+  geom_smooth(method="lm",se=FALSE)
+}
+
+p1 <- do_p(pd1)
+p2 <- do_p(pd2)
+p3 <- do_p(pd3)
+p4 <- do_p(pd4)
+(p1 + p2) / (p3 + p4)
+
+```
+
+::: notes
+- so here we've added two points to each, and the lines are now the same in each
+
+- this is one way of showing that for $n$ data points, there are $n-2$ degrees of freedom
+
+:::
+
+## Degrees of Freedom
+
+- in fact we subtract 2 degrees of freedom because we "know" two things
+
+  + intercept ([b~0~]{.blue})
+  
+  + slope ([b~1~]{.blue})
+
+- the remaining degrees of freedom are the _residual_ degrees of freedom
+
+
+::: aside
+
+the _model_ also has associated degrees of freedom (which we'll cover next time)
+
+:::
+
+::: notes
+- we subtract 2, because we know 2 things - the intercept and the slope. 
+- the remaining degrees of freedom are residual degrees of freedom
+- and our tests of intercept and slope will be calculated using t distribution with 18 df
+
+:::
