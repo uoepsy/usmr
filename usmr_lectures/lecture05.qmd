@@ -1208,6 +1208,7 @@ note that there's no output from the R command, we've just created a model for i
 ## Linear Model Output
 
 ```{r}
+#| output-line-numbers: "11,12"
 summary(mod)
 ```
 
@@ -1249,8 +1250,23 @@ for every extra 0.01% blood alcohol, reaction time slows down by around `r round
 
   - "knowing [x]{.orange} doesn't tell you anything about y"
 
-
 ## Let's Simulate!
+
+```{r}
+#| include: false
+
+get_ab <- function(rval=0) {
+  dat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=rval,
+                   varnames=c('BloodAlc','RT')) |>
+    mutate(BloodAlc=BloodAlc*100)
+  ab <- lm(RT~BloodAlc,data=dat) |> coef()
+}
+
+```
+
 
 ::: r-stack
 
@@ -1266,20 +1282,10 @@ for every extra 0.01% blood alcohol, reaction time slows down by around `r round
 ### NB.  This won't render with the global fig-output format set to svg
 ###      (which is annoying, but hopefully resolved when it's cached)
 
-get_ab <- function() {
-  dat <- faux::rnorm_multi(n=50,
-                   mu=c(0.1,650),
-                   sd=c(.009,60),
-                   r=0,
-                   varnames=c('BloodAlc','RT')) |>
-    mutate(BloodAlc=BloodAlc*100)
-  ab <- lm(RT~BloodAlc,data=dat) |> coef()
-}
-
 abs <- as_tibble(t(replicate(1000,get_ab())))
 
 p <- ggplot() +
-  ylim(500,800) + xlim(7,12) +
+  ylim(500,800) + xlim(8.4,12) +
   xlab("Blood Alcohol 100 * %/vol") +
   ylab("RT (ms)") +
   geom_abline(data=abs,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.1) +
@@ -1302,10 +1308,49 @@ animate(p,renderer=gifski_renderer(loop=FALSE))
 ab <- as_tibble(t(coef(mod)))
 
 ggplot() +
-  ylim(500,800) + xlim(7,12) +
+  ylim(500,800) + xlim(8.4,12) +
   xlab("Blood Alcohol 100 * %/vol") +
   ylab("RT (ms)") +
   geom_abline(data=abs,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.1) + geom_abline(data=ab,aes(intercept=`(Intercept)`,slope=BloodAlc),size=2,colour="blue")
+```
+
+::::
+
+:::
+
+## Many Regressions
+
+::: r-stack
+
+:::: {.fragment .fade-out fragment-index=1}
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+abs <- as_tibble(t(replicate(1000,get_ab(.4))))
+
+p <- dat |> ggplot(aes(x=BloodAlc*100,y=RT)) +
+  ylim(500,800) + xlim(8.4,12) +
+  xlab("Blood Alcohol 100 * %/vol") +
+  ylab("RT (ms)")
+
+p +  geom_abline(data=abs,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.1)
+
+```
+
+::::
+
+:::: {.fragment fragment-index=1}
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+p + geom_point(alpha=.5) +
+  geom_smooth(method="lm")
 ```
 
 ::::
@@ -1328,10 +1373,7 @@ summary(mod)
 
 - $t$ value is $\frac{\textrm{estimate}}{\textrm{standard error}}$
 
-. . .
-
-- we need **degrees of freedom**...
-
+- **standard errors** are calculated from model like for $t$-tests
 
 ## Degrees of Freedom
 
