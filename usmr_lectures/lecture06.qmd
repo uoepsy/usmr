@@ -12,22 +12,225 @@ source('_theme/theme_quarto.R')
 
 # The Null Model
 
-## Knowing Nothing
+## Where we Were {auto-animate=true}
 
 :::: {.columns}
 
 ::: {.column width="60%"}
-- if you _only_ know the dependent variable, what can you predict?
 
-[`y ~ 1`]{.r-stretch}
+:::: r-stack
 
+::: {.fragment .fade-out fragment-index=1}
 
+```{r}
+#| echo: false
+set.seed(29)
+dat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=.4,
+                   varnames=c('BloodAlc','RT')) |>
+  mutate(BloodAlc=BloodAlc*100)
+dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol 100 * %/vol") + ylab("RT (ms)") +
+  geom_point(size=3) -> dp
+dp
+```
 
+:::
+
+::: {.fragment fragment-index=1 data-id="grph"}
+
+```{r}
+#| echo: false
+#| label: dp
+
+dp + geom_smooth(method="lm")
+```
+
+:::
+
+::::
 
 :::
 
 ::: {.column width="40%"}
-![](img/playmo_fr)
+![](img/playmo_traffic.jpg)
 :::
 
 ::::
+
+::: {.fragment fragment-index=1}
+```{r}
+#| label: mod
+#| echo: false
+mod <- lm(RT~BloodAlc,data=dat)
+.pp(summary(mod),l=list(0,11:12,0))
+
+```
+
+
+:::
+
+## Intercept and Slope {auto-animate=true}
+
+::: {data-id="grph"}
+
+```{r}
+#| echo: false
+#| fig-asp: .35
+#| fig-width: 15
+#| fig-align: center
+
+mf <- function(x) {
+  coef(mod)[1]+coef(mod)[2]*x
+}
+
+dp2 <- dp + xlim(-.5,12) + ylim(250,785) +
+  geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",linewidth=2) +
+  annotate("segment",x=0,xend=0,y=250,yend=coef(mod)[1],arrow=arrow(length=unit(.03,"native")),colour="orange",linewidth=1.5) +
+  annotate("segment",x=6,xend=6,y=mf(5),yend=mf(6),arrow=arrow(length = unit(.03,"native")),colour="orange",linewidth=1.5) +
+  annotate("text",x=.8,y=300,label=.rround(coef(mod)[1],2),size=8,colour="orange") +
+  annotate("text",x=6.8,y=480,label=.rround(coef(mod)[2],2),size=8,colour="orange") +
+  annotate("segment",x=5,xend=6,y=mf(5)-25,yend=mf(5)-25,colour="red",arrow=arrow(length=unit(.03,"native"),ends="both")) +
+  geom_label(aes(x=5.5,y=mf(5)-25,label="1"),size=7,fill="white",label.size=NA) +
+  annotate("point",x=5,y=mf(5),colour="orange")
+xLabVals <- as.numeric(ggplot_build(dp2)$layout$panel_params[[1]]$x$get_labels())
+xLabs <- ifelse(xLabVals==0,"red","black")
+
+dp2 + theme(axis.text.x=element_text(colour=xLabs))
+
+```
+
+:::
+
+```{r}
+#| echo: false
+<<mod>>
+```
+
+
+## We Know Nothing
+
+:::: {.columns}
+
+::: {.column width="40%"}
+![](img/playmo_frazzled.jpg)
+:::
+
+::: {.column width="60%"}
+
+:::: myblock
+there is no relationship between our **independent** and **dependent** variables
+::::
+
+<!-- div to ensure bullet points are aligned -->
+::: {#id1}
+
+- equivalent to "not knowing" the independent variable
+
+:::
+
+::: {.fragment}
+
+- if we've measured a bunch of RTs but nothing else, our best estimate of a new RT is [_the mean RT_]{.fragment}
+
+:::
+
+
+:::
+
+::::
+
+::: {.fragment .center-x}
+
+`y ~ 1` or `RT ~ 1`
+
+:::
+
+
+::: notes
+
+"the mean RT" appears late, ask the audience
+
+:::
+
+
+## The Null Model
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+dp + geom_abline(intercept=mean(dat$RT),slope=0,colour="blue",linewidth=2)
+
+```
+- how much _better_ is `RT ~ BloodAlc` than `RT ~ 1`?
+
+## Simplify the Data
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- to make the next few graphs less busy
+
+::: {.fragment fragment-index=1}
+
+
+```{r}
+#| include: false
+
+set.seed(29)
+```
+
+
+```{r}
+#| tidy.opts: { width.cutoff: 24 }
+ourDat <- dat |> slice_sample(n=20)
+```
+
+:::
+
+:::
+
+::: {.column width="50%"}
+
+:::: r-stack
+
+::: {.fragment .fade-out fragment-index=1}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+dp
+```
+
+:::
+
+::: {.fragment fragment-index=1}
+
+```{r}
+#| echo: false
+#| fig-align: center
+#| fig-asp: .6
+
+xl <- range(dat$BloodAlc)
+yl <- range(dat$RT)
+
+ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol 100 * %/vol") + ylab("RT (ms)") +
+  geom_point(size=3) -> nd
+nd + xlim(xl) + ylim(yl)
+```
+
+
+:::
+
+::::
+
+:::
+
+::::
+
+
