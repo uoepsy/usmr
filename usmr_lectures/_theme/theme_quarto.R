@@ -74,14 +74,14 @@ theme_set(theme_quarto())
         cat("...",sep="\n")
       }
       i=i+1
-      if (length(n)==1 && (i == 1 || i == length(l))) {
-        if (n<0) {
-          s <- n+1+ln
-          n <- c(s:ln)
-        } else {
-          n <- c(1:n)
-        }
-      }
+      # if (length(n)==1 && (i == 1 || i == length(l))) {
+      #   if (n<0) {
+      #     s <- n+1+ln
+      #     n <- c(s:ln)
+      #   } else {
+      #     n <- c(1:n)
+      #   }
+      # }
       if (!(0 %in% n)) {
         cat(t[n],sep="\n")
       }
