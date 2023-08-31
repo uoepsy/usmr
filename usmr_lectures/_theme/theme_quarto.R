@@ -64,7 +64,7 @@ theme_set(theme_quarto())
 
 ### my functions
 
-.pp <- function(command,top=3,bottom=-3,l=FALSE) {
+.pp <- function(command,top=0,bottom=0,l=FALSE) {
   t <- capture.output(eval(command))
   ln <- length(t)
   if (class(l)!='logical') {
@@ -92,7 +92,7 @@ theme_set(theme_quarto())
     }
     cat("...",sep="\n")
     if (bottom !=0) {
-      bottom <- bottom+1+ln
+      bottom <- (1-bottom)+ln
       cat(t[bottom:ln],sep="\n")
     }
   }

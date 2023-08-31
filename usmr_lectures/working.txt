@@ -1,649 +1,939 @@
+# Assumptions of Linear Models
 
-```{r}
-#| label: simple
-ourDat <- dat %>% sample_n(20)
-  # take 20 data points
-```
+.pull-left[
+.br3.bg-gray.white.pa2[
+### required
+- **linearity** of relationship(!)
 
-```{r}
-#| label: s2
-#| include: false
-lmp <- function(x) {
-  m <- lm(RT~BloodAlc,data=x)
-  summary(m)$coefficients[2,4]
-}
-while(lmp(ourDat) > .05) {
- ourDat <- dat %>% sample_n(20)
-}
-```
+- for the _residuals_:
+  + **normality**
+  + **homogeneity of variance**
+  + **independence**
+]
+]
+.pull-right[
+.br3.bg-gray.white.pa2[
+### desirable
+<!-- - uncorrelated predictors (no collinearity) -->
+- no 'bad' (overly influential) observations
+]]
 
+---
+# Residuals
+
+.pull-left[
+$$y_i=b_0+b_1\cdot{}x_i+\epsilon_i$$
+$$\color{red}{\epsilon\sim{}N(0,\sigma)~\text{independently}}$$
+- normally distributed (mean should be $\simeq{}$ zero)
+
+- homogeneous (differences from $\hat{y}$ shouldn't be systematically smaller or larger for different $x$)
+
+- independent (residuals shouldn't influence other residuals)
 ]
 .pull-right[
 ```{r}
-#| label: plot1
+#| label: resid
 #| fig.asp: 0.6
-#| echo: false
-ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+#| echo: !expr F
+d20 %>% ggplot(aes(x=BloodAlc,y=RT,yend=pred)) +
+  geom_segment(aes(xend=BloodAlc),linetype="dotted",colour="red",size=1) +
+  geom_smooth(method="lm",se=FALSE) +
   geom_point(size=3)
 ```
 ]
-
 ---
-count: false
-# Simplifying the Data
-.pull-left[
-- **NB** we're doing this for illustrative purposes only
-
+# At A Glance
 ```{r}
-#| label: simple1
-#| eval: false
-ourDat <- dat %>% sample_n(20)
-  # take 20 data points
-```
-```{r}
-#| label: simple2
-ourDat <- ourDat %>%
-  mutate(BloodAlc = BloodAlc*100)
-```
-
-```{r}
-#| label: modh
-#| include: false
-m1 <- lm(RT ~ BloodAlc,data=ourDat)
-```
-
-]
-.pull-right[
-```{r}
-#| label: plot3
-#| fig.asp: 0.6
-#| echo: false
-ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  geom_point(size=3) +
-  theme(axis.text.x = element_text(colour = "red"))
-```
-]
----
-count: false
-# Simplifying the Data
-.pull-left[
-- **NB** we're doing this for illustrative purposes only
-
-```{r}
-#| label: simple1a
-#| eval: false
-ourDat <- dat %>% sample_n(20)
-  # take 20 data points
-```
-```{r}
-#| label: simple2a
-#| eval: false
-ourDat <- ourDat %>%
-  mutate(BloodAlc = BloodAlc*100)
-```
-.center[
-"for every extra unit blood alcohol, reaction time slows down by around `r round(coef(m1)[2],0)` ms"
-]
-
-]
-.pull-right[
-```{r}
-#| label: plot2
-#| fig.asp: 0.6
-#| echo: false
-ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  geom_point(size=3) +
-  geom_smooth(method="lm")
-
-```
-]
-
---
-
-.center.f3.pt3[
-but how can we evaluate our model?
-]
----
-# Linear Models in R
-
-```{r}
-#| label: lm1
-#| eval: false
-mod <- lm(RT ~ BloodAlc, data=ourDat)
-```
-
----
-count: false
-# Linear Models in R
-
-```{r}
-#| label: lm2
-#| highlight.output: !expr c(11, 12)
-mod <- lm(RT ~ BloodAlc, data=ourDat)
+#| label: modresid
+#| highlight.output: 7.0
 summary(mod)
 ```
 
 ---
-# Intercept and Slope Again
+# In More Detail
 
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
-.center[
 ```{r}
-#| label: git
-#| echo: false
-#| fig.asp: 0.6
-p1 <- ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  xlim(c(-1,12)) + ylim(300,800) +
-  geom_segment(aes(x=0,y=300,xend=0,yend=coef(mod)[1]),colour="red") +
-  annotate("text",x=.4,y=310,label=expression(b[0]),size=5,colour="red")
-p1
+#| label: margins
+#| include: false
+par(mar=c(0,0,0,0))
+```
+
+.pull-left[
+### linearity
+
+```{r}
+#| label: resid1
+#| fig.asp: 0.8
+#| fig.show: hide
+plot(mod,which=1)
+```
+- plots residuals $\epsilon_i$ against fitted values $\hat{y}_i$
+
+- the 'average residual' is roughly zero across $\hat{y}$, so relationship is likely to be linear
+]
+.pull-right[
+![](lecture_7_files/figure-html/resid1-1.svg)
+]
+---
+# In More Detail
+
+.pull-left[
+### normality
+
+```{r}
+#| label: resid2
+#| fig.asp: 0.8
+#| fig.show: hide
+hist(resid(mod))
 ```
 ]
-???
-- $b_0$ is the the predicted value, $\bar{y}$, when $x=0$.  Here I've represented it as a line, so where the top is the intercept value of `r coef(mod)[1]`
----
-count: false
-# Intercept and Slope Again
-
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
-.center[
-```{r}
-#| label: git2
-#| echo: false
-#| fig.asp: 0.6
-lmf <- function(x) {
-  coef(mod)[1]+coef(mod)[2]*x
-}
-p2 <- p1 +
-  geom_segment(aes(x=4,xend=5,y=lmf(4),yend=lmf(4)),
-               arrow=arrow(ends = "both",length = unit(.03,"native"))) +
-  annotate("text",x=4.5,y=435,label="1",size=5) +
-  geom_segment(aes(x=5,xend=5,y=lmf(4),yend=lmf(5)),
-               colour="red") +
-  annotate("text",x=5.4,y=475,label=expression(b[1]),colour="red",size=5) +  geom_segment(aes(x=0,xend=1,y=lmf(0),yend=lmf(0)),
-               arrow=arrow(ends = "both",length = unit(.03,"native"))) +
-  geom_segment(aes(x=1,xend=1,y=lmf(0),yend=lmf(1)),
-               colour="red") +
-  annotate("text",x=1.4,y=335,label=expression(b[1]),colour="red",size=5)
-p2
-```
+.pull-right[
+![](lecture_7_files/figure-html/resid2-1.svg)
 ]
 ---
 count: false
-# Intercept and Slope Again
+# In More Detail
 
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
-.center[
+.pull-left[
+### normality
+
 ```{r}
-#| label: git3
-#| echo: false
-#| fig.asp: 0.6
-p2 + geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2)
+#| label: resid3
+#| fig.asp: 0.8
+#| fig.show: hide
+plot(density(resid(mod)))
 ```
+
+- check that residuals $\epsilon$ are approximately normally distributed
+
+- in fact there's a better way of doing this...
+]
+.pull-right[
+![](lecture_7_files/figure-html/resid3-1.svg)
+]
+
+---
+name: QQ
+# In More Detail
+
+.pull-left[
+### normality
+
+```{r}
+#| label: resid4
+#| fig.asp: 0.8
+#| fig.show: hide
+plot(mod,which=2)
+```
+
+- **Q-Q plot** compares the residuals $\epsilon$ against a known distribution (here, normal)
+
+- observations close to the straight line mean residuals are approximately normal
+
+- numbered observations refer to _row numbers_ in the original data, for checking
+]
+.pull-right[
+![](lecture_7_files/figure-html/resid4-1.svg)
 ]
 ---
-count: false
-# Intercept and Slope Again
+# Q-Q Plots
 
-$$ b_0= `r round(coef(mod)[1],1)`; \quad b_1= `r round(coef(mod)[2],1)` $$
-.center[
+.pull-left[
+#### y axis
+
+- for a normal distribution, what values _should_ (say) 2%, or 4% of the observations lie below?
+
+- expressed in "standard deviations from the mean"
+
 ```{r}
-#| label: git4
-#| echo: false
-#| fig.asp: 0.6
-p2 +
-  geom_abline(intercept=coef(mod)[1],slope=coef(mod)[2],colour="blue",size=2) + geom_point(size=3)
+#| label: qn1
+qnorm(c(.02,.04))
 ```
 ]
-???
-- note that the intercept is really very far from the data we're interested in.
 
-- it may be pretty meaningless to talk about the reaction time of someone with zero blood alcohol
+--
+
+.pull-right[
+#### x axis
+
+- from our residuals, what values _are_ (say) 2%, or 4%, of observations found to be less than?
+
+- convert to "standard deviations from the mean"
+
+```{r}
+#| label: qn2
+quantile(scale(resid(mod)),c(.02,.04))
+```
+]
+
+--
+
+- Q-Q Plot shows these values plotted against each other
+
 ---
-class: inverse, center, middle, animated, fadeInDownBig
+template: QQ
+---
+# In More Detail
+
+.pull-left[
+### homogeneity of variance
+
+```{r}
+#| label: resid5
+#| fig.asp: 0.8
+#| fig.show: hide
+plot(mod,which=3)
+```
+
+- the _size_ of the residuals is approximately the same across values of $\hat{y}$
+]
+.pull-right[
+![](lecture_7_files/figure-html/resid5-1.svg)
+]
+
+---
+# Visual vs Other Methods
+
+- statistical ways of checking assumptions will be introduced in labs
+
+- they tend to have limitations (for example, they're susceptible to sample size)
+
+- nothing beats looking at plots like these (and `plot(<model>)` makes it easy)
+
+- however, two things:
+
+--
+
+.pt2[
+1. there are no criteria for deciding exactly when assumptions are sufficiently met
+
+  + it's a matter of experience and judgement
+
+1. we need to talk about **independence** of residuals
+]
+
+---
+class: inverse, center, middle, animated, flip
 # End of Part 1
+---
+class: inverse, center, middle
+# Part 2
+## Independence, Influence
+---
+# Independence
 
+- no easy way to check independence of residuals
+
+- in part, because it depends on the _source_ of the observations
+
+.pt2[
+- one determinant might be a single person being observed multiple times
+
+- e.g., my reaction times might tend to be slower than yours<br/>
+  $\rightarrow$ multivariate statistics
+]
+---
+# Independence
+
+- another determinant might be _time_
+
+- observations in a sequence might be autocorrelated
+
+- can be checked using the Durbin-Watson Test from the `car` package
+
+```{r}
+#| label: dwt
+#| highlight.output: 2.0
+library(car)
+dwt(mod)
+```
+
+- shows no autocorrelation at lag 1
+---
+# Influence
+.center[
+```{r}
+#| label: baddata1
+#| echo: !expr F
+#| fig.asp: 0.6
+#| fig.width: 6.0
+ba <- mean(d20$BloodAlc)
+b20 <- d20 %>% select(RT,BloodAlc) %>% add_row(BloodAlc=ba,RT=1000)
+p <- d20 %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=2) +
+  geom_smooth(method="lm",se=FALSE)
+m <- lm(RT~BloodAlc,data=b20)
+tt <- tibble(x=c(min(b20$BloodAlc),max(b20$BloodAlc)),
+             y=c(min(predict(m)),max(predict(m))))
+p + geom_line(data=tt,aes(x=x,y=y),size=.8,colour="red") +
+  geom_point(aes(x=ba,y=1000),size=3,colour="red")
+```
+]
+- even substantial **outliers** may only have small effects on the model
+
+- here, only the intercept is affected
+---
+# Influence
+.center[
+```{r}
+#| label: baddata2
+#| echo: !expr F
+#| fig.asp: 0.6
+#| fig.width: 6.0
+m1 <- lm(RT~BloodAlc,data=d20)
+rt=coef(m1)[1]+.14*coef(m1)[2]+rnorm(1,sd=50)
+b20 <- d20 %>% select(RT,BloodAlc) %>% add_row(BloodAlc=.14,RT=rt)
+m <- lm(RT~BloodAlc,data=b20)
+tt <- tibble(x=c(min(b20$BloodAlc),max(b20$BloodAlc)),
+             y=c(min(predict(m)),max(predict(m))))
+p + geom_line(data=tt,aes(x=x,y=y),size=.8,colour="red") +
+  geom_point(aes(x=.14,y=rt),size=3,colour="red")
+```
+]
+- observations with high **leverage** are inconsistent with other data, but may not be distorting the model
+
+---
+# Influence
+.center[
+```{r}
+#| label: baddata3
+#| echo: !expr F
+#| fig.asp: 0.6
+#| fig.width: 6.0
+m1 <- lm(RT~BloodAlc,data=d20)
+rt=coef(m1)[1]+.13*coef(m1)[2]+rnorm(1,sd=50)-250
+b20 <- d20 %>% select(RT,BloodAlc) %>% add_row(BloodAlc=.13,RT=rt)
+m <- lm(RT~BloodAlc,data=b20)
+tt <- tibble(x=c(min(b20$BloodAlc),max(b20$BloodAlc)),
+             y=c(min(predict(m)),max(predict(m))))
+p + geom_line(data=tt,aes(x=x,y=y),size=.8,colour="red") +
+  geom_point(aes(x=.13,y=rt),size=3,colour="red")
+```
+]
+- we care about observations with high **influence** (outliers with high leverage)
+---
+# Cook's Distance
+
+.center[
+```{r}
+#| label: cook
+#| fig.asp: 0.6
+#| fig.width: 6.0
+#| echo: !expr F
+tt <- mutate(tt,y1=c(min(predict(m1)),coef(m1)[1]+max(x)*coef(m1)[2]))
+tb <- d20 %>% mutate(y1=predict(m1),y2=predict(m)[-21])
+d20 %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=2) + geom_point(aes(x=.13,y=rt),size=3,colour="red") +
+  geom_line(data=tt,aes(x=x,y=y),col="red",size=.8) +
+  geom_line(data=tt,aes(x=x,y=y1),col="blue",size=.8) +
+  geom_segment(data=tb,aes(x=BloodAlc,xend=BloodAlc,y=y1,yend=y2),linetype="dashed")
+```
+]
+
+- a standardised measure of "how much the model differs without observation $i$"
+
+---
+.flex.items-center[.w-10.pa1[![:scale 70%](lecture_7_files/img/danger.svg)] .f1.w-80.pa1[Cook's Distance]]
+
+.pt3[
+$$D_i=\frac{\sum_{j=1}^{n}{(\hat{y}_j-\hat{y}_{j(i)})^2}}{(p+1)\hat{\sigma}^2}$$
+- $\hat{y}+j$ is the $j$th fitted value
+- $\hat{y}_{j(i)}$ is the $j$th value from a fit which doesn't include observation $i$
+- $p$ is the number of regression coefficients
+- $\hat{\sigma}^2$ is the estimated variance from the fit, i.e., mean squared error
+]
+---
+# Cook's Distance
+
+```{r}
+#| label: scramble
+#| include: !expr F
+b20 <- b20 %>% slice_sample(n=21)
+mod <- lm(RT~BloodAlc,data=b20)
+```
+
+.pull-left[
+```{r}
+#| label: cook2
+#| fig.asp: 0.8
+#| fig.show: hide
+plot(mod,which=4)
+```
+
+- observations labelled by row
+
+- various rules of thumb, but start looking when Cook's Distance > 0.5
+]
+.pull-right[
+![](lecture_7_files/figure-html/cook2-1.svg)
+]
+
+---
+class: animated, rollIn
+# Learning to Read
+
+```{r}
+#| label: makedat
+#| include: false
+# library(broom)
+# doit <- TRUE
+#
+# while (doit) {
+#   reading <- tibble(
+#     age=runif(50,5,11),
+#     hrs_wk=rnorm(50,5,1),
+#     method=gl(2,25,labels=c("phonics","word"))
+#   )
+#
+#   reading <- reading %>% mutate(
+#     R_AGE=age + hrs_wk/2 - ifelse(method=="word",2,0)
+#   )
+#
+#   reading <- reading %>% mutate(
+#     R_AGE=R_AGE+hrs_wk*ifelse(method=="word",0,.6)
+#   )
+#
+#   reading <- reading %>% mutate(
+#     R_AGE=R_AGE-.03*age*hrs_wk
+#   )
+#
+#   reading <- reading %>% mutate(
+#     R_AGE=R_AGE+rnorm(50,sd=.5)
+#   )
+#
+#   m <- lm(R_AGE ~ method,data=reading) %>% tidy() %>% mutate(sig=(p.value<.05))
+#   if (!m$sig[2]) {
+#     next
+#   }
+#
+#   m <- lm(R_AGE~age+hrs_wk,data=reading) %>% tidy() %>% mutate(sig=(p.value<.05))
+#
+#   if (sum(m$sig[2:3])!=2) {
+#     next
+#   }
+#
+#   m <- lm(R_AGE ~ hrs_wk*method,data=reading) %>% tidy() %>% mutate(sig=(p.value<.05))
+#   if (!m$sig[4]) {
+#     next
+#   }
+#
+#   m <- lm(R_AGE ~ age*hrs_wk,data=reading) %>% tidy() %>% mutate(sig=(p.value<.05))
+#   if (!m$sig[4]) {
+#     next
+#   }
+#
+#   doit <- FALSE
+#
+# }
+#
+# save(reading,file = "R/reading.Rdata")
+
+load("R/reading.Rdata")
+```
+.pull-left[
+![](lecture_7_files/img/playmo_teach.jpg)
+]
+.pull-right[
+- the Playmo School has been evaluating its reading programmes, using 50 students
+
+- ages of students
+
+- hours per week students spend reading of their own volition
+
+- whether they are taught using phonics or whole-word methods
+
+- **outcome: "reading age"**
+]
+
+---
+count: false
+# Learning to Read
+
+.pull-left[
+![](lecture_7_files/img/playmo_teach.jpg)
+]
+.pull-right[
+.center[
+```{r}
+#| label: showdat
+#| echo: false
+library(gt)
+reading %>% slice(c(1:5,46:50)) %>% gt()
+```
+]]
+???
+- this is just some of the data in the dataframe
+
+- on the right you can see the outcome variable, `R_AGE` for reading age.
+
+- note that I tend to put my dependent variables in all caps, just so that I can recognise at a glance that they're what we measured.
+---
+count: false
+# Learning to Read
+
+.pull-left[
+![](lecture_7_files/img/playmo_teach.jpg)
+]
+.pull-right[
+.center[
+```{r}
+#| label: showdat2
+#| echo: false
+library(gt)
+reading %>% slice(c(1:5,46:50)) %>% gt() %>%
+  data_color(columns=c("hrs_wk","R_AGE"),colors="#d0d9ff",alpha=.8)
+```
+]]
+
+---
+# Does Practice Affect Reading Age?
+
+.pull-left[
+
+```{r}
+#| label: plot1
+#| fig.asp: 0.6
+#| fig.show: hide
+p <- reading %>%
+  ggplot(aes(x=hrs_wk,y=R_AGE)) +
+  geom_point(size=3) +
+  ylab("reading age") +
+  xlab("hours reading/week")
+p
+```
+
+]
+.pull-right[
+![](lecture_7_files/figure-html/plot1-1.svg)
+]
+
+--
+
+- hours per week is correlated with reading age: $r=`r cor(reading$hrs_wk,reading$R_AGE)`$,
+$p=`r cor.test(reading$hrs_wk,reading$R_AGE)$p.value`$
+
+- we can use a linear model to say something about the effect size
+
+---
+# Does Practice Affect Reading Age?
+
+.pull-left[
+```{r}
+#| label: plot2
+#| fig.asp: 0.6
+#| fig.show: hide
+p + geom_smooth(method="lm")
+```
+]
+.pull-right[
+![](lecture_7_files/figure-html/plot2-1.svg)
+]
+
+```{r}
+#| include: false
+mod <- lm(R_AGE~hrs_wk,data=reading)
+```
+
+--
+
+- each extra hour spent reading a week adds `r .rround(coef(mod)[2])` years to reading age
+
+
+---
+# A Linear Model
+
+```{r}
+#| label: lm1
+#| highlight.output: !expr c(7, 11, 12, 17, 18)
+mod <- lm(R_AGE ~ hrs_wk, data=reading)
+summary(mod)
+```
+
+---
+class: center, middle, inverse
+.f1[but...]
+---
+.center[
+```{r}
+#| label: diagp2
+#| echo: false
+#| fig.asp: 0.7
+#| fig.width: 9.0
+par(mfrow=c(2,2))
+plot(mod,which=1:4)
+```
+]
+
+---
+# Assumptions Not Met!
+.pull-left[
+- it seems that the assumptions aren't met for this model
+
+- (another demonstration on the right)
+
+- one reason for this can be because there's still systematic structure in the residuals
+
+- i.e., _more than one thing_ which can explain the variance
+]
+.pull-right[
+```{r}
+#| label: re
+#| echo: !expr F
+#| fig.asp: 0.7
+plot(density(resid(mod)))
+```
+
+]
+---
+class: inverse, center, middle, animated, flip
+
+# End of Part 2
 ---
 class: inverse, center, middle
 
-# Part 2
-## Significance
+# Part 3
+## Multiple Regression
+
 ---
-# Intercept and Slope
+# Adding Age into the Equation
+
+.pull-left[
+- so far, have focused on effects of practice
+
+- but presumably older children read better?
 
 ```{r}
-#| label: lm5
-#| highlight.output: !expr c(11, 12)
-<<lm2>>
+#| label: tab3
+#| echo: !expr F
+reading %>% slice(c(1:3,48:50)) %>% gt() %>%
+  data_color(columns=c("age","R_AGE"),colors="#d0d9ff",alpha=.8)
 ```
-
----
-# Are We Impressed?
-
+]
+.pull-right[
 ```{r}
-#| label: getvals
-#| include: false
-m.i <- round(coef(mod)[1],1)
-m.s <- round(coef(mod)[2],1)
+#| label: try3d
+#| echo: !expr F
+#| fig.width: 7.0
+library(rgl)
+par(mar=c(0,0,0,0))
+plot3d(x=reading$hrs_wk,y=reading$age,z=reading$R_AGE,
+       type='s',
+       radius=.1,
+       xlab="practise",ylab="age",zlab="READING AGE")
+rglwidget()
 ```
-
-- we have an intercept of `r m.i` and a slope of `r m.s`
-
-- in NHST world, our pressing question is
-
---
-
-.pt4[
-&nbsp;
 ]
 
-.br3.bg-gray.pa2.white.tc[
-how likely would we have been to find these parameters under the null hypothesis?
-]
-
+???
+- **rotate cube leftward to show R_AGE~age**
 ---
-# Testing Chance
+# Another Model
 
 .center[
 ```{r}
-#| label: chanceg
-#| echo: false
+#| label: anmod
 #| fig.asp: 0.6
-#| fig.width: 5.5
-iS <- function(size) {
-  tt <- dat %>% sample_n(size) %>% mutate(BloodAlc = BloodAlc * 100)
-  m <- lm(RT~BloodAlc,data=tt)
-  return(coef(m))
-}
-
-cS <- as_tibble(t(replicate(10000,iS(20))))
-
-dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
-  xlim(c(8.5,12)) + ylim(c(500,800)) +
-  geom_abline(data=cS,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.01,colour="blue")
-```
-]
-
-- repeatedly sampling 20~datapoints from the population
-
-  + variability in _height_ of line = variability in intercept ( $b_0$ )
-  + variability in _angle_ of line = variability in slope ( $b_1$ )
----
-# We've Seen This Before
-
-.center[
-```{r}
-#| label: figfig
-#| fig.asp: 0.6
-#| fig.width: 5.5
-#| echo: false
-ourDat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+#| echo: !expr F
+reading %>% ggplot(aes(x=age,y=R_AGE)) +
+  xlab("age") + ylab("reading age") +
   geom_point(size=3) +
   geom_smooth(method="lm")
 ```
+
 ]
-- shaded area represents "95% confidence interval"
-
-  + if we repeatedly sampled 20 items from the population...
-  + assumes that the 20 we have are the _best estimate_ of the population
-
-???
-- if you were able to lay these graphs over each other, they wouldn't be the same
-- in the simulation graph, we _know_ the entire population (of 50 drink-drivers) we're repeatedly sampling 20 from
-- in this graph, the only information we have is that our 20 drink-drivers represent "the population" but we have no other information about that population
-  + so the 20 are our "best estimate" of the population
-  + **just like means and standard errors** (here the edges of the grey regions are `r -qt(.025,18)` standard errors from the line)
-
 
 ---
-
-# The Good Old _t_-Test
+# Another Model
 
 ```{r}
-#| label: pp
-#| echo: false
-.pp(summary(mod),l=list(c(10:12)))
-
+#| label: mod2
+#| highlight.output: !expr c(7, 11, 12, 17, 18)
+mod2 <- lm(R_AGE ~ age, data=reading)
+summary(mod2)
 ```
 
+???
+- point out that intercept is quite meaningless (reading age for age zero)
 
-- for each model parameter we are interested in whether it is _different from zero_
+---
+.center[
+```{r}
+#| label: diag2
+#| echo: !expr F
+#| fig.asp: 0.7
+#| fig.width: 9.0
+par(mfrow=c(2,2))
+plot(mod2,which=1:4)
 
-- **intercept**: just like a mean
+```
+]
 
-- **slope**: does the best-fit line differ from horizontal?
+---
+# Two Models, No Answers
+
+.pull-left[
+- we now have two models that don't map well to assumptions
+
+- each suggests an effect
+
+  + one of `age`
+
+  + one of `hrs_wk`
+]
+.pull-right[
+- if we run them independently, the chances of a type 1 error are
+
+  + $\frac{1}{20}$ (`mod`, including `hrs_wk`)
+
+  + $\frac{1}{20}$ (`mod2`, including `age`)
+
+- or ** $\frac{1}{10}$ ** overall
+]
+
+--
+.pt1[
+&nbsp;
+]
+
+.br3.pa2.bg-gray.white.tc[
+we need to test multiple predictors in _one_ linear model
+]
+---
+# Model Equations Again
+
+$$\color{red}{\textrm{outcome}_i}=\color{blue}{(\textrm{model})_i}+\textrm{error}_i$$
+
+$$\color{red}{y_i}=\color{blue}{b_0\cdot{}1+b_1\cdot{}x_i}+\epsilon_i$$
+--
+
+### linear model with two predictors
+
+$$\color{red}{y_i}=\color{blue}{b_0\cdot{}1+b_1\cdot{}x_{1i}+b_2\cdot{}x_{2i}}+\epsilon_i$$
+$$\color{red}{\hat{y}_i}=\color{blue}{b_0\cdot{}1+b_1\cdot{}x_{1i}+b_2\cdot{}x_{2i}}$$
+
+--
+.center[
+`y ~ 1 + x1 + x2`
+
+`R_AGE ~ 1 + hrs_wk + age` &nbsp;&nbsp; or &nbsp;&nbsp; `R_AGE ~ hrs_wk + age`<sup>1</sup>
+]
+
+
+.footnote[
+<sup>1</sup> we'll come back to why order can matter in a bit
+]
+---
+# Running A Multiple Regression
+
+```{r}
+#| label: multi
+#| highlight.output: !expr '11:13'
+mod.m <- lm(R_AGE ~ age + hrs_wk, data=reading)
+summary(mod.m)
+```
+
+---
+# Running a Multiple Regression
+
+```{r}
+#| label: multi2
+#| echo: !expr F
+ca <- coef(mod.m)[2]
+ch <- coef(mod.m)[3]
+.pp(summary(mod.m),l = list(0,11:13,0))
+```
+
+- there are _independent_ effects of age and practice
+
+  + reading age improves by `r ca` for each year of age
+
+  + reading age improves by `r ch` for each weekly hour of practice
+
+- note that the _intercept_ (0 years old, 0 hours/week) is meaningless here
 
 --
 
-- these are just (two-tailed) one-sample $t$-tests
-
-  + **standard error** is the standard deviation of doing these lots of times
-  + **t value** is $\frac{\textrm{Estimate}}{\textrm{Std. Error}}$
-  + to calculate $p$, we need to know the _degrees of freedom_
+- important question:  is this model _better_ than a model based just on age?
 
 ---
-# Degrees of Freedom
+# Model Fit
 
-.center[
 ```{r}
-#| label: plotdat
-#| fig.asp: 0.6
-#| echo: false
-## function to work out the "last two" points on for a given best fit
-## line, by working out the residuals for given x and y
-## (maths courtesy of Umberto Noè)
-library(patchwork)
-plot_dat <- function() {
-  df <- tibble(
-      x = sample(2:14,8),
-      y = 20 + runif(8,-15,15),
-      resid = y - (5+2*x),
-      colour="a"
-  )
+#| label: multi3
+#| echo: !expr F
+.pp(summary(mod.m),l=list(0,17:19))
 
-  df <- df %>% mutate(xprod=x*resid)
-
-  sr <- sum(df$resid)
-  sp <- sum(df$xprod)
-
-  df2 <- tibble(
-    x= c(1,15),
-    yhat = 5 + 2 * x
-  )
-
-  r2 <- sr*df2$x[1] - sp
-  r1 <- -sr - r2
-
-  df2 <- df2 %>% mutate(
-    resid=c(r1,r2),
-    y=yhat+resid,
-    colour="b"
-  ) %>% relocate(y, .after=yhat)
-
-  df %>% bind_rows(df2) %>% select(-xprod) %>% select(-yhat)
-}
-
-pd1 <- plot_dat()
-pd2 <- plot_dat()
-pd3 <- plot_dat()
-pd4 <- plot_dat()
-
-do_p <- function(x) {
-x %>% filter(colour=="a") %>% ggplot(aes(x=x,y=y)) +
-  theme_presentation(14) +
-  geom_point(size=3) +
-  xlim(c(0,15)) +
-  geom_smooth(method="lm",se=FALSE)
-}
-
-p1 <- do_p(pd1)
-p2 <- do_p(pd2)
-p3 <- do_p(pd3)
-p4 <- do_p(pd4)
-
-( p1 + p2 ) / ( p3 + p4 )
 ```
-]
+
+- in multiple regression, $R^2$ measures the fit of the entire model
+  + sum of individual $R^2$s _if predictors not correlated_
+
+- $R^2=`r summary(mod.m)$r.squared`$ looks better than the $R^2$ for `mod2` (`age` as a predictor) of $`r summary(mod2)$r.squared`$
+
+- but _any_ predictor will improve $R^2$ (chance associations guarantee this)
+
+```{r}
+#| label: multi4
+#| eval: !expr F
+mod.r <- update(mod2, ~ . + runif(50)) #<<
+summary(mod.r)
+```
+```{r}
+#| label: multi4b
+#| echo: !expr F
+mod.r <- update(mod2, ~ . + runif(50))
+.pp(summary(mod.r),l=list(0,18,0))
+```
+???
+
+- Adjusted $R^2$ accounts for multiple predictors
+
+- for `mod2`, it's `r summary(mod2)$adj.r.squared`
+
+- for `mod.r`, it's `r summary(mod.r)$adj.r.squared`
+
 ---
+# Comparing Models
+
+```{r}
+#| label: multic
+#| echo: !expr F
+#| highlight.output: 3.0
+.pp(summary(mod.r),l=list(0,18:19))
+```
+
+- $F$ ratio compares model to the null model, which just has an intercept
+
+- but we can also use $F$ ratios to compare models in succession
+
+```{r}
+#| label: multic2
+anova(mod.m)
+```
+
+---
+# Order Matters!
+
+- `age` then `hrs_wk`
+```{r}
+#| label: multic3
+#| echo: !expr F
+<<multic2>>
+```
+- `hrs_wk` then `age`
+```{r}
+#| label: multic4o
+#| echo: !expr F
+anova(lm(R_AGE~hrs_wk+age,data=reading))
+```
+
+---
+# Type 1 vs. Type 3 SS
+
+- order matters because R, by default, uses **Type 1** sums of squares
+  + calculate each predictor's improvement to the model _in turn_
+- compare to **Type 3** sums of squares
+  + calculate each predictor's improvement to the model _taking all other predictors into account_
+
+- huge debate about which is "better" (nobody likes Type 2)
+
+- if using Type 1, _predictors should be entered into the model in a theoretically-motivated order_
+---
+# Type 1 vs. Type 3 SS
+.pull-left[
+### type 1
+.center[
+![:scale 70%](lecture_7_files/t13/type0-0.svg)
+]]
+.pull-right[
+### type 3
+.center[
+![:scale 70%](lecture_7_files/t13/type0-0.svg)
+]]
+---
+
+```{r}
+#| label: t1
+#| echo: !expr F
+#| results: asis
+img <- dir("lecture_7_files/t13/",pattern="type1.+svg$",full.names=TRUE)
+slides_txt <- glue::glue("
 count: false
-# Degrees of Freedom
-
+# Type 1 vs. Type 3 SS
+.pull-left[
+### type 1
 .center[
-```{r}
-#| label: dfplots2
-#| fig.asp: 0.6
-#| echo: false
-do_p <- function(x) {
-x %>% ggplot(aes(x=x,y=y)) +
-  theme_presentation(14) +
-  geom_point(aes(colour=colour),size=3) +
-  xlim(c(0,15)) +
-  scale_colour_manual(values=c('a'='darkgrey','b'='red')) +
-  theme(legend.position = "none") +
-  geom_smooth(method="lm",se=FALSE)
-}
-
-p1 <- do_p(pd1)
-p2 <- do_p(pd2)
-p3 <- do_p(pd3)
-p4 <- do_p(pd4)
-
-( p1 + p2 ) / ( p3 + p4 )
-```
-]
-
-???
-- we can always add in two points to make the straight line that we want to see
-- this is one way of showing that for $n$ data points, there are $n-2$ degrees of freedom
----
-# Degrees of Freedom
-
-- in fact we subtract 2 degrees of freedom because we "know" two things
-
-  + intercept ( $b_0$ )
-
-  + slope ( $b_1$ )
-
-- the remaining degrees of freedom are the _residual_ degrees of freedom
-
---
-
-- the _model_ also has associated degrees of freedom
-
-  + 2 (intercept, slope) - 1 (knowing one affects the other)
-
-.br3.bg-gray.pa2.white.tc[
-the models we have been looking at have 20 observations and 1 predictor
-
-**(1, 18)** degrees of freedom
-]
----
-# Linear Models in R
-
-```{r}
-#| label: lm3
-#| highlight.output: !expr c(17, 18)
-<<lm2>>
-```
-
----
-# Total Sum of Squares
-
-$$ \textrm{total SS}=\sum{(y - \bar{y})^2} $$
-
-.pull-left[
-- sum of squares between observed $y$ and mean $\bar{y}$
-
-- represents the total amount of variance in the model
-
-- how much does the observed data vary from a model which says "there is no effect of $x$" (**null model**)?
-]
+![:scale 70%]({img})
+]]
 .pull-right[
-```{r}
-#| label: totss
-#| echo: false
-#| fig.asp: 0.6
-ourDat <- ourDat %>% mutate(pred=predict(m1),mRT=mean(RT))
-p1 <- ourDat %>% ggplot(aes(x=BloodAlc,y=RT,yend=pred))
-
-pTot <- p1 + geom_abline(intercept=mean(ourDat$RT),slope=0,size=1) +
-  geom_segment(aes(yend=mean(mRT),xend=BloodAlc),linetype="dotted",colour="red",size=1) +
-  geom_point(size=3)
-pTot
-```
-
-]
----
-# Residual Sum of Squares
-
-$$ \textrm{residual SS} = \sum{(y - \hat{y})^2} $$
-.pull-left[
-- sum of squared differences between observed $y$ and predicted $\hat{y}$
-
-- represents the unexplained variance in the model
-
-- how much does the observed data vary from the existing model?
-]
-.pull-right[
-```{r}
-#| label: residp
-#| echo: false
-#| fig.asp: 0.6
-pRes<- p1 + geom_segment(aes(xend=BloodAlc),linetype="dotted",colour="red",size=1) +
-  geom_smooth(method="lm",se=FALSE) +
-  geom_point(size=3)
-pRes
-```
-]
----
-# Model Sum of Squares
-
-$$ \textrm{model SS} = \sum{(\hat{y} - \bar{y})^2} $$
-
-.pull-left[
-- sum of squared differences between predicted $\hat{y}$ and mean $\bar{y}$
-
-- represents the additional variance explained by the current model over the null model
-]
-.pull-right[
-```{r}
-#| label: modp
-#| echo: false
-#| fig.asp: 0.6
-pMod <- p1 + geom_segment(aes(y=mRT,xend=BloodAlc),colour="red",linetype="dotted",size=1) +
-  geom_hline(yintercept = mean(ourDat$RT),size=1) +
-  geom_smooth(method="lm",se=FALSE) +
-  geom_point(size=3)
-pMod
-```
-
-]
-
----
-# Testing the Model: _R_<sup>2</sup>
-
-.pull-left[
-$$ R^2 = \frac{\textrm{model SS}}{\textrm{total SS}} = \frac{\sum{(\hat{y}-\bar{y})^2}}{\sum{(y-\bar{y})^2}} $$
-
-
-
-"how much the model improves over the null"
-
-
-.pt3[
-- $0 \le R^2 \le 1$
-
-- we want $R^2$ to be large
-
-- for a single predictor, $\sqrt{R^2} = |r|$
-
+### type 3
+.center[
+![:scale 70%](lecture_7_files/t13/type0-0.svg)
 ]]
 
-.pull-right[
-```{r}
-#| echo: false
-#| fig.asp: 0.8
-library(patchwork)
-pMod/pTot
+---
+
+")
+cat(slides_txt, sep="")
 ```
 
-]
----
-# Testing the Model: _F_
-
+```{r}
+#| label: t3
+#| echo: !expr F
+#| results: asis
+img <- dir("lecture_7_files/t13/",pattern="type3.+svg$",full.names=TRUE)
+slides_txt <- glue::glue("
+count: false
+# Type 1 vs. Type 3 SS
 .pull-left[
-$F$ ratio depends on **mean squares** <br/>
-.tc[
-( $\textrm{MS}_x = \textrm{SS}_x/\textrm{df}_x$ )
-]
-
-$$F=\frac{\textrm{model MS}}{\textrm{residual MS}}=\frac{\sum{(\hat{y}-\bar{y})^2}/\textrm{df}_m}{\sum{(y-\hat{y})^2}/\textrm{df}_r}$$
-
-
-
-"how much the model improves over chance"
-
-
-.pt3[
-- $0 < F$
-
-- we want $F$ to be large
-
-- significance of $F$ does not always equate to a large (or theoretically sensible) effect
-
+### type 1
+.center[
+![:scale 70%](lecture_7_files/t13/type1-3.svg)
+]]
+.pull-right[
+### type 3
+.center[
+![:scale 70%]({img})
 ]]
 
-.pull-right[
-```{r}
-#| echo: false
-#| fig.asp: 0.8
-library(patchwork)
-pMod/pRes
+---
+
+")
+cat(slides_txt, sep="")
 ```
 
-]
-
-
----
-# A Linear Model for 20 Drinkers
-
-.center[
-```{r}
-#| label: mod
-#| fig.asp: 0.55
-#| echo: false
-#| fig.width: 6.0
-pRes
-```
-]
-
-- a linear model describes the **best-fit line** through the data
-
-- minimises the error terms $\epsilon$ or **residuals**
----
-# Two Types of Significance
+# The Two-Predictor Model
 
 ```{r}
-#| label: lmlm
-#| highlight.output: !expr c(11, 12, 17, 18)
-<<lm2>>
+#| label: multiti
+#| highlight.output: !expr '11:13'
+<<multi>>
 ```
 ---
-# The Good, the Bad, and the Ugly
+
+# The Two-Predictor Model
 
 .flex.items-center[
-.w-50.br3.bg-washed-green.pa2[
-- we can easily extend this approach
-
-  + use more than one predictor
-
-  + generalised linear model
+.w-25[
+&nbsp;
 ]
-.w-50.br3.bg-washed-red.pa2[
-- not a panacea
-
-  + depends on _assumptions_ about the data
-
-  + depends on _decisions_ about analysis
+.w-50[
+```{r}
+#| label: 3d
+#| echo: !expr F
+plot3d(x=reading$hrs_wk,y=reading$age,z=reading$R_AGE,
+       type='s',
+       radius=.1,
+       xlab="practise",ylab="age",zlab="READING AGE")
+coefs <- coef(mod.m)
+a <- coefs["hrs_wk"]
+b <- coefs["age"]
+c <- -1
+d <- coefs["(Intercept)"]
+planes3d(a,b,c,d, alpha=0.5)
+rglwidget()
+```
+]
+.w-25[
+&nbsp;
 ]]
-
---
-
-.flex.items-center[
-.w-70.br3.pa2.bg-gray.white[
-- like other statistics, linear models don't tell you "about" your data
-
-- they simply assess what is (un)likely to be due to chance
-
-- the key to good statistics is _common sense and good interpretation_
-]
-.w-30.center[
-![:scale 70%](lecture_6_files/img/playmo_clown.jpg)
-]
-]
-
----
-class: inverse, center, middle, animated, fadeInDownBig
-
-# End
-

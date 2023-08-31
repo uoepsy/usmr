@@ -45,7 +45,7 @@ dp
 #| echo: false
 #| label: dp
 
-dp + geom_smooth(method="lm")
+dp + geom_smooth(method="lm",linewidth=2)
 ```
 
 :::
@@ -239,4 +239,648 @@ nd + xlim(xl) + ylim(yl)
 
 ::::
 
+## Total Sum of Squares
+
+$$ \textrm{total SS}=\sum{(y - \bar{y})^2} $$
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+- sum of squared differences between observed $y$ and mean $\bar{y}$
+
+- = total amount of variance in the data
+
+- = total _unexplained_ variance from the **null model**
+
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| label: totss
+#| echo: false
+#| fig.asp: 0.6
+m1 <- lm(RT ~ BloodAlc,data=ourDat)
+ourDat <- ourDat %>% mutate(pred=predict(m1),mRT=mean(RT))
+p1 <- ourDat %>% ggplot(aes(x=BloodAlc,y=RT,yend=pred))
+
+pTot <- p1 + geom_abline(intercept=mean(ourDat$RT),slope=0,linewidth=1.5,colour="blue") +
+  geom_segment(aes(yend=mean(mRT),xend=BloodAlc),linetype="31",colour="orange",linewidth=1.5) +
+  geom_point(size=3)
+pTot
+```
+
+:::
+
+::::
+
+
+## Residual Sum of Squares
+
+$$\textrm{residual SS} = \sum{(y - \hat{y})^2}$$
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- sum of squared differences between observed $y$ and predicted $\hat{y}$
+
+- = total _unexplained_ variance from a _given_ model in the data
+
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: residp
+#| echo: false
+#| fig.asp: 0.6
+pRes<- p1 + geom_segment(aes(xend=BloodAlc),linetype="31",colour="orange",linewidth=1.5) +
+  geom_smooth(method="lm",se=FALSE,linewidth=1.5) +
+  geom_point(size=3)
+pRes
+```
+:::
+
+::::
+
+::: aside
+this is the summed square errors, or $\sum{\epsilon^2}$
+:::
+
+::: notes
+- so for the null model, total SS is the same as residual SS
+:::
+
+## Model Sum of Squares
+
+$$ \textrm{model SS} = \sum{(\hat{y} - \bar{y})^2} $$
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- sum of squared differences between predicted $\hat{y}$ and observed $\bar{y}$
+
+- total variance _explained_ by a given model
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: modp
+#| echo: false
+#| fig.asp: 0.6
+pMod <- p1 + geom_segment(aes(y=mRT,xend=BloodAlc),colour="orange",linetype="31",linewidth=1.5) +
+  geom_hline(yintercept = mean(ourDat$RT),linewidth=1.5,colour="blue") +
+  geom_smooth(method="lm",se=FALSE,linewidth=1.5) +
+  geom_point(size=3)
+pMod
+```
+:::
+
+::::
+
+## Testing the Model: _R^2^_
+
+:::: {.columns}
+
+::: {.column width="60%"}
+
+$$ R^2 = \frac{\textrm{model SS}}{\textrm{total SS}} = \frac{\sum{(\hat{y}-\bar{y})^2}}{\sum{(y-\bar{y})^2}} $$
+
+::: myblock
+how much the model improves over the null
+:::
+
+- $0 \le R^2 \le 1$
+
+- we want $R^2$ to be large
+:::
+
+::: aside
+for a single predictor, $\sqrt{R^2}=|r|$
+:::
+
+
+::: {.column width="40%"}
+```{r}
+#| echo: false
+#| layout-nrow: 2
+pMod
+pTot
+```
+
+:::
+
+::::
+
+## Testing the Model: _F_
+
+:::: {.columns}
+
+::: {.column width="70%"}
+$F$ ratio depends on **mean squares**
+
+$$(\textrm{MS}_x=\textrm{SS}_x/\textrm{df}_x)$$
+
+$$F=\frac{\textrm{model MS}}{\textrm{residual MS}}=\frac{\sum{(\hat{y}-\bar{y})^2}/\textrm{df}_m}{\sum{(y-\hat{y})^2}/\textrm{df}_r}$$
+
+::: myblock
+how much the model 'explains'
+:::
+
+- $0<F$
+
+- we want $F$ to be large
+
+:::
+
+::: {.column width="30%"}
+```{r}
+#| echo: false
+#| layout-nrow: 2
+pMod
+pRes
+```
+:::
+
+::::
+
+::: notes
+- significance of $F$ does not always equate to a large (or theoretically sensible) effect
+:::
+
+## Two Types of Significance
+
+```{r}
+#| label: model
+#| output-line-numbers: "11,12"
+mod <- lm(RT ~ BloodAlc, data=dat)
+summary(mod)
+```
+
+## Two Types of Significance {visibility="uncounted"}
+
+```{r}
+#| output-line-numbers: "11,12,17,18"
+<<model>>
+```
+
+## Two Types of Significance
+
+```r
+summary(mod)
+```
+```{r}
+#| echo: false
+.pp(summary(mod),l=list(0,c(17,18)))
+```
+. . .
+
+- $F$-statistic comes from _comparison_ of model with null model
+
+```{r}
+mod0 <- lm(RT~1, data=dat)
+anova(mod0,mod)
+```
+
+```{r}
+#| include: false
+t <- broom::glance(mod)
+ssr <- t$deviance
+f <- t$statistic
+dfr <- t$df.residual
+df <- t$df
+ss <- .rround(f*(ssr/dfr),0)
+ssr <- .rround(ssr,0)
+f <- .rround(f,1)
+```
+
+## Two Types of Significance
+
+- in fact, because comparison is implicit:
+
+```r
+anova(mod0,mod)
+```
+```{r}
+#| echo: false
+.pp(anova(mod0,mod),l=list(1:7))
+```
+
+::: {#empty}
+ 
+:::
+
+```r
+anova(mod)
+```
+```{r}
+#| echo: false
+.pp(anova(mod),l=list(1:6))
+```
+
+## Summarising...
+
+
+Adding a predictor of blood alcohol improved the amount of variance explained over the null model [(_R^2^_=`r .rround(t$r.squared,2)`]{.nobrk}, [_F_(`r t$df`,`r t$df.residual`)=`r .rround(t$statistic,1)`]{.nobrk}, [_p_=`r .rround(t$p.value,4,drop.zero=T)`).]{.nobrk}
+
+- we also have the $t$-statistic describing the effect...
+
+## Hold On {transition="convex"}
+
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/playmo_clown.jpg){.center-img}
+:::
+
+::: {.column width="50%"}
+- we've made a lot of assumptions
+
+:::
+
+::::
+
+# Assumptions
+
+## Anscombe's Quartet
+
+```{r}
+#| echo: false
+#| layout: [[1,1],[1,1]]
+anscombe |> ggplot(aes(x=x1,y=y1)) +
+  xlim(0,20) + ylim(0,13) +
+  geom_point(size=3) +
+  geom_abline(intercept=3,slope=.5,colour="blue",linewidth=1.5) +
+  xlab("x") + ylab("y")
+
+anscombe |> ggplot(aes(x=x2,y=y2)) +
+  xlim(0,20) + ylim(0,13) +
+  geom_point(size=3) +
+  geom_abline(intercept=3,slope=.5,colour="blue",linewidth=1.5) +
+  xlab("x") + ylab("y")
+
+anscombe |> ggplot(aes(x=x3,y=y3)) +
+  xlim(0,20) + ylim(0,13) +
+  geom_point(size=3) +
+  geom_abline(intercept=3,slope=.5,colour="blue",linewidth=1.5) +
+  xlab("x") + ylab("y")
+
+anscombe |> ggplot(aes(x=x4,y=y4)) +
+  xlim(0,20) + ylim(0,13) +
+  geom_point(size=3) +
+  geom_abline(intercept=3,slope=.5,colour="blue",linewidth=1.5) +
+  xlab("x") + ylab("y")
+
+
+```
+
+::: attribution
+Anscombe (1973)
+:::
+
+::: notes
+- best-fit lines are $\hat{y}_i=3+0.5\cdot{}x_i$
+:::
+
+## Anscombe++
+
+```{r}
+#| include: false
+
+generate_heart_data <- function(n_points, intercept, slope) {
+  # Create a sequence of theta values
+  theta <- seq(-pi, pi, length.out = n_points)
+  
+  # Generate x and y coordinates for a heart shape
+  x_heart <- 16 * sin(theta)^3
+  y_heart <- 13 * cos(theta) - 5 * cos(2 * theta) - 2 * cos(3 * theta) - cos(4 * theta)
+  
+  # Standardize x and y to zero mean
+  x_heart <- x_heart - mean(x_heart)
+  y_heart <- y_heart - mean(y_heart)
+  
+  # Rescale x to have a standard deviation of 1
+  x_heart <- x_heart / sd(x_heart)
+  
+  # Generate y values for the best-fit line
+  y_line <- intercept + slope * x_heart
+  
+  # Create y values for the heart shape that also fit the given best-fit line
+  y_new <- y_heart + y_line
+  
+  # Create a dataframe
+  return(data.frame(x = x_heart, y = y_new))
+}
+
+generate_random_data <- function(n_points, intercept, slope, x_range, y_range) {
+  # Generate random x values within the given range
+  x_random <- runif(n_points, min = x_range[1], max = x_range[2])
+  
+  # Center x values to have zero mean
+  x_random <- x_random - mean(x_random)
+  
+  # Generate y values for the best-fit line
+  y_line <- intercept + slope * x_random
+  
+  # Orthogonalize random noise to x
+  noise <- rnorm(n_points, mean = 0, sd = 7.5)
+  noise <- noise - mean(noise)  # make sure noise has zero mean
+  noise <- noise - lm(noise ~ x_random)$fitted.values  # make noise orthogonal to x
+  
+  # Add orthogonal noise to y
+  y_random <- y_line + noise
+  
+  # Create a dataframe
+  return(data.frame(x = x_random, y = y_random))
+  
+  
+}
+
+dfH <- generate_heart_data(30,3,1)
+dfR <- generate_random_data(30,3,1,range(dfH$x),range(dfH$y))
+
+```
+
+```{r}
+#| echo: false
+#| layout-ncol: 2
+#| fig-asp: 1
+
+xl=range(c(dfR$x,dfH$x))
+yl=range(c(dfR$y,dfH$y))
+
+dfR |> ggplot(aes(x=x,y=y)) +
+  xlim(xl) + ylim(yl) +
+  geom_point(colour="black",size=5) +
+  geom_abline(intercept=3,slope=1,colour="blue",linewidth=2)
+
+dfH |> ggplot(aes(x=x,y=y)) +
+  xlim(xl) + ylim(yl) +
+  geom_point(colour="red",size=5) +
+  geom_abline(intercept=3,slope=1,colour="blue",linewidth=2)
+```
+
+
+
+
+## Assumptions of Linear Models
+
+:::: {.columns}
+
+::: {.column width="45%"}
+### required
+:::: myyellowblock
+
+- **linearity** of relationship(!)
+
+- for the _residuals_:
+  + **normality**
+  + **homogeneity of variance**
+  + **independence**
+
+::::
+:::
+
+::: {.column width="10%"}
+<!-- spacer -->
+:::
+
+::: {.column width="45%"}
+### desirable
+
+::: myyellowblock
+- no 'bad' (overly influential) observations
+:::
+:::
+
+::::
+
+## Residuals
+
+:::: {.columns}
+
+::: {.column width="50%"}
+$$y_i=b_0+b_1\cdot{}x_i+\epsilon_i$$
+
+$$\color{red}{\epsilon\sim{}N(0,\sigma)~\text{independently}}$$
+
+- normally distributed (mean should be $\simeq{}$ zero)
+
+:::
+
+::: {.column width="50%"}
+
+![](`r knitr::fig_chunk('residp','svg')`)
+:::
+
+::::
+- homogeneous (differences from $\hat{y}$ shouldn't be systematically smaller or larger for different $x$)
+
+- independent (residuals shouldn't influence other residuals)
+
+## At A Glance
+```{r}
+#| label: modresid
+#| output-line-numbers: 7
+summary(mod)
+```
+
+## In More Detail
+
+```{r}
+#| label: margins
+#| include: false
+par(mar=c(0,0,0,0))
+```
+
+
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### linearity
+
+```{r}
+#| label: resid1
+#| fig-asp: 0.8
+#| fig-show: hide
+plot(mod,which=1)
+```
+- plots residuals $\epsilon_i$ against fitted values $\hat{y}_i$
+
+- the 'average residual' is roughly zero across $\hat{y}$, so relationship is likely to be linear
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('resid1','svg')`)
+:::
+
+::::
+
+## In More Detail
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### normality
+
+```{r}
+#| label: resid2
+#| fig-asp: 0.8
+#| fig.show: hide
+hist(resid(mod))
+```
+
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('resid2','svg')`)
+
+:::
+
+::::
+
+## In More Detail {visibility="uncounted"}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### normality
+
+```{r}
+#| label: resid3
+#| fig-asp: 0.8
+#| fig.show: hide
+plot(density(resid(mod)))
+```
+
+- check that residuals $\epsilon$ are approximately normally distributed
+
+- in fact there's a better way of doing this...
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('resid3','svg')`)
+:::
+
+::::
+
+## In More Detail
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### normality
+
+```{r}
+#| label: resid4
+#| fig-asp: 0.8
+#| fig.show: hide
+plot(mod,which=2)
+```
+- **Q-Q plot** compares the residuals $\epsilon$ against a known distribution (here, normal)
+
+- observations close to the straight line mean residuals are approximately normal
+
+
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('resid4','svg')`)
+:::
+
+::::
+
+## Q-Q Plots {.smaller}
+
+:::: {.columns}
+
+::: {.column width="46%"}
+#### y axis
+
+- for a normal distribution, what values _should_ (say) 2%, or 4% of the observations lie below?
+
+- expressed in "standard deviations from the mean"
+
+```{r}
+#| label: qn1
+qnorm(c(.02,.04))
+```
+:::
+
+::: {.column width="8%"}
+<!-- spacer -->
+:::
+
+::: {.column width="46%" .fragment}
+#### x axis
+
+- from our residuals, what values _are_ (say) 2%, or 4%, of observations found to be less than?
+
+- convert to "standard deviations from the mean"
+
+```{r}
+#| label: qn2
+quantile(scale(resid(mod)),c(.02,.04))
+```
+:::
+
+::::
+
+::: {.fragment}
+- **Q-Q Plot** shows these values plotted against each other
+:::
+
+## In More Detail
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### normality
+
+```r
+plot(mod,which=2)
+```
+- **Q-Q plot** compares the residuals $\epsilon$ against a known distribution (here, normal)
+
+- observations close to the straight line mean residuals are approximately normal
+
+
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('resid4','svg')`)
+:::
+
+::::
+
+- numbered points refer to _row numbers_ in the original data
+
+
+<!-- ABOVE HERE -->
+
+## What We Know
+
+:::: {.columns}
+
+::: {.column width="40%"}
+::: myblock
+Adding a predictor of blood alcohol improved the amount of variance explained over the null model [(_R^2^_=`r .rround(t$r.squared,2)`]{.nobrk}, [_F_(`r t$df`,`r t$df.residual`)=`r .rround(t$statistic,1)`]{.nobrk}, [_p_=`r .rround(t$p.value,4,drop.zero=T)`).]{.nobrk}
+Reaction time slowed by `r .rround(coef(mod)[2],1)` ms for every additional 0.01% blood alcohol by volume [(_t_(`r summary(mod)$df[2]`)=`r .rround(coef(summary(mod))[2, "t value"],2)`]{.nobrk}, [_p_=`r .rround(coef(summary(mod))[2, "Pr(>|t|)"],4,drop.zero=T)`).]{.nobrk}
+:::
+:::
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+#| fig-align: center
+#| fig-asp: .95
+
+<<dp>>
+```
+
+:::
+
+::::
 
