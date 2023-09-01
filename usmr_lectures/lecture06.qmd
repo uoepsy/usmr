@@ -568,13 +568,14 @@ dfR <- generate_random_data(30,3,1,range(dfH$x),range(dfH$y))
 #| echo: false
 #| fig-asp: .8
 
-xl=range(c(dfR$x,dfH$x))
+xl=range(c(dfR$x,dfH$x)+c(-1,1))
 yl=range(c(dfR$y,dfH$y))
 
 dfR |> ggplot(aes(x=x,y=y)) +
   xlim(xl) + ylim(yl) +
   geom_point(colour="black",size=5) +
-  geom_abline(intercept=3,slope=1,colour="blue",linewidth=2)
+  geom_abline(intercept=3,slope=1,colour="blue",linewidth=2) +
+  ggtitle(expression(paste(hat(y)," = ",3 + 1 %.% x )))
 ```
 
 ::: {.fragment fragment-index=1}
@@ -585,7 +586,8 @@ dfR |> ggplot(aes(x=x,y=y)) +
 dfH |> ggplot(aes(x=x,y=y)) +
   xlim(xl) + ylim(yl) +
   geom_point(colour="black",size=5) +
-  geom_abline(intercept=3,slope=1,colour="blue",linewidth=2)
+  geom_abline(intercept=3,slope=1,colour="blue",linewidth=2) +
+  ggtitle(expression(paste(hat(y)," = ",3 + 1 %.% x )))
 ```
 :::
 
@@ -811,33 +813,87 @@ plot(mod,which=2)
 :::: {.columns}
 
 ::: {.column width="46%"}
-#### y axis
-
-- for a normal distribution, what values _should_ (say) 2%, or 4% of the observations lie below?
-
-- expressed in "standard deviations from the mean"
 
 ```{r}
-#| label: qn1
-qnorm(c(.02,.04))
+#| echo: false
+#| fig-asp: .7
+#| fig-align: center
+
+p <- ggplot(data=data.frame(x=c(-3.5,3.5)),aes(x=x)) +
+  stat_function(fun = dnorm, n =151,size=2) + ylab("") +
+  xlab("standard deviations (z)") +
+  ylab("density")
+d <- layer_data(p) |> filter(x <=qnorm(.1))
+d2 <- layer_data(p) |> filter(x <= qnorm(.05))
+p + geom_area(data=d, aes(x=x,y=y),fill="orange") +
+  geom_area(data=d2,aes(x=x,y=y),fill="red") +
+  stat_function(fun = dnorm, n =151,size=2)
 ```
+
 :::
 
 ::: {.column width="8%"}
 <!-- spacer -->
 :::
 
-::: {.column width="46%" .fragment}
+::: {.column width="46%"}
+
+#### y axis
+
+- for a normal distribution, what values _should_ (say) 5%, or 10% of the observations lie below?
+
+- expressed in "standard deviations from the mean"
+
+```{r}
+#| label: qn1
+qnorm(c(.05,.10))
+```
+
+:::
+
+::::
+
+## Q-Q Plots {.smaller visibility="uncounted"}
+
+
+:::: {.columns}
+
+::: {.column width="46%"}
 #### x axis
 
-- from our residuals, what values _are_ (say) 2%, or 4%, of observations found to be less than?
+- from our residuals, what values _are_ (say) 5%, or 10%, of observations found to be less than?
 
 - convert to "standard deviations from the mean"
 
 ```{r}
 #| label: qn2
-quantile(scale(resid(mod)),c(.02,.04))
+quantile(scale(resid(mod)),c(.05,.10))
 ```
+
+:::
+
+::: {.column width="8%"}
+<!-- spacer -->
+:::
+
+::: {.column width="46%"}
+
+```{r}
+#| echo: false
+#| fig-asp: .7
+#| fig-align: center
+p <- ggplot(data=data.frame(x=scale(resid(mod))),aes(x=x)) +
+  geom_density(linewidth=2)
+d <- layer_data(p) |> filter(x <= quantile(scale(resid(mod)),.1))
+d2 <- layer_data(p) |> filter(x <= quantile(scale(resid(mod)),.05))
+p + geom_area(data=d, aes(x=x,y=y),fill="orange") +
+  geom_area(data=d2,aes(x=x,y=y),fill="red") +
+  geom_density(linewidth=2) +
+  xlab("standardized residuals") +
+  ylab("density")
+```
+
+
 :::
 
 ::::
@@ -872,6 +928,299 @@ plot(mod,which=2)
 - numbered points refer to _row numbers_ in the original data
 
 
+## In More Detail
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### [homogeneity of variance]{.r-fit-text}
+
+
+```{r}
+#| label: resid5
+#| fig-asp: 0.8
+#| fig-show: hide
+plot(mod,which=3)
+```
+
+- graph shows $\sqrt{|\textrm{standardized residuals|}}$
+
+- the _size_ of the residuals is approximately the same across values of $\hat{y}$
+
+
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('resid5','svg')`)
+:::
+
+::::
+
+## What about Independence?
+
+- no easy way to check independence of residuals
+
+- in part, because it depends on the _source_ of the observations
+
+
+- one determinant might be a single person being observed multiple times
+
+- e.g., my reaction times might tend to be slower than yours<br/>
+  $\rightarrow$ multivariate statistics
+
+## Independence 
+
+- another determinant might be _time_
+
+- observations in a sequence might be **autocorrelated**
+
+- can be checked using the Durbin-Watson Test from the `car` package
+
+```{r}
+library(car)
+dwt(mod)
+```
+
+
+## Visual vs Other Methods
+
+- more statistical ways of checking assumptions will be introduced in labs
+
+- they tend to have limitations (for example, they're susceptible to sample size)
+
+- nothing beats looking at plots like these (and `plot(<model>)` makes it easy)
+
+
+## Assumption Checking
+
+1. there are no criteria for deciding exactly when assumptions are sufficiently met
+
+  + it's a matter of experience and judgement
+
+2. we need to talk about **influence**
+
+# Influence
+
+##  Influence
+```{r}
+#| label: baddata1
+#| echo: false
+#| fig-asp: 0.6
+#| fig-align: center
+
+## NB., fix for new slide order
+d20 <- ourDat
+
+ba <- mean(d20$BloodAlc)
+b20 <- d20 %>% select(RT,BloodAlc) %>% add_row(BloodAlc=ba,RT=1000)
+p <- d20 %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3) +
+  geom_smooth(method="lm",se=FALSE,linewidth=1.5)
+m <- lm(RT~BloodAlc,data=b20)
+p + geom_abline(intercept=coef(m)[1],slope=coef(m)[2],size=1.5,colour="red") +
+  geom_point(aes(x=ba,y=1000),size=4,colour="red")
+```
+
+- even substantial **outliers** may only have small effects on the model
+
+- here, only the intercept is affected
+
+
+## Influence
+
+```{r}
+#| label: baddata2
+#| echo: false
+#| fig-asp: 0.6
+#| fig-align: center
+
+m1 <- lm(RT~BloodAlc,data=d20)
+rt=coef(m1)[1]+14*coef(m1)[2]+rnorm(1,sd=10)
+b20 <- d20 %>% select(RT,BloodAlc) %>% add_row(BloodAlc=14,RT=rt)
+m <- lm(RT~BloodAlc,data=b20)
+p + geom_abline(intercept=coef(m)[1],slope=coef(m)[2],size=1.5,colour="red") +
+  geom_point(aes(x=14,y=rt),size=4,colour="red")
+```
+
+- observations with high **leverage** are inconsistent with other data, but may not be distorting the model
+
+## Influence
+
+```{r}
+#| label: baddata3
+#| echo: false
+#| fig-asp: 0.6
+#| fig-align: center
+
+m1 <- lm(RT~BloodAlc,data=d20)
+rt=coef(m1)[1]+13*coef(m1)[2]+rnorm(1,sd=10)-250
+b20 <- d20 %>% select(RT,BloodAlc) %>% add_row(BloodAlc=13,RT=rt)
+m <- lm(RT~BloodAlc,data=b20)
+p + geom_abline(intercept=coef(m)[1],slope=coef(m)[2],colour="red",linewidth=1.5) +
+  geom_point(aes(x=13,y=rt),size=4,colour="red")
+```
+
+- we care about observations with high **influence** (outliers with high leverage)
+
+## Cook's Distance
+
+
+```{r}
+#| label: cook
+#| fig-asp: 0.6
+#| fig-align: center
+#| echo: false
+tb <- d20 |> mutate(y1=predict(m1),y2=predict(m)[-21])
+d20 |> ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3) + geom_point(aes(x=13,y=rt),size=4,colour="red") +
+  geom_abline(intercept=coef(m1)[1],slope=coef(m1)[2],colour="blue",linewidth=1.5) +
+  geom_abline(intercept=coef(m)[1],slope=coef(m)[2],colour="red",linewidth=1.5) +
+  geom_segment(data=tb,aes(x=BloodAlc,xend=BloodAlc,y=y1,yend=y2),linetype="31",colour="orange",linewidth=1)
+```
+
+- a standardised measure of "how much the model differs without observation $i$"
+
+## Cook's Distance
+
+:::: {.columns}
+
+::: {.column width="67%"}
+
+$$D_i=\frac{\sum_{j=1}^{n}{(\hat{y}_j-\hat{y}_{j(i)})^2}}{(p+1)\hat{\sigma}^2}$$
+
+- $\hat{y}_j$ is the $j$th fitted value
+- $\hat{y}_{j(i)}$ is the $j$th value from a fit which doesn't include observation $i$
+- $p$ is the number of regression coefficients
+- $\hat{\sigma}^2$ is the estimated variance from the fit, i.e., mean squared error
+
+:::
+
+::: {.column width="33%"}
+![](img/playmo_wizard.jpg)
+:::
+
+::::
+
+## Cook's Distance
+
+
+```{r}
+#| label: scramble
+#| include: false
+b20 <- b20 |> slice_sample(n=21)
+bad <- lm(RT~BloodAlc,data=b20)
+```
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| label: cook2
+#| fig-asp: 0.8
+#| fig-show: hide
+plot(bad,which=4)
+```
+
+
+- observations labelled by row
+
+- various rules of thumb, but start looking when Cook's Distance > 0.5
+:::
+
+::: {.column width="50%"}
+
+
+![](`r knitr::fig_chunk('cook2','svg')`)
+:::
+
+::::
+
+::: notes
+- I've deliberately added an influential observation to the data here
+:::
+
+## Cook's Distance {visibility="uncounted"}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| label: ncook
+#| fig-asp: 0.8
+#| fig-show: hide
+plot(mod,which=4)
+```
+
+
+- observations labelled by row
+
+- various rules of thumb, but start looking when Cook's Distance > 0.5
+:::
+
+::: {.column width="50%"}
+
+
+![](`r knitr::fig_chunk('ncook','svg')`)
+:::
+
+::::
+
+
+## So Now We Know... {.smaller}
+
+:::: {.columns}
+
+::: {.column width="55%"}
+::: {#id0}
+- the relationship is approximately linear
+:::
+::: {.fragment fragment-index=1}
+- the residuals are approximately normal
+:::
+::: {.fragment fragment-index=2}
+- the variance is approximately homogeneous
+:::
+::: {.fragment fragment-index=3}
+- we _believe_ the observations are independent
+:::
+::: {.fragment fragment-index=4}
+- there are no overly-influential observations
+:::
+
+:::
+
+::: {.column width="45%"}
+:::: r-stack
+[![](`r knitr::fig_chunk('resid1','svg')`)]{.fragment fragment-index=1 .fade-out}
+
+[![](`r knitr::fig_chunk('resid4','svg')`)]{.fragment fragment-index=1 .fade-in-then-out}
+
+[![](`r knitr::fig_chunk('resid5','svg')`)]{.fragment fragment-index=2 .fade-in-then-out}
+
+[![](img/playmo_dice.jpg){width="50%" .center-img}]{.fragment fragment-index=3 .fade-in-then-out}
+
+[![](`r knitr::fig_chunk('ncook','svg')`)]{.fragment fragment-index=4 .fade-in-then-out}
+
+::: {.fragment fragment-index=5}
+```{r}
+#| echo: false
+#| output-line-numbers: "12,17,18"
+summary(mod)
+```
+
+
+:::
+::::
+:::
+
+::::
+
+::: {.myyellowblock .space-above .fragment fragment-index=5}
+- we are ready to report our observations
+:::
+
 <!-- ABOVE HERE -->
 
 ## What We Know
@@ -898,3 +1247,229 @@ Reaction time slowed by `r .rround(coef(mod)[2],1)` ms for every additional 0.0
 
 ::::
 
+# Multiple Regression
+
+## Learning to Read {.smaller}
+
+```{r}
+#| label: makedat
+#| include: false
+# library(broom)
+# doit <- TRUE
+# 
+# while (doit) {
+#   reading <- tibble(
+#     age=runif(50,5,11),
+#     hrs_wk=rnorm(50,5,1),
+#     method=gl(2,25,labels=c("phonics","word"))
+#   )
+# 
+#   reading <- reading %>% mutate(
+#     R_AGE=age + hrs_wk/2 - ifelse(method=="word",2,0)
+#   )
+# 
+#   reading <- reading %>% mutate(
+#     R_AGE=R_AGE+hrs_wk*ifelse(method=="word",0,.6)
+#   )
+# 
+#   reading <- reading %>% mutate(
+#     R_AGE=R_AGE-.03*age*hrs_wk
+#   )
+# 
+#   reading <- reading %>% mutate(
+#     R_AGE=R_AGE+rnorm(50,sd=.5)
+#   )
+# 
+#   m <- lm(R_AGE ~ method,data=reading) %>% tidy() %>% mutate(sig=(p.value<.05))
+#   if (!m$sig[2]) {
+#     next
+#   }
+# 
+#   m <- lm(R_AGE~age+hrs_wk,data=reading) %>% tidy() %>% mutate(sig=(p.value<.05))
+# 
+#   if (sum(m$sig[2:3])!=2) {
+#     next
+#   }
+# 
+#   m <- lm(R_AGE ~ hrs_wk*method,data=reading) %>% tidy() %>% mutate(sig=(p.value<.05))
+#   if (!m$sig[4]) {
+#     next
+#   }
+# 
+#   m <- lm(R_AGE ~ age*hrs_wk,data=reading) %>% tidy() %>% mutate(sig=(p.value<.05))
+#   if (!m$sig[4]) {
+#     next
+#   }
+# 
+#   doit <- FALSE
+# 
+# }
+# 
+# save(reading,file = "R/reading.Rdata")
+
+load("R/reading.Rdata")
+```
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/playmo_teach.jpg)
+:::
+
+::: {.column width="50%"}
+- the Playmo School has been evaluating its reading programmes, using 50 students
+
+- ages of students
+
+- hours per week students spend reading of their own volition
+
+- whether they are taught using phonics or whole-word methods
+
+- **outcome: "reading age"**
+
+:::
+
+::::
+
+## Learning to Read {visibility="uncounted"}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/playmo_teach.jpg)
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: showdat
+#| echo: false
+library(gt)
+reading |> slice(c(1:5,46:50)) |> gt() |>
+  tab_options(table.font.size=pct(70)) |>
+  fmt_number(decimals=1)
+```
+:::
+
+::::
+
+::: notes
+
+- this is just some of the data in the dataframe
+
+- on the right you can see the outcome variable, `R_AGE` for reading age.
+
+- note that I tend to put my dependent variables in all caps, just so that I can recognise at a glance that they're what we measured.
+
+:::
+
+
+## Learning to Read {visibility="uncounted"}
+
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/playmo_teach.jpg)
+:::
+
+::: {.column width="50%"}
+```{r}
+#| echo: false
+reading |> slice(c(1:5,46:50)) |> gt() |>
+  data_color(columns=c("hrs_wk","R_AGE"),colors="#d0d9ff",alpha=.8) |> tab_options(table.font.size=pct(70)) |>
+  fmt_number(decimals=1)
+```
+:::
+
+::::
+
+## Does Practice Affect Reading Age?
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 20 }
+#| fig-asp: .6
+p <- reading |>
+  ggplot(aes(x=hrs_wk,
+             y=R_AGE)) +
+  geom_point(size=3) +
+  ylab("reading age") +
+  xlab("hours reading/week")
+p
+
+```
+
+- hours per week is correlated with reading age: [_r_=`r cor(reading$hrs_wk,reading$R_AGE)`,]{.nobrk}
+[_p_=`r cor.test(reading$hrs_wk,reading$R_AGE)$p.value`]{.nobrk}
+
+- we can use a linear model to say something about the effect size
+
+## Does Practice Affect Reading Age?
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 20 }
+#| fig-asp: 0.6
+p + geom_smooth(method="lm")
+```
+
+```{r}
+#| include: false
+mod <- lm(R_AGE~hrs_wk,data=reading)
+```
+
+. . .
+
+- each extra hour spent reading a week adds `r .rround(coef(mod)[2])` years to reading age
+
+## A Linear Model
+
+```{r}
+#| label: lm1
+#| output-line-numbers: "7,11,12,17,18"
+mod <- lm(R_AGE ~ hrs_wk, data=reading)
+summary(mod)
+```
+
+---
+
+[but...]{.r-fit-text}
+
+---
+```{r}
+#| label: diagp2
+#| echo: false
+#| fig-asp: 0.7
+#| fig-align: center
+par(mfrow=c(2,2))
+plot(mod,which=1:4)
+```
+
+## Assumptions Not Met!
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- it seems that the assumptions aren't met for this model
+
+- (another demonstration on the right)
+
+- one reason for this can be because there's still systematic structure in the residuals
+
+- i.e., _more than one thing_ which can explain the variance
+:::
+
+::: {.column width="50%"}
+```{r}
+#| echo: false
+#| fig-align: center
+
+ggplot(data=data.frame(x=resid(mod)),aes(x=x)) +
+  geom_density(linewidth=2) +
+  xlab("model residuals") +
+  ylab("density")
+```
+
+:::
+
+::::
