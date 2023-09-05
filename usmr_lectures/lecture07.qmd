@@ -1,0 +1,110 @@
+---
+title: "Scaling, Contrasts, Interactions"
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+source('_theme/theme_quarto.R')
+```
+
+# Scaling
+
+## Learning to Read
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/playmo_teach.jpg)
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: showdat
+#| echo: false
+library(gt)
+load("R/reading.Rdata")
+
+## NB running model for next slide here
+mod.m <- lm(R_AGE ~ age+hrs_wk, data=reading)
+reading %>% slice(c(1:5,46:50)) %>% gt() %>%
+  data_color(columns=c("age","hrs_wk","R_AGE"),colors="#d0d9ff",alpha=.8)
+```
+:::
+
+::::
+
+## Learning to Read
+
+```{r}
+#| label: modrsum
+#| echo: false
+.pp(summary(mod.m),l=list(0,10:13,0))
+```
+
+## Learning to Read {visibility="uncounted"}
+```{r}
+#| label: modrsum2
+#| echo: false
+#| output-line-numbers: "3"
+<<modrsum>>
+```
+
+- as we noted last week, the _intercept_ for this model is nonsensical
+
+  + "children aged zero who read for zero hours a week have a predicted reading age of `r .rround(coef(mod.m)[1],2)`"
+
+- perhaps there's something we can do about this?
+
+## One-Predictor Model
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- let's start with a model with a _single_ predictor of age
+
+```{r}
+#| label: ggp
+#| fig-asp: 0.6
+#| fig.show: hide
+#| tidy.opts: { width.cutoff: 22 }
+# model
+mod2 <- lm(R_AGE ~ age,data=reading)
+
+# figure
+reading |> ggplot(aes(x=age,y=R_AGE)) +
+  xlab("age (yrs)") + ylab("reading age (yrs)") +
+  geom_point(size=3) +
+  geom_smooth(method="lm")
+```
+
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('ggp','svg')`)
+:::
+
+::::
+
+::: aside
+we know this model doesn't meet assumptions, but it will work for an illustration
+:::
+
+## Animation?
+
+```{r}
+library(gganimate)
+ss <- seq(0,8,by=.1)
+xl <- range(reading$age)
+
+
+p <- reading |> ggplot(aes(x=age,y=R_AGE)) +
+  xlab("age (yrs)") + ylab("reading age (yrs)") +
+  geom_point(size=3) +
+  geom_smooth(method="lm") +
+  transition_time(hrs_wk)
+
+```
+
