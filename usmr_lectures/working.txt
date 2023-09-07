@@ -1,0 +1,1091 @@
+
+---
+# Changing the Intercept
+
+.pull-left[
+- actually it's fairly easy to move the intercept
+
+- we can just pick a "useful-looking" value
+
+- for example, we might want the intercept to tell us about students at age 8
+
+  + this is a decision; no magic about it
+]
+
+.pull-right[
+```{r}
+#| label: ggp2
+#| fig.asp: 0.6
+#| echo: false
+p + theme(axis.text.x = element_text(colour = "red")) +
+  scale_x_continuous(breaks=c(6,8,10),labels=c("6-8","8-8","10-8"))
+```
+
+]
+---
+count: false
+
+# Changing the Intercept
+
+.pull-left[
+- actually it's fairly easy to move the intercept
+
+- we can just pick a "useful-looking" value
+
+- for example, we might want the intercept to tell us about students at age 8
+
+  + this is a decision; no magic about it
+]
+
+.pull-right[
+```{r}
+#| label: ggp3
+#| fig.asp: 0.6
+#| echo: false
+p + theme(axis.text.x = element_text(colour = "red")) +
+  scale_x_continuous(breaks=c(6,8,10),labels=c("-2","0","2")) +
+  geom_vline(xintercept=8,linetype="dashed",colour="red")
+```
+
+]
+
+---
+# A Model With a New Intercept
+
+### original model
+```{r}
+#| label: oldm
+#| echo: false
+.pp(summary(mod2),l=list(0,10:12,0))
+```
+
+### new model
+```{r}
+#| label: newm
+#| eval: false
+mod2b <- lm(R_AGE ~ I(age-8), data=reading) #<<
+summary(mod2b)
+```
+```{r}
+#| label: newm2
+#| echo: false
+mod2b <- lm(R_AGE ~ I(age-8), data=reading)
+.pp(summary(mod2b),l=list(0,10:12,0))
+```
+
+---
+# Fit Remains Unchanged
+
+### original model
+```{r}
+#| label: oldm3
+#| echo: false
+.pp(summary(mod2),l=list(0,17:18))
+```
+
+### new model
+
+```{r}
+#| label: newm3
+#| echo: false
+.pp(summary(mod2b),l=list(0,17:18))
+```
+
+---
+# A Model with a New Slope
+
+.pull-left[
+- it's also easy to linearly scale the slope
+
+- we can just pick a "useful" scale
+
+- for example, we might want to examine the effect per month of age
+
+  + this is a decision; no magic about it
+]
+
+.pull-right[
+```{r}
+#| label: ggp5
+#| echo: false
+#| fig.asp: 0.6
+p + theme(axis.text.x = element_text(colour = "red")) +
+  scale_x_continuous(breaks=c(6,8,10),labels=c("6*12","8*12","10*12"))
+```
+]
+
+---
+count: false
+# A Model with a New Slope
+
+.pull-left[
+- it's also easy to linearly scale the slope
+
+- we can just pick a "useful" scale
+
+- for example, we might want to examine the effect per month of age
+
+  + this is a decision; no magic about it
+]
+
+.pull-right[
+```{r}
+#| label: ggp4
+#| echo: false
+#| fig.asp: 0.6
+p + theme(axis.text.x = element_text(colour = "red")) +
+  scale_x_continuous(breaks=c(6,8,10),labels=c("72","96","120"))
+```
+]
+
+---
+# A Model With a New Slope
+
+### original model
+```{r}
+#| label: oldm5
+#| echo: false
+.pp(summary(mod2),l=list(0,10:12,0))
+```
+
+### new model
+```{r}
+#| label: newm5
+#| eval: false
+mod2c <- lm(R_AGE ~ I(age*12), data=reading) #<<
+summary(mod2c)
+```
+```{r}
+#| label: newm6
+#| echo: false
+mod2c <- lm(R_AGE ~ I(age*12), data=reading)
+.pp(summary(mod2c),l=list(0,10:12,0))
+```
+
+---
+# Fit Remains Unchanged
+
+### original model
+```{r}
+#| label: oldm7
+#| echo: false
+.pp(summary(mod2),l=list(0,17:18))
+```
+
+### new model
+
+```{r}
+#| label: newm7
+#| echo: false
+.pp(summary(mod2c),l=list(0,17:18))
+```
+
+---
+# We Can Get Fancy About This
+
+```{r}
+#| label: mm
+mod.mb <- lm(R_AGE ~ I((age-8)*12) + I(hrs_wk-mean(hrs_wk)), data=reading)
+summary(mod.mb)
+```
+
+---
+# Which Has a Bigger Effect?
+
+.flex.items-center[
+.w-40.pa2[
+![](lecture_8_files/img/playmo_age.jpg)
+]
+
+.w-60.pa2[
+- in our two-predictor model, is age more important than practise?  Or vice-versa?
+
+- hard to tell because the predictors are in different _units_
+
+```{r}
+#| label: sumsum
+#| echo: false
+<<modrsum>>
+```
+
+
+-  how do we compare effects of a year of age to those of an hour per week of practise?
+]]
+
+---
+# Standardisation
+
+- _if_ the predictors and outcome are very roughly normally distributed...
+
+.center[
+```{r}
+#| label: hist
+#| fig.asp: 0.25
+#| fig.width: 9.0
+#| echo: false
+reading %>% select(-method) %>% gather %>%
+  ggplot(aes(x=value)) +
+  stat_density() +
+  facet_wrap(~key, scales="free_x") +
+  theme(axis.title.x=element_blank())
+```
+]
+- we can calculate $z$-scores by subtracting the mean and dividing by the standard deviation
+
+$$z_i=\frac{x_i-\bar{x}}{\sigma_x}$$
+
+---
+# Standardisation
+
+- in R, the `scale()` function calculates $z$-scores
+
+- in R, you don't need to create new columns!
+  + also don't need to use `I()` because no ambiguity (though you can use it if you want)
+
+```{r}
+#| label: mods
+mod.ms <- lm(scale(R_AGE) ~ scale(age) + scale(hrs_wk), data=reading)
+```
+
+--
+
+- the variables are now _all_ in terms of standard deviations from the mean
+
+- at the _intercept_, `age` is the mean of age and `hrs_wk` is the mean of hrs_wk
+
+- _slopes_: "how many standard deviations does `R_AGE` change for a one standard deviation change in the predictor?"
+
+- model fit won't change
+
+---
+# Standardisation
+
+```{r}
+#| label: showme
+#| eval: false
+summary(mod.ms)
+```
+```{r}
+#| label: showme2
+#| echo: false
+.pp(summary(mod.ms),l=list(0,10:13,0))
+```
+
+
+- `R_AGE` changes `r .rround(coef(mod.ms)[2],2)` sds for a 1-sd change in `age`, and `r .rround(coef(mod.ms)[3],2)` sds for a 1-sd change in `hrs_wk`
+
+- reasonable conclusion might be that `r ifelse(coef(mod.ms)[2] > coef(mod.ms)[3],"age","practice")` has a greater effect on reading age than does `r ifelse(coef(mod.ms)[2] > coef(mod.ms)[3],"practice","age")`
+
+???
+- we _expect_ the intercept to be zero because it's the mean of everything
+
+--
+
+- model fit doesn't change with standardisation
+
+```{r}
+#| label: showme3
+#| echo: false
+.pp(summary(mod.ms),l=list(0,18:19))
+```
+
+---
+# Standardisation Post-Hoc
+
+- we can convert "raw" model coefficients $b$ to standardised coefficients $\beta$ without re-running the regression]
+
+- for predictor $x$ of outcome $y$:
+
+$$\beta_x=b_x\cdot{}\frac{\sigma_x}{\sigma_y}$$
+- or there's a function to do it for you
+
+```{r}
+#| label: lsr
+library(lsr)
+standardCoefs(mod.m)
+```
+
+
+---
+class: inverse, center, middle, animated, rotateInDownLeft
+
+# End of Part 1
+
+---
+class: inverse, center, middle
+
+# Part 2
+## Categorical Predictors
+
+---
+# Playmobil vs. SuperZings
+
+.pull-left[
+![](lecture_8_files/img/playmo_2.jpg)
+]
+.pull-right[
+- some important pretesting went into these lectures
+
+- every individual figure rated for "usefulness" in explaining stats
+
+- how do we decide which to use?
+]
+
+---
+count: false
+#Playmobil vs. SuperZings
+
+.pull-left[
+```{r}
+#| label: makedat
+#| echo: false
+library(gt)
+doit <- 1
+while (doit) {
+  toys <- tibble(type=gl(2,1,10,labels=c('playmo','zing')),UTILITY=round(runif(10,0,10),1))
+  tt <- toys %>% group_by(type) %>% summarise(mean=mean(UTILITY))
+  if (tt$mean[1] <= tt$mean[2]) {
+    next
+  }
+  if (t.test(UTILITY~type,data=toys)$p.value < .05)
+  {
+    doit <- 0
+  }
+}
+
+toys %>% gt() %>%
+  data_color("type",c("red","blue"),alpha=0.3)
+```
+
+
+]
+.pull-right[
+- some important pretesting went into these lectures
+
+- every individual figure rated for "usefulness" in explaining stats
+
+- how do we decide which to use?
+
+]
+---
+# Playmobil vs. SuperZings
+
+.pull-left[
+```{r}
+#| label: gt2
+#| echo: false
+toys %>% gt() %>%
+  data_color("type",c("red","blue"),alpha=0.3)
+```
+]
+
+.pull-right[
+
+- we already know one way to answer this
+
+```{r}
+#| label: ttest
+#| highlight.output: 5.0
+t.test(UTILITY~type, data=toys,
+       var.equal=TRUE) #<<
+```
+]
+
+---
+# The Only Equation You'll Ever Need
+
+- which toys are the most useful?
+
+.br3.pa2.bg-gray[
+$$\color{red}{\textrm{outcome}_i}\color{white}=\color{blue}{(\textrm{model})_i}\color{white}{+\textrm{error}_i}$$
+
+$$\color{red}{\textrm{utility}_i}\color{white}{=}\color{blue}{(\textrm{some function of type})_i}\color{white}{+\epsilon_i}$$
+]
+
+- we need to represent `type` as a number
+
+- the simplest way of doing this is to use 0 or 1
+---
+# Quantifying a Nominal Predictor
+
+.pull-left[
+```{r}
+#| label: qu
+toys <- toys %>%
+  mutate(is_playmo =
+           ifelse(type=="playmo",1,0))
+toys
+```
+]
+
+--
+
+.pull-right[
+- this maps to a linear model
+
+
+$$\color{red}{\textrm{utility}_i}=\color{blue}{b_0+b_1\cdot{}\textrm{is_playmo}}+\epsilon_i$$
+
+
+- $\overline{\textrm{utility}}$ for SuperZings is **intercept**
+
+- "change due to playmo-ness" is **slope**
+
+]
+
+---
+# Linear Model Using `is_playmo`
+
+```{r}
+#| label: lm1
+#| highlight.output: 12.0
+mod1 <- lm(UTILITY~is_playmo,data=toys)
+summary(mod1)
+```
+???
+- note that the $t$ value (and the $p$ value) are exactly what we got from our initial $t$-test
+
+- the $t$-test is just a special case of the linear model
+---
+# Let R Do the Work
+
+```{r}
+#| label: lm2
+contrasts(toys$type)
+```
+
+- already built-in to factors
+
+- NB the first value will be the default intercept (because $b_n=0$ for that value)
+
+  + can change this using the `relevel()` function (or tidyverse `fct_relevel()`)
+
+- as long as we have a _factor_, can just use lm() with that column
+
+---
+# Linear Model Using `type`
+
+```{r}
+#| label: lm3
+#| highlight.output: 12.0
+mod2 <- lm(UTILITY~type, data=toys)
+summary(mod2)
+```
+
+???
+- point out why sign is reversed!
+
+- point out `typezing` label
+---
+# Graphically
+
+.center[
+```{r}
+#| label: ggpA
+#| echo: false
+#| fig.asp: 0.55
+#| fig.width: 6.0
+toys %>% ggplot(aes(x=type,y=UTILITY)) +
+  geom_point(size=3) +
+  geom_smooth(aes(x=2-is_playmo),method="lm")
+```
+]
+
+- shows "what the model is doing", but isn't a very good presentation
+
+- the line suggests you can make predictions for types between _playmo_ and _zing_
+---
+# Graphically
+
+.center[
+```{r}
+#| label: ggpB
+#| echo: false
+#| fig.asp: 0.55
+#| fig.width: 6.0
+gd <- toys %>% group_by(type) %>% summarise(mean_se(UTILITY))
+gd %>% ggplot(aes(x=type,y=y,ymin=ymin,ymax=ymax,fill=type)) +
+  geom_bar(stat="identity") +
+  geom_errorbar(width=.2) +
+  scale_fill_manual(values=c('#E69F00','#999999')) +
+  ylab("UTILITY") +
+  theme(legend.position = "none")
+```
+]
+
+- error bars represent one standard error of the mean
+
+---
+# What About Lego Figures?
+
+.pull-left[
+![](lecture_8_files/img/playmo_3.jpg)
+]
+
+.pull-right[
+```{r}
+#| label: addlego
+#| include: false
+t1 <- toys %>% filter(type=='playmo')
+doit <- 1
+while (doit) {
+  t2 <- tibble(type="lego",UTILITY=round(runif(5,0,10),1))
+  if (mean(t1$UTILITY) > mean(t2$UTILITY) && t.test(t1$UTILITY,t2$UTILITY,data=toys)$p.value < .05)
+  {
+    doit <- 0
+  }
+}
+toys <- toys %>% select(-is_playmo) %>% full_join(t2)
+toys <- toys %>% group_by(type) %>% mutate(id=1:n()) %>% ungroup() %>% arrange(id,desc(type)) %>% select(-id) %>% mutate(type=as_factor(type))
+```
+
+
+- we now have three groups
+
+- can't label them `c(0, 1, 2)` because that would express a linear relationship
+
+```{r}
+#| label: minig
+#| echo: false
+#| fig.asp: 0.6
+toys %>% ggplot(aes(x=as.numeric(as.factor(type))-1,y=UTILITY)) +
+  geom_point(size=2) +
+  scale_x_continuous(name="type",c(0,1,2)) +
+  geom_smooth(se=FALSE,linetype="dashed") +
+  annotate("text",x=1.7,y=6,label="??",colour="red",size=20)
+```
+
+
+]
+
+---
+# Independent Effects
+
+- "change due to lego-ness" is _independent_ of change due to anything else
+
+- solution: add another predictor
+
+```{r}
+#| label: addthem
+toys <- toys %>% mutate(
+  is_playmo = ifelse(type=="playmo",1,0),
+  is_lego   = ifelse(type=="lego",1,0)
+)
+head(toys)
+```
+
+---
+# Three-Level Predictor: Two Coefficients
+
+.flex.items-center[
+.w-40.pa2[
+
+```{r}
+#| label: gtt
+#| echo: false
+head(toys) %>% gt() %>%
+   tab_style(
+    style = list(
+      cell_fill(color = "#a2a2ff")
+    ),
+    locations = cells_body(
+      rows = c(1,4))
+  )
+```
+]
+
+.w-60.pa2[
+
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot\textrm{is_playmo}_i+b_2\cdot\textrm{is_lego}_i}+\epsilon_i$$
+
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot0+b_2\cdot0}+\epsilon_i$$
+.tc.pt3[
+"utility of a zing"
+]
+]]
+
+
+---
+count: false
+# Three-Level Predictor: Two Coefficients
+
+.flex.items-center[
+.w-40.pa2[
+
+```{r}
+#| label: gtt2
+#| echo: false
+head(toys) %>% gt() %>%
+   tab_style(
+    style = list(
+      cell_fill(color = "#ffa2a2")
+    ),
+    locations = cells_body(
+      rows = c(2,5))
+  )
+```
+]
+
+.w-60.pa2[
+
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{red}{+b_1\cdot\textrm{is_playmo}_i}+\color{gray}{b_2\cdot\textrm{is_lego}_i}+\epsilon_i$$
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{red}{+b_1\cdot1}+\color{gray}{b_2\cdot0}+\epsilon_i$$
+.tc.pt3[
+"change in utility from a zing due to being a playmo"
+]
+]]
+
+---
+count: false
+# Three-Level Predictor: Two Coefficients
+
+.flex.items-center[
+.w-40.pa2[
+
+```{r}
+#| label: gtt3
+#| echo: false
+head(toys) %>% gt() %>%
+   tab_style(
+    style = list(
+      cell_fill(color = "#ffa2a2")
+    ),
+    locations = cells_body(
+      rows = c(3,6))
+  )
+```
+]
+
+.w-60.pa2[
+
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot\textrm{is_playmo}_i}+\color{red}{b_2\cdot\textrm{is_lego}_i}+\epsilon_i$$
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot0}+\color{red}{b_2\cdot1}+\epsilon_i$$
+.tc.pt3[
+"change in utility from a zing due to being a lego"
+]
+]]
+
+---
+# R Has Our Backs
+
+.pull-left[
+- this is the _default_ contrast coding in R
+
+- known as **treatment** (or **dummy**) contrasts
+
+
+```{r}
+#| label: cont2
+contrasts(toys$type)
+```
+]
+
+--
+
+.pull-right[
+### a subtle difference .fr[![:scale 80%](lecture_8_files/img/danger.svg)]
+
+```{r}
+#| include: false
+toys$type <- as.character(toys$type)
+```
+
+```{r}
+#| label: asf
+# core R: alphabetical
+contrasts(as.factor(toys$type))
+# tidyverse: order of mention
+contrasts(as_factor(toys$type))
+```
+
+```{r}
+#| include: false
+toys$type <- as_factor(toys$type)
+```
+]
+---
+# A Linear Model
+
+```{r}
+#| label: lm22
+mod <- lm(UTILITY ~ type, data=toys)
+summary(mod)
+```
+???
+- this is like a form of multiple regression
+
+  + 3 levels -> 2 predictors
+
+- so we can say that playmo are better than zing (we can see that zing is the intercept because it's omitted from the table)
+
+- we can say that lego are not better than zing
+
+- _playmo and lego are not directly compared_
+
+- to do this, we would need a different contrast coding scheme
+
+---
+![:scale 5%](lecture_8_files/img/danger.svg) &nbsp;&nbsp; .f1[Graphically]
+
+.pull-left[
+```{r}
+#| label: ggpB2
+#| fig.asp: 0.6
+#| fig.show: hide
+gd <- toys %>% group_by(type) %>%
+  summarise(mean_se(UTILITY))
+gd
+
+gd %>% ggplot(aes(x=type,y=y,
+                  ymin=ymin,ymax=ymax)) +
+  geom_bar(stat="identity") +
+  geom_errorbar(width=.2) +
+  ylab("UTILITY")
+```
+
+]
+.pull-right[
+![](lecture_8_files/figure-html/ggpB2-1.svg)
+]
+---
+# Contrast Coding
+
+- there may be a different contrast coding which better suits our research interests
+
+- for a predictor with $g$ levels (or "groups") there are $g-1$ possible contrasts
+
+- these can be anything you like (values don't have to be zero or one):  there are a few built in to R
+
+- usefulness depends on your research question
+
+- contrasts act like "tests of differences of interest" once your model has been fit
+
+- model fit is not affected by the choice of contrasts<sup>1</sup>
+
+.footnote[
+<sup>1</sup> for type 1 sums of squares
+]
+
+---
+class: inverse, center, middle, animated, rotateInDownLeft
+
+# End of Part 2
+---
+class: inverse, center, middle
+
+# Part 3
+## Interactions
+---
+# Back to Reading
+
+.pull-left[
+![](lecture_8_files/img/playmo_teach.jpg)
+]
+.pull-right[
+.center[
+```{r}
+#| label: showdat2
+#| echo: false
+## NB running model for next slide here
+mod.m <- lm(R_AGE ~ method, data=reading)
+reading %>% slice(c(1:5,46:50)) %>% gt() %>%
+  data_color(columns=c("method","R_AGE"),colors="#d0d9ff",alpha=.8)
+```
+]]
+
+---
+# We Know Enough to Fit a Linear Model
+
+```{r}
+#| label: lmr
+mod3 <- lm(R_AGE~method,data=reading)
+summary(mod3)
+```
+
+---
+# We Know Enough to Draw a Graph
+
+.center[
+```{r}
+#| label: rg
+#| fig.asp: 0.6
+#| echo: false
+gd <- reading %>% group_by(method) %>% summarise(mean_se(R_AGE))
+gd %>% ggplot(aes(x=method,y=y,ymin=ymin,ymax=ymax)) +
+  geom_bar(stat="identity") +
+  geom_errorbar(width=.2)
+```
+]
+
+- we also know enough to run model diagnostics
+---
+.center[
+```{r}
+#| label: diag
+#| echo: false
+#| fig.asp: 0.7
+#| fig.width: 9.0
+par(mfrow=c(2,2))
+plot(mod3,which=1:4)
+```
+]
+---
+# Adding Predictors
+
+- we also know that `hrs_wk` affects reading age
+
+- we can build a multiple regression, and inspect the coefficients
+
+```{r}
+#| label: mr
+#| eval: false
+mod.m2 <- lm(R_AGE ~ hrs_wk + method,data=reading)
+summary(mod.m2)
+```
+```{r}
+#| label: mr2
+#| echo: false
+mod.m2 <- lm(R_AGE ~ hrs_wk + method,data=reading)
+.pp(summary(mod.m2),l=list(0,10:13,0))
+
+```
+
+
+???
+- we're sticking to the one predictor for simplicity here
+---
+# Graphically
+
+.center[
+```{r}
+#| label: fancyg
+#| fig.asp: 0.55
+#| fig.width: 6.0
+#| echo: false
+p <- reading %>% ggplot(aes(x=hrs_wk,y=R_AGE,colour=method)) +
+  xlab("practice") + ylab("reading age") +
+  geom_point(size=3)
+
+p + geom_abline(intercept=coef(mod.m2)[1],slope=coef(mod.m2)[2],colour="red") +
+  geom_abline(intercept=coef(mod.m2)[1]+coef(mod.m2)[3],slope=coef(mod.m2)[2],colour="blue")
+```
+]
+
+- note that according to this model the lines are parallel
+
+- an hour of practice has _exactly the same_ effect, however you're taught
+
+---
+# Different Effects for Different Methods
+
+```{r}
+#| label: mod33
+mod.m3 <- lm(R_AGE ~ hrs_wk + method + hrs_wk:method,data=reading)
+summary(mod.m3)
+```
+
+---
+# Different Effects for Different Methods
+
+.center[
+```{r}
+#| label: fif
+#| fig.asp: 0.55
+#| fig.width: 7.0
+#| echo: false
+p + geom_abline(intercept=coef(mod.m3)[1],slope=coef(mod.m3)[2],colour="red") +
+  geom_abline(intercept=coef(mod.m3)[1]+coef(mod.m3)[3],slope=coef(mod.m3)[2]+coef(mod.m3)[4],colour="blue")
+```
+]
+
+---
+# Interaction is Just Multiplication
+
+.br3.pa2.bg-gray.white[
+$$\hat{y}_i=b_0+b_1x_{1i}+b_2x_{2i}+\color{red}{b_3x_{1i}x_{2i}}$$
+]
+
+$$\widehat{\textrm{R_AGE}}=b_0+b_1\cdot\textrm{hrs_wk}+b_2\cdot\textrm{word}+b_3\cdot\textrm{hrs_wk}\cdot\textrm{word}$$
+- when $\textrm{word}=0$:
+
+$$\widehat{\textrm{R_AGE}}=b_0+b_1\cdot\textrm{hrs_wk}+\color{gray}{b_2\cdot0+b_3\cdot\textrm{hrs_wk}\cdot0}$$
+- when $\textrm{word}=1$:
+
+$$\widehat{\textrm{R_AGE}}=b_0+b_1\cdot\textrm{hrs_wk}+b_2\cdot1+b_3\cdot\textrm{hrs_wk}\cdot1$$
+
+---
+count: false
+# Interaction is Just Multiplication
+
+```{r}
+#| label: coefs
+#| include: false
+b0=.rround(coef(mod.m3)[1],2)
+b1=.rround(coef(mod.m3)[2],2)
+b2=.rround(coef(mod.m3)[3],2)
+b3=.rround(coef(mod.m3)[4],2)
+```
+
+
+.br3.pa2.bg-gray.white[
+$$\hat{y}_i=b_0+b_1x_{1i}+b_2x_{2i}+\color{red}{b_3x_{1i}x_{2i}}$$
+]
+
+$$\widehat{\textrm{R_AGE}}=\color{blue}{`r b0`}+\color{blue}{`r b1`}\cdot\textrm{hrs_wk}+\color{blue}{`r b2`}\cdot\textrm{word}+\color{blue}{`r b3`}\cdot\textrm{hrs_wk}\cdot\textrm{word}$$
+- when $\textrm{word}=0$:
+
+$$\widehat{\textrm{R_AGE}}=\color{blue}{`r b0`}+\color{blue}{`r b1`}\cdot\textrm{hrs_wk}+\color{gray}{`r b2`\cdot0+`r b3`\cdot\textrm{hrs_wk}\cdot0}$$
+- when $\textrm{word}=1$:
+
+$$\widehat{\textrm{R_AGE}}=\color{blue}{`r b0`}+\color{blue}{`r b1`}\cdot\textrm{hrs_wk}+\color{blue}{`r b2`}\cdot1+\color{blue}{`r b3`}\cdot\textrm{hrs_wk}\cdot1$$
+
+---
+# A Nice Graph
+
+.pull-left[
+```{r}
+#| label: ng
+#| fig.asp: 0.6
+#| fig.show: hide
+reading %>% ggplot(
+  aes(x=hrs_wk,y=R_AGE,colour=method)) +
+  xlab("practice") +
+  ylab("reading age") +
+  geom_point(size=3) +
+  geom_smooth(method="lm")
+```
+]
+
+.pull-right[
+![](lecture_8_files/figure-html/ng-1.svg)
+]
+
+---
+# Interaction Really _Is_ Just Multiplication
+
+- in our dataset it's also possible that age and practice interact
+
+.br3.pa2.bg-gray.white.tc[
+"effect of practice is not constant across ages"
+
+$$\hat{y}_i=b_0+b_1x_{1i}+b_2x_{2i}+\color{red}{b_3x_{1i}x_{2i}}$$
+]
+
+```{r}
+#| label: int1
+#| eval: false
+mod.m4 <- lm(R_AGE ~ age + hrs_wk + age:hrs_wk, data=reading)
+```
+
+--
+
+.tc.pt2[
+`a + b + a:b` can also be written `a * b`
+]
+
+```{r}
+#| label: int2
+mod.m4 <- lm(R_AGE ~ age * hrs_wk, data=reading)
+```
+
+---
+# Interaction of Age and Practice
+
+```{r}
+#| label: int3
+#| highlight.output: 14.0
+summary(mod.m4)
+```
+
+???
+- note that the effects of age and of practice are not reliably different from zero
+---
+# Interaction Effect
+
+```{r}
+#| label: int4
+#| echo: false
+b0=round(coef(mod.m4)[1],2)
+b1=round(coef(mod.m4)[2],2)
+b2=round(coef(mod.m4)[3],2)
+b3=round(coef(mod.m4)[4],2)
+.pp(summary(mod.m4),l=list(0,10:14,0))
+```
+
+.br3.pa2.bg-gray.white.tc[
+$$\widehat{\textrm{R_AGE}}_i=b_0+b_1\cdot\textrm{age}_i+b_2\cdot\textrm{hrs_wk}_i+b_3\cdot\textrm{age}_i\cdot\textrm{hrs_wk}_i$$
+]
+
+.pull-left[
+#### age 7; hrs_wk 5
+
+$$`r b0`+`r b1`\cdot7+`r b2`\cdot5+`r b3`\cdot7\cdot5$$
+$$\color{red}{=`r b0+7*b1+5*b2+35*b3`}$$
+]
+
+.pull-right[
+#### age 12; hrs_wk 6
+
+$$`r b0`+`r b1`\cdot12+`r b2`\cdot6+`r b3`\cdot12\cdot6$$
+$$\color{red}{=`r b0+12*b1+6*b2+72*b3`}$$
+]
+---
+# Significance
+
+```{r}
+#| label: intN
+#| echo: false
+#| highlight.output: !expr '3:5'
+.pp(summary(mod.m4),l=list(0,10:14,0))
+```
+
+- note that not all of the effects are significant
+
+- the model's best guess at the data ( $\widehat{\textrm{R_AGE}}$ ) is expressed by the coefficients
+
+- but we're not confident that the highlighted effects would reliably differ from zero less than 5% of the time if we repeatedly sampled from the same population
+
+- so the _predictions_ of the model are as above (and below) but our _conclusion_ is only that practise is more beneficial the older a child is
+
+---
+# Graphical Model
+
+```{r}
+#| label: psetup
+#| include: false
+library(plotly)
+steps=49
+age <- with(reading,seq(min(age),max(age),length=steps))
+hrs_wk <- with(reading,seq(min(hrs_wk),max(hrs_wk),length=steps))
+newdat <- expand.grid(age=age,hrs_wk=hrs_wk)
+```
+
+.center[
+```{r}
+#| label: plotly1
+#| echo: false
+#fit <- lm(R_AGE~age+hrs_wk,data=reading)
+R_AGE <- matrix(predict(mod.m4, newdat),steps,steps)
+plot_ly(x=~age,y=~hrs_wk,z=~R_AGE, type="surface") %>% layout(
+    scene = list(
+      xaxis = list(title = "age"),
+      yaxis = list(title = "practise"),
+      zaxis = list(title = "READING AGE"),
+      aspectmode = "cube"
+    ))
+#p <- persp(age,hrs_wk,R_AGE,theta=-25,phi=5,col=NA)
+```
+]
+
+---
+
+
+class: inverse, center, middle, animated, rotateInDownLeft
+
+# End
+
+---
+# Acknowledgements
+
+
+- icons by Diego Lavecchia from the [Noun Project](https://thenounproject.com/)

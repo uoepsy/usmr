@@ -1,0 +1,1541 @@
+---
+title: "Correlations"
+execute: 
+  fig-format: svg
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+source('_theme/theme_quarto.R')
+```
+
+# Correlation
+
+## Blood Alcohol and Reaction Time
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| label: ba
+#| fig.asp: 0.6
+#| echo: false
+
+set.seed(29)
+dat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=.4,
+                   varnames=c('BloodAlc','RT'))
+dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=3) -> dp
+dp # saved for much later
+```
+- data from 100 drivers
+- are blood alcohol and RT (linearly) related?
+
+:::
+
+::: {.column width="50%"}
+![](img/playmo_car.jpg)
+
+:::
+
+::::
+
+
+::: notes
+- the playmo crew have been out joyriding and were caught in a police speed trap
+
+- the police measured 100 people's blood alcohol and their reaction times
+
+- how would we go about telling whether two variables like this were related?
+:::
+
+
+## A Simplified Case
+
+:::: r-stack
+
+::: {#0}
+
+```{r}
+#| label: cor5
+#| echo: false
+#| fig.asp: 0.5
+#| fig-width: 6
+dat2 <- faux::rnorm_multi(n=5,
+                    mu=c(5,5),
+                    sd=c(2,2),
+                    r=.70,
+                    varnames=c('x','y'))
+p<- dat2 %>% ggplot(aes(x=x,y=y)) +
+  geom_point(size=5)
+p
+```
+:::
+
+
+::: {.fragment fragment-index=2}
+```{r}
+#| label: cor5a
+#| echo: false
+#| fig.asp: 0.5
+#| fig-width: 6
+dat2$xm <- mean(dat2$x)
+dat2$ym <- mean(dat2$y)
+p2 <- p +
+  geom_vline(xintercept=mean(dat2$x),colour="blue",linewidth=1.5) +
+  geom_segment(data=dat2,aes(xend=xm,yend=y),colour="blue",linetype="dotted",linewidth=1.5)
+p2
+```
+:::
+
+::: {.fragment fragment-index=3}
+```{r}
+#| label: cor5b
+#| echo: !expr F
+#| fig.asp: 0.5
+#| fig-width: 6
+p2 + geom_hline(yintercept=mean(dat2$y),colour="red",linewidth=1.5) +
+  geom_segment(data=dat2,aes(xend=x,yend=ym),colour="red",linetype="dotted",linewidth=1.5)
+```
+:::
+
+::::
+
+- does $y$ vary linearly with $x$?
+
+::: {.fragment fragment-index=1}
+
+- equivalent to asking "does $y$ differ from its mean in the same way that $x$ does?"
+
+:::
+
+:::: notes
+- here are the ways in which the values of $x$ differ from `mean(x)`
+- and here are the ways in which $y$ varies from its mean
+::::
+
+##  Covariance
+```{r}
+#| label: covlines
+#| echo: false
+#| fig-asp: 0.4
+#| fig-width: 10.0
+
+library(patchwork)
+dat2 <- dat2 %>% mutate(yd=y-ym, xd=x-xm)
+g1 <- dat2 %>% ggplot(aes(x=1:5,y=yd,fill="r")) +
+  scale_fill_manual(values=c("red")) +
+  scale_x_discrete(limit=1:5,labels=round(dat2$yd,2)) +
+  guides(fill=FALSE) +
+  geom_bar(stat="identity") +
+  xlab("") + ylab("y diff") + ylim(-4,3)
+g2 <- dat2 %>% ggplot(aes(x=1:5,y=xd,fill="r")) +
+  scale_fill_manual(values=c("blue")) +
+  scale_x_discrete(limit=1:5,labels=round(dat2$xd,2)) +
+  guides(fill=FALSE) +
+  geom_bar(stat="identity") +
+  xlab("") + ylab("x diff") + ylim(-4,3)
+g1/g2
+```
+
+- it's likely the variables are related **if observations differ proportionately from their means**
+
+
+## Covariance
+
+**variance**
+
+::: myblock
+$$ s^2 = \frac{\sum{(x-\bar{x})^2}}{n} = \frac{\sum{(x-\bar{x})(x-\bar{x})}}{n} $$
+:::
+
+
+
+:::: {.fragment}
+
+**covariance**
+
+::: myblock
+
+$$ \textrm{cov}(x,y) = \frac{\sum{\color{blue}{(x-\bar{x})}\color{red}{(y-\bar{y})}}}{n} $$
+:::
+
+::::
+
+::: notes
+- here we're using $n$, not $n-1$, because this is the whole population
+
+- for any (x,y), $x-\bar{x}$ might be positive and $y-\bar{y}$ might be positive, so the covariance could be a negative number
+:::
+
+## Covariance
+
+```{r}
+#| label: table
+#| include: false
+
+t <- dat2 |> select(xd,yd) |> mutate(xy=xd * yd) |> round(2)
+```
+
+| $\color{blue}{x-\bar{x}}$ | $\color{red}{y-\bar{y}}$ | $\color{blue}{(x-\bar{x})}\color{red}{(y-\bar{y})}$ |
+|------------:|------------:|-------------------------:|
+| `r t$xd[1]` | `r t$yd[1]` |              `r t$xy[1]` |
+| `r t$xd[2]` | `r t$yd[2]` |              `r t$xy[2]` |
+| `r t$xd[3]` | `r t$yd[3]` |              `r t$xy[3]` |
+| `r t$xd[4]` | `r t$yd[4]` |              `r t$xy[4]` |
+| `r t$xd[5]` | `r t$yd[5]` |              `r t$xy[5]` |
+|             |             |        **`r sum(t$xy)`** |
+
+
+
+$$\textrm{cov}(x,y) = \frac{\sum{(x-\bar{x})(y-\bar{y})}}{n} = \frac{`r sum(t$xy)`}{5} \simeq \color{red}{`r round(sum(t$xy)/5,2)`}$$
+
+
+::: notes
+I've rounded the numbers at the end to make this a bit neater on the slide
+:::
+
+
+## The Problem With Covariance {.smaller}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+**miles**
+
+| $x-\bar{x}$ | $y-\bar{y}$ | $(x-\bar{x})(y-\bar{y})$ |
+|------------:|------------:|-------------------------:|
+| `r t$xd[1]` | `r t$yd[1]` |              `r t$xy[1]` |
+| `r t$xd[2]` | `r t$yd[2]` |              `r t$xy[2]` |
+| `r t$xd[3]` | `r t$yd[3]` |              `r t$xy[3]` |
+| `r t$xd[4]` | `r t$yd[4]` |              `r t$xy[4]` |
+| `r t$xd[5]` | `r t$yd[5]` |              `r t$xy[5]` |
+|             |             |        **`r sum(t$xy)`** |
+
+$$\textrm{cov}(x,y)=\frac{`r sum(t$xy)`}{5}\simeq `r round(sum(t$xy)/5,2)`$$
+
+:::
+
+::: {.column width="50%"}
+
+**kilometres**
+
+```{r}
+#| label: mkm
+#| include: !expr F
+tk <- dat2 %>% select(xd,yd) %>% mutate(xd=xd * 1.60934,yd=yd * 1.60934) %>% mutate(xy=xd*yd) %>% round(2)
+```
+
+| $x-\bar{x}$ | $y-\bar{y}$ | $(x-\bar{x})(y-\bar{y})$ |
+|------------:|------------:|-------------------------:|
+| `r tk$xd[1]` | `r tk$yd[1]` |              `r tk$xy[1]` |
+| `r tk$xd[2]` | `r tk$yd[2]` |              `r tk$xy[2]` |
+| `r tk$xd[3]` | `r tk$yd[3]` |              `r tk$xy[3]` |
+| `r tk$xd[4]` | `r tk$yd[4]` |              `r tk$xy[4]` |
+| `r tk$xd[5]` | `r tk$yd[5]` |              `r tk$xy[5]` |
+|             |             |        **`r sum(tk$xy)`** |
+
+$$ \textrm{cov}(x,y)=\frac{`r sum(tk$xy)`}{5}\simeq `r round(sum(tk$xy)/5,2)` $$
+
+:::
+
+::::
+
+::: notes
+- these are exactly the same 'values' so they should each be as correlated as the other
+
+- so we need to divide covariance by something to represent the overall "scale" of the units
+:::
+
+## Correlation Coefficient ($r$)
+
+$$r = \frac{\textrm{covariance}(x,y)}{\textrm{standard deviation}(x)\cdot\textrm{standard deviation}(y)}$$
+
+
+:::: r-stack
+
+::: {.fragment .fade-in-then-out}
+
+$$r=\frac{\frac{\sum{(x-\bar{x})(y-\bar{y})}}{n}}{\sqrt{\frac{\sum{(x-\bar{x})^2}}{n}}\sqrt{\frac{\sum{(y-\bar{y})^2}}{n}}}$$
+:::
+
+::: {.fragment}
+
+$$r=\frac{\frac{\sum{(x-\bar{x})(y-\bar{y})}}{\color{red}{n}}}{\sqrt{\frac{\sum{(x-\bar{x})^2}}{\color{red}{n}}}\sqrt{\frac{\sum{(y-\bar{y})^2}}{\color{red}{n}}}}$$
+:::
+
+::::
+
+::: {.fragment}
+
+$$r=\frac{\sum{(x-\bar{x})(y-\bar{y})}}{\sqrt{\sum{(x-\bar{x})^2}}\sqrt{\sum{(y-\bar{y})^2}}}$$
+
+:::
+
+::: notes
+standardised covariance, ensuring that units have no effect
+:::
+
+## Correlation Coefficient
+
+- measure of _how related_ two variables are
+
+- $-1 \le r \le 1$ ($\pm 1$ = perfect fit; $0$ = no fit)
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('ba','svg')`)
+$$ r=`r cor(dat$BloodAlc,dat$RT)` $$
+
+:::
+
+::: {.column width="50%"}
+
+:::: r-stack
+
+::: {.fragment .fade-out fragment-index=1}
+![](img/playmo_car.jpg){width=70%}
+
+:::
+
+::: {.fragment fragment-index=1}
+
+```{r}
+#| label: ba2
+#| fig.asp: 0.6
+#| echo: false
+dat3 <- dat |> mutate(Blood = max(BloodAlc)-BloodAlc+min(BloodAlc))
+dat3 |> ggplot(aes(x=Blood,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=3)
+```
+
+$$ r=`r cor(dat3$Blood,dat$RT)` $$
+
+:::
+
+::::
+
+:::
+
+::::
+
+::: notes
+- on the left, we have the drunken drivers from our first slide, and you can see that there is a moderate positive correlation
+  + the higher your blood alcohol, the slower your RT
+  
+- on the right, we have a negative correlation: what the drivers _think_ happens
+  + the higher your blood alcohol, the _faster_ your RT
+:::
+
+
+## What Does the Value of _r_ Mean?
+
+```{r}
+#| label: lots
+#| fig.asp: 0.5
+#| echo: false
+#| fig-width: 18.0
+set.seed(13)
+ndat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p1 <- ndat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0") +
+  theme(plot.title = element_text(size = 30, colour="red")) +
+  ylim(500,850)
+ndat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0.2,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p2 <- ndat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0.2") +
+  theme(plot.title = element_text(size = 30, colour="red")) +
+  ylim(500,850)
+ndat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0.5,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p3 <- ndat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0.5") +
+  theme(plot.title = element_text(size = 30, colour="red")) +
+  ylim(500,850)
+ndat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=0.9,
+                   varnames=c('BloodAlc','RT'),
+                   empirical = TRUE)
+p4 <- ndat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=2) + ggtitle("r = 0.9") +
+  theme(plot.title = element_text(size = 30, colour="red")) +
+  ylim(500,850)
+(p1 + p2) / (p3 + p4)
+```
+
+# Significance
+
+## Significance of a Correlation
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+![](`r knitr::fig_chunk('ba','svg')`)
+
+$$ r = `r cor(dat$BloodAlc,dat$RT)` $$
+:::
+
+::: {.column width="50%"}
+![](img/playmo_police.jpg)
+:::
+
+::::
+
+
+::: notes
+- the police have stopped our friends and measured their blood alcohol
+
+- is their evidence sufficient to conclude that there is likely to be a relationship between blood alcohol and reaction time?
+
+:::
+
+## Significance of a Correlation
+
+- we can measure a correlation using $r$
+
+- we want to know whether that correlation is **significant**
+
+  + i.e., whether the probability of finding it by chance is low enough
+
+
+- cardinal rule in NHST:  compare everything to chance
+
+- let's investigate...
+
+## Random Correlations
+
+- pick some pairs of numbers at random, return correlation
+
+- _arbitrarily_, I've picked numbers uniformly distributed between 0 and 100
+
+```{r}
+#| label: pcor0
+x <- runif(5, min=0, max=100)
+y <- runif(5, min=0, max=100)
+cbind(x,y)
+cor(x,y)
+```
+
+
+## Random Correlations
+
+- pick some pairs of numbers at random, return correlation
+
+  - repeat 1000 times
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+
+randomCor <- function(size) {
+  x <- runif(size, min=0, max=100)
+  y <- runif(size, min=0, max=100)
+  cor(x,y) # calculate r
+}
+
+# then we can use the usual trick:
+rs <- replicate(1000, randomCor(5))
+hist(rs)
+```
+
+## Random Correlations
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| label: pcor2
+#| echo: false
+#| fig.asp: 0.8
+t <- tibble(r=replicate(1000,randomCor(15)))
+t %>% ggplot(aes(x=r)) + geom_density(size=2) +
+  ggtitle("1000 correlations of 15 random pairs") +
+  ylim(0,2.5) + xlim(-.8,.8) +
+  geom_segment(aes(x=quantile(r,.025),xend=quantile(r,.975),y=1.5,yend=1.5),colour="red",size=1,arrow=arrow(type="open",ends="both")) +
+  annotate("text",x=0,y=1.65,label="95% of observations",size=9,colour="red") +
+  ylab("density")
+```
+
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: pcor3
+#| echo: false
+#| fig.asp: 0.8
+t <- tibble(r=replicate(1000,randomCor(30)))
+t %>% ggplot(aes(x=r)) + geom_density(size=2) +
+  ggtitle("1000 correlations of 30 random pairs") +
+  ylim(0,2.5) + xlim(-.8,.8) +
+  geom_segment(aes(x=quantile(r,.025),xend=quantile(r,.975),y=1.5,yend=1.5),colour="red",size=1,arrow=arrow(type="open",ends="both")) +
+  annotate("text",x=0,y=1.65,label="95% of observations",size=9,colour="red") +
+  ylab("density")
+```
+:::
+
+::::
+
+
+## Calculating Probability
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+:::: r-stack
+
+::: {#hello}
+
+```{r}
+#| echo: false
+#| fig.asp: 0.8
+t <- tibble(r=replicate(10000,randomCor(30)))
+p <- t %>% ggplot(aes(x=r)) + geom_density(size=2) +
+  ggtitle("10000 correlations of 30 random pairs") +
+  ylim(0,2.5) + xlim(-.8,.8)
+p
+```
+
+:::
+
+::: {.fragment fragment-index=1}
+```{r}
+#| echo: false
+#| fig.asp: 0.8
+rt <- function(r,n) {r*sqrt((n-2)/(1-r^2))}
+dtr <- function(r,n) {dt(rt(r,n),n-2)*sqrt((n-2)/(1-r^2))}
+p + stat_function(fun=dtr,colour="red",args=list(n=30),linewidth=2) +
+  ylab("density")
+```
+
+:::
+
+::::
+
+:::
+::: {.column width="50%"}
+- distribution of random $r$s is $t$ distribution, with $n-2$ df
+
+::: {.fragment fragment-index=1}
+
+:::: myblock
+$$t= r\sqrt{\frac{n-2}{1-r^2}}$$
+::::
+
+- makes it "easy" to calculate probability of getting $\ge{}r$ for sample size $n$ by chance
+:::
+
+:::
+
+::::
+
+## Calculating Probability
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+**calculate $t$**
+
+```{r}
+#| results: asis
+#| echo: false
+cat("```r\n")
+cat("r_to_t <- function (r,n) {\n")
+cat("  r * sqrt((n-2) / (1-r^2))\n")
+cat("}\n\n")
+cat(paste0("r_to_t(",.rround(cor(dat$BloodAlc,dat$RT),4),", 50)\n\n"))
+cat("```\n")
+```
+
+```{r}
+#| echo: false
+(tv<-rt(cor(dat$BloodAlc,dat$RT),50))
+```
+
+:::: {.fragment fragment-index=1}
+
+**calculate $p$**
+
+```{r}
+#| results: asis
+#| echo: false
+cat("```r\n")
+cat(paste0("2 * pt(",.rround(tv,3),", 48, lower.tail=F)\n"))
+cat("```\n")
+```
+
+```{r}
+#| echo: false
+
+2*pt(tv,48,lower.tail = F)
+```
+- note `2 * pt(...)` as this is a two-tailed hypothesis
+
+::::
+
+
+:::
+
+::: {.column width="50%"}
+
+:::: r-stack
+
+::: {.fragment .fade-out fragment-index=2}
+![](img/playmo_police.jpg){width=70% .center-img}
+
+$$r=`r cor(dat$RT,dat$BloodAlc)`$$
+:::
+::: {.fragment fragment-index=2}
+**or just be lazy**
+```{r}
+#| output-line-numbers: "5,11"
+cor.test(dat$BloodAlc,dat$RT)
+```
+
+:::
+
+::::
+
+:::
+
+::::
+
+# Correlation++
+
+## Back on the Road
+
+:::: {.columns}
+
+::: {.column width="60%"}
+```{r}
+#| label: frecap
+#| fig.asp: 0.6
+#| echo: false
+p1 <- dat %>% ggplot(aes(x=BloodAlc,y=RT)) +
+  xlab("Blood Alcohol %/vol") + ylab("RT (ms)") +
+  geom_point(size=3)
+p1
+  rd <- cor.test(dat$BloodAlc,dat$RT)
+```
+
+$$r= `r rd$estimate`, p = `r rd$p.value`$$
+:::
+<!-- possibly add policeman image -->
+
+::: {.column width="40%"}
+
+::: r-stack
+
+:::: {.fragment .fade-out fragment-index=1}
+![](img/playmo_traffic.jpg)
+
+::::
+
+:::: {.fragment fragment-index=1}
+
+:::: myblock
+reaction time is positively associated with blood alcohol
+::::
+
+- not a very complete picture
+
+- _how much_ does alcohol affect RT?
+
+::::
+
+:::
+
+:::
+
+::::
+
+## [The Only Equation You Will Ever Need]{.r-fit-text}
+
+::: myblock
+
+$$\textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i$$
+:::
+
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+t <- lm(RT~BloodAlc,dat)
+px <- which.min(abs(dat$BloodAlc-0.095))
+dat <- dat |> mutate(col='black', size=2, alpha=0)
+dat$col[px] <- 'red'
+dat$size[px] <- 3
+dat$alpha[px] <- 1
+
+p <- dat |> ggplot(aes(x=BloodAlc,y=RT,colour=col)) +
+  scale_colour_manual(values=c('black','red')) +
+  scale_size(range=c(2,4))+
+  theme(legend.position = "none") +
+  ylab("RT (ms)") +
+  xlab("Blood Alcohol %/vol")
+p + geom_point(aes(size=size))
+
+xv <- tibble(BloodAlc=dat$BloodAlc[px])
+xv$RT <- predict(t,xv)
+```
+
+## [The Only Equation You Will Ever Need]{.r-fit-text}
+
+::: myblock
+
+$$\textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i$$
+:::
+
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+ymin <- layer_scales(p)$y$range$range[1]
+
+p2 <- p + geom_point(aes(size=size,alpha=alpha)) +
+  annotate(geom="text",colour="blue",x=.1,y=550,label=expression(model[i]),size=9) +
+  annotate(geom="text",colour="blue",x=.1,y=520,label="= f(0.095)",size=8) +
+  geom_segment(aes(x=.095,xend=.095,y=ymin,yend=xv$RT),colour="blue",
+               size=1.5,arrow=arrow())
+p2
+```
+
+## [The Only Equation You Will Ever Need]{.r-fit-text}
+
+::: myblock
+
+$$\textrm{outcome}_i = (\textrm{model})_i + \textrm{error}_i$$
+:::
+
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+p3 <- p2 +
+  geom_segment(aes(x=.095,xend=.095,y=xv$RT,yend=RT[px]),colour="black",size=1.5,arrow=arrow()) +
+  annotate(geom="text",colour="black",x=.1,y=650,label=expression(error[i]),size=9)
+p3
+```
+
+## [The Only Equation You Will Ever Need]{.r-fit-text}
+
+::: myblock
+
+$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+:::
+
+
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+p + geom_point(aes(size=size,alpha=alpha)) +
+  annotate("segment",x=.095,xend=.095,y=xv$RT,yend=dat$RT[px],size=1.5,colour="black",arrow=arrow(),alpha=.2) +
+  geom_smooth(method=lm,se=F,colour="blue") + annotate("segment",x=.095,xend=.095,y=ymin,yend=xv$RT,size=1.5,colour="blue",arrow=arrow(),alpha=.2)
+  
+```
+
+
+## The Aim of the Game
+
+::: myblock
+$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+:::
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+p + geom_point(aes(size=size,alpha=alpha)) +
+  annotate(geom="text",colour="blue",x=.1,y=550,label="BIG",size=9) +
+  geom_segment(aes(x=.095,xend=.095,y=ymin,yend=xv$RT),colour="blue",
+               size=1.5,arrow=arrow()) +
+  geom_segment(aes(x=.095,xend=.095,y=xv$RT,yend=RT[px]),colour="black",size=1.5,arrow=arrow()) +
+  annotate(geom="text",colour="black",x=.1,y=650,label="small",size=9)
+```
+
+:::
+
+::: {.column width="50%"}
+- maximise the explanatory worth of the [model]{.blue}
+
+- minimise the amount of unexplained error
+
+- explain more than one outcome!
+
+:::
+
+::::
+
+## Many Outcomes
+
+- so far, have been talking about the i^th^ observation
+
+- we want to generalise ("for any i")
+
+$$\color{red}{\textrm{outcomes}}=\color{blue}{\textrm{(model)}}+\textrm{errors}$$
+
+
+
+## We need to make assumptions
+
+::: {#1}
+
+- [model]{.blue} is linear
+
+:::
+
+::: {.fragment fragment-index=1}
+
+- errors are from a normal distribution
+
+:::
+
+:::: r-stack
+
+::: {.fragment fragment-index=1 .fade-out}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| out-width: 100%
+#| fig-align: center
+#| layout: [[3,2]]
+
+lhs <- p + geom_point(aes(size=size,alpha=alpha)) +
+  annotate("segment",x=.095,xend=.095,y=xv$RT,yend=dat$RT[px],size=1.5,colour="black",arrow=arrow(),alpha=.2) +
+  geom_smooth(method=lm,se=F,colour="blue") + annotate("segment",x=.095,xend=.095,y=ymin,yend=xv$RT,size=1.5,colour="blue",arrow=arrow(),alpha=.2)
+
+lhs
+
+ggplot() + theme_void()
+
+#lhs + rhs + plot_layout(widths=c(3,2))
+
+```
+:::
+
+::: {.fragment fragment-index=1 .fade-in}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| out-width: 100%
+#| fig-align: center
+#| layout: [[3,2]]
+
+lhs <- p + geom_point(aes(size=size))
+
+mod <- lm(RT~BloodAlc,data=dat)
+y2 <- predict(mod)
+
+lhs <- lhs + geom_segment(aes(x=BloodAlc,y=y2,xend=BloodAlc,yend=RT),colour="black",alpha=.5,size=1.5,arrow=arrow(length=unit(.15,"inches"))) +
+  geom_smooth(method=lm,se=F,colour="blue")
+lhs
+
+
+r <- tibble(error=resid(lm(mod)))
+
+r |> ggplot(aes(x=error)) +
+  geom_histogram()
+
+#lhs + rhs + plot_layout(widths=c(3,2))
+
+```
+:::
+
+::: {.fragment .fade-in fragment-index=2}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| out-width: 100%
+#| fig-align: center
+#| layout: [[3,2]]
+
+lhs
+
+r |> ggplot(aes(x=error)) +
+  geom_histogram(bins=10)
+
+```
+
+
+:::
+::::
+
+## A Linear Model
+
+::: {#top}
+
+- defined by two properties
+
+:::
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+- height of the line (**intercept**)
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+#| dev: png
+#| cache: true
+
+require(gganimate)
+
+myvals <- seq(-5,5,by=.5)
+ggplot() + geom_hline(yintercept=myvals,colour="darkgrey",size=2) + xlim(-2,2) +
+  labs(title=("intercept = {closest_state}")) +
+  annotate("segment",x=0,xend=0,y=0,yend=myvals,size=1.5,colour="blue",arrow=arrow()) +
+  transition_states(myvals)+ shadow_wake(wake_length=0.05)
+
+```
+
+:::
+
+::: {.column width="50%"}
+
+- **slope** of the line
+
+```{r}
+#| dev: png
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+#| cache: true
+
+myvals <- seq(-2,2,by=.25)
+ggplot() + geom_abline(intercept=0,slope=myvals,colour="darkgrey",size=2) + xlim(-2,2) +
+  labs(title=("slope = {closest_state}")) +
+  annotate("segment",x=0,xend=1,y=-2.5,yend=-2.5,colour="black",size=1.5) +
+  annotate("segment",x=1,xend=1,y=0,yend=myvals,size=1.5,colour="blue",arrow=arrow()) +
+  annotate("text",x=.5,y=-2.3,label="1 unit",size=6) +
+  transition_states(myvals) + shadow_wake(wake_length=0.05)
+```
+
+:::
+
+::::
+
+## A Linear Model {.smaller auto-animate=true}
+
+```{r}
+#| include: false
+xX <-1.2
+yY <- 9.9
+f <- function(x) {5+2*x}
+```
+
+
+:::: {.columns}
+
+::: {.column width="40%"}
+$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+$$\color{red}{y_i} = \color{blue}{\textrm{intercept}\cdot{}1+\textrm{slope}\cdot{}x_i}+\epsilon_i$$
+
+$$\color{red}{y_i} = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i} + \epsilon_i$$
+so the linear [model]{.blue} itself is...
+
+:::: {data-id="formula"}
+$$\hat{y}_i = \color{blue}{b_0 \cdot{} 1 + b_1 \cdot{} x_i}$$
+::::
+
+:::: {.myblock .fragment fragment-index=1}
+$$\color{blue}{b_0=5}, \color{blue}{b_1=2}$$
+$$\color{orange}{x_i=`r xX`},\color{red}{y_i=`r yY`}$$
+$$\hat{y}_i=`r f(xX)`$$
+
+
+::::
+:::
+
+::: {.column width="60%" .fragment fragment-index=1}
+```{r}
+#| label: bb
+#| echo: false
+#| fig-asp: 0.6
+#| fig-align: center
+x <- tibble(x=c(-1,4))
+p0 <- x %>% ggplot(aes(x=x)) +
+  stat_function(fun=f,size=2,colour="darkgrey") +
+  geom_segment(aes(x=0,xend=0,y=0,yend=f(0)),arrow=arrow(length=unit(.05,"native")),colour="blue",size=1.5) +
+  geom_segment(aes(x=1,xend=2,y=f(1),yend=f(1)),linetype="dotted") +
+  geom_segment(aes(x=2,y=f(1),xend=2,yend=f(2)),arrow=arrow(length=unit(.05,"native")),colour="blue",size=1.5) +
+  annotate("text",x=.7,y=2.5,label="b[0]~(intercept)",
+           size=8,parse=TRUE) +
+  annotate("text",x=2.6,y=7.5,label="b[1]~(slope)",
+           size=8,parse=TRUE) +
+    ggtitle(expression(paste(b[0]," = 5, ",b[1]," = 2")))
+
+p0 <- p0 + 
+  geom_point(aes(x=xX,y=yY),size=4,colour="red") +
+  geom_segment(aes(x=xX,xend=xX,y=f(xX),yend=yY),colour="black",arrow=arrow(length=unit(.05,"native")),size=1.5) +
+  annotate("text",.7,8.6,label=expression(paste(epsilon[i]," (error)")),colour="black",size=8)
+
+p0 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
+  theme(axis.title.y = element_text(colour = "blue",angle=90,size=30))
+```
+
+:::
+
+::::
+
+::: notes
+
+so we can see that for this particular datapoint $(x_i,y_i)$ the error is `r yY-f(xX)`
+
+:::
+
+## A Linear Model {auto-animate=true}
+
+:::: {data-id="formula"}
+$$\hat{y}_i = \color{blue}{b_0 \cdot{}}\color{orange}{1} \color{blue}{+b_1 \cdot{}} \color{orange}{x_i}$$
+:::
+
+- [values of the linear model (coefficients)]{.blue}
+
+- [values _we_ provide (inputs)]{.orange}
+
+. . .
+
+- maps directly to R "formula" notation
+
+![](img/formula.svg){.center-img data-id="image"}
+
+## A Linear Model {.smaller}
+
+:::: {.columns}
+
+::: {.column width="40%"}
+$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+$$\color{red}{y_i} = \color{blue}{\textrm{intercept}}\cdot{}\color{orange}{1}+\color{blue}{\textrm{slope}}\cdot{}\color{orange}{x_i}+\epsilon_i$$
+$$\color{red}{y_i} = \color{blue}{b_0} \cdot{} \color{orange}{1} + \color{blue}{b_1} \cdot{} \color{orange}{x_i} + \epsilon_i$$
+so the linear [model]{.blue} itself is...
+
+$$\hat{y}_i = \color{blue}{b_0} \cdot{} \color{orange}{1} + \color{blue}{b_1} \cdot{} \color{orange}{x_i}$$
+
+
+![](img/formula.svg){width=35% data-id="image" .center-img}
+
+
+:::: {.myyellowblock .fragment}
+$$\hat{y}_i = \color{blue}{b_0} + \color{blue}{b_1} \cdot{} \color{orange}{x_i}$$
+![](img/formula2.svg){width=35% .center-img}
+::::
+
+:::
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+#| fig-asp: 0.6
+#| fig-align: center
+
+p0 + ylab(expression(paste(hat(y)," = ",5 + 2 %.% x))) +
+  theme(axis.title.y = element_text(colour = "blue",angle=90,size=30))
+```
+
+:::
+
+::::
+
+## Take An Observation {visibility="hidden"}
+
+
+:::: {.columns}
+
+::: {.column width="40%"}
+:::: myblock
+x~i~ = 1.2, y~i~ = 9.9
+::::
+
+$$\color{blue}{\hat{y}_i = b_0 + b_1\cdot{}x_i = 7.4}$$
+$$\color{red}{y_i} = \color{blue}{\hat{y}_i} + \epsilon_i = \color{blue}{7.4} + 2.5$$
+
+:::
+::: {.column width="5%"}
+
+:::
+
+::: {.column width="55%"}
+```{r}
+#| label: errplot
+#| fig-asp: 0.6
+#| echo: false
+
+xX <-1.2
+yY <- 9.9
+p0 + ylab(expression(paste(hat(y)," = ",5 %.% 1 + 2 %.% x))) +
+  geom_point(aes(x=xX,y=yY),size=3,colour="red") +
+  geom_segment(aes(x=xX,xend=xX,y=f(xX),yend=yY),linetype="dotted",colour="black") +
+  annotate("text",.8,8.6,label=expression(paste(epsilon[i]," (error)")),colour="black",size=7) +
+  theme(axis.title.y = element_text(colour = "blue",angle=90,size=30))
+```
+:::
+
+::::
+
+- the [model]{.blue} can predict $\hat{y}$ for values of $x$ we have never observed
+
+- the smaller the the average error, the more useful this is
+
+::: notes
+- $\hat{y}_i$ is what the model _predicts_ for $x_i$
+
+- $y_i$ is the actual value that was observed for $x_i$
+
+- why would we care?
+
+  + for one thing, the model can predict $\hat{y}$ for values of $x$ that we have never observed
+
+:::
+
+
+## Back on the Road 2
+
+
+
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- simplify the data to make interpretation easier
+
+::: {.fragment fragment-index=1}
+```{r}
+ourDat <- dat |>
+  mutate(BloodAlc=BloodAlc*100)
+```
+:::
+
+:::
+
+::: {.column width="50%"}
+:::: r-stack
+
+
+::: {.fragment .fade-out fragment-index=1}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+dp
+```
+:::
+
+::: {.fragment .fade-in fragment-index=1}
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+dp2 <- ourDat |> ggplot(aes(x=BloodAlc,y=RT)) +
+  geom_point(size=3) +
+  xlab("Blood Alcohol 100 * %/vol") +
+  ylab("RT (ms)") +
+  theme(axis.text.x = element_text(colour = "red"))
+
+dp2
+```
+:::
+
+::::
+
+:::
+
+::::
+
+::: {.fragment fragment-index=3}
+
+```{r}
+mod <- lm(RT ~ BloodAlc, data=ourDat)
+```
+
+:::
+
+::: aside
+multiplying blood alcohol values is simple **scaling**, which we'll revisit
+:::
+
+
+::: notes
+
+note that there's no output from the R command, we've just created a model for interrogation
+:::
+
+## Linear Model Output
+
+```{r}
+#| output-line-numbers: "11,12"
+summary(mod)
+```
+
+## Possibly Back on the Road
+
+:::: {.columns}
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+#| fig-asp: .6
+
+dp2 +geom_smooth(method="lm",se=F)
+```
+
+:::
+
+::: {.column width="40%"}
+:::: myblock
+for every extra 0.01% blood alcohol, reaction time slows down by around `r round(coef(mod)[2],0)` ms
+::::
+
+- remember that one unit is 0.01%, because we multiplied by 100
+
+:::
+
+::::
+
+# Significance
+
+
+## The Null Hypotheses
+
+- [b~0~]{.blue} won't be significantly different from zero
+
+  - not (always) interesting
+
+- [b~1~]{.blue} won't be significantly different from zero
+
+  - "knowing [x]{.orange} doesn't tell you anything about y"
+
+## Let's Simulate!
+
+```{r}
+#| include: false
+
+get_ab <- function(rval=0) {
+  dat <- faux::rnorm_multi(n=50,
+                   mu=c(0.1,650),
+                   sd=c(.009,60),
+                   r=rval,
+                   varnames=c('BloodAlc','RT')) |>
+    mutate(BloodAlc=BloodAlc*100)
+  ab <- lm(RT~BloodAlc,data=dat) |> coef()
+}
+
+```
+
+
+::: r-stack
+
+:::: {.fragment .fade-out fragment-index=1}
+
+```{r}
+#| echo: false
+#| dev: png
+#| cache: true
+#| fig-asp: .6
+#| fig-align: center
+
+### NB.  This won't render with the global fig-output format set to svg
+###      (which is annoying, but hopefully resolved when it's cached)
+
+abs <- as_tibble(t(replicate(1000,get_ab())))
+
+p <- ggplot() +
+  ylim(500,800) + xlim(8.4,12) +
+  xlab("Blood Alcohol 100 * %/vol") +
+  ylab("RT (ms)") +
+  geom_abline(data=abs,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.1) +
+  transition_states(BloodAlc) + shadow_mark()
+
+animate(p,renderer=gifski_renderer(loop=FALSE))
+
+#animate(p,renderer=gifski_renderer(loop=FALSE))
+
+```
+::::
+
+:::: {.fragment fragment-index=1}
+```{r}
+#| echo: false
+#| fig-asp: .5
+#| fig-align: center
+#| fig-width: 13
+
+ab <- as_tibble(t(coef(mod)))
+
+ggplot() +
+  ylim(500,800) + xlim(8.4,12) +
+  xlab("Blood Alcohol 100 * %/vol") +
+  ylab("RT (ms)") +
+  geom_abline(data=abs,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.1) + geom_abline(data=ab,aes(intercept=`(Intercept)`,slope=BloodAlc),size=2,colour="blue")
+```
+
+::::
+
+:::
+
+## Many Regressions
+
+::: r-stack
+
+:::: {.fragment .fade-out fragment-index=1}
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+abs <- as_tibble(t(replicate(1000,get_ab(.4))))
+
+p <- dat |> ggplot(aes(x=BloodAlc*100,y=RT)) +
+  ylim(500,800) + xlim(8.4,12) +
+  xlab("Blood Alcohol 100 * %/vol") +
+  ylab("RT (ms)")
+
+p +  geom_abline(data=abs,aes(intercept=`(Intercept)`,slope=BloodAlc),alpha=.1)
+
+```
+
+::::
+
+:::: {.fragment fragment-index=1}
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+p + geom_point(alpha=.5) +
+  geom_smooth(method="lm")
+```
+
+::::
+
+:::
+
+## Significance
+
+
+- we've already seen something in the model summary
+
+```r
+summary(mod)
+```
+```{r}
+#| echo: false
+.pp(summary(mod),l = list(0,9:12,0))
+```
+- the logic is the same as for $t$ tests
+
+- $t$ value is $\frac{\textrm{estimate}}{\textrm{standard error}}$
+
+- **standard errors** are calculated from model like for $t$-tests
+
+## Degrees of Freedom
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+## function to work out the "last two" points on for a given best fit
+## line, by working out the residuals for given x and y
+## (maths courtesy of Umberto Noè)
+require(patchwork)
+
+plot_dat <- function() {
+  # solve for y=5x+2
+  x1=1
+  x2=11
+  a_given=-7.5
+  b_given=3
+  
+  randline <- function (x) {
+    a<-runif(1,-5,5)
+    b<-runif(1,-3,7)
+    y<-a+b*x+runif(length(x),-20,20)
+  }
+  
+  x = sample(0:12,8)
+  y = randline(x)
+  x <- c(x,x1,x2)
+  
+  loss_function <- function(y_new) {
+    y_complete <- c(y, y_new[1], y_new[2])
+    fit <- lm(y_complete ~ x)
+    a_diff <- (fit$coefficients[1] - a_given)^2
+    b_diff <- (fit$coefficients[2] - b_given)^2
+    return(a_diff + b_diff)
+  }
+
+  # Use optimization to find y1 and y2
+  result <- optim(c(0, 0), loss_function)
+  
+  # Extract y1 and y2
+  y1 <- result$par[1]
+  y2 <- result$par[2]
+  
+  pd <- tibble(x=x,y=c(y,y1,y2),colour=c(rep("a",8),rep("b",2)))
+
+  return(pd)
+}
+
+pd1 <- plot_dat()
+pd2 <- plot_dat()
+pd3 <- plot_dat()
+pd4 <- plot_dat()
+
+yr<-range(c(pd1$y[pd1$colour=="a"],pd2$y[pd2$colour=="a"],pd3$y[pd3$colour=="a"],pd4$y[pd4$colour=="a"]))
+yr2<-range(c(pd1$y,pd2$y,pd3$y,pd4$y))
+
+do_p <- function(x) {
+x |> filter(colour=="a") |> ggplot(aes(x=x,y=y)) +
+  geom_point(size=3) +
+  xlim(c(0,15)) +
+    ylim(yr2) +
+  geom_smooth(method="lm",se=FALSE)
+}
+
+p1 <- do_p(pd1)
+p2 <- do_p(pd2)
+p3 <- do_p(pd3)
+p4 <- do_p(pd4)
+(p1 + p2) / (p3 + p4)
+```
+
+::: notes
+- let's talk about DF
+- here are random collections of 8 datapoints
+- each graph has 8 points, each graph has a line of best fit
+
+- now, for these collections of 8 points,
+- we can always add in another two points to each plot and make the best fit line the same in each
+:::
+
+## Degrees of Freedom {visibility="uncounted"}
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+
+
+do_p <- function(x) {
+x |> ggplot(aes(x=x,y=y)) +
+  geom_point(aes(colour=colour),size=3) +
+  xlim(c(0,15)) +
+    ylim(yr2) +
+  scale_colour_manual(values=c('a'='darkgrey','b'='red')) +
+  theme(legend.position = "none") +
+  geom_smooth(method="lm",se=FALSE)
+}
+
+p1 <- do_p(pd1)
+p2 <- do_p(pd2)
+p3 <- do_p(pd3)
+p4 <- do_p(pd4)
+(p1 + p2) / (p3 + p4)
+
+```
+
+::: notes
+- so here we've added two points to each, and the lines are now the same in each
+
+- this is one way of showing that for $n$ data points, there are $n-2$ degrees of freedom
+
+:::
+
+## Degrees of Freedom
+
+- we subtract 2 df because we "know" two things
+
+  + intercept ([b~0~]{.blue})
+  
+  + slope ([b~1~]{.blue})
+
+- the remaining df are the _residual_ degrees of freedom
+
+. . .
+
+```{r}
+#| echo: false
+
+.pp(summary(mod),l=list(0,12,18))
+```
+::: myblock
+
+reaction time slowed by `r .rround(coef(mod)[2],1)` ms for every additional 0.01% blood alcohol by volume [(_t_(`r summary(mod)$df[2]`)=`r .rround(coef(summary(mod))[2, "t value"],2)`,]{.nobrk} [_p_=`r .rround(coef(summary(mod))[2, "Pr(>|t|)"],4,drop.zero=T)`)]{.nobrk}
+
+:::
+
+
+::: notes
+- we subtract 2, because we know 2 things - the intercept and the slope. 
+- the remaining degrees of freedom are residual degrees of freedom
+- and our tests of intercept and slope will be calculated using t distribution with 18 df
+
+:::
+
+## Pirates and Global Warming
+
+:::: {.columns}
+
+::: {.column width="70%"}
+![](img/pirate_gw.png){.center-img}
+
+:::
+
+::: {.column width="30%"}
+![](img/playmo_pirate.jpg){.center-img}
+:::
+
+::::
+

@@ -1,0 +1,372 @@
+---
+title: "Multiple Regression"
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+source('_theme/theme_quarto.R')
+```
+
+```{r}
+#| include: false
+
+load("R/reading.Rdata")
+```
+
+## Adding Age into the Equation
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+- so far, have focused on effects of practice
+
+- but presumably older children read better?
+
+```{r}
+#| label: tab3
+#| echo: false
+
+library(gt)
+
+reading |> slice(c(1:3,48:50)) %>% gt() |>
+  data_color(columns=c("age","R_AGE"),colors="#d0d9ff",alpha=.8) |>
+  tab_options(table.font.size=pct(70))
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: try3d
+#| echo: false
+library(rgl)
+par(mar=c(0,0,0,0))
+plot3d(x=reading$hrs_wk,y=reading$age,z=reading$R_AGE,
+       type='s',
+       radius=.1,
+       xlab="practise",ylab="age",zlab="READING AGE")
+rglwidget()
+```
+:::
+::::
+
+## Another Model
+
+```{r}
+#| label: anmod
+#| fig-asp: 0.6
+#| echo: false
+reading %>% ggplot(aes(x=age,y=R_AGE)) +
+  xlab("age") + ylab("reading age") +
+  geom_point(size=3) +
+  geom_smooth(method="lm")
+```
+
+## Another Model
+
+:::: {.columns}
+
+::: {.column width="80%"}
+
+```{r}
+#| label: mod2
+#| output-line-numbers: "7,11,12,17,18"
+mod2 <- lm(R_AGE ~ age, data=reading)
+summary(mod2)
+```
+
+:::
+
+::: {.column width="20%"}
+
+
+```{r}
+#| include: false
+mr2 <- summary(mod2)$r.squared |> .rround(2)
+```
+
+
+![](img/playmo_profr2.svg)
+
+
+- _R_^2^=`r mr2`
+
+:::
+
+::::
+::: notes
+- this is just to remind you to remember that _R_^2^ for a couple of slides
+:::
+
+---
+
+```{r}
+#| label: diag2
+#| echo: false
+#| fig-asp: 0.7
+#| fig-align: center
+par(mfrow=c(2,2))
+plot(mod2,which=1:4)
+
+```
+
+## Two Models, No Answers
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+- we now have two models that don't map well to assumptions
+
+- each suggests an effect
+
+  + one of `age`
+
+  + one of `hrs_wk`
+
+:::
+
+::: {.column width="50%"}
+
+- if we run them independently, the chances of a type 1 error are
+
+  + $\frac{1}{20}$ (`mod`, including `hrs_wk`)
+
+  + $\frac{1}{20}$ (`mod2`, including `age`)
+
+- or **$\frac{1}{10}$** overall
+
+:::
+::::
+
+. . .
+
+::: myyellowblock
+- we need to test multiple predictors in _one_ linear mod
+:::
+
+## Model Equations Again
+
+$$\color{red}{\textrm{outcome}_i}=\color{blue}{(\textrm{model})_i}+\textrm{error}_i$$
+
+$$\color{red}{y_i}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_i}+\epsilon_i$$
+
+. . .
+
+### linear model with two predictors
+
+$$\color{red}{y_i}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\epsilon_i$$
+
+$$\color{red}{\hat{y}_i}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}$$
+
+
+## Two Predictors
+
+$$\color{red}{y_i}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\epsilon_i$$
+
+$$\color{red}{\hat{y}_i}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}$$
+
+::: {layout=[1,1,1]}
+ 
+
+![](img/formula_2x.svg){.nostretch .center-img}
+
+ 
+:::
+
+. . .
+
+```r
+mod.m <- lm(R_AGE ~ 1 + hrs_wk + age, data = reading)
+```
+
+_or_
+
+
+```r
+mod.m <- lm(R_AGE ~ 1 + age + hrs_wk, data = reading)
+```
+
+::: aside
+we'll talk about why order matters in a moment
+:::
+
+## Running A Multiple Regression
+
+```{r}
+#| label: multi
+#| output-line-numbers: "11,12,13"
+mod.m <- lm(R_AGE ~ age + hrs_wk, data=reading)
+summary(mod.m)
+```
+
+## Running a Multiple Regression
+
+```{r}
+#| label: multi2
+#| echo: false
+ca <- coef(mod.m)[2] |> .rround(2)
+ch <- coef(mod.m)[3] |> .rround(2)
+.pp(summary(mod.m),l = list(0,11:13,0))
+```
+
+- there are _independent_ effects of age and practice
+
+  + reading age improves by `r ca` years for each year of age
+
+  + reading age improves by `r ch` years for each hour of practice
+
+- the _intercept_ (0 years old, 0 hours/week) is meaningless!
+
+. . .
+
+- important question:  is this model _better_ than a model based just on age?
+
+## Model Fit
+
+```{r}
+#| label: multi3
+#| echo: false
+mmr2 <- summary(mod.m)$r.squared |> .rround(2)
+.pp(summary(mod.m),l=list(0,18,0))
+
+```
+
+- in multiple regression, _R_^2^ measures the fit of the entire model
+  + sum of individual _R_^2^s _if predictors not correlated_
+
+- [_R_^2^=`r mmr2`]{.nobrk} looks better than the _R_^2^ for `mod2` (`age` as a predictor) of `r mr2`
+
+- but _any_ predictor will improve _R_^2^ (chance associations guarantee this)
+
+```{r}
+#| label: multi4
+#| eval: false
+mod.r <- update(mod2, ~ . + runif(50))
+summary(mod.r)
+```
+```{r}
+#| label: multi4b
+#| echo: false
+set.seed(31)
+mod.r <- update(mod2, ~ . + runif(50))
+.pp(summary(mod.r),l=list(0,18,0))
+```
+
+## Comparing Models
+
+```{r}
+#| label: multic
+#| echo: false
+#| output-line-numbers: "3"
+.pp(summary(mod.m),l=list(0,18:19))
+```
+
+- _F_ ratio compares model to the null model
+
+- but we can also compare models in succession
+
+```{r}
+#| label: multic2
+mod.n <- lm(R_AGE~1, data=reading)
+anova(mod.m, mod2, mod.n)
+```
+
+## Comparing Models
+
+:::: {.columns}
+
+::: {.column width="46%"}
+### explicit way
+```r
+anova(mod.m, mod2, mod.n)
+```
+```{r}
+#| echo: false
+
+print(anova(mod.m, mod2, mod.n),signif.stars = FALSE)
+```
+
+
+
+:::
+
+::: {.column width="2%"}
+<!-- filler -->
+:::
+
+::: {.column width="52%"}
+### lazy way
+```r
+anova(mod.m)
+```
+```{r}
+#| echo: false
+
+print(anova(mod.m),signif.stars=FALSE)
+```
+
+:::
+
+::::
+
+## Order Matters! {.smaller}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### `age` then `hrs_wk`
+```{r}
+#| label: multic3
+#| echo: false
+print(anova(lm(R_AGE~age+hrs_wk,data=reading)),signif.stars=FALSE)
+```
+:::
+
+::: {.column width="50%"}
+### `hrs_wk` then `age`
+```{r}
+#| label: multic4o
+#| echo: false
+print(anova(lm(R_AGE~hrs_wk+age,data=reading)),signif.stars=FALSE)
+```
+
+:::
+
+::::
+
+## Order Matters!
+
+- order affects _F_ ratios because R, by default, uses **Type 1** sums of squares
+  + calculate each predictor's improvement to the model _in turn_
+- compare to **Type 3** sums of squares
+  + calculate each predictor's improvement to the model _taking all other predictors into account_
+
+- in R, _predictors should be entered into the model in a theoretically-motivated order_
+
+::: aside
+more on orders of predictors, and sums of squares, in the course readings
+:::
+
+## The Two-Predictor Model
+
+```{r}
+#| label: 3d
+#| echo: false
+#| fig-align: center
+
+plot3d(x=reading$hrs_wk,y=reading$age,z=reading$R_AGE,
+       type='s',
+       radius=.1,
+       xlab="practise",ylab="age",zlab="READING AGE")
+coefs <- coef(mod.m)
+a <- coefs["hrs_wk"]
+b <- coefs["age"]
+c <- -1
+d <- coefs["(Intercept)"]
+planes3d(a,b,c,d, alpha=0.5)
+rglwidget()
+```

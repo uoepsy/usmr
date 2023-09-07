@@ -1,0 +1,847 @@
+---
+title: "Scaling, Contrasts, Interactions"
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+source('_theme/theme_quarto.R')
+```
+
+# Scaling
+
+## Learning to Read
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/playmo_teach.jpg)
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: showdat
+#| echo: false
+library(gt)
+load("R/reading.Rdata")
+
+## NB running model for next slide here
+mod.m <- lm(R_AGE ~ age+hrs_wk, data=reading)
+reading %>% slice(c(1:5,46:50)) %>% gt() %>%
+  data_color(columns=c("age","hrs_wk","R_AGE"),colors="#d0d9ff",alpha=.8)
+```
+:::
+
+::::
+
+## Learning to Read
+
+```{r}
+#| label: modrsum
+#| echo: false
+.pp(summary(mod.m),l=list(0,10:13,0))
+```
+
+## Learning to Read {visibility="uncounted"}
+```{r}
+#| label: modrsum2
+#| echo: false
+#| output-line-numbers: "3"
+<<modrsum>>
+```
+
+- as we noted last week, the _intercept_ for this model is nonsensical
+
+  + "children aged zero who read for zero hours a week have a predicted reading age of `r .rround(coef(mod.m)[1],2)`"
+
+- perhaps there's something we can do about this?
+
+## One-Predictor Model
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- let's start with a model with a _single_ predictor of age
+
+```{r}
+#| label: ggp
+#| fig-asp: 0.6
+#| fig.show: hide
+#| tidy.opts: { width.cutoff: 22 }
+# model
+mod2 <- lm(R_AGE ~ age,data=reading)
+
+# figure
+reading |> ggplot(aes(x=age,y=R_AGE)) +
+  xlab("age (yrs)") + ylab("reading age (yrs)") +
+  geom_point(size=3) +
+  geom_smooth(method="lm")
+```
+
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('ggp','svg')`)
+:::
+
+::::
+
+::: aside
+we know this model doesn't meet assumptions, but it will work for an illustration
+:::
+
+## Changing the Intercept
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- actually it's fairly easy to move the intercept
+
+- we can just pick a "useful-looking" value
+
+- for example, we might want the intercept to tell us about students at age **8**
+
+  + this is a decision; no magic about it
+
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: ggp2
+#| fig.asp: 0.6
+#| echo: false
+
+p <- reading |> ggplot(aes(x=age,y=R_AGE)) +
+  xlab("age (yrs)") + ylab("reading age (yrs)") +
+  geom_point(size=3) +
+  geom_smooth(method="lm")
+
+p + theme(axis.text.x = element_text(colour = "red")) +
+  scale_x_continuous(breaks=c(6,8,10),labels=c("6-8","8-8","10-8")) +
+  xlab("age (yrs-8)")
+```
+
+:::
+
+::::
+
+## Changing the Intercept {visibility="uncounted"}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- actually it's fairly easy to move the intercept
+
+- we can just pick a "useful-looking" value
+
+- for example, we might want the intercept to tell us about students at age 8
+
+  + this is a decision; no magic about it
+
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: ggp3
+#| fig.asp: 0.6
+#| echo: false
+p + theme(axis.text.x = element_text(colour = "red")) +
+  scale_x_continuous(breaks=c(6,8,10),labels=c("-2","0","2")) +
+  geom_vline(xintercept=8,linetype="dashed",colour="red") +
+  xlab("age (yrs-8)")
+```
+
+:::
+
+::::
+
+## A Model With a New Intercept
+
+### original model
+```{r}
+#| label: oldm
+#| echo: false
+#| output-line-numbers: "3"
+.pp(summary(mod2),l=list(0,10:12,0))
+```
+
+### new model
+```{r}
+#| label: newm
+#| eval: false
+#| tidy: false
+mod2b <- lm(R_AGE ~ I(age-8), data=reading)
+summary(mod2b)
+```
+```{r}
+#| label: newm2
+#| echo: false
+#| output-line-numbers: "3"
+mod2b <- lm(R_AGE ~ I(age-8), data=reading)
+.pp(summary(mod2b),l=list(0,10:12,0))
+```
+
+
+## Fit Remains Unchanged
+
+### original model
+```{r}
+#| label: oldm3
+#| echo: false
+.pp(summary(mod2),l=list(0,17:18))
+```
+
+### new model
+
+```{r}
+#| label: newm3
+#| echo: false
+.pp(summary(mod2b),l=list(0,17:18))
+```
+
+## A Model with a New Slope
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- it's also easy to linearly scale the slope
+
+- we can just pick a "useful" scale
+
+- for example, we might want to examine the effect per month of age
+
+  + this is a decision; no magic about it
+
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: ggp5
+#| echo: false
+#| fig.asp: 0.6
+p + theme(axis.text.x = element_text(colour = "red")) +
+  scale_x_continuous(breaks=c(6,8,10),labels=c("6*12","8*12","10*12")) + xlab("age (months)")
+```
+:::
+
+::::
+
+## A Model with a New Slope {visibility="uncounted"}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- it's also easy to linearly scale the slope
+
+- we can just pick a "useful" scale
+
+- for example, we might want to examine the effect per month of age
+
+  + this is a decision; no magic about it
+
+:::
+
+::: {.column width="50%"}
+```{r}
+#| echo: false
+#| fig.asp: 0.6
+p + theme(axis.text.x = element_text(colour = "red")) +
+  scale_x_continuous(breaks=c(6,8,10),labels=c("72","96","120")) +
+  xlab("age (months)")
+```
+:::
+
+::::
+
+## A Model With a New Slope
+
+### original model
+```{r}
+#| label: oldm5
+#| echo: false
+#| output-line-numbers: "4"
+.pp(summary(mod2),l=list(0,10:12,0))
+```
+
+### new model
+```{r}
+#| label: newm5
+#| eval: false
+#| tidy: false
+mod2c <- lm(R_AGE ~ I(age*12), data=reading)
+summary(mod2c)
+```
+```{r}
+#| label: newm6
+#| echo: false
+#| output-line-numbers: "4"
+mod2c <- lm(R_AGE ~ I(age*12), data=reading)
+.pp(summary(mod2c),l=list(0,10:12,0))
+```
+
+## Fit Remains Unchanged
+
+### original model
+```{r}
+#| label: oldm7
+#| echo: false
+.pp(summary(mod2),l=list(0,17:18))
+```
+
+### new model
+
+```{r}
+#| label: newm7
+#| echo: false
+.pp(summary(mod2c),l=list(0,17:18))
+```
+
+## We Can Get Fancy About This
+
+```{r}
+#| label: mm
+#| tidy: false
+mod.mb <- lm(R_AGE ~ I((age-8)*12) + I(hrs_wk-mean(hrs_wk)), data=reading)
+summary(mod.mb)
+```
+
+## [But We Need to Know What We're Doing]{.r-fit-text}
+
+```{r}
+#| echo: false
+.pp(summary(mod.mb),l=list(12))
+```
+
+::: {.fragment}
+- model reading age of someone
+  - aged 8
+  - who reads for an average amount of hours/week
+:::
+
+```{r}
+#| echo: false
+.pp(summary(mod.mb),l=list(13))
+```
+
+::: {.fragment}
+- model increase in reading age per _month_ of age
+:::
+
+```{r}
+#| echo: false
+.pp(summary(mod.mb),l=list(14))
+```
+
+::: {.fragment}
+- model increase in reading age per hour/wk of reading
+
+- note that we need to understand _all other_ coefficients in order to interpret intercept
+:::
+
+## Which Has a Bigger Effect?
+
+:::: {.columns}
+
+::: {.column width="40%"}
+![](img/playmo_age.jpg)
+:::
+
+::: {.column width="60%"}
+- in our two-predictor model, is age more important than practise?  Or vice-versa?
+
+- hard to tell because the predictors are in different _units_
+
+```{r}
+#| label: sumsum
+#| echo: false
+<<modrsum>>
+```
+:::
+
+::::
+
+## Standardisation
+
+:::: {.columns}
+
+::: {.column width="70%"}
+- _if_ the predictors and outcome are very roughly normally distributed...
+
+- we can calculate _z_-scores by subtracting the mean and dividing by the standard deviation
+
+$$z_i=\frac{x_i-\bar{x}}{\sigma_x}$$
+
+:::
+
+::: {.column width="30%"}
+```{r}
+#| label: hist
+#| fig.asp: 1.9
+#| echo: false
+#| fig-align: center
+reading |> select(-method) |> gather() |>
+  ggplot(aes(x=value)) +
+  stat_density() +
+  facet_wrap(~key, scales="free_x", ncol=1) +
+  theme(axis.title.x=element_blank())
+```
+:::
+
+::::
+
+## Standardisation
+
+- in R, the `scale()` function calculates _z_-scores
+
+- in R, you don't need to create new columns
+
+  + `I()` not obligatory because no ambiguity
+
+```r
+mod.ms <- lm(scale(R_AGE) ~ scale(age) + scale(hrs_wk), data=reading)
+```
+
+
+## Standardisation {visibility="uncounted"}
+
+- in R, the `scale()` function calculates _z_-scores
+
+- in R, you ~~don't need to~~ [shouldn't often]{.red} create new columns
+
+  + `I()` not obligatory because no ambiguity
+
+```{r}
+#| label: mods
+#| tidy: false
+mod.ms <- lm(scale(R_AGE) ~ scale(age) + scale(hrs_wk), data=reading)
+```
+
+. . .
+
+- variables _all_ in terms of standard deviations from the mean
+
+- at the _intercept_, `age` and `hrs_wk` are at their means
+
+- _slopes_: "how many standard deviations does `R_AGE` change for a one standard deviation change in the predictor?"
+
+- model fit won't change
+
+## Standardisation
+
+```r
+summary(mod.ms)
+```
+```{r}
+#| label: showme2
+#| echo: false
+.pp(summary(mod.ms),l=list(0,10:13,0))
+```
+
+- `R_AGE` changes `r .rround(coef(mod.ms)[2],2)` sds for a 1-sd change in `age`, and `r .rround(coef(mod.ms)[3],2)` sds for a 1-sd change in `hrs_wk`
+
+- reasonable conclusion might be that `r ifelse(coef(mod.ms)[2] > coef(mod.ms)[3],"age","practice")` has a greater effect on reading age than does `r ifelse(coef(mod.ms)[2] > coef(mod.ms)[3],"practice","age")`
+
+::: aside
+you can read $`r signif(coef(mod.ms)[1],3)`$ as $0$, with computer rounding error
+:::
+
+::: notes
+- we _expect_ the intercept to be zero because it's the mean of everything
+:::
+
+## Standardisation Post-Hoc {visibility="hidden"}
+
+- we can convert "raw" model coefficients $b$ to standardised coefficients $\beta$ without re-running the regression]
+
+- for predictor $x$ of outcome $y$:
+
+$$\beta_x=b_x\cdot{}\frac{\sigma_x}{\sigma_y}$$
+- or there's a function to do it for you
+
+```{r}
+#| label: lsr
+library(lsr)
+standardCoefs(mod.m)
+```
+
+
+# Categorical Predictors
+
+## Playmobil vs. SuperZings
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/playmo_2.jpg)
+:::
+
+::: {.column width="50%"}
+- some important pretesting went into these lectures
+
+- every individual figure rated for "usefulness" in explaining stats
+
+- how do we decide which to use?
+:::
+
+::::
+
+
+## Playmobil vs. SuperZings
+
+:::: {.columns}
+
+::: {.column width="40%"}
+```{r}
+#| label: makedat
+#| echo: false
+
+set.seed(29)
+library(gt)
+doit <- 1
+while (doit) {
+  toys <- tibble(type=gl(2,1,10,labels=c('playmo','zing')),UTILITY=round(runif(10,0,10),1))
+  tt <- toys %>% group_by(type) %>% summarise(mean=mean(UTILITY))
+  if (tt$mean[1] <= tt$mean[2]) {
+    next
+  }
+  if (t.test(UTILITY~type,data=toys)$p.value < .05)
+  {
+    doit <- 0
+  }
+}
+
+toys |> gt() |>
+  data_color("type",palette=c("red","blue"),alpha=0.3) |>
+  tab_options(table.font.size=pct(70))
+```
+
+:::
+
+::: {.column width="60%"}
+- we know one way to answer this
+
+```{r}
+#| label: ttest
+#| output-line-numbers: "5"
+#| tidy.opts: { width.cutoff: 24 }
+t.test(UTILITY~type, data=toys,
+       var.equal=TRUE)
+```
+:::
+
+::::
+
+## [The Only Equation You'll Ever Need]{.r-fit-text}
+
+- which toys are the most useful?
+
+::: myblock
+$$\color{red}{\textrm{outcome}_i}\color{white}=\color{blue}{(\textrm{model})_i}\color{white}{+\textrm{error}_i}$$
+
+$$\color{red}{\textrm{utility}_i}\color{white}{=}\color{blue}{(\textrm{some function of type})_i}\color{white}{+\epsilon_i}$$
+:::
+
+- we need to represent `type` as a number
+
+- the simplest way of doing this is to use 0 or 1
+
+## Quantifying a Nominal Predictor
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| label: qu
+#| tidy.opts: { width.cutoff: 22 }
+
+toys <- toys |>
+  mutate(is_playmo =
+           ifelse(type=="playmo",1,0))
+toys
+```
+:::
+
+::: {.column width="50%" .fragment}
+- this maps to a linear model
+
+
+$$\color{red}{\textrm{utility}_i}=\color{blue}{b_0+b_1\cdot{}\textrm{is_playmo}}+\epsilon_i$$
+
+
+- $\overline{\textrm{utility}}$ for SuperZings is **intercept**
+
+- "change due to playmo-ness" is **slope**
+:::
+
+::::
+
+## Linear Model Using `is_playmo`
+
+```{r}
+#| label: lm1
+#| output-line-numbers: "12"
+mod1 <- lm(UTILITY~is_playmo,data=toys)
+summary(mod1)
+```
+
+::: notes
+- note that the $t$ value (and the $p$ value) are exactly what we got from our initial $t$-test
+
+- the $t$-test is just a special case of the linear model
+
+- in this specific (1 predictor, 2-level) case, _F_ = _t_^2^
+:::
+
+
+## Let R Do the Work
+
+```{r}
+#| label: lm2
+contrasts(toys$type)
+```
+
+- already built-in to factors
+
+- NB the first value will be the default intercept (because $b_n=0$ for that value)
+
+  + can change this using the `relevel()` function (or tidyverse `fct_relevel()`)
+
+- as long as we have a _factor_, can just use lm() with that column
+
+## Linear Model Using `type`
+
+#### original
+
+```r
+summary(mod1)
+```
+```{r}
+#| echo: false
+
+.pp(summary(mod1),l=list(0,c(11,12),0))
+```
+
+#### with the factor `type`
+
+```r
+mod2 <- lm(UTILITY~type, data=toys)
+summary(mod2)
+```
+```{r}
+#| echo: false
+mod2 <- lm(UTILITY~type, data=toys)
+.pp(summary(mod2),l=list(0,c(11,12),0))
+
+```
+
+::: {.fragment}
+- why is the coefficient negative? why is the intercept different?
+:::
+
+::: notes
+- point out the `typezing` label
+:::
+
+## Graphically
+
+```{r}
+#| label: ggpA
+#| echo: false
+#| fig-align: center
+toys |> ggplot(aes(x=type,y=UTILITY)) +
+  geom_point(size=3) +
+  geom_smooth(aes(x=2-is_playmo),method="lm")
+```
+
+- shows "what the model is doing", but isn't a very good presentation
+
+- the line suggests you can make predictions for types between _playmo_ and _zing_
+
+## Graphically
+
+
+```{r}
+#| label: ggpB
+#| echo: false
+#| fig-align: center
+gd <- toys |> group_by(type) |> summarise(mean_se(UTILITY))
+gd |> ggplot(aes(x=type,y=y,ymin=ymin,ymax=ymax,fill=type)) +
+  geom_bar(stat="identity") +
+  geom_errorbar(width=.2) +
+  ylab("UTILITY") +
+  theme(legend.position = "none") +
+  scale_fill_manual(values=c('#FB9F46','#999999'))
+
+
+```
+
+- error bars represent one standard error of the mean
+
+## What About Lego Figures?
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/playmo_3.jpg)
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: addlego
+#| include: false
+set.seed(29)
+t1 <- toys |> filter(type=='playmo')
+doit <- 1
+while (doit) {
+  t2 <- tibble(type="lego",UTILITY=round(runif(5,0,10),1))
+  if (mean(t1$UTILITY) > mean(t2$UTILITY) && t.test(t1$UTILITY,t2$UTILITY,data=toys)$p.value < .05)
+  {
+    doit <- 0
+  }
+}
+toys <- toys |> select(-is_playmo) |> full_join(t2)
+toys <- toys |> group_by(type) |> mutate(id=1:n()) |> ungroup() |> arrange(id,desc(type)) |> select(-id) |> mutate(type=as_factor(type))
+```
+
+
+- we now have three groups
+
+- can't label them `c(0, 1, 2)` because that would express a linear relationship
+
+```{r}
+#| label: minig
+#| echo: false
+#| fig.asp: 0.6
+toys |> ggplot(aes(x=as.numeric(as.factor(type))-1,y=UTILITY)) +
+  geom_point(size=3) +
+  scale_x_continuous(name="type",c(0,1,2)) +
+  geom_smooth(se=FALSE,linetype="dashed",linewidth=1.5) +
+  annotate("text",x=1.7,y=6,label="??",colour="red",size=20)
+```
+
+:::
+
+::::
+
+## Independent Effects
+
+- "change due to lego-ness" is _independent_ of other changes
+
+- solution: add another predictor
+
+```{r}
+#| label: addthem
+toys <- toys |> mutate(
+  is_playmo = ifelse(type=="playmo",1,0),
+  is_lego   = ifelse(type=="lego",1,0)
+)
+head(toys)
+```
+
+## [Three-Level Predictor: Two Coefficients]{.r-fit-text} {.smaller}
+
+:::: {.columns}
+
+::: {.column width="40%"}
+
+```{r}
+#| label: gtt
+#| echo: false
+head(toys) |> gt() |>
+   tab_style(
+    style = list(
+      cell_fill(color = "#a2a2ff")
+    ),
+    locations = cells_body(
+      rows = c(1,4))
+  ) |>
+  tab_options(table.font.size=pct(70))
+```
+
+:::
+
+::: {.column width="60%"}
+
+
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot\textrm{is_playmo}_i+b_2\cdot\textrm{is_lego}_i}+\epsilon_i$$
+
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot0+b_2\cdot0}+\epsilon_i$$
+
+
+:::
+
+::::
+
+::: {.myyellowblock style="text-align: center;"}
+"utility of a zing"
+:::
+
+
+## [Three-Level Predictor: Two Coefficients]{.r-fit-text} {.smaller}
+
+:::: {.columns}
+
+::: {.column width="40%"}
+
+```{r}
+#| label: gtt2
+#| echo: false
+head(toys) |> gt() |>
+   tab_style(
+    style = list(
+      cell_fill(color = "#ffa2a2")
+    ),
+    locations = cells_body(
+      rows = c(2,5))
+  ) |>
+  tab_options(table.font.size=pct(70))
+```
+:::
+
+::: {.column width="60%"}
+
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{red}{+b_1\cdot\textrm{is_playmo}_i}+\color{gray}{b_2\cdot\textrm{is_lego}_i}+\epsilon_i$$
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{red}{+b_1\cdot1}+\color{gray}{b_2\cdot0}+\epsilon_i$$
+
+:::
+::::
+
+::: {.myyellowblock style="text-align: center;"}
+"change in utility from a zing due to being a playmo"
+:::
+
+## [Three-Level Predictor: Two Coefficients]{.r-fit-text} {.smaller}
+
+:::: {.columns}
+
+::: {.column width="40%"}
+
+```{r}
+#| label: gtt3
+#| echo: false
+head(toys) |> gt() |>
+   tab_style(
+    style = list(
+      cell_fill(color = "#ffa2a2")
+    ),
+    locations = cells_body(
+      rows = c(3,6))
+  ) |>
+  tab_options(table.font.size=pct(70))
+```
+
+:::
+
+::: {.column width="60%"}
+
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot\textrm{is_playmo}_i}+\color{red}{b_2\cdot\textrm{is_lego}_i}+\epsilon_i$$
+$$\textrm{UTILITY}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot0}+\color{red}{b_2\cdot1}+\epsilon_i$$
+
+:::
+::::
+::: {.myyellowblock style="text-align: center;"}
+"change in utility from a zing due to being a lego"
+:::
+
