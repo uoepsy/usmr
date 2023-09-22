@@ -1,0 +1,513 @@
+---
+title: "Exercises: More R; Estimates & Intervals"
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+
+```{r setup, include=FALSE}
+source('assets/setup.R')
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+```
+
+
+:::frame
+__Data: Past Surveys__  
+In the last few years, we have asked students of the statistics courses in the Psychology department to fill out a little survey.  
+Anonymised data are available at [https://uoepsy.github.io/data/surveydata_historical.csv](https://uoepsy.github.io/data/surveydata_historical.csv).  
+
+__Note:__ this does _not_ contain the responses from this year. 
+:::
+
+# Data manipulation & visualisation
+
+
+`r qbegin(1)`
+Read in the data, giving it a name to store it in your environment.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+library(tidyverse)
+
+surveydata <- read_csv("https://uoepsy.github.io/data/surveydata_historical.csv")
+
+```
+
+`r solend()`
+
+
+`r qbegin(2)`
+How many previous **USMR** students are born in the same month as you? 
+
+::: {.callout-tip collapse="true"}
+#### Hints   
+
+- The data contains students from some of the other statistics courses we teach, so this will involve `filter`ing your data to USMR students first. 
+- In tidyverse you can make a table using `... |> select(variable) |> table()`  
+- You can also try `... |> count(variable)` to get the same information.  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+surveydata |> 
+  filter(course == "usmr") |>
+  count(birthmonth)
+```
+
+`r solend()`
+
+`r qbegin(3)`
+Create a new variable in the dataset which indicates whether people were taller than 6 foot (182cm).
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+You might want to use `mutate()`. Remember to make the changes apply to the objects in your environment, rather than just printing it out.  
+`data <- data |> mutate(...)`  
+(see [2A #advances-in-r](02a_measurement.html#advances-in-r){target="_blank"})
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+surveydata <- surveydata |>
+  mutate(
+    over6ft = height > 182
+  )
+```
+
+`r solend()`
+
+`r qbegin(4)`
+What percentage of respondents to the survey (for whom we have data on their height) are greater than 6 foot tall?
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+
+- Try `table()`, and then think about how we can convert the counts to percentages (what does `sum()` of the table give you?).  
+  - `table()` will actually by default count only those values which _aren't_ missing, so this means you don't have to do anything extra here (if you wanted it to also count the missing values, we can use `table(data$variable, useNA = "ifany")`)
+- See also [2A #categorical](02a_measurement.html#categorical){target="_blank"}.  
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+We can divide the table by the `sum` of the table
+```{r}
+table(surveydata$over6ft) / sum(table(surveydata$over6ft))
+```
+We can also use `prop.table()`
+```{r}
+prop.table(table(surveydata$over6ft))
+```
+`r solend()`
+
+`r qbegin(5)`
+Calculate the mean and standard deviation of heights of all respondents to the survey.  
+
+Can you also do this using the tidyverse syntax?
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+
+- We can do it with `mean(data$variable)`, but it will be useful to practice tidyverse style. You'll probably want to `summarise()` the data.  
+- We're likely to have missing data in here, so `na.rm=TRUE` will be handy (see [2A #numeric](02a_measurement.html#numeric){target="_blank"})
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+This returns us NA:
+```{r}
+mean(surveydata$height)
+```
+So we need to make sure we use `na.rm = TRUE` (we can use `T` as a shorthand for `TRUE`).  
+```{r}
+mean(surveydata$height, na.rm = T)
+sd(surveydata$height, na.rm = T)
+```
+
+or in tidyverse:
+```{r}
+surveydata |> 
+  summarise(
+    meanheight = mean(height, na.rm = T),
+    sdheight = sd(height, na.rm = T)
+  )
+```
+`r solend()`
+
+`r qbegin(6)`
+Plot the distribution of heights of all respondents. 
+Try to make it 'publication ready'.  
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+`hist()` won't cut it here, we're going to want **ggplot**, which was introduced in [2A #ggplot](02a_measurement.html#ggplot){target="_blank"}.  
+:::
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+ggplot(surveydata, aes(x=height)) + 
+  geom_histogram(binwidth = 5) + 
+  labs(x = "Height (cm)", 
+       y = "Frequency", 
+       title = "Heights of respondents to the survey") + 
+  theme_minimal()
+```
+`r solend()`
+
+
+`r qbegin(7)`
+For respondents _from each of the different courses_, calculate the mean and standard deviation of heights.  
+
+::: {.callout-tip collapse="true"}
+#### Hints   
+This is just like when we did it for all the respondents - we want to `summarise` our data.   Only this time we need to `group_by` something else first.   
+:::
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+We're using the same code as we did before, but we've added in one new line using `group_by()`.  
+```{r}
+surveydata |> 
+  group_by(course) |>
+  summarise(
+    meanheight = mean(height, na.rm = T),
+    sdheight = sd(height, na.rm = T)
+  )
+```
+
+`r solend()`
+
+`r qbegin(8)`
+Based on your answer to the previous question, can you picture what the distributions are going to look like?  
+
+Plot the distributions of heights for each course to see if you're correct.  
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+Try looking up the documentation for `?facet_wrap`. It is an incredibly useful extension of ggplot which allows you to create the same plot for different groups.  
+
+You might also want to add an extra `aesthetic` mapping from the `course` variable to some feature of your plot (e.g. 'colour' or 'fill').  
+:::
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+They're all going to look pretty similar - the center will be at around 167 and the majority of the distribution will lie within about 15cm either side (2 times the standard deviation of about 7.5).  
+Note that the USMR students have a slightly higher mean as well as a slightly bigger standard deviation. So this plot will be slightly shifted to the right, and will be slightly more spread out. It might be hard to see these differences just by looking at the plots though.  
+
+```{r}
+ggplot(surveydata, aes(x=height, fill = course)) + 
+  geom_histogram(binwidth = 5) + 
+  facet_wrap(~course) + 
+  labs(x = "Height (cm)", 
+       y = "Frequency", 
+       title = "Heights of respondents to the survey") + 
+  guides(fill = "none") + 
+  theme_minimal()
+```
+
+`r solend()`
+
+`r qbegin(9)`
+
+How many people in the survey do we have height data for? (i.e. how many are not missing?)   
+To find this out we might need to use `is.na()` (see below for a little example for you to play with).  
+
+::: {.callout-note collapse="true"}
+#### `is.na()`  
+
+The `is.na(x)` function is a bit like asking `x == NA`. It is necessary because NA is a special thing in R, which means we can't ask questions like `3 == NA` (because we don't know what that `NA` is - it _could_ be 3 for all we know!).  
+```{r}
+mynumbers <- c(1,5,NA,3,6,NA)
+mynumbers == 5
+mynumbers == NA
+```
+
+Instead, we can use `is.na()` to ask "is this thing an NA?"  
+```{r}
+# for each number, TRUE if it's an NA, otherwise FALSE
+is.na(mynumbers)
+# ! means "not", so this is asking if each number is "not" an NA
+!is.na(mynumbers)
+# how many non-NAs are there? 
+sum(!is.na(mynumbers))
+```
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+To get the number of respondents with height data, we can sum the non-NA values:
+```{r}
+sum(!is.na(surveydata$height))
+```
+and we have this many missing:
+```{r}
+sum(is.na(surveydata$height))
+```
+which makes sense because we have this many entries in the data:
+```{r}
+nrow(surveydata)
+```
+
+`r solend()`
+
+`r qbegin(10)`
+
+Just like finding out how many people were over 6 foot, we can quickly work out how many respondents are taller than *\<insert your height here\>*, by using `table()`.  
+For instance, here is a table of how many people are taller than me (Josiah):  
+
+```{r}
+table(surveydata$height > 177)
+```
+
+However, as a learning exercise, let's make sure we can recreate these numbers by doing the calculations manually.  
+
+__Without__ using `table()` or `prop.table()`, find out:  
+
+a) How many respondents are taller than you?  
+b) What proportion of respondents (with valid height data) are taller than you?  
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+
+- Remember that we can `sum()` a condition as a quick way of counting: `sum(data$variable == "thing")` adds up all the TRUE responses.  
+  - We're going to need to make sure we tell `sum()` to ignore the missing values (`na.rm=TRUE` will come in handy again).  
+- Our denominator (bit on the bottom) for calculating the proportion $\frac{\text{nr people taller than me}}{\text{total nr of people}}$, is the total number of people _for whom we have height data_. We just calculated that in the previous question!   
+- Can you also do this in tidyverse syntax? (most of it can be done inside `summarise()`).  
+  
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+There are this _many_ people who are taller than me. 
+We need to ignore the NAs again:  
+```{r}
+sum(surveydata$height > 177, na.rm = T)
+```
+
+To get the total number of respondents with height data, we can sum the non-NA values:
+```{r}
+sum(!is.na(surveydata$height))
+```
+
+And if we divide the number who are taller than me by the total number of respondents, we get the proportion:  
+```{r}
+sum(surveydata$height > 177, na.rm = T) / sum(!is.na(surveydata$height))
+```
+
+We can do all this inside tidyverse too! 
+
+```{r}
+surveydata |> 
+  summarise(
+    n_taller = sum(height > 177, na.rm = T),
+    n_heights = sum(!is.na(height)),
+    prop_taller = n_taller / n_heights
+  )
+```
+
+`r solend()`
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Estimates & Intervals
+
+For these next exercises we are going to be focusing on self-perceived sleep quality ratings. Our survey contains a set of respondents who completed the question below. We're going to use this sample to get an estimate of the sleep quality rating in the wider population.   
+```{r}
+#| echo: false
+knitr::include_graphics("images/sleepquestion.png")
+```
+
+`r qbegin(11)`
+We only asked the sleep quality rating question to students in USMR in the 2022 cohort, so to make things easier, let's create a subset of the dataset which includes only those students. 
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+This will need some `filter`ing, and assigning (e.g. `usmr2022 <-`) to a new name.
+:::
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+usmr2022 <- surveydata |> 
+  filter(course == "usmr", year == 2022)
+dim(usmr2022)
+```
+`r solend()`
+
+
+`r qbegin(12)`
+For the USMR students in the 2022 academic cohort, calculate the following: 
+
+- mean Sleep-Quality rating
+- standard deviation of Sleep-Quality ratings
+- number of respondents who completed Sleep-Quality rating
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+You can do this with things like `mean(data$variable)`, or you can do it all in tidyverse (see the example of `summarise` in the intro to tidyverse: [2A #advances-in-r](02a_measurement.html#advances-in-r){target="_blank"}).  
+
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+```{r}
+usmr2022 |> 
+  summarise(
+    m_sleep = mean(sleeprating, na.rm = TRUE),
+    sd_sleep = sd(sleeprating, na.rm = TRUE),
+    n_sleep = sum(!is.na(sleeprating)), 
+    n_total = n() # n() will give the total count
+  )
+```
+
+`r solend()`
+
+`r qbegin(13)`
+Using your answers to the previous question, construct a 95% confidence interval for the average Sleep-Quality rating.  
+Why might it be a _bad_ idea to use this as an estimate of the average Sleep-Quality  rating of the global population?  
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+
+- The previous question gives you all the pieces that you need. You'll just need to put them together in the way seen in [2B #confidence-intervals](02b_sampling.html#confidence-intervals){target="_blank"}.  
+- Think about who makes up the sample (e.g. USMR students). Are they _representative_ of the population we are trying to generalise to?  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+
+```{r}
+#| echo: false
+mu = mean(usmr2022$sleeprating, na.rm = TRUE)
+su = sd(usmr2022$sleeprating, na.rm = TRUE)
+m = round(mean(usmr2022$sleeprating, na.rm = TRUE),2)
+s = round(sd(usmr2022$sleeprating, na.rm = TRUE),2)
+n = sum(!is.na(usmr2022$sleeprating))
+se = round(su/sqrt(n),2)
+```
+
+So we have our estimate, which is the mean sleep quality rating in our sample: $\bar x = `r m`$. And we have a standard deviation of our sleep quality ratings: $s = `r s`$. While our sample has `r nrow(usmr2022)` students in it, only `r n` responded to the sleep question, so really our $n$ for this calculation is `r n`.  
+
+We can calculate our standard error as $SE = \frac{s}{\sqrt{n}}$, which is $\frac{`r s`}{\sqrt{`r n`}} = `r se`$.
+
+This tells us that _if_ we were to collect lots of samples of size `r n`, we would expect their mean sleep quality ratings to be normally distributed around `r m` with a standard deviation of `r se`. So we can expect that 95% of the samples we _could_ take would have means between $1.96 \times `r se`$ above and below `r m`. Those are our confidence intervals!  
+
+$$
+\begin{align}
+\text{Mean = }& `r m` \\
+\text{95\% CI = }& `r m` \pm 1.96 \times `r se` \\
+&[`r round(m-(1.96*se),2)`, `r round(m+(1.96*se),2)`]
+\end{align}
+$$
+
+How well does our sample represent the global population? Well, for one thing, they're all university students, and while there will be many students from across the globe, it's highly likely that our sample is biased towards certain countries or continents. Additionally, we're going to have a lot of people in our sample in a fairly narrow age range. It might be that sleep quality changes a lot as people age, in which case our results are probably not going to generalise very well to, for instance, people who are 70 years old. It's also important to remember that this is a snapshot taken at a certain point in time, and might not generalise to other times. There are lots more ways in which our sample might be biased - you can find a nice little 1 page article at [https://www.nature.com/articles/466029a](https://www.nature.com/articles/466029a){target="_blank"} to get you thinking.  
+
+
+`r solend()`
+
+## Optional Extras  
+`r qbegin(qlabel = FALSE, "Optional Extra")`
+Note that the confidence interval from the previous question is concerned with describing the abstract and _theoretical_ distribution of "what the mean sleep quality rating would look like from all possible samples of this size that I _could_ take". In order to do this we used a formula to describe the spread of this distribution, and in doing so had to assume that the standard deviation of our sample is a good approximation of the standard deviation of the population, and that the population is normally distributed.  
+
+We can also avoid ever using the standard deviation of our sample (`sd(usmr2022$sleeprating)`), and instead approximate the sampling distribution of the mean by "bootstrapping" - taking repeated _resamples_ with replacement from the original sample (see [2B#standard-error](02b_sampling.html#standard-error-in-practice){target="_blank"}.  
+
+```{r}
+#| eval: false
+bootstrap_means <- replicate(1000, mean(sample(observed_sample, replace = TRUE)))
+```
+
+1. Create an object that contains the 10,000 means from 10,000 resamples of our sleep ratings.  
+2. The distribution of resample means is the 'bootstrap distribution'. Plot a histogram of it. What is the standard deviation? How does it compare to the standard error you calculated in the previous question with the formula?  
+3. At what values does the middle 95% of the bootstrap distribution fall?  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+For 3, look up `quantile()`. We saw this in [2B #confidence-intervals](02b_sampling.html#confidence-intervals){target="_blank"}.  
+
+:::
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+:::panelset
+:::panel
+#### Resample means  
+
+Here is our sample of sleep ratings: 
+```{r}
+sleeprates <- usmr2022$sleeprating
+```
+And we can get rid of the NA's: 
+```{r}
+sleeprates <- sleeprates[!is.na(sleeprates)]
+```
+
+We can resample with replacement from this set of numbers by using the `replace = TRUE` argument in the `sample()` function.  
+Note, we're leaving `size = ` blank, which means it will stop at the same length as the original vector we give it. 
+```{r}
+#| eval: false
+sample(sleeprates, replace = TRUE)
+```
+and the mean of a given resample is calculated by wrapping `mean()` around the above code: 
+```{r}
+mean(sample(sleeprates, replace = TRUE))
+```
+
+finally, we'll do it lots and lots of times, using `replicate()`: 
+```{r}
+BSmeans <- replicate(10000, mean(sample(sleeprates, replace = TRUE)))
+```
+
+:::
+:::panel
+#### Bootstrap Distribution
+
+Here's the histogram of the bootstrap distribution:
+```{r}
+hist(BSmeans)
+```
+
+And here's the standard deviation of that distribution. This is a bootstrapped estimate of the standard error.  
+
+```{r}
+sd(BSmeans)
+```
+
+Recall our standard error calculated using $\frac{s}{\sqrt{n}}$ from the previous question was `r se`
+
+:::
+:::panel
+#### Percentiles
+
+We can get the 2.5% and 97.5% percentiles (i.e. getting the middle 95%), using the code below. Recall our confidence intervals that we computed analytically were `r round(m-(1.96*se),2)` and `r round(m+(1.96*se),2)`.  
+```{r}
+quantile(BSmeans, c(.025,.975))
+```
+
+:::
+:::
+
+<br><br>
+
+::: {.callout-caution collapse="true"}
+#### bootstraps
+
+Bootstrapping is a great way to learn about sampling variability because it allows us to actually plot, summarise and describe what would otherwise be an abstract conceptual distribution.  
+
+It can also be a useful tool in practice, but it doesn't come without its own problems/complexities. One important thing to note is that it often works _worse_ than traditional methods for small samples, especially skewed samples (i.e. bootstrapping a "95% CI" for a small sample will often be too narrow and <95%).  
+
+:::
+
+
+`r solend()`
+
+
+
