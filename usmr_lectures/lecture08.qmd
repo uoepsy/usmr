@@ -1,0 +1,98 @@
+---
+title: "Interactions"
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+source('_theme/theme_quarto.R')
+```
+
+```{r}
+#| include: false
+
+load("R/reading.Rdata")
+load("R/reading2.Rdata")
+```
+
+## Two Weeks Ago {transition="zoom"}
+
+![](img/playmo_teach.jpg){.center-img}
+
+
+## Two Weeks Ago {transition="zoom"}
+
+```{r}
+mod.m <- lm(R_AGE ~ age + hrs_wk, data=reading)
+summary(mod.m)
+```
+
+## Two Weeks Ago {transition="zoom"}
+
+```{r}
+#| label: 3d
+#| echo: false
+#| fig-align: center
+library(rgl)
+plot3d(x=reading$hrs_wk,y=reading$age,z=reading$R_AGE,
+       type='s',
+       radius=.1,
+       xlab="practise",ylab="age",zlab="READING AGE")
+coefs <- coef(mod.m)
+a <- coefs["hrs_wk"]
+b <- coefs["age"]
+c <- -1
+d <- coefs["(Intercept)"]
+planes3d(a,b,c,d, alpha=0.5)
+rglwidget()
+```
+
+## Newer, Prettier
+
+```{r}
+#| label: psetup
+#| include: false
+library(plotly)
+steps=49
+age <- with(reading,seq(min(age),max(age),length=steps))
+hrs_wk <- with(reading,seq(min(hrs_wk),max(hrs_wk),length=steps))
+newdat <- expand.grid(age=age,hrs_wk=hrs_wk)
+```
+
+
+```{r}
+#| echo: false
+fit <- lm(R_AGE~age*hrs_wk,data=reading)
+R_AGE <- matrix(predict(fit, newdat),steps,steps)
+plot_ly(x=~age,y=~hrs_wk,z=~R_AGE, type="surface") %>% layout(
+    scene = list(
+      xaxis = list(title = "age"),
+      yaxis = list(title = "practise"),
+      zaxis = list(title = "READING AGE"),
+      aspectmode = "cube"
+    ))
+#p <- persp(age,hrs_wk,R_AGE,theta=-25,phi=5,col=NA)
+```
+
+
+
+## take 2
+
+
+
+```{r}
+#| echo: false
+fit <- lm(R_AGE~age+hrs_wk,data=reading)
+R_AGE <- matrix(predict(fit, newdat),steps,steps)
+plot_ly(x=~age,y=~hrs_wk,z=~R_AGE, type="surface") %>% layout(
+    scene = list(
+      xaxis = list(title = "age"),
+      yaxis = list(title = "practise"),
+      zaxis = list(title = "READING AGE"),
+      aspectmode = "cube"
+    ))
+#p <- persp(age,hrs_wk,R_AGE,theta=-25,phi=5,col=NA)
+```
+
