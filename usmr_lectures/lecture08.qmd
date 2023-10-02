@@ -298,7 +298,7 @@ persp3d(hrs_wk,age,R_AGE,col="lightgrey",alpha=0.5,add=TRUE)
 rglwidget()
 ```
 
-# Interaction (2)
+# Interactions 2
 
 ## Categorical Predictors
 
@@ -333,6 +333,130 @@ reading |> slice(c(1:3,48:50)) %>% gt() |>
 contrasts(reading$method)
 ```
 
+## A (Different) Two-Predictor Model
+
+- we know that `hrs_wk` affects reading age
+
+- perhaps `method` affects reading age too?
+
+- this is a question of model _improvement_
+
+. . .
+
+
+```{r}
+mod.m2 <- lm(R_AGE ~ hrs_wk + method, data=reading)
+anova(mod.m2)
+```
+
+
+## A Two-Predictor Model
+
+```{r}
+#| output-line-numbers: "11,12,13"
+summary(mod.m2)
+```
+
+## A Two-Predictor Model
+
+```{r}
+#| echo: false
+#| fig-align: center
+#| fig-asp: .6
+
+p <- reading |> ggplot(aes(x=hrs_wk,y=R_AGE,colour=method)) +
+  xlab("practice (hrs/wk)") + ylab("reading age") +
+  geom_point(size=3)
+
+p + geom_abline(intercept=coef(mod.m2)[1],slope=coef(mod.m2)[2],colour="red",linewidth=1.5) +
+  geom_abline(intercept=coef(mod.m2)[1]+coef(mod.m2)[3],slope=coef(mod.m2)[2],colour="blue",linewidth=1.5)
+```
+
+- note that the lines are parallel
+
+- an hour of practice has _the same_ effect, however you're taught
+
+## [Different Effects for Different Methods?]{.r-fit-text}
+
+```{r}
+mod.m3 <- lm(R_AGE ~ hrs_wk + method + hrs_wk:method,data=reading)
+anova(mod.m3)
+```
+
+## [Different Effects for Different Methods]{.r-fit-text}
+
+```{r}
+summary(mod.m3)
+```
+
+## Interaction is Just Multiplication
+
+
+$$\color{red}{\hat{y_i}}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\color{blue}{b_3}\cdot{}\color{orange}{x_{1i}x_{2i}}$$
+
+```{r}
+#| echo: false
+cf <- function(x) {
+  round(coef(mod.m3)[x],3)
+}
+coef(mod.m3)
+```
+
+
+::: {.r-fit-text}
+
+$$\color{red}{\hat{\textrm{R_AGE}}}=\color{blue}{`r cf(1)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(2)`}\cdot{}\color{orange}{\textrm{hrs_wk}}+\color{blue}{`r cf(3)`}\cdot{}\color{orange}{\textrm{method}}+\color{blue}{`r cf(4)`}\cdot{}\color{orange}{\textrm{hrs_wk}\cdot{}\textrm{method}}$$
+:::
+
+- the coefficients show you which way things are coded
+
+- `methodword` can be read as "when `method` is `word`"
+
+
+## Interaction is Just Multiplication
+
+
+- when `method` is (coded as) zero (for phonics):
+
+::: {.r-fit-text}
+
+$$\color{red}{\hat{\textrm{R_AGE}}}=\color{blue}{`r cf(1)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(2)`}\cdot{}\color{orange}{\textrm{hrs_wk}}+\color{blue}{`r cf(3)`}\cdot{}\color{orange}{0}+\color{blue}{`r cf(4)`}\cdot{}\color{orange}{\textrm{hrs_wk}\cdot{}0}$$
+
+:::
+
+$$\color{red}{\hat{\textrm{R_AGE}}}=\color{blue}{`r cf(1)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(2)`}\cdot{}\color{orange}{\textrm{hrs_wk}}$$
+
+. . .
+
+- when `method` is (coded as) one (for word):
+
+::: {.r-fit-text}
+
+$$\color{red}{\hat{\textrm{R_AGE}}}=\color{blue}{`r cf(1)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(2)`}\cdot{}\color{orange}{\textrm{hrs_wk}}+\color{blue}{`r cf(3)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(4)`}\cdot{}\color{orange}{\textrm{hrs_wk}\cdot{}1}$$
+
+:::
+
+$$\color{red}{\hat{\textrm{R_AGE}}}=\color{blue}{`r cf(1)+cf(3)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(2)+cf(4)`}\cdot{}\color{orange}{\textrm{hrs_wk}}$$
+
+::: notes
+- here, I've done the additions to make the formula simpler
+
+- `r cf(1)+cf(3)` is `r cf(1)`+`r cf(3)`
+- `r cf(2)+cf(4)` is `r cf(2)`+`r cf(4)`
+
+:::
+
+## No More Parallel Lines
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+p + geom_abline(intercept=coef(mod.m3)[1],slope=coef(mod.m3)[2],colour="red",linewidth=1.5) +
+  geom_abline(intercept=coef(mod.m3)[1]+coef(mod.m3)[3],slope=coef(mod.m3)[2]+coef(mod.m3)[4],colour="blue",linewidth=1.5)
+```
+
 
 <!-- use at end -->
 ## A Nice Graph
@@ -347,3 +471,16 @@ reading |>
     geom_point(size=3) +
     geom_smooth(method="lm")
 ```
+
+. . .
+
+- `geom_smooth(method="lm")` effectively runs a linear model, _to make a graph_
+
+- it's not an analysis
+
+::: notes
+- don't want people using ggplot to "analyse" data
+:::
+
+# Interactions 3
+
