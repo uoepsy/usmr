@@ -245,6 +245,42 @@ p1
 
 ::::
 
+## Model with Interaction
+
+```{r}
+#| output-line-numbers: "14"
+mod.i <- lm(R_AGE ~ 1 + hrs_wk + age+ hrs_wk:age, data = reading)
+summary(mod.i)
+```
+
+## Model with Interaction
+
+```{r}
+#| fig-asp: .6
+#| fig-align: center
+#| echo: false
+
+rd_6 <- reading |> mutate(age=6)
+rd_6 <- rd_6 |> mutate(RA6=predict(mod.i,newdat=rd_6))
+rd_8 <- reading |> mutate(age=8)
+rd_6 <- rd_6 |> mutate(RA8=predict(mod.i,newdat=rd_8))
+rd_10 <- reading |> mutate(age=10)
+rd_6 <- rd_6 |> mutate(RA10=predict(mod.i,newdat=rd_10))
+
+rm(rd_8,rd_10)
+
+rd_6 |> ggplot() +
+  geom_line(aes(x=hrs_wk,y=RA6),colour="red",linewidth=1.5) +
+  geom_line(aes(x=hrs_wk,y=RA10),colour="blue",linewidth=1.5) +
+  geom_line(aes(x=hrs_wk,y=RA8),colour="orange",linewidth=1.5) +
+  xlab("practise (hrs/wk)") +
+  ylab("READING AGE") +
+  annotate("text",x=6.8,y=13.2,label="age=10",colour="blue",size=8) +
+  annotate("text",x=6.8,y=10.3,label="age=8",colour="orange",size=8) +  
+  annotate("text",x=6.8,y=8.5,label="age=6",colour="red",size=8)
+  
+```
+
 
 ## Model with Interaction
 
@@ -264,4 +300,50 @@ rglwidget()
 
 # Interaction (2)
 
+## Categorical Predictors
 
+:::: {.columns}
+
+::: {.column width="40%"}
+- how does interaction work with **categorical** predictors?
+
+- (as you'll see) it's all just multiplication
+:::
+
+::: {.column width="60%"}
+
+```{r}
+#| echo: false
+reading |> slice(c(1:3,48:50)) %>% gt() |>
+  data_color(columns=c("hrs_wk","method","R_AGE"),colors="#d0d9ff",alpha=.8) |>
+  tab_options(table.font.size=pct(70))
+```
+
+
+
+:::
+
+::::
+
+- how is `method` coded by R?
+
+. . .
+
+```{r}
+contrasts(reading$method)
+```
+
+
+<!-- use at end -->
+## A Nice Graph
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+reading |>
+  ggplot(aes(x=hrs_wk, y=R_AGE, colour=method)) +
+    xlab("practice (hrs/wk)") +
+    ylab("reading age") +
+    geom_point(size=3) +
+    geom_smooth(method="lm")
+```
