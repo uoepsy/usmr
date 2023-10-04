@@ -1,0 +1,570 @@
+---
+title: "Exercises: Chi-Square Tests"
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+set.seed(017)
+```
+
+# Chi-Square Tests
+
+## Birth-Months
+
+> **Research Question:** Are students more likely to be born in certain months than others?  
+
+:::frame
+__Data: Past Surveys__  
+In the last few years, we have asked students of the statistics courses in the Psychology department to fill out a little survey.  
+Anonymised data are available at [https://uoepsy.github.io/data/surveydata_historical.csv](https://uoepsy.github.io/data/surveydata_historical.csv).  
+
+__Note:__ this does _not_ contain the responses from this year. 
+
+```{r}
+surveydata <- 
+  read_csv("https://uoepsy.github.io/data/surveydata_historical.csv")
+```
+:::
+
+
+`r qbegin(1)`
+What is your intuition about the distribution of all students' birth-months?  
+Do you think they will be spread uniformly across all months of the year (like a fair 12-sided dice), or do you think people are more likely to be born in certain months more than others?  
+
+Plot the distribution and get an initial idea of how things are looking.  
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+You can do this quickly with `barplot()` and `table()`, or you could create try using `ggplot()` and looking into `geom_bar()`.  
+:::
+`r qend()`
+
+`r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
+The quick and dirty way to plot:
+```{r}
+barplot(table(surveydata$birthmonth))
+```
+
+A ggplot option:
+```{r}
+ggplot(data = surveydata, aes(x = birthmonth)) +
+    geom_bar() +
+    labs(x = "- Birth Month -")
+```
+`r solend()`
+
+`r qbegin(2)`
+We're going to perform a statistical test to assess the extent to which our data conforms to the hypothesis that people are no more likely to be born on one month than another.  
+
+Under this hypothesis, what would be the proportional breakdown of observed births in each of the months?  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+If people are no more likely to be born in one month than another, then we would expect the same proportion of observed births in each month.  
+There are 12 months, so we would expect $\frac{1}{12}$ observations in each month.  
+
+We can write these as: 
+$$
+\begin{align}
+& p_{jan} = 1/12 \\
+& p_{feb} = 1/12 \\
+& ... \\
+& p_{dec} = 1/12 \\
+\end{align}
+$$
+`r solend()`
+
+`r qbegin(3)`
+
+How many observations in our sample would we *expect* to find with a birthday in January? And in February? ... and so on?  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+How many responses (i.e. not missing values) do we have for this question?  
+
+:::
+
+`r qend()`
+
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+There are `r sum(!is.na(surveydata$birthmonth))` people who have non-NA values (`sum(!is.na(surveydata$birthmonth))`).  
+
+Under the null hypothesis, we would expect $\frac{1}{12} \times$ `r sum(!is.na(surveydata$birthmonth))` = `r round(sum(!is.na(surveydata$birthmonth))/12,2)` observations born in each month. 
+`r solend()`
+
+`r qbegin(4)`
+The code below creates counts for each month. Before doing that, it removes the rows which have an NA in them for birthmonth: 
+```{r}
+#| eval: false
+surveydata |>
+  filter(!is.na(birthmonth)) |>
+  group_by(birthmonth) |>
+  summarise(
+      observed = n()
+  )
+```
+(A shortcut for this would be `surveydata |> filter(!is.na(birthmonth)) |> count(birthmonth)`)  
+
+Add to the code above to create columns showing:
+
+- the expected counts $E_i$
+- observed-expected ($O_i - E_i$)
+- the squared differences $(O_i - E_i)^2$
+- the standardised square differences $\frac{(O_i - E_i)^2}{E_i}$  
+
+Then calculate the $\chi^2$ statistic (the sum of the standardised squared differences).  
+If your observed counts matched the expected counts *perfectly*, what would the $\chi^2$ statistic be? 
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+This was all done in the step-by-step example of a $\chi^2$ test in [4A #chi2-goodness-of-fit-test](04a_chisq.html#chi2-goodness-of-fit-test){target="_blank"}
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+chi_table <- 
+    surveydata |>
+    filter(!is.na(birthmonth)) |>
+    group_by(birthmonth) |>
+    summarise(
+        observed = n(),
+        expected = sum(!is.na(surveydata$birthmonth))/12,
+        diff = observed-expected,
+        sq_diff = diff^2,
+        std_sq_diff = sq_diff / expected
+    )
+chi_table
+```
+
+And we can calculate our $\chi^2$ test statistic by simply summing the values in the last column we created:
+```{r}
+sum(chi_table$std_sq_diff)
+```
+
+If all our observed counts are equal to our expected counts, then the `diff` column above will be all $0$, and $0^2=0$, and $\frac{0}{E_i}$ will be $0$. So $\chi^2$ will be $0$. 
+`r solend()`
+
+`r qbegin(5)`
+You can see the distribution of $\chi^2$ statistics with different degrees of freedom below.  
+```{r}
+#| label: fig-chidist
+#| echo: false
+#| fig.cap: "Chi-Square Distributions"
+knitr::include_graphics("https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Chi-square_pdf.svg/1200px-Chi-square_pdf.svg.png")
+```
+
+We can find out the proportion of the distribution which falls to either side of a given value of $\chi^2$ using `pchisq()`. We need to give it our calculated $\chi^2$ statistic, our degrees of freedom (`df`), which is equal to the number of categories minus 1. We also need to specify whether we want the proportion to the left (`lower.tail=TRUE`) or to the right (`lower.tail=FALSE`).  
+
+1. Using `pchisq()`, calculate the probability of observing a $\chi^2$ statistic as least as extreme as the one we have calculated.  
+2. Check that these results match with those provided by R's built-in function: `chisq.test(table(surveydata$birthmonth))` (the `table` function will ignore NAs by default, so we don't need to do anything extra for this).    
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+sum(chi_table$std_sq_diff)
+pchisq(sum(chi_table$std_sq_diff), df = 11, lower.tail = FALSE)
+```
+
+```{r}
+chisq.test(table(surveydata$birthmonth))
+```
+`r solend()`
+
+`r qbegin(6)`
+Which months of year had the highest contributions to the chi-square test statistic?  
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+Think about your standardised squared deviations. 
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+**Standardized squared deviations**  
+
+One possible way to answer this question is to look at the individual contribution of each category to the $\chi^2$ statistic. We computed these values in an earlier question.  
+```{r}
+chi_table |>
+  select(birthmonth, std_sq_diff)
+```
+
+From the barplot we created earlier on, we can see which months make up higher/lower proportions than expected:
+```{r}
+ggplot(chi_table, aes(x = birthmonth, y = observed/nrow(surveydata))) +
+  geom_col(fill = 'lightblue') +
+  geom_hline(yintercept = 1/12, color = 'red') +
+  theme_classic(base_size = 15)
+```
+
+**Pearson residuals**
+
+Equivalently, you could answer by looking at Pearson residuals:
+```{r}
+chisq.test(table(surveydata$birthmonth))$residuals
+```
+
+```{r}
+#| echo: false
+presids <- chisq.test(table(surveydata$birthmonth))$residuals
+presids <- presids[order(abs(presids),decreasing = TRUE)]
+```
+
+The greatest *absolute* values are for `r names(presids)[1]` and `r names(presids)[2]`, showing that for these months the deviations from expected to observed were the greatest. 
+
+`r solend()`
+
+## Children's Favourite Colours
+
+> **Research Question:** Do childrens' favourite colours correspond to the those suggested by the internet?  
+
+:::frame
+According to one part of the internet, 30% of children have red as their favourite colour, 20% have blue, 15% yellow, 11% purple, 9% green, and 15% prefer some other colour.  
+
+We collected data from 50 children aged between 2 and 5, and got them to choose one of a set of objects that were identical apart from colour. You can see the data in @tbl-childcols
+
+```{r}
+#| label: tbl-childcols
+#| tbl-cap: "Colour preferences of 50 children aged between 2 and 5"
+#| echo: false
+set.seed(33)
+children = sample(c("red","blue","yellow","purple","green","other"), size = 50, replace = TRUE, 
+       prob = c(.25,.20,.2,.15,.10,.1)) |>
+  table() |> as.data.frame() |> rename(colour=Var1)
+gt::gt(children)
+```
+:::
+
+`r qbegin(7)`
+Perform a $\chi^2$ goodness of fit test to assess the extent to which our sample of children conform to this theorised distribution of colour preferences.  
+
+No need to do this manually - once is enough. Just go straight to using the `chisq.test()` function.  
+However, we will need to get the numbers into R somehow.. 
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+You can make a table from scratch using, for example: `as.table(c(1,2,3,4,5))`.  
+
+For the test, try using `chisq.test(..., p = c(?,?,?,...) )`.  
+We saw the use of `chisq.test()` in the example goodness of fit test, [4A #chi2-goodness-of-fit-test](04a_chisq.html#chi2-goodness-of-fit-test){target="_blank"}  
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+Let's get the data in:  
+```{r}
+childcols <- as.table(c(10,6,3,8,8,15))
+names(childcols) <- c("blue","green","other","purple","red","yellow")
+childcols
+```
+Our theoretical probabilities of different colours must match the order in the table which we give `chisq.test()`. They must also always sum to 1.  
+
+```{r}
+#| warning: true
+#| message: true
+chisq.test(childcols, p = c(.20,.09,.15,.11,.30,.15))
+```
+
+Note, we get a warning here of <span style="color:blue">"Chi-squared approximation may be incorrect"</span>. This is because some of the expected cell counts are <5.  
+```{r}
+#| warning: false
+#| message: false
+chisq.test(childcols, 
+           p = c(.20,.09,.15,.11,.30,.15))$expected
+```
+
+There are a couple of options here, but the easiest is to use the functionality of `chisq.test()` that allows us to compute the p-value by using a simulation (similar to the idea we saw in [2B#sampling-&-sampling-distributions](02b_sampling.html#sampling-sampling-distributions){target="_blank"}), rather than by comparing it to a theoretical $\chi^2$ distribution.  We can do this by using:  
+
+```{r}
+chisq.test(childcols, p = c(.20,.09,.15,.11,.30,.15),
+           simulate.p.value = TRUE)
+```
+
+`r solend()`
+
+`r qbegin(8)`
+What are the *observed* proportions of our sample with each eyecolour?  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+Look up the `prop.table()` function?  
+
+:::
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+From the help documentation (`?prop.table()`), we see that we can pass `prop.table()` the argument `x`, which needs to be a table. 
+```{r}
+prop.table(childcols)*100
+```
+
+```{r}
+barplot(prop.table(childcols)*100)
+```
+`r solend()`
+
+<div class="divider div-transparent div-dot"></div>
+
+## Jokes and Tips
+
+:::frame
+__Data: TipJokes__  
+
+> **Research Question:** Can telling a joke affect whether or not a waiter in a coffee bar receives a tip from a customer?  
+
+A [study](https://doi.org/10.1111/j.1559-1816.2002.tb00266.x) published in the Journal of Applied Social Psychology^[Gueaguen, N. (2002). The Effects of a Joke on Tipping When It Is Delivered at the Same Time as the Bill. _Journal of Applied Social Psychology, 32_(9), 1955-1963.] investigated this question at a coffee bar of a famous seaside resort on the west Atlantic coast of France. 
+The waiter randomly assigned coffee-ordering customers to one of three groups. 
+When receiving the bill, one group also received a card telling a joke, another group received a card containing an advertisement for a local restaurant, and a third group received no card at all. 
+
+The data are available at https://uoepsy.github.io/data/TipJoke.csv.  
+The dataset contains the variables:
+
+- `Card`: None, Joke, Ad.
+- `Tip`: 1 = The customer left a tip, 0 = The customer did not leave tip. 
+
+:::
+
+
+`r qbegin(9)`
+Produce a plot and a table to display the relationship between whether or not the customer left a tip, and what (if any) card they received alongside the bill.  
+
+Don't worry about making it all pretty. Mosaic plots in R are a bit difficult. 
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+`plot(table(...))` will give you something. You can see one in the example $\chi^2$ test of independence,[4A #chi2-test-of-independence](04a_chisq.html#chi2-test-of-independence){target="_blank"}.  
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+tipjoke <- read_csv('https://uoepsy.github.io/data/TipJoke.csv')
+
+table(tipjoke$Card, tipjoke$Tip)
+
+plot(table(tipjoke$Card, tipjoke$Tip))
+```
+`r solend()`
+
+`r qbegin(10)`
+What would you *expect* the cell counts to look like if there were no relationship between what the waiter left and whether or not the customer tipped?  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+Think about what proportion of customers tipped. 
+Then work out how many customers got each type of card. If there were no relationship, then the proportions would be the same in each group. 
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+In total, 60 customers tipped (14+30+16), and 151 did not. So *overall*, 0.28 ($\frac{60}{(60+151)}$) of customers tip.  
+
+74 customers got an Ad card, 72 customers got a Joke, and 65 got None. If this were independent of whether or not they left a tip, we would expect equal proportions of tippers in each group.  
+So we would expect 0.28 of each group to leave a tip.  
+
+You can think about observed vs expected by looking at the two-way table along with the marginal row and column totals given:   
+```{r}
+#| echo: false
+table(tipjoke$Card, tipjoke$Tip) %>%
+  rbind(colSums(.)) %>%
+  cbind(rowSums(.)) -> conttable
+conttable[1:3,1:2]<-"  "
+conttable |> knitr::kable() |>
+  kableExtra::kable_styling()
+```
+For a given cell of the table we can calculate the expected count as $\text{row total} \times \frac{\text{column total}}{\text{samplesize}}$:
+
+**Expected:**
+```{r}
+#| echo: false
+table(tipjoke$Card, tipjoke$Tip) %>%
+  rbind(colSums(.)) %>%
+  cbind(rowSums(.)) -> conttable
+conttable[1:3,1]<-round(conttable[1:3,3]*(conttable[4,1])/conttable[4,3],2)
+conttable[1:3,2]<-round(conttable[1:3,3]*(conttable[4,2])/conttable[4,3],2)
+conttable |> knitr::kable() |>
+  kableExtra::kable_styling()
+```
+
+
+If you're wondering how we do this in R.. 
+here's our table:  
+```{r}
+t <- tipjoke |>
+  select(Card, Tip) |> table()
+t
+```
+Here are the row totals:  
+```{r}
+rowSums(t)
+```
+and column totals divided by total:
+```{r}
+colSums(t) / sum(t)
+```
+
+there's a complicated bit of code using `%o%` which could do this for us. You don't need to remember %o%, it's very rarely used): 
+```{r}
+e <- rowSums(t) %o% colSums(t) / sum(t)
+e
+```
+
+Or, alternatively, do it one by one:  
+```{r}
+rowSums(t) * (colSums(t) / sum(t))[1]
+rowSums(t) * (colSums(t) / sum(t))[2]
+```
+
+`r solend()`
+
+`r qbegin(11)`
+Just like we gave the `chisq.test()` function a table of observed frequencies when we conducted a goodness of fit test in earlier exercises, we can give it a two-way table of observed frequencies to conduct a test of independence.  
+
+Try it now.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+chisq.test(table(tipjoke$Card, tipjoke$Tip))
+```
+`r solend()`
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Some RMarkdown
+
+```{r}
+#| include: false
+pass_scores <- read_csv("https://uoepsy.github.io/data/pass_scores.csv")
+res2<-t.test(pass_scores$PASS, mu = 33, alternative = "less")
+```
+
+
+Using one of the $t$-tests we saw in the previous week's exercises, we can use an RMarkdown document in which we write our results so that they get compiled to look nice and pretty:  
+
+::: {.panelset}
+
+::: {.panel}
+#### Writing this
+
+```{r echo=FALSE, out.width="1000px"}
+knitr::include_graphics("images/hypothesis/rmarkdownbacktick.png")
+```
+
+:::
+::: {.panel}
+#### Compiles to this
+
+:::frame
+
+A one-sided one-sample t-test was conducted in order to determine if the average score on the Procrastination Assessment Scale for Students (PASS) for a sample of `r nrow(pass_scores)` students at Edinburgh University was significantly lower ($\alpha = .05$) than the average score obtained during development of the PASS. 
+
+Edinburgh University students scored lower (Mean = `r round(mean(pass_scores$PASS),2)`, SD = `r round(sd(pass_scores$PASS), 2)`) than the score reported by the authors of the PASS (Mean = 33). This difference was statistically significant (t(`r nrow(pass_scores)-1`)=`r round(res2$statistic, 2)`, p < .05, one-tailed).  
+
+
+:::
+
+:::
+
+:::
+
+This is one of the huge benefits of RMarkdown. Imagine we collected more data - we wouldn't have to edit all the results, we could simply recompile and they would update for us!  
+Note how it works:  
+
+  - the code chunk saves the results of the `t.test()` function as a named object `res2`.
+  - in text, the backticks <code>&grave;r ... ... ... &grave;</code> are used to execute small bits of R code, and include the output within the text. For instance, the line <code>&grave;r res2\$statistic |> round(2)&grave;</code> gets the t-statistic from the results, and rounds it to 2 decimal places, which get's printed out as `r res2[["statistic"]] |> round(2)`. 
+  - the bits between the dollar signs, e.g. \$\\alpha\$ will get printed as mathematical symbols such as $\alpha$. 
+
+
+
+::: {.callout-important collapse="true"}
+#### RMarkdown documents are self-contained.
+
+You need to to put **everything** that is needed to reproduce your analysis **in the correct order**.  
+
+For instance, if you have used the console (bottom left window) to define an object `peppapig <- 30`, you will have an object in your environment (top right window) called "peppapig" which has the value 30.  
+
+If you were to refer to that object in your RMarkdown document, you will be able to run a line of code such as `peppapig/10` because it will find the "peppapig" object in **your** environment. __BUT__ you won't be able to compile the document because it "starts fresh" (i.e., compiles within its own environment). In order for it to compile, you would need to *define* what "peppapig" is **inside** your document, and **before** the document then refers to it. 
+
+The same applies with using functions in from packages. The RMarkdown document needs to know what packages to load before it uses functions from them. Just because *you* yourself have loaded a package in your session, it does not mean the compilation process for your RMarkdown has access to it. 
+
+:::
+
+If you want some extra explanations on these aspects of RMarkdown, then please see Lessons 0-3 of our [Rmd-bootcamp](https://uoepsy.github.io/scs/rmd-bootcamp/){target="_blank"}.  
+
+`r qbegin(12)`
+Can you create an RMarkdown document which:
+
+1. Reads in the [https://uoepsy.github.io/data/TipJoke.csv](https://uoepsy.github.io/data/TipJoke.csv) data.
+2. Conducts and reports a $\chi^2$ test of independence examining whether telling a joke affect whether or not a waiter in a coffee bar receives a tip from a customer.
+3. Successfully compiles ("knits") into an **.html** file. 
+
+`r qend()`
+
+<div class="divider div-transparent div-dot"></div>
+
+# Optional Extras
+
+`r qbegin()`
+> **Research Question:** Do childrens' favourite colours differ from Adults?  
+
+:::frame
+Along with the 50 children from whom we collected data on their favourite colours, we also had 100 adult participants. You can see the data in @tbl-childadultcols
+
+```{r}
+#| label: tbl-childadultcols
+#| tbl-cap: "Colour preferences of 50 children aged between 2 and 5, and 50 Adults (aged 18+)"
+#| echo: false
+set.seed(33)
+children = sample(c("red","blue","yellow","purple","green","other"), size = 50, replace = TRUE, 
+       prob = c(.25,.20,.2,.15,.10,.1)) |>
+  table() |> as.data.frame() |> rename(colour=Var1, children = Freq) 
+adults = sample(c("red","blue","yellow","purple","green","other"), size = 100, replace = TRUE, 
+       prob = c(.25,.20,.1,.15,.13,.17)) |>
+  table() |> as.data.frame() |> rename(colour=Var1, adults = Freq)
+gt::gt(cbind(children, adults=adults$adults))
+```
+
+Getting this into R is a little more tricky, so we're giving you the code below: 
+```{r}
+as.table(matrix(c(10,6,3,8,8,15,24,11,19,7,24,15), ncol=2))
+```
+:::
+
+Conduct an appropriate test to address the research question.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+childadult <- as.table(matrix(c(10,6,3,8,8,15,24,11,19,7,24,15), ncol=2))
+
+chisq.test(childadult)
+```
+
+
+`r solend()`
+
+
+
+
+
+
+
+
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
