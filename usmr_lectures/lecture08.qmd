@@ -113,6 +113,7 @@ plot(mod.m, which=1:4)
 ```
 
 ```{r}
+#| label: entry1
 #| echo: false
 #| fig-align: center
 par(mfrow=c(2,2))
@@ -189,7 +190,7 @@ fn <- function(x,x1=2) {
 
 df <- data.frame(x=-3:3,y1=fn(-3:3,2),y2=fn(-3:3,4),y3=fn(-3:3,8))
 df |> ggplot() +
-  geom_line(aes(x=x,y=y1),colour="red") +
+  geom_line(aes(x=x,y=y1),colour="red",linewidth=1.5) +
   ylab(expression(hat(y))) +
   ylim(-5,20) +
   xlab(expression(x[2])) -> p1
@@ -235,8 +236,9 @@ $\color{green}{x_{1i}=4}$
 #| fig-align: center
 #| echo: false
 
-p1 <- p1 + geom_line(aes(x=x,y=y2),colour="green")
-p1
+p1 <- p1 + geom_line(aes(x=x,y=y2),colour="green",linewidth=1.5)
+p1 + geom_point(aes(x=2,y=fn(2,4)),size=3,colour="green") +
+  annotate("text",x=0,y=15,label="y = 1 + 1.5·4 + 2·2 + 0.5·4·2 = 15",size=8,colour="green")
 
 ```
 
@@ -483,4 +485,451 @@ reading |>
 :::
 
 # Interactions 3
+
+```{r}
+#| include: false
+# squeeze in new "school" variable
+reading <- reading2
+reading <- reading |> relocate(school,.before=R_AGE)
+```
+
+## Category x Category
+
+:::: {.columns}
+
+::: {.column width="40%"}
+![](img/playmo_shoehorn.jpg)
+:::
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+reading |> slice(c(1:3,48:50)) %>% gt() |>
+  data_color(columns=c("method","school","R_AGE"),colors="#d0d9ff",alpha=.8) |>
+  tab_options(table.font.size=pct(70))
+```
+
+- shoehorning in one more reading example
+
+- does _where it's taught_ affect the efficacy of a method?
+
+:::
+
+::::
+
+
+## Where to Start
+
+::: {layout="[[1,1], [1,1]]"}
+
+- when looking at continuous predictors, we started with a model criticism
+
+![](`r knitr::fig_chunk('entry1',ext='svg')`)
+
+- when looking at mixed predictors, we looked at model improvement
+
+:::: {.smaller}
+```{r}
+#| echo: false
+print(anova(mod.m3),signif.stars=FALSE)
+```
+::::
+
+:::
+
+## Where to Start
+
+- where you start depends on what you're doing
+
+  - have I got a good model? (no: one of many possible issues: missing predictor)
+  
+  - can I improve a model? (for example, I am exploring which predictors are relevant)
+  
+. . .
+
+- in the present case, we _already have a theory_ (that different schools are using the teaching methods differently)
+
+- this time we'll start by looking at the data
+
+## Reading Age by School and Method
+
+```{r}
+#| label: bar
+#| echo: false
+#| fig-asp: 0.6
+#| fig-align: center
+reading |> group_by(method,school) |>
+  summarise(r=mean_se(R_AGE)) |>
+  ggplot(aes(x=school,y=r$y,fill=method)) +
+  geom_bar(stat="identity",position="dodge") +
+  geom_errorbar(aes(ymin=r$ymin,ymax=r$ymax),
+                position=position_dodge(.9),width=0.33) +
+  ylab('READING AGE') +
+  xlab('school type') +
+  scale_fill_manual(values=c("phonics"="#fdab32","word"="gray")) -> rg
+rg
+```
+
+::: aside
+error bars represent _± one standard error_ of the mean
+:::
+
+## A Much Better Graph
+
+```{r}
+#| label: violin
+#| echo: false
+#| fig-align: center
+#| fig-asp: .6
+
+reading |> 
+  ggplot(aes(x=school,y=R_AGE,fill=method)) +
+  geom_violin(alpha=.5) +
+  geom_boxplot(width=.2,position=position_dodge(.9)) +
+  ylab('READING AGE') +
+  xlab('school type') +
+  scale_fill_manual(values=c("phonics"="#fdab32","word"="gray"))
+```
+
+
+::: aside
+this graph combines `geom_violin()` with `geom_boxplot()`
+:::
+
+
+## An Analysis
+
+- looking at the graph, it seems as if
+
+  - the state school is doing a bit better
+  
+  - but it depends which method we look at
+
+- we wouldn't be able to predict how well a child would do without knowing which kind of school _and_ which method
+
+. . .
+
+- it seems (graphically) as if our theory/hunch was right
+
+- what about statistically?
+
+## Fitting a Model
+
+```{r}
+mod.s <- lm(R_AGE ~ method + school + method:school,
+            data=reading)
+anova(mod.s)
+```
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+. . .
+
+
+::: myyellowblock
+- save your fingers! `a * b` is equivalent to `a + b + a:b`
+
+```r
+mod.s <- lm(R_AGE ~ method * school, data=reading)
+```
+:::
+
+## What the Model Tells Us
+
+:::: {.columns}
+
+::: {.column width="80%"}
+
+```{r}
+summary(mod.s)
+```
+:::
+
+::: {.column width="20%"}
+![](img/playmo_proft.svg)
+
+```{r}
+#| include: false
+fs <- summary(mod.s)$fstatistic
+```
+
+
+_F_(`r .rround(fs[2],0)`,`r .rround(fs[3],0)`)=`r .rround(fs[1],1)`
+
+:::
+
+::::
+
+## What the Model Tells Us
+
+```{r}
+#| echo: false
+cf <- function(x) {
+  round(coef(mod.s)[x],1)
+}
+ri <- function(x) {
+  ifelse(x<0,'reduces','increases')
+}
+
+.pp(summary(mod.s),l=list(10:14))
+```
+
+- what is the intercept?
+
+[the predicted reading age of someone who has been to _private_ school and taught using _phonics_]{.fragment}
+
+- what does `methodword` mean?
+
+[being taught using the _word_ method `r ri(cf(2))` your reading age by `r abs(cf(2))` years]{.fragment} [_if you went to private school_]{.fragment}
+
+## What the Model Tells Us (2)
+
+```{r}
+#| echo: false
+.pp(summary(mod.s),l=list(10:14))
+```
+
+- what does `schoolstate` mean?
+
+[being taught in a _state_ school `r ri(cf(3))` your predicted reading age by `r abs(cf(3))` years]{.fragment} [_if you are taught using the word method_]{.fragment}
+
+- and the interaction?
+
+[compared to being taught using the _word_ method in a _private_ school, your predicted reading age is `r cf(2)`+`r cf(3)`+`r cf(4)` years different (i.e., it is `r paste0(cf(1), ifelse(cf(2)+cf(3)+cf(4)>0,'+',''), cf(2)+cf(3)+cf(4))` or `r cf(1)+cf(2)+cf(3)+cf(4)` years)]{.fragment}
+
+## What the Model Doesn't Tell Us
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- we can't say anything _general_ about the value of phonics
+
+- we can't say anything _general_ about the effectiveness of schools
+
+- no **main effects**
+
+- possibly the _only_ useful information we have is the interaction
+
+- we can fix this...
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('violin',ext='svg')`)
+:::
+
+::::
+
+# Main Effects
+
+```{r}
+#| include: false
+
+reading <- reading |> mutate(method=as.factor(method),school=as.factor(school))
+```
+
+
+## Coding Categories, Again
+
+- all of the maths on the last few slides works out _because_ the categorical predictors are, underlyingly, dummy coded
+
+
+
+```{r}
+contrasts(reading$method)
+contrasts(reading$school)
+```
+
+- for example the _interaction term_ can only be added when $\color{orange}{x_{1i}}$ and $\color{orange}{x_{2i}}$ (here, `method` and `school`) are equal to 1
+
+  - it applies for _state_ `school`, _word_ `method`
+  
+## What If We Change Things?
+
+::: myblock
+
+$$\color{red}{\hat{y_i}}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\color{blue}{b_3}\cdot{}\color{orange}{x_{1i}x_{2i}}$$
+
+:::
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+```{r}
+contrasts(reading$method) <- c(-.5,.5)
+contrasts(reading$school) <- c(-.5,.5)
+```
+
+- what we've done is changed the values of $\color{orange}{x_{1}}$ and $\color{orange}{x_{2}}$
+
+  - where `method`~i~ is _phonics_, $\color{orange}{x_{1i}}=-0.5$
+
+  - where `method`~i~ is _word_, $\color{orange}{x_{1i}}=+0.5$
+  
+- similarly for `school` and $\color{orange}{x_{2}}$
+
+::: aside
+we are assuming similar numbers of observations for each combination of predictor levels
+:::
+
+::: notes
+- the easiest way to show you what happens is to just run the model, and inspect the output...
+:::
+
+## Running the Model
+
+- NB., we've changed the contrast coding in the previous slide
+
+:::: {.columns}
+
+::: {.column width="80%"}
+```{r}
+mod.sC <- lm(R_AGE ~ method*school, data=reading)
+summary(mod.sC)
+```
+:::
+
+::: {.column width="20%"}
+![](img/playmo_proft.svg)
+
+```{r}
+#| include: false
+fs <- summary(mod.sC)$fstatistic
+```
+
+
+_F_(`r .rround(fs[2],0)`,`r .rround(fs[3],0)`)=`r .rround(fs[1],1)`
+
+:::
+
+::::
+
+## What the Model Tells Us
+
+```{r}
+#| echo: false
+cf <- function(x) {
+  round(coef(mod.sC)[x],1)
+}
+pm <- function(x) {
+  ifelse(x<0,'-','+')
+}
+.pp(summary(mod.sC),l=list(10:14))
+```
+- note the output isn't as helpful here, you have to _remember_ which values are 1
+
+  - depends which you assigned positive values
+  
+  - here, _word_ `method`, _state_ `school`
+
+. . .
+
+- for someone in _private_ `school` using _phonics_ `method`
+
+reading age = `r cf(1)` - $\frac{1}{2}$·`r cf(2)` - $\frac{1}{2}$·`r cf(3)` + $\frac{1}{4}$·`r cf(4)` 
+
+reading age = `r cf(1)` `r pm(-5*cf(2))` `r abs(-.5*cf(2))` `r pm(-.5*cf(3))` `r abs(-.5*cf(3))` `r pm(.25*cf(4))` `r abs(.25*cf(4))` = **`r cf(1)-.5*cf(2)-.5*cf(3)+.25*cf(4)` years**
+
+. . .
+
+...etc.
+
+## What's Good About This?
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+avm <- reading |> group_by(method) |> summarise(m=mean(R_AGE)) |> mutate(x=c(1,2))
+avs <- reading |> group_by(school) |>
+  summarise(m=mean(R_AGE)) |> mutate(x=c(1,2))
+                                                
+rg + annotate("segment",x=.5,xend=1.5,y=avs$m[avs$school=="private"],yend=avs$m[avs$school=="private"], colour="red",linewidth=1.5) +
+  annotate("segment",x=1.5,xend=2.5,y=avs$m[avs$school=="state"],yend=avs$m[avs$school=="state"], colour="red",linewidth=1.5)
+  
+```
+- effect of `school` with (-.5, .5) contrast coding
+
+## What's Good About This? (2)
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+rg + annotate("segment",x=.5,xend=2.05,y=avm$m[avm$method=="phonics"],yend=avm$m[avm$method=="phonics"], colour="red",linewidth=1.5) +
+  annotate("segment",x=0.95,xend=2.5,y=avm$m[avm$method=="word"],yend=avm$m[avm$method=="word"], colour="red",linewidth=1.5)
+```
+- effect of `method` with (-.5, .5) contrast coding
+
+## These are Main Effects
+
+```{r}
+#| echo: false
+.pp(summary(mod.sC),l=list(10:14))
+```
+
+
+-  _on average_, phonics is a better method for teaching
+
+- _on average_, there is no (statistical) difference between types of school
+
+- there's also an interaction between these two predictors (but we should really calculate it out to ensure that we know what it "means")
+
+. . .
+
+- a quick read: when `school` is _state_ and `method` is _word_, reading age is reduced
+
+- but this obscures the fact that state schools are particularly good on phonics---perhaps we should recode?
+
+## ![](img/css/what.jpg){width=70px style="transform: translateY(50%);"} Sum Coding
+
+- R provides a quick and dirty way of setting similar contrasts
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+contrasts(reading$method) <- c(-.5,.5)
+contrasts(reading$method)
+```
+
+```r
+mod.a <- lm(R_AGE~method,data=reading)
+summary(mod.a)
+```
+
+```{r}
+#| echo: false
+mod.a <- lm(R_AGE~method,data=reading)
+.pp(summary(mod.a),l=list(10:12))
+```
+
+
+:::
+
+::: {.column width="50%"}
+```{r}
+contrasts(reading$method) <- contr.sum(2)
+contrasts(reading$method)
+```
+
+```r
+mod.b <- lm(R_AGE~method,data=reading)
+summary(mod.b)
+```
+
+```{r}
+#| echo: false
+mod.b <- lm(R_AGE~method,data=reading)
+.pp(summary(mod.b),l=list(10:12))
+```
+
+:::
+
+::::
+
+
 
