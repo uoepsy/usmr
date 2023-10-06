@@ -1,0 +1,360 @@
+---
+title: "The Generalized Linear Model"
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+source('_theme/theme_quarto.R')
+```
+
+# Aliens
+
+---
+
+{{< video img/video/alien.mp4 >}}
+
+## A Binary World
+
+![](img/playmo_aliens.jpg){.center-img}
+
+## A Binary World {visibility="uncounted"}
+
+![](img/playmo_aliens_splat.jpg){.center-img}
+
+## A Binary World
+
+![](img/playmo_aliens_10.jpg){.center-img}
+
+## 1,000 Aliens
+
+```{r}
+#| include: false
+load("R/singers.Rdata")
+a<-c("The Great Odorjan of Erpod",
+"Hapetox Bron",
+"Loorn Molzeks",
+"Ba'lite Adrflen",
+"Tedlambo Garilltet",
+"Goraveola Grellorm",
+"Colonel Garqun",
+"Bosgogo Lurcat",
+"Osajed Voplily",
+"Subcommander Edorop",
+"Dopjed Klumlily",
+"Terajis Roygan",
+"Colonel Bonkloren",
+"Gwjed Bineflimegs",
+"Ka'tin Kaisor",
+"Quejan Vodgongonala",
+"Dinzok Krhoplan",
+"Judhop Cakrn",
+"Gwhuru Darutsnol",
+"Volaela Guttrop",
+"Kaikrut Gurjid")
+singers$id <- as.character(singers$id)
+singers$id[1:21] <- a
+singers <- as_tibble(singers) %>% rename(SPLATTED=splatted)
+rm(a)
+```
+
+:::: {.columns}
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+
+library(gt)
+head(singers,10) |> gt() |>
+  tab_options(table.font.size=pct(70))
+```
+
+:::
+
+::: {.column width="40%"}
+- `quality` = quality of singing
+
+- `SPLATTED` = whether splatted (1 or 0)
+:::
+
+::::
+
+## 1,000 Aliens {.nostretch}
+
+```{r}
+#| label: plotm
+#| echo: false
+#| fig.asp: 0.6
+#| fig-align: center
+#| fig-width: 10.5
+p <- singers |> ggplot(aes(x=quality,y=SPLATTED)) +
+  scale_y_continuous(breaks=c(0,1))
+p + geom_point(size=3)
+```
+
+## 1,000 Aliens {visibility="uncounted" .nostretch}
+
+```{r}
+#| label: plotme
+#| echo: false
+#| fig.asp: 0.6
+#| fig-align: center
+#| fig-width: 10.5
+p + geom_jitter(size=3,width=0,height=.2,alpha=.5) +
+  scale_y_continuous(breaks=c(0,1))
+```
+
+- using `geom_jitter()` with `alpha=.5`
+
+## Binomial Regression, Conceptually
+
+- each alien either gets splatted or doesn't
+
+  + each observation is either a 1 or a 0
+
+- underlyingly, there's a **binomial** distribution
+
+- for each value of "quality of singing" there's a _probability_ of getting splatted
+
+. . .
+
+- for each alien, the outcome is deterministic
+
+- but it's the _probability_ we are ultimately interested in
+
+- we can approximate it by binning our data...
+
+## Binned Data {auto-animate=true}
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+#| fig-asp: .6
+singers <- singers |>
+  mutate(bin=cut_interval(quality,10))
+
+dat <- singers |> group_by(bin) |>
+  summarise(prop=mean(SPLATTED))
+
+dat
+```
+
+## Binned Data {auto-animate=true}
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+#| fig-asp: .6
+singers <- singers |>
+  mutate(bin=cut_interval(quality,10))
+
+dat <- singers |> group_by(bin) |>
+  summarise(prop=mean(SPLATTED))
+
+dat |> ggplot(aes(x=bin,y=prop)) +
+  xlab("quality bin") +
+  ylab("prop splatted") +
+  geom_point(size=3) +
+  scale_x_discrete(label=1:10)
+```
+
+## Best Fit Lines
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- we can fit our data using a standard linear model
+
+- but there's something very wrong...
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: with_line
+#| echo: false
+#| fig.asp: 0.6
+p2 <- p + geom_point(size=3) +
+  geom_smooth(method="lm")
+p2
+```
+:::
+
+::::
+
+## The Problem with Probability {.nostretch}
+
+```{r}
+#| label: bplot
+#| echo: false
+#| fig-asp: 0.6
+#| fig-width: 10
+#| fig-align: center
+p + geom_point(size=3) +
+  geom_smooth(method="lm") +
+  geom_smooth(method="glm",method.args=list(family="binomial"),se=FALSE,
+              linetype="dashed", colour="grey") +
+  ylab("p(SPLATTED)") +
+  theme(legend.position = "none")
+
+```
+
+## The Problem with Probability {.nostretch visibility="uncounted"}
+
+```{r}
+#| label: bplot2
+#| echo: false
+#| fig-asp: 0.6
+#| fig-width: 10
+#| fig-align: center
+gd <- layer_data(p2,2)
+p + geom_rect(aes(xmin=0,xmax=100,ymin=1,ymax=max(gd$ymax),fill="red"),alpha=0.05) +
+  geom_rect(aes(xmin=0,xmax=100,ymin=min(gd$ymin),ymax=0,fill="red"),alpha=0.05) + geom_point(size=3) +
+  geom_smooth(method="lm") +
+  geom_smooth(method="glm",method.args=list(family="binomial"),se=FALSE,
+              linetype="dashed", colour="grey") +
+  ylab("p(SPLATTED)") +
+  theme(legend.position = "none")
+
+```
+
+- a _linear_ model predicts impossible values because probability isn't linear; it's **asymptotic**
+
+## The Problem with Probability {.nostretch}
+
+```{r}
+#| label: bplot3
+#| echo: false
+#| fig-asp: 0.6
+#| fig-width: 10
+#| fig-align: center
+tt <- singers |>
+  group_by(bin) |> summarise(var=var(SPLATTED)) |> mutate(x=seq(5,95,10))
+p + geom_point(size=3) +
+  geom_smooth(method="glm",method.args=list(family="binomial"),se=FALSE,
+              linetype="dashed", colour="grey") +
+  ylab("p(SPLATTED)") +
+  theme(legend.position = "none") +
+  geom_smooth(data=tt,aes(x=x,y=var,colour="red"),size=2,se=F)
+
+```
+
+- variance _necessarily_ covaries with probability
+
+## Assumptions
+
+```{r}
+#| label: ass
+#| fig-asp: 0.7
+#| echo: false
+#| fig-align: center
+mod.b <- lm(SPLATTED~quality,data=singers)
+par(mfrow=c(2,2))
+plot(mod.b,which=1:4)
+```
+
+# Log Odds
+
+## Probability and Odds
+
+::: myblock
+:::: {.columns}
+
+::: {.column width="50%"}
+$$\textrm{odds}(y)=\frac{p(y)}{1-p(y)}$$
+:::
+
+::: {.column width="50%"}
+$$0<p<1$$
+$$0<\textrm{odds}<\infty$$
+:::
+
+::::
+:::
+
+::: {layout="[[-1,4,2,2,-1],[-1,4,2,2,-1]],[-1,4,2,2,-1]],[-1,4,2,2,-1]]"}
+
+ 
+
+$p(y)$
+
+$\textrm{odds}(y)$
+
+throw heads
+
+$\frac{1}{2}$
+
+$\frac{1}{1}$
+
+throw 8 with two dice
+
+$\frac{5}{36}$
+
+$\frac{5}{31}$
+
+get splatted
+
+$\frac{99}{100}$
+
+$\frac{99}{1}$
+
+:::
+
+## Probability and Log-Odds
+
+
+
+```{r}
+#| label: threeg
+#| echo: false
+#| fig.asp: .8
+#| layout-ncol: 3
+
+pt <- tibble(x=seq(-4.5,4.5,length=49),lo=x,o=exp(x),p=o/(1+o))
+
+p1 <- pt |> ggplot(aes(x=x,y=p)) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("probability") +
+  ggtitle("probability") +
+  annotate("text",-1,.75,label="p=.5",size=3) +
+  theme(plot.title = element_text(size=72))
+
+p2 <- pt |> ggplot(aes(x=x,y=o)) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("odds") +
+  ggtitle("odds") +
+  annotate("text",-1.2,15,label="odds=1",size=3) +
+  theme(plot.title = element_text(size=72))
+
+p3 <- pt |> ggplot(aes(x=x,y=lo)) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("log(odds)") +
+  ggtitle("log-odds (logits)")
+
+p4 <- p3 + annotate("text",-2.2,2,label="log(odds)=0",size=3) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  theme(plot.title = element_text(size=72))
+p1
+p2
+p4
+
+```
+
+
+- $\log(0)=-\infty$; $\log(\infty)=+\infty$; $\log(1)=0$
+- log-odds of $0$ (odds of $1$) are exactly 50:50 ($p=0.5$)
