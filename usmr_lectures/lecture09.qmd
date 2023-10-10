@@ -1,0 +1,974 @@
+---
+title: "The Generalized Linear Model"
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+source('_theme/theme_quarto.R')
+```
+
+# Aliens
+
+---
+
+{{< video img/video/alien.mp4 >}}
+
+## A Binary World
+
+![](img/playmo_aliens.jpg){.center-img}
+
+## A Binary World {visibility="uncounted"}
+
+![](img/playmo_aliens_splat.jpg){.center-img}
+
+## A Binary World
+
+![](img/playmo_aliens_10.jpg){.center-img}
+
+## 1,000 Aliens
+
+```{r}
+#| include: false
+load("R/singers.Rdata")
+a<-c("The Great Odorjan of Erpod",
+"Hapetox Bron",
+"Loorn Molzeks",
+"Ba'lite Adrflen",
+"Tedlambo Garilltet",
+"Goraveola Grellorm",
+"Colonel Garqun",
+"Bosgogo Lurcat",
+"Osajed Voplily",
+"Subcommander Edorop",
+"Dopjed Klumlily",
+"Terajis Roygan",
+"Colonel Bonkloren",
+"Gwjed Bineflimegs",
+"Ka'tin Kaisor",
+"Quejan Vodgongonala",
+"Dinzok Krhoplan",
+"Judhop Cakrn",
+"Gwhuru Darutsnol",
+"Volaela Guttrop",
+"Kaikrut Gurjid")
+singers$id <- as.character(singers$id)
+singers$id[1:21] <- a
+singers <- as_tibble(singers) %>% rename(SPLATTED=splatted)
+rm(a)
+```
+
+:::: {.columns}
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+
+library(gt)
+head(singers,10) |> gt() |>
+  tab_options(table.font.size=pct(70))
+```
+
+:::
+
+::: {.column width="40%"}
+- `quality` = quality of singing
+
+- `SPLATTED` = whether splatted (1 or 0)
+:::
+
+::::
+
+## 1,000 Aliens {.nostretch}
+
+```{r}
+#| label: plotm
+#| echo: false
+#| fig.asp: 0.6
+#| fig-align: center
+#| fig-width: 10.5
+p <- singers |> ggplot(aes(x=quality,y=SPLATTED)) +
+  scale_y_continuous(breaks=c(0,1))
+p + geom_point(size=3)
+```
+
+## 1,000 Aliens {visibility="uncounted" .nostretch}
+
+```{r}
+#| label: plotme
+#| echo: false
+#| fig.asp: 0.6
+#| fig-align: center
+#| fig-width: 10.5
+p + geom_jitter(size=3,width=0,height=.2,alpha=.5) +
+  scale_y_continuous(breaks=c(0,1))
+```
+
+- using `geom_jitter()` with `alpha=.5`
+
+## Binomial Regression, Conceptually
+
+- each alien either gets splatted or doesn't
+
+  + each observation is either a 1 or a 0
+
+- underlyingly, there's a **binomial** distribution
+
+- for each value of "quality of singing" there's a _probability_ of getting splatted
+
+. . .
+
+- for each alien, the outcome is deterministic
+
+- but it's the _probability_ we are ultimately interested in
+
+- we can approximate it by binning our data...
+
+## Binned Data {auto-animate=true}
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+#| fig-asp: .6
+singers <- singers |>
+  mutate(bin=cut_interval(quality,10))
+
+dat <- singers |> group_by(bin) |>
+  summarise(prop=mean(SPLATTED))
+
+dat
+```
+
+## Binned Data {auto-animate=true}
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+#| fig-asp: .6
+singers <- singers |>
+  mutate(bin=cut_interval(quality,10))
+
+dat <- singers |> group_by(bin) |>
+  summarise(prop=mean(SPLATTED))
+
+dat |> ggplot(aes(x=bin,y=prop)) +
+  xlab("quality bin") +
+  ylab("prop splatted") +
+  geom_point(size=3) +
+  scale_x_discrete(label=1:10)
+```
+
+## Best Fit Lines
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- we can fit our data using a standard linear model
+
+- but there's something very wrong...
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: with_line
+#| echo: false
+#| fig.asp: 0.6
+p2 <- p + geom_point(size=3) +
+  geom_smooth(method="lm")
+p2
+```
+:::
+
+::::
+
+## The Problem with Probability {.nostretch}
+
+```{r}
+#| label: bplot
+#| echo: false
+#| fig-asp: 0.6
+#| fig-width: 10
+#| fig-align: center
+p + geom_point(size=3) +
+  geom_smooth(method="lm") +
+  geom_smooth(method="glm",method.args=list(family="binomial"),se=FALSE,
+              linetype="dashed", colour="grey") +
+  ylab("p(SPLATTED)") +
+  theme(legend.position = "none")
+
+```
+
+## The Problem with Probability {.nostretch visibility="uncounted"}
+
+```{r}
+#| label: bplot2
+#| echo: false
+#| fig-asp: 0.6
+#| fig-width: 10
+#| fig-align: center
+gd <- layer_data(p2,2)
+p + geom_rect(aes(xmin=0,xmax=100,ymin=1,ymax=max(gd$ymax),fill="red"),alpha=0.05) +
+  geom_rect(aes(xmin=0,xmax=100,ymin=min(gd$ymin),ymax=0,fill="red"),alpha=0.05) + geom_point(size=3) +
+  geom_smooth(method="lm") +
+  geom_smooth(method="glm",method.args=list(family="binomial"),se=FALSE,
+              linetype="dashed", colour="grey") +
+  ylab("p(SPLATTED)") +
+  theme(legend.position = "none")
+
+```
+
+- a _linear_ model predicts impossible values because probability isn't linear; it's **asymptotic**
+
+## The Problem with Probability {.nostretch}
+
+```{r}
+#| label: bplot3
+#| echo: false
+#| fig-asp: 0.6
+#| fig-width: 10
+#| fig-align: center
+tt <- singers |>
+  group_by(bin) |> summarise(var=var(SPLATTED)) |> mutate(x=seq(5,95,10))
+p + geom_point(size=3) +
+  geom_smooth(method="glm",method.args=list(family="binomial"),se=FALSE,
+              linetype="dashed", colour="grey") +
+  ylab("p(SPLATTED)") +
+  theme(legend.position = "none") +
+  geom_smooth(data=tt,aes(x=x,y=var,colour="red"),size=2,se=F)
+
+```
+
+- variance _necessarily_ covaries with probability
+
+## Assumptions
+
+```{r}
+#| label: ass
+#| fig-asp: 0.7
+#| echo: false
+#| fig-align: center
+mod.b <- lm(SPLATTED~quality,data=singers)
+par(mfrow=c(2,2))
+plot(mod.b,which=1:4)
+```
+
+# Log Odds
+
+## Probability and Odds
+
+::: myblock
+:::: {.columns}
+
+::: {.column width="50%"}
+$$\textrm{odds}(y)=\frac{p(y)}{1-p(y)}$$
+:::
+
+::: {.column width="50%"}
+$$0<p<1$$
+$$0<\textrm{odds}<\infty$$
+:::
+
+::::
+:::
+
+::: {layout="[[-1,4,2,2,-1],[-1,4,2,2,-1]],[-1,4,2,2,-1]],[-1,4,2,2,-1]]"}
+
+ 
+
+$p(y)$
+
+$\textrm{odds}(y)$
+
+throw heads
+
+$\frac{1}{2}$
+
+$\frac{1}{1}$
+
+throw 8 with two dice
+
+$\frac{5}{36}$
+
+$\frac{5}{31}$
+
+get splatted
+
+$\frac{99}{100}$
+
+$\frac{99}{1}$
+
+:::
+
+## Probability and Odds
+
+```{r}
+#| echo: false
+#| fig.asp: .8
+#| layout: "[1,1,-1]"
+
+pt <- tibble(x=seq(-4.5,4.5,length=49),lo=x,o=exp(x),p=o/(1+o))
+
+p1 <- pt |> ggplot(aes(x=x,y=p)) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("probability") +
+  ggtitle("probability") +
+  annotate("text",-1,.75,label="p=.5",size=12) +
+  theme(plot.title = element_text(size=72))
+
+p2 <- pt |> ggplot(aes(x=x,y=o)) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("odds") +
+  ggtitle("odds") +
+  annotate("text",-1.2,15,label="odds=1",size=12) +
+  theme(plot.title = element_text(size=72))
+
+p1
+p2
+```
+
+- odds never goes below zero
+
+- odds rises to $\infty$
+
+## Refresher: (Natural) Logarithms
+
+- a **logarithm** is the power you would raise a number to to obtain another number
+
+$$10^3=1000; \log_{10}(1000)=3$$
+
+```{r}
+log(1000, base=10)
+```
+
+## Refresher: (Natural) Logarithms {visibility="uncounted"}
+
+- a **logarithm** is the power you would raise a number to to obtain another number
+
+$$10^3=1000; \log_{10}(1000)=3$$
+
+- a **natural logarithm** is the power you would raise the number $e$ to to obtain another number
+
+$$e^{6.908}=1000; \log(1000) = 6.908$$
+```{r}
+exp(6.908)
+log(1000)
+```
+
+## Refresher 2
+
+- what value does $e$ have?  ($e^1=e$)
+
+```r
+exp(1)
+```
+
+```{r}
+#| echo: false
+.rround(exp(1),20)
+```
+
+## ![](img/css/what.jpg){width=70px style="transform: translateY(50%);"} Why $e$?
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+#| fig-width: 7
+ggplot() +
+  xlim(0.01,4) +
+  geom_function(fun=function(x) 1/x,linewidth=.5) +
+  ylab("1/x") +
+  xlab("x") -> p
+
+ld1 <- layer_data(p) |> filter (x>=1 & x<=3)
+ld2 <- layer_data(p) |> filter (x<=min(ld1$x) & x>=.3)
+p + geom_area(data=ld1,aes(x=x,y=y),fill="red") +
+  geom_area(data=ld2,aes(x=x,y=y),fill="blue") +
+  geom_function(fun=function(x) 1/x,linewidth=.5) +
+  ggtitle("y=1/x")
+
+```
+- $\log(l)$ = area under curve between $1$ and $l$ (negative if $l<1$)
+
+```{r}
+log(3)
+log(.3)
+```
+
+
+
+## Refresher 2
+
+- what value does $e$ have?  ($e^1=e$)
+
+```r
+exp(1)
+```
+
+```{r}
+#| echo: false
+.rround(exp(1),20)
+```
+
+- $(\textrm{any number})^0=1$
+
+```{r}
+log(1)
+```
+
+
+- $\log(0)=-\infty$
+
+```{r}
+log(0)
+```
+
+- $\log(\infty)=\infty$
+
+```{r}
+log(Inf)
+```
+
+
+## Probability and Log-Odds
+
+
+```{r}
+#| echo: false
+#| fig.asp: .8
+#| layout-ncol: 3
+
+p3 <- pt |> ggplot(aes(x=x,y=lo)) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("log(odds)") +
+  ggtitle("log-odds (logits)")
+
+p4 <- p3 + annotate("text",-2.2,2,label="log(odds)=0",size=12) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  theme(plot.title = element_text(size=72))
+p1
+p2
+p4
+
+```
+
+
+- $\log(0)=-\infty$; $\log(\infty)=+\infty$; $\log(1)=0$
+- log-odds of $0$ (odds of $1$) are exactly 50:50 ($p=0.5$)
+
+::: notes
+
+- working left-to-right, log-odds of zero are equal to odds of one which are even-stevens or p=.5
+
+:::
+
+## Probability and Log-Odds
+
+```{r}
+#| echo: false
+#| fig.asp: .8
+#| layout-ncol: 3
+p1
+p2
+p4
+```
+
+
+- if log-odds are _less than zero_, the odds go down (multiplied by <1)
+
+- if log-odds are _greater than zero_, the odds go up (multiplied by >1)
+
+- high odds = high probability
+
+# [The Generalized Linear Model]{.r-fit-text}
+
+## The Generalized Linear Model
+
+- generalises the linear model using mapping functions
+
+- coefficients are in **logit** (log-odds) units
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+- coefficients use **Wald's $z$ ** instead of $t$
+
+- fit using **maximum likelihood**
+
+
+## Likelihood
+
+:::: {.columns}
+
+::: {.column width="30%"}
+![](img/50p.jpg){width="70%"}
+:::
+
+::: {.column width="70%"}
+```{r}
+#| label: likely
+#| echo: false
+#| fig.asp: 0.6
+#| fig.width: 6.0
+#| layout-ncol: 2
+do.l <- function(heads,total=10) {
+  tt <- tibble(x=seq(0,1,length.out=89),
+               y=dbinom(heads,total,x))
+
+  tt |> ggplot(aes(x=x,y=y)) +
+    xlab("p(H)") + ylab('likelihood') +
+    ggtitle(paste(heads," H out of ",total," tosses",sep='')) +
+    ylim(0,.4) +
+    theme(axis.text.y=element_blank(),
+         axis.ticks.x=element_blank()) +
+    geom_path(size=1)
+}
+
+do.l(3)
+do.l(5)
+do.l(7)
+do.l(9)
+
+```
+:::
+
+::::
+
+## The Generalized Linear Model
+
+- generalises the linear model using mapping functions
+
+- coefficients are in **logit** (log-odds) units
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+- coefficients use **Wald's $z$ ** instead of $t$
+
+- fit using **maximum likelihood**
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+- but actually it's all quite straightforward...
+
+## Alien Singer Splat Probability
+
+:::: {.columns}
+
+::: {.column width="49%"}
+```{r}
+#| echo: false
+head(singers,8) |> select(-bin) |> gt() |>
+  tab_options(table.font.size=pct(70))
+```
+:::
+
+::: {.column width="2%"}
+<!-- spacer -->
+ 
+<!-- end spacer -->
+:::
+
+::: {.column width="49%"}
+- use `glm()` instead of `lm()`
+
+- specify **link function** with `family = binomial`
+
+
+```{r}
+#| tidy.opts: { width.cutoff: 24 }
+mod.b <- glm(SPLATTED ~ quality,
+             family = binomial,
+             data=singers)
+```
+
+:::
+
+::::
+
+::: aside
+the DV can be a 2-level factor; `family="binomial"` (with quotes) also works
+:::
+
+## Evaluating the Model
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| output-line-numbers: "11"
+anova(mod.b)
+```
+
+:::
+
+::: {.column width="50%"}
+- NB., no statistical test done by default
+
+- **deviance** compares the likelihood of the new model to that of the previous model
+
+  + a generalisation of sums of squares
+
+  + _lower_ "residual deviance" is good
+  (*a bit like Residual Sums of Squares*)
+
+:::
+
+::::
+
+::: notes
+- deviance is similar to our notion of sums of squares that we used in linear models
+- it is the likelihood of our model, compared to the null model (with no predictors)
+- so lower residual deviance is kind of like less "misfit" of the model to the data
+:::
+
+## ![](img/css/what.jpg){width=70px style="transform: translateY(50%);"} Evaluating the Model
+
+```{r}
+#| label: anova2
+#| echo: false
+.pp(anova(mod.b),l=list(10:12))
+```
+- deviance is $-2\times$ the **log-likelihood ratio** of the reduced compared to the full model
+- higher deviance is good (a bit like $F$)
+
+```{r}
+mod.n <- glm(SPLATTED~1, family=binomial, data=singers)
+logLik(mod.n)
+logLik(mod.b)
+```
+```{r}
+#| output-line-numbers: "1"
+-2 * (logLik(mod.n)-logLik(mod.b))
+```
+
+::: notes
+- here, 799.8 is pretty much equal to the Deviance of 800 above
+:::
+
+## Evaluating the Model
+
+- model deviance maps to the $\chi^2$ distribution
+
+- can specify a $\chi^2$ test to statistically evaluate model in a similar way to $F$ ratio
+
+```{r}
+#| label: anova5
+#| output-line-numbers: "11"
+anova(mod.b, test="Chisq")
+```
+
+::: notes
+- now when we consider deviance, we can actually test it against a chisquare distribution
+- just like F was a ratio
+- we're now using a likelihood ratio
+- and we can test using something like this - anova, test chisq
+:::
+
+## Model Coefficients
+
+```{r}
+#| label: sum1
+#| echo: !expr F
+summary(mod.b)
+```
+
+## Model Coefficients
+
+
+:::: {.columns}
+
+::: {.column width="60%"}
+#### coefficients are in **logits** (= log-odds)
+
+```{r}
+#| label: sum2
+#| echo: !expr F
+#| highlight: !expr '2:4'
+.pp(summary(mod.b),l=list(0,6:8,0))
+```
+- zero = "50/50" (odds of 1)
+
+- value below zero: probability of being splatted _decreases_ as quality increases
+:::
+
+::: {.column width="40%"}
+```{r}
+#| label: p3
+#| fig.asp: 1.0
+#| echo: false
+p3 + 
+  annotate("text",-2.2,2,label="log(odds)=0",size=16)+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+:::
+
+::::
+
+## Log-Odds, Odds, and Probability
+```{r}
+#| label: sum3
+#| echo: false
+a<-round(as.numeric(coef(mod.b)[1]),2)
+b<-round(as.numeric(coef(mod.b)[2]),2)
+l<-a+50*b
+o<-exp(l)
+.pp(summary(mod.b),l=list(0,6:8,0))
+```
+:::: {.columns}
+
+::: {.column width="50%"}
+a calculation for `quality = 50`
+
+- _log-odds_:  $`r a`+`r b`\cdot50=\color{red}{`r a+50*b`}$
+
+- _odds_:
+$e^{`r l`}=\color{red}{`r o`}$
+
+- _probability_:
+$\frac{`r o`}{1+`r o`}=\color{red}{`r o/(1+o)`}$
+:::
+
+::: {.column width="50%"}
+<br/>
+$$\hat{y}_i=b_0+b_1x_i$$
+$$\textrm{odds}=e^{\hat{y}_i}$$
+$$p=\frac{\textrm{odds}}{1+\textrm{odds}}$$
+:::
+
+::::
+
+::: notes
+- well, can convert them back, at least some of the way
+- exponent is the opposite of logarithm
+
+- so for a singer who has quality of singing 50
+- their log-odds of splatted are the intercept + the coef * 50
+- we can exponentiate that, to get their odds
+- and we can then convert that back to probability
+
+- note we can do this for a single predicted value, but how do we talk about "the association".
+  - every 1 quality decreases log-odds by -0.11
+  - go up 1 qual, you add that amount onto your log odds
+  - this isn't true of odds
+:::
+
+## A Useful Function
+
+- intuitive to think in probability
+
+- useful to write a function which takes a value in logits `l` and converts it to a probability `p`
+
+```{r}
+#| label: l2p
+l2p <- function(logits) {
+  odds = exp(logits)
+  prob = odds/(1+odds)
+  return(prob)
+}
+```
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- qualities 50 and 51
+```{r}
+#| label: l2pex
+#| results: asis
+#| echo: false
+cat("```r\n")
+cat(paste0("l2p(",a,"+",b,"*50)\n"))
+cat("```\n")
+```
+```{r}
+#| label: l2pexr
+#| echo: false
+l2p(a+50*b)
+```
+```{r}
+#| label: l2pex1
+#| results: asis
+#| echo: false
+cat("```r\n")
+cat(paste0("l2p(",a,"+",b,"*51)\n"))
+cat("```\n")
+```
+```{r}
+#| label: l2pex1r
+#| echo: false
+l2p(a+51*b)
+```
+:::
+
+::: {.column width="50%"}
+- qualities 70 and 71
+
+```{r}
+#| label: l2pex2a
+#| results: asis
+#| echo: false
+cat("```r\n")
+cat(paste0("l2p(",a,"+",b,"*70)\n"))
+cat("```\n")
+```
+```{r}
+#| label: l2pexr2a
+#| echo: false
+l2p(a+70*b)
+```
+```{r}
+#| label: l2pex2
+#| results: asis
+#| echo: false
+cat("```r\n")
+cat(paste0("l2p(",a,"+",b,"*71)\n"))
+cat("```\n")
+```
+```{r}
+#| label: l2pex2r
+#| echo: false
+l2p(a+71*b)
+```
+
+:::
+
+::::
+
+::: notes
+- for 50 and 51, changes are in the second digit; for 70 and 71, they're in the 3rd digit
+:::
+
+## Representing the Model Graphically
+
+
+```{r}
+#| label: g
+#| fig-asp: 0.6
+#| fig-align: center
+singers |> ggplot(aes(x=quality,y=SPLATTED)) +
+  ylab("p(SPLATTED)") +
+  geom_jitter(size=3,width=0,height=.2,alpha=.1) +
+  geom_smooth(method="glm",method.args=list(family=binomial)) +
+  scale_y_continuous(breaks=seq(0,1,by=.2))
+
+```
+
+::: notes
+- note the `scale_y_continuous` which ensures the y axis doesn't show silly values
+:::
+
+## One Last Trick
+
+- so far we've looked at
+
+  + model _deviance_ and $\chi^2$ (similar to sums of squares and $F$)
+
+  + model _coefficients_ and how to map them to probability
+
+- what about "explained variance" (similar to $R^2$)?
+
+- no really good way of doing this, many proposals
+
+- SPSS uses something called "accuracy" (how well does the model predict actual data?)
+
+- not very informative, but good for learning R
+
+## Accuracy
+
+- first, what does the model predict (in logit units)?
+```{r}
+#| label: acc
+guess <- predict(mod.b) # in logit units
+```
+- if the chance of being splatted is more than .5 (logit > 0) call it a "splat"
+```{r}
+#| label: acc2
+guess <- ifelse(guess>0,1,0)
+```
+- how well do predicted splats match actual splats?
+```{r}
+#| label: acc3
+hits <- sum(guess == singers$SPLATTED)
+hits/length(singers$SPLATTED)
+```
+
+- present model "correctly predicts" `r 100*hits/length(singers$SPLATTED)`% of the observations
+
+## Other Types of Data
+
+- logit regression is _one type_ of GLM
+
+- others make use of different **link functions** (through `family=...`)
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+- **poisson**: number of events in a time period
+
+- **inverse gaussian**: time to reach some criterion
+
+- ...
+
+## GLMs
+
+:::: {.columns}
+
+::: {.column width="48%"}
+:::: myblock
+### Predictor Variables
+- linear
+
+- convertible to linear (use `log()` etc.)
+
+- non-convertible (use `contrasts()` etc. to map)
+
+- **don't affect the choice of model**
+::::
+
+:::
+
+::: {.column width="4%"}
+<!-- spacer -->
+ 
+<!-- end spacer -->
+:::
+
+::: {.column width="48%"}
+:::: myblock
+### Dependent Variables
+- linear
+
+- convertible to linear (use `log()` etc.)
+
+- non-convertible (use `glm()` with `family=...`)
+
+- **directly affect the choice of model**
+::::
+:::
+
+::::
+
+# End

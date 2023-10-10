@@ -12,7 +12,6 @@ source('_theme/theme_quarto.R')
 
 ```{r}
 #| include: false
-
 load("R/reading.Rdata")
 load("R/reading2.Rdata")
 ```
@@ -20,6 +19,17 @@ load("R/reading2.Rdata")
 ## Two Weeks Ago {transition="zoom"}
 
 ![](img/playmo_teach.jpg){.center-img}
+
+## Two Weeks Ago {transition="zoom"}
+
+```{r}
+#| echo: false
+library(gt)
+
+reading |> slice(c(1:3,48:50)) %>% gt() |>
+  data_color(columns=c("age","hrs_wk","R_AGE"),colors="#d0d9ff",alpha=.8) |>
+  tab_options(table.font.size=pct(70))
+```
 
 
 ## Two Weeks Ago {transition="zoom"}
@@ -29,32 +39,10 @@ mod.m <- lm(R_AGE ~ age + hrs_wk, data=reading)
 summary(mod.m)
 ```
 
-## Two Weeks Ago {transition="zoom"}
+## Two Weeks Ago
 
 ```{r}
-#| label: 3d
-#| echo: false
-#| fig-align: center
-library(rgl)
-plot3d(x=reading$hrs_wk,y=reading$age,z=reading$R_AGE,
-       type='s',
-       radius=.1,
-       xlab="practise",ylab="age",zlab="READING AGE")
-coefs <- coef(mod.m)
-a <- coefs["hrs_wk"]
-b <- coefs["age"]
-c <- -1
-d <- coefs["(Intercept)"]
-planes3d(a,b,c,d, alpha=0.5)
-rglwidget()
-```
-
-## Newer, Prettier
-
-```{r}
-#| label: psetup
 #| include: false
-library(plotly)
 steps=49
 age <- with(reading,seq(min(age),max(age),length=steps))
 hrs_wk <- with(reading,seq(min(hrs_wk),max(hrs_wk),length=steps))
@@ -63,36 +51,885 @@ newdat <- expand.grid(age=age,hrs_wk=hrs_wk)
 
 
 ```{r}
+#| label: 3d
 #| echo: false
+#| fig-align: center
+library(rgl)
+
+fit <- lm(R_AGE~age+hrs_wk,data=reading)
+R_AGE <- matrix(predict(fit, newdat),steps,steps)
+plot3d(x=reading$hrs_wk,y=reading$age,z=reading$R_AGE,
+       type='s',
+       radius=.1,
+       xlab="practise",ylab="age",zlab="READING AGE")
+persp3d(hrs_wk,age,R_AGE,col="lightgrey",alpha=0.5,add=TRUE)
+rglwidget()
+```
+
+# Interactions 1
+
+## Before we Reach for R
+
+:::: {.columns}
+
+::: {.column width="70%"}
+- our model says that `age` and `hrs_wk` have **orthogonal** effects
+
+  - _whatever your age_, an extra hour of reading/wk improves your reading age by `r .rround(coef(mod.m)["hrs_wk"],2)` years
+  - _however much you read_, an extra year of age improves your reading age by `r .rround(coef(mod.m)["age"],2)` years
+  
+- what if practice affects people of different ages _differently_?
+
+:::
+
+::: {.column width="30%"}
+
+:::: r-stack
+
+![](img/playmo_dontanalyse.jpg){.fragment fragment-index=1 .fade-out}
+
+![](img/playmo_analyse.jpg){.fragment fragment-index=1 .fade-in}
+
+::::
+
+:::
+
+::::
+
+::: {.fragment fragment-index=1}
+
+- possibly our model isn't a good fit to the data?
+
+:::
+
+::: notes
+- the most important consideration is _common sense_---does it even make sense to consider an interaction between these two variables?
+:::
+
+## How Good is the Model?
+
+```r
+plot(mod.m, which=1:4)
+```
+
+```{r}
+#| label: entry1
+#| echo: false
+#| fig-align: center
+par(mfrow=c(2,2))
+plot(mod.m, which=1:4)
+```
+
+## Interaction is Just Multiplication
+
+### linear model with two predictors
+
+$$\color{red}{\textrm{outcome}_i}=\color{blue}{(\textrm{model})_i}+\textrm{error}_i$$
+$$\color{red}{y_i}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\epsilon_i$$
+
+::: {.fragment}
+
+### linear model with interaction
+
+$$\color{red}{y_i}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\color{blue}{b_3}\cdot{}\color{orange}{x_{1i}x_{2i}}+\epsilon_i$$
+$$\color{red}{\hat{y_i}}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\color{blue}{b_3}\cdot{}\color{orange}{x_{1i}x_{2i}}$$
+
+:::
+
+## Model with Interaction
+
+$$\color{red}{y_i}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\color{blue}{b_3}\cdot{}\color{orange}{x_{1i}x_{2i}}+\epsilon_i$$
+
+$$\color{red}{\hat{y_i}}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\color{blue}{b_3}\cdot{}\color{orange}{x_{1i}x_{2i}}$$
+
+
+::: {layout=[1,3,1]}
+ 
+
+![](img/formula_I.svg){.nostretch .center-img}
+
+ 
+:::
+
+. . .
+
+```r
+mod.i <- lm(R_AGE ~ 1 + hrs_wk + age + hrs_wk:age, data = reading)
+```
+
+---
+
+$$\color{red}{\hat{y_i}}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\color{blue}{b_3}\cdot{}\color{orange}{x_{1i}x_{2i}}$$
+
+
+:::: {.columns}
+
+::: {.column width="15%"}
+$\color{blue}{b_0=1}$
+
+$\color{blue}{b_1=1.5}$
+
+$\color{blue}{b_2=2}$
+
+$\color{blue}{b_3=0.5}$
+
+ 
+
+$\color{red}{x_{1i}=2}$
+:::
+
+::: {.column width="85%"}
+
+```{r}
+#| fig-asp: .6
+#| fig-align: center
+#| echo: false
+fn <- function(x,x1=2) {
+  1+1.5*x1+2*x+.5*x1*x
+}
+
+df <- data.frame(x=-3:3,y1=fn(-3:3,2),y2=fn(-3:3,4),y3=fn(-3:3,8))
+df |> ggplot() +
+  geom_line(aes(x=x,y=y1),colour="red",linewidth=1.5) +
+  ylab(expression(hat(y))) +
+  ylim(-5,20) +
+  xlab(expression(x[2])) -> p1
+
+p1 + geom_point(aes(x=2,y=fn(2,2)),size=3,colour="red") +
+  annotate("text",x=0,y=10,label="y = 1 + 1.5·2 + 2·2 + 0.5·2·2 = 10",size=8,colour="red")
+```
+
+
+:::
+
+::::
+
+---
+
+## {visibility="uncounted"}
+
+$$\color{red}{\hat{y_i}}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\color{blue}{b_3}\cdot{}\color{orange}{x_{1i}x_{2i}}$$
+
+:::: {.columns}
+
+::: {.column width="15%"}
+$\color{blue}{b_0=1}$
+
+$\color{blue}{b_1=1.5}$
+
+$\color{blue}{b_2=2}$
+
+$\color{blue}{b_3=0.5}$
+
+ 
+
+$\color{red}{x_{1i}=2}$
+
+$\color{green}{x_{1i}=4}$
+
+:::
+
+::: {.column width="85%"}
+
+```{r}
+#| fig-asp: .6
+#| fig-align: center
+#| echo: false
+
+p1 <- p1 + geom_line(aes(x=x,y=y2),colour="green",linewidth=1.5)
+p1 + geom_point(aes(x=2,y=fn(2,4)),size=3,colour="green") +
+  annotate("text",x=0,y=15,label="y = 1 + 1.5·4 + 2·2 + 0.5·4·2 = 15",size=8,colour="green")
+
+```
+
+
+:::
+
+::::
+
+## Model with Interaction
+
+```{r}
+#| output-line-numbers: "14"
+mod.i <- lm(R_AGE ~ 1 + hrs_wk + age+ hrs_wk:age, data = reading)
+summary(mod.i)
+```
+
+## Model with Interaction
+
+```{r}
+#| fig-asp: .6
+#| fig-align: center
+#| echo: false
+
+rd_6 <- reading |> mutate(age=6)
+rd_6 <- rd_6 |> mutate(RA6=predict(mod.i,newdat=rd_6))
+rd_8 <- reading |> mutate(age=8)
+rd_6 <- rd_6 |> mutate(RA8=predict(mod.i,newdat=rd_8))
+rd_10 <- reading |> mutate(age=10)
+rd_6 <- rd_6 |> mutate(RA10=predict(mod.i,newdat=rd_10))
+
+rm(rd_8,rd_10)
+
+rd_6 |> ggplot() +
+  geom_line(aes(x=hrs_wk,y=RA6),colour="red",linewidth=1.5) +
+  geom_line(aes(x=hrs_wk,y=RA10),colour="blue",linewidth=1.5) +
+  geom_line(aes(x=hrs_wk,y=RA8),colour="orange",linewidth=1.5) +
+  xlab("practise (hrs/wk)") +
+  ylab("READING AGE") +
+  annotate("text",x=6.8,y=13.2,label="age=10",colour="blue",size=8) +
+  annotate("text",x=6.8,y=10.3,label="age=8",colour="orange",size=8) +  
+  annotate("text",x=6.8,y=8.5,label="age=6",colour="red",size=8)
+  
+```
+
+
+## Model with Interaction
+
+```{r}
+#| label: 3di
+#| echo: false
+#| fig-align: center
 fit <- lm(R_AGE~age*hrs_wk,data=reading)
 R_AGE <- matrix(predict(fit, newdat),steps,steps)
-plot_ly(x=~age,y=~hrs_wk,z=~R_AGE, type="surface") %>% layout(
-    scene = list(
-      xaxis = list(title = "age"),
-      yaxis = list(title = "practise"),
-      zaxis = list(title = "READING AGE"),
-      aspectmode = "cube"
-    ))
-#p <- persp(age,hrs_wk,R_AGE,theta=-25,phi=5,col=NA)
+plot3d(x=reading$hrs_wk,y=reading$age,z=reading$R_AGE,
+       type='s',
+       radius=.1,
+       xlab="practise",ylab="age",zlab="READING AGE")
+persp3d(hrs_wk,age,R_AGE,col="lightgrey",alpha=0.5,add=TRUE)
+rglwidget()
+```
+
+# Interactions 2
+
+## Categorical Predictors
+
+:::: {.columns}
+
+::: {.column width="40%"}
+- how does interaction work with **categorical** predictors?
+
+- (as you'll see) it's all just multiplication
+:::
+
+::: {.column width="60%"}
+
+```{r}
+#| echo: false
+reading |> slice(c(1:3,48:50)) %>% gt() |>
+  data_color(columns=c("hrs_wk","method","R_AGE"),colors="#d0d9ff",alpha=.8) |>
+  tab_options(table.font.size=pct(70))
 ```
 
 
 
-## take 2
+:::
+
+::::
+
+- how is `method` coded by R?
+
+. . .
+
+```{r}
+contrasts(reading$method)
+```
+
+## A (Different) Two-Predictor Model
+
+- we know that `hrs_wk` affects reading age
+
+- perhaps `method` affects reading age too?
+
+- this is a question of model _improvement_
+
+. . .
+
+
+```{r}
+mod.m2 <- lm(R_AGE ~ hrs_wk + method, data=reading)
+anova(mod.m2)
+```
+
+
+## A Two-Predictor Model
+
+```{r}
+#| output-line-numbers: "11,12,13"
+summary(mod.m2)
+```
+
+## A Two-Predictor Model
+
+```{r}
+#| echo: false
+#| fig-align: center
+#| fig-asp: .6
+
+p <- reading |> ggplot(aes(x=hrs_wk,y=R_AGE,colour=method)) +
+  xlab("practice (hrs/wk)") + ylab("reading age") +
+  geom_point(size=3)
+
+p + geom_abline(intercept=coef(mod.m2)[1],slope=coef(mod.m2)[2],colour="red",linewidth=1.5) +
+  geom_abline(intercept=coef(mod.m2)[1]+coef(mod.m2)[3],slope=coef(mod.m2)[2],colour="blue",linewidth=1.5)
+```
+
+- note that the lines are parallel
+
+- an hour of practice has _the same_ effect, however you're taught
+
+## [Different Effects for Different Methods?]{.r-fit-text}
+
+```{r}
+mod.m3 <- lm(R_AGE ~ hrs_wk + method + hrs_wk:method,data=reading)
+anova(mod.m3)
+```
+
+## [Different Effects for Different Methods]{.r-fit-text}
+
+```{r}
+summary(mod.m3)
+```
+
+## Interaction is Just Multiplication
+
+
+$$\color{red}{\hat{y_i}}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\color{blue}{b_3}\cdot{}\color{orange}{x_{1i}x_{2i}}$$
+
+```{r}
+#| echo: false
+cf <- function(x) {
+  round(coef(mod.m3)[x],3)
+}
+coef(mod.m3)
+```
+
+
+::: {.r-fit-text}
+
+$$\color{red}{\hat{\textrm{R_AGE}}}=\color{blue}{`r cf(1)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(2)`}\cdot{}\color{orange}{\textrm{hrs_wk}}+\color{blue}{`r cf(3)`}\cdot{}\color{orange}{\textrm{method}}+\color{blue}{`r cf(4)`}\cdot{}\color{orange}{\textrm{hrs_wk}\cdot{}\textrm{method}}$$
+:::
+
+- the coefficients show you which way things are coded
+
+- `methodword` can be read as "when `method` is `word`"
+
+
+## Interaction is Just Multiplication
+
+
+- when `method` is (coded as) zero (for phonics):
+
+::: {.r-fit-text}
+
+$$\color{red}{\hat{\textrm{R_AGE}}}=\color{blue}{`r cf(1)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(2)`}\cdot{}\color{orange}{\textrm{hrs_wk}}+\color{blue}{`r cf(3)`}\cdot{}\color{orange}{0}+\color{blue}{`r cf(4)`}\cdot{}\color{orange}{\textrm{hrs_wk}\cdot{}0}$$
+
+:::
+
+$$\color{red}{\hat{\textrm{R_AGE}}}=\color{blue}{`r cf(1)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(2)`}\cdot{}\color{orange}{\textrm{hrs_wk}}$$
+
+. . .
+
+- when `method` is (coded as) one (for word):
+
+::: {.r-fit-text}
+
+$$\color{red}{\hat{\textrm{R_AGE}}}=\color{blue}{`r cf(1)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(2)`}\cdot{}\color{orange}{\textrm{hrs_wk}}+\color{blue}{`r cf(3)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(4)`}\cdot{}\color{orange}{\textrm{hrs_wk}\cdot{}1}$$
+
+:::
+
+$$\color{red}{\hat{\textrm{R_AGE}}}=\color{blue}{`r cf(1)+cf(3)`}\cdot{}\color{orange}{1}+\color{blue}{`r cf(2)+cf(4)`}\cdot{}\color{orange}{\textrm{hrs_wk}}$$
+
+::: notes
+- here, I've done the additions to make the formula simpler
+
+- `r cf(1)+cf(3)` is `r cf(1)`+`r cf(3)`
+- `r cf(2)+cf(4)` is `r cf(2)`+`r cf(4)`
+
+:::
+
+## No More Parallel Lines
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+p + geom_abline(intercept=coef(mod.m3)[1],slope=coef(mod.m3)[2],colour="red",linewidth=1.5) +
+  geom_abline(intercept=coef(mod.m3)[1]+coef(mod.m3)[3],slope=coef(mod.m3)[2]+coef(mod.m3)[4],colour="blue",linewidth=1.5)
+```
+
+
+<!-- use at end -->
+## A Nice Graph
+
+```{r}
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+reading |>
+  ggplot(aes(x=hrs_wk, y=R_AGE, colour=method)) +
+    xlab("practice (hrs/wk)") +
+    ylab("reading age") +
+    geom_point(size=3) +
+    geom_smooth(method="lm")
+```
+
+. . .
+
+- `geom_smooth(method="lm")` effectively runs a linear model, _to make a graph_
+
+- it's not an analysis
+
+::: notes
+- don't want people using ggplot to "analyse" data
+:::
+
+# Interactions 3
+
+```{r}
+#| include: false
+# squeeze in new "school" variable
+reading <- reading2
+reading <- reading |> relocate(school,.before=R_AGE)
+```
+
+## Category x Category
+
+:::: {.columns}
+
+::: {.column width="40%"}
+![](img/playmo_shoehorn.jpg)
+:::
+
+::: {.column width="60%"}
+```{r}
+#| echo: false
+reading |> slice(c(1:3,48:50)) %>% gt() |>
+  data_color(columns=c("method","school","R_AGE"),colors="#d0d9ff",alpha=.8) |>
+  tab_options(table.font.size=pct(70))
+```
+
+- shoehorning in one more reading example
+
+- does _where it's taught_ affect the efficacy of a method?
+
+:::
+
+::::
+
+
+## Where to Start
+
+::: {layout="[[1,1], [1,1]]"}
+
+- when looking at continuous predictors, we started with a model criticism
+
+![](`r knitr::fig_chunk('entry1',ext='svg')`)
+
+- when looking at mixed predictors, we looked at model improvement
+
+:::: {.smaller}
+```{r}
+#| echo: false
+print(anova(mod.m3),signif.stars=FALSE)
+```
+::::
+
+:::
+
+## Where to Start
+
+- where you start depends on what you're doing
+
+  - have I got a good model? (no: one of many possible issues: missing predictor)
+  
+  - can I improve a model? (for example, I am exploring which predictors are relevant)
+  
+. . .
+
+- in the present case, we _already have a theory_ (that different schools are using the teaching methods differently)
+
+- this time we'll start by looking at the data
+
+## Reading Age by School and Method
+
+```{r}
+#| label: bar
+#| echo: false
+#| fig-asp: 0.6
+#| fig-align: center
+reading |> group_by(method,school) |>
+  summarise(r=mean_se(R_AGE)) |>
+  ggplot(aes(x=school,y=r$y,fill=method)) +
+  geom_bar(stat="identity",position="dodge") +
+  geom_errorbar(aes(ymin=r$ymin,ymax=r$ymax),
+                position=position_dodge(.9),width=0.33) +
+  ylab('READING AGE') +
+  xlab('school type') +
+  scale_fill_manual(values=c("phonics"="#fdab32","word"="gray")) -> rg
+rg
+```
+
+::: aside
+error bars represent _± one standard error_ of the mean
+:::
+
+## A Much Better Graph
+
+```{r}
+#| label: violin
+#| echo: false
+#| fig-align: center
+#| fig-asp: .6
+
+reading |> 
+  ggplot(aes(x=school,y=R_AGE,fill=method)) +
+  geom_violin(alpha=.5) +
+  geom_boxplot(width=.2,position=position_dodge(.9)) +
+  ylab('READING AGE') +
+  xlab('school type') +
+  scale_fill_manual(values=c("phonics"="#fdab32","word"="gray"))
+```
+
+
+::: aside
+this graph combines `geom_violin()` with `geom_boxplot()`
+:::
+
+
+## An Analysis
+
+- looking at the graph, it seems as if
+
+  - the state school is doing a bit better
+  
+  - but it depends which method we look at
+
+- we wouldn't be able to predict how well a child would do without knowing which kind of school _and_ which method
+
+. . .
+
+- it seems (graphically) as if our theory/hunch was right
+
+- what about statistically?
+
+## Fitting a Model
+
+```{r}
+mod.s <- lm(R_AGE ~ method + school + method:school,
+            data=reading)
+anova(mod.s)
+```
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+. . .
+
+
+::: myyellowblock
+- save your fingers! `a * b` is equivalent to `a + b + a:b`
+
+```r
+mod.s <- lm(R_AGE ~ method * school, data=reading)
+```
+:::
+
+## What the Model Tells Us
+
+:::: {.columns}
+
+::: {.column width="80%"}
+
+```{r}
+summary(mod.s)
+```
+:::
+
+::: {.column width="20%"}
+![](img/playmo_proft.svg)
+
+```{r}
+#| include: false
+fs <- summary(mod.s)$fstatistic
+```
+
+
+_F_(`r .rround(fs[2],0)`,`r .rround(fs[3],0)`)=`r .rround(fs[1],1)`
+
+:::
+
+::::
+
+## What the Model Tells Us
+
+```{r}
+#| echo: false
+cf <- function(x) {
+  round(coef(mod.s)[x],1)
+}
+ri <- function(x) {
+  ifelse(x<0,'reduces','increases')
+}
+
+.pp(summary(mod.s),l=list(10:14))
+```
+
+- what is the intercept?
+
+[the predicted reading age of someone who has been to _private_ school and taught using _phonics_]{.fragment}
+
+- what does `methodword` mean?
+
+[being taught using the _word_ method `r ri(cf(2))` your reading age by `r abs(cf(2))` years]{.fragment} [_if you went to private school_]{.fragment}
+
+## What the Model Tells Us (2)
+
+```{r}
+#| echo: false
+.pp(summary(mod.s),l=list(10:14))
+```
+
+- what does `schoolstate` mean?
+
+[being taught in a _state_ school `r ri(cf(3))` your predicted reading age by `r abs(cf(3))` years]{.fragment} [_if you are taught using the word method_]{.fragment}
+
+- and the interaction?
+
+[compared to being taught using the _word_ method in a _private_ school, your predicted reading age is `r cf(2)`+`r cf(3)`+`r cf(4)` years different (i.e., it is `r paste0(cf(1), ifelse(cf(2)+cf(3)+cf(4)>0,'+',''), cf(2)+cf(3)+cf(4))` or `r cf(1)+cf(2)+cf(3)+cf(4)` years)]{.fragment}
+
+## What the Model Doesn't Tell Us
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- we can't say anything _general_ about the value of phonics
+
+- we can't say anything _general_ about the effectiveness of schools
+
+- no **main effects**
+
+- possibly the _only_ useful information we have is the interaction
+
+- we can fix this...
+:::
+
+::: {.column width="50%"}
+![](`r knitr::fig_chunk('violin',ext='svg')`)
+:::
+
+::::
+
+# Main Effects
+
+```{r}
+#| include: false
+
+reading <- reading |> mutate(method=as.factor(method),school=as.factor(school))
+```
+
+
+## Coding Categories, Again
+
+- all of the maths on the last few slides works out _because_ the categorical predictors are, underlyingly, dummy coded
 
 
 
 ```{r}
-#| echo: false
-fit <- lm(R_AGE~age+hrs_wk,data=reading)
-R_AGE <- matrix(predict(fit, newdat),steps,steps)
-plot_ly(x=~age,y=~hrs_wk,z=~R_AGE, type="surface") %>% layout(
-    scene = list(
-      xaxis = list(title = "age"),
-      yaxis = list(title = "practise"),
-      zaxis = list(title = "READING AGE"),
-      aspectmode = "cube"
-    ))
-#p <- persp(age,hrs_wk,R_AGE,theta=-25,phi=5,col=NA)
+contrasts(reading$method)
+contrasts(reading$school)
 ```
+
+- for example the _interaction term_ can only be added when $\color{orange}{x_{1i}}$ and $\color{orange}{x_{2i}}$ (here, `method` and `school`) are equal to 1
+
+  - it applies for _state_ `school`, _word_ `method`
+  
+## What If We Change Things?
+
+::: myblock
+
+$$\color{red}{\hat{y_i}}=\color{blue}{b_0}\cdot{}\color{orange}{1}+\color{blue}{b_1}\cdot{}\color{orange}{x_{1i}}+\color{blue}{b_2}\cdot{}\color{orange}{x_{2i}}+\color{blue}{b_3}\cdot{}\color{orange}{x_{1i}x_{2i}}$$
+
+:::
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+```{r}
+contrasts(reading$method) <- c(-.5,.5)
+contrasts(reading$school) <- c(-.5,.5)
+```
+
+- what we've done is changed the values of $\color{orange}{x_{1}}$ and $\color{orange}{x_{2}}$
+
+  - where `method`~i~ is _phonics_, $\color{orange}{x_{1i}}=-0.5$
+
+  - where `method`~i~ is _word_, $\color{orange}{x_{1i}}=+0.5$
+  
+- similarly for `school` and $\color{orange}{x_{2}}$
+
+::: aside
+we are assuming similar numbers of observations for each combination of predictor levels
+:::
+
+::: notes
+- the easiest way to show you what happens is to just run the model, and inspect the output...
+:::
+
+## Running the Model
+
+- NB., we've changed the contrast coding in the previous slide
+
+:::: {.columns}
+
+::: {.column width="80%"}
+```{r}
+mod.sC <- lm(R_AGE ~ method*school, data=reading)
+summary(mod.sC)
+```
+:::
+
+::: {.column width="20%"}
+![](img/playmo_proft.svg)
+
+```{r}
+#| include: false
+fs <- summary(mod.sC)$fstatistic
+```
+
+
+_F_(`r .rround(fs[2],0)`,`r .rround(fs[3],0)`)=`r .rround(fs[1],1)`
+
+:::
+
+::::
+
+## What the Model Tells Us
+
+```{r}
+#| echo: false
+cf <- function(x) {
+  round(coef(mod.sC)[x],1)
+}
+pm <- function(x) {
+  ifelse(x<0,'-','+')
+}
+.pp(summary(mod.sC),l=list(10:14))
+```
+- note the output isn't as helpful here, you have to _remember_ which values are 1
+
+  - depends which you assigned positive values
+  
+  - here, _word_ `method`, _state_ `school`
+
+. . .
+
+- for someone in _private_ `school` using _phonics_ `method`
+
+reading age = `r cf(1)` - $\frac{1}{2}$·`r cf(2)` - $\frac{1}{2}$·`r cf(3)` + $\frac{1}{4}$·`r cf(4)` 
+
+reading age = `r cf(1)` `r pm(-5*cf(2))` `r abs(-.5*cf(2))` `r pm(-.5*cf(3))` `r abs(-.5*cf(3))` `r pm(.25*cf(4))` `r abs(.25*cf(4))` = **`r cf(1)-.5*cf(2)-.5*cf(3)+.25*cf(4)` years**
+
+. . .
+
+...etc.
+
+## What's Good About This?
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+avm <- reading |> group_by(method) |> summarise(m=mean(R_AGE)) |> mutate(x=c(1,2))
+avs <- reading |> group_by(school) |>
+  summarise(m=mean(R_AGE)) |> mutate(x=c(1,2))
+                                                
+rg + annotate("segment",x=.5,xend=1.5,y=avs$m[avs$school=="private"],yend=avs$m[avs$school=="private"], colour="red",linewidth=1.5) +
+  annotate("segment",x=1.5,xend=2.5,y=avs$m[avs$school=="state"],yend=avs$m[avs$school=="state"], colour="red",linewidth=1.5)
+  
+```
+- effect of `school` with (-.5, .5) contrast coding
+
+## What's Good About This? (2)
+
+```{r}
+#| echo: false
+#| fig-asp: .6
+#| fig-align: center
+
+rg + annotate("segment",x=.5,xend=2.05,y=avm$m[avm$method=="phonics"],yend=avm$m[avm$method=="phonics"], colour="red",linewidth=1.5) +
+  annotate("segment",x=0.95,xend=2.5,y=avm$m[avm$method=="word"],yend=avm$m[avm$method=="word"], colour="red",linewidth=1.5)
+```
+- effect of `method` with (-.5, .5) contrast coding
+
+## These are Main Effects
+
+```{r}
+#| echo: false
+.pp(summary(mod.sC),l=list(10:14))
+```
+
+
+-  _on average_, phonics is a better method for teaching
+
+- _on average_, there is no (statistical) difference between types of school
+
+- there's also an interaction between these two predictors (but we should really calculate it out to ensure that we know what it "means")
+
+. . .
+
+- a quick read: when `school` is _state_ and `method` is _word_, reading age is reduced
+
+- but this obscures the fact that state schools are particularly good on phonics---perhaps we should recode?
+
+## ![](img/css/what.jpg){width=70px style="transform: translateY(50%);"} Sum Coding
+
+- R provides a quick and dirty way of setting similar contrasts
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+contrasts(reading$method) <- c(-.5,.5)
+contrasts(reading$method)
+```
+
+```r
+mod.a <- lm(R_AGE~method,data=reading)
+summary(mod.a)
+```
+
+```{r}
+#| echo: false
+mod.a <- lm(R_AGE~method,data=reading)
+.pp(summary(mod.a),l=list(10:12))
+```
+
+
+:::
+
+::: {.column width="50%"}
+```{r}
+contrasts(reading$method) <- contr.sum(2)
+contrasts(reading$method)
+```
+
+```r
+mod.b <- lm(R_AGE~method,data=reading)
+summary(mod.b)
+```
+
+```{r}
+#| echo: false
+mod.b <- lm(R_AGE~method,data=reading)
+.pp(summary(mod.b),l=list(10:12))
+```
+
+:::
+
+::::
+
+
 
