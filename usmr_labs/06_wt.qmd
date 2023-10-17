@@ -41,27 +41,29 @@ download.file('https://uoepsy.github.io/data/blink_eyegaze.xlsx', 'data/blink_ey
 eyedata <- read_excel(path = 'data/blink_eyegaze.xlsx')
 
 setupdata <- read_csv("https://uoepsy.github.io/data/blink_setup.csv", col_names = FALSE)
-head(setupdata)[,1:4] %>%
-  cbind(`...` = rep("...",6)) %>%
-  rbind(., "...") %>% rbind(., "...") %>% 
-  knitr::kable(., col.names = NULL)
+head(setupdata)[,1:4] |>
+  cbind(`...` = rep("...",6)) |>
+  rbind("...") |> rbind("...") |> 
+  knitr::kable(col.names = NULL)
 ```
 
 <center>**blink_eyegaze.xlsx**</center>    
 The data from the eye-tracker, which has been processed to show the proportion of time spent looking at the distractor object in each trial, can be found at [https://uoepsy.github.io/data/blink_eyegaze.xlsx](https://uoepsy.github.io/data/blink_eyegaze.xlsx). In contrast to the blink_setup.csv data, in this data each trial is a row, so we have 20 rows per participant.  
 ```{r echo=FALSE}
 cbind(variable_names = names(eyedata),
-      description = c("Participant number","Trial number","Time spent looking at distractor object (measured in milliseconds from onset of noun phrase)","Time taken to click on an object (measured in milliseconds from the onset of the noun phrase")) %>%
+      description = c("Participant number","Trial number","Time spent looking at distractor object (measured in milliseconds from onset of noun phrase)","Time taken to click on an object (measured in milliseconds from the onset of the noun phrase")) |>
     knitr::kable()
 ```
 The top of the data looks like this:
 ```{r echo=FALSE}
-head(eyedata) %>%
-  rbind(., "...") %>% rbind(., "...") %>% 
-  knitr::kable(.)
+head(eyedata) |>
+  rbind("...") |> rbind("...") |> 
+  knitr::kable()
 ```
 :::
 
+
+<div class="divider div-transparent div-dot"></div>
 
 # Different Data Formats
 
@@ -125,6 +127,8 @@ setupdata <- read_csv("https://uoepsy.github.io/data/blink_setup.csv", col_names
 ```
 `r solend()`
 
+<div class="divider div-transparent div-dot"></div>
+
 # Renaming Columns  
 
 You can access the column names from a data-set using `names()` or `colnames()`. 
@@ -139,7 +143,7 @@ names(data)[3]<-"peppapig"
 ```
 Or in tidyverse, using `rename()`:
 ```{r eval=FALSE}
-data %>%
+data |>
   rename(newname = currentname)
 ```
 
@@ -154,9 +158,9 @@ Columns 3:22 are trials 1 to 20.
 head(setupdata)
 ```
 ```{r echo=FALSE}
-head(setupdata)[,1:3] %>%
-  cbind(`...` = rep("...",6)) %>%
-  rbind(., "...") %>% rbind(., "...")
+head(setupdata)[,1:3] |>
+  cbind(`...` = rep("...",6)) |>
+  rbind("...") |> rbind("...")
 ```
 
 **Task**
@@ -195,12 +199,15 @@ Check:
 head(setupdata)
 ```
 ```{r echo=FALSE}
-head(setupdata)[,1:2] %>%
-  cbind(`...` = rep("...",6)) %>%
-  rbind(., "...") %>% rbind(., "...")
+head(setupdata)[,1:2] |>
+  cbind(`...` = rep("...",6)) |>
+  rbind("...") |> rbind("...")
 ```
 
 `r solend()`
+
+
+<div class="divider div-transparent div-dot"></div>
 
 # Reshaping data 
 
@@ -240,13 +247,15 @@ Reshape the data to make it so that there is one row per trial.
 
 ```{r}
 setuplong <- 
-  setupdata %>%
+  setupdata |>
   pivot_longer(trial_1:trial_20, names_to = "trial_number", values_to = "video")
 
 setuplong
 ```
 
 `r solend()`
+
+<div class="divider div-transparent div-dot"></div>
 
 # Dealing with character strings
 
@@ -270,7 +279,7 @@ separate a column into multiple columns by splitting at a set of characters
 mupsimp <- read_csv("https://uoepsy.github.io/data/muppet_simp.csv")
 mupsimp
 
-mupsimp %>% 
+mupsimp |> 
   separate(show_name, into = c("show","name"), sep = "_")
 ```
 :::
@@ -286,7 +295,7 @@ substr(mupsimp$show_name, 1, 3)
 
 Can be combined with functions like `nchar()` (to find the number of characters in each string). Additionally, can be used in tidyverse easily:
 ```{r}
-mupsimp %>%
+mupsimp |>
   mutate(
     first3 = substr(show_name, 1, 3),
     last3 = substr(show_name, nchar(show_name)-2, nchar(show_name))
@@ -335,7 +344,7 @@ head(setuplong$video)
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
-setuplong <- setuplong %>%
+setuplong <- setuplong |>
   mutate(
     nr_blinks = as.numeric(gsub("/files/vids/|blinks_|blinsk_|.mp4","",video))
   )
@@ -343,6 +352,8 @@ setuplong <- setuplong %>%
 setuplong
 ```
 `r solend()`
+
+<div class="divider div-transparent div-dot"></div>
 
 # Joining/merging
 
@@ -384,21 +395,21 @@ In this solution, let's build up a sequence step by step. Work through the steps
 
 1. First, let's see how we can remove the "subject_" from "subject_1" etc.. 
 ```{r eval=FALSE}
-setuplong %>%
+setuplong |>
   mutate(
     sub = gsub("subject_","",sub)
   )
 ```
 2. But we also want it to be numeric, to match the `sub` variable in the eyegaze data, so let's edit it to:
 ```{r eval=FALSE}
-setuplong %>%
+setuplong |>
   mutate(
     sub = as.numeric(gsub("subject_","",sub))
   )
 ```
 3. We'll also need to do the same for the `trial_number` variable, so let's add that line too:
 ```{r eval=FALSE}
-setuplong %>%
+setuplong |>
   mutate(
     sub = as.numeric(gsub("subject_","",sub)),
     trial_number = as.numeric(gsub("trial_","",trial_number))
@@ -406,38 +417,40 @@ setuplong %>%
 ```
 4. And then, we'll note that we need to have the same name for variables indicating trial number in both data-sets, so lets rename it:
 ```{r eval=FALSE}
-setuplong %>%
+setuplong |>
   mutate(
     sub = as.numeric(gsub("subject_","",sub)),
     trial_number = as.numeric(gsub("trial_","",trial_number))
-  ) %>%
+  ) |>
   rename(trial_no = trial_number)
 ```
 5. And now... add the join! 
 ```{r eval=FALSE}
-setuplong %>%
+setuplong |>
   mutate(
     sub = as.numeric(gsub("subject_","",sub)),
     trial_number = as.numeric(gsub("trial_","",trial_number))
-  ) %>%
-  rename(trial_no = trial_number) %>%
-  full_join(x = ., y = eyedata)
+  ) |>
+  rename(trial_no = trial_number) |>
+  full_join(x = _, y = eyedata)
 ```
-  **NOTE** the solution has `x = ., y = eyedata` to make it clear that we are 'piping in' (using `%>%`) the thing coming out of the previous lines of code, and putting it where the `.` is. `.... %>% full_join(eyedata)` would do the same.  
+  **NOTE** the solution has `x = ., y = eyedata` to make it clear that we are 'piping in' (using `|>`) the thing coming out of the previous lines of code, and putting it where the `_` is. `.... |> full_join(eyedata)` would do the same.  
   We use `full_join` here because we want to keep all the data, but `left_join` would do the same. `right_join` would be slightly different, because there are 3 observations in the setup data (when reshaped to long, n = 460) which aren't in the eye gaze data (n = 457). You can see which ones they are by using `anti_join`.  
 6. Finally - we need to give the whole output a name to store it in our environment! 
 ```{r}
 blinks_full <- 
-  setuplong %>%
+  setuplong |>
   mutate(
     sub = as.numeric(gsub("subject_","",sub)),
     trial_number = as.numeric(gsub("trial_","",trial_number))
-  ) %>%
-  rename(trial_no = trial_number) %>%
-  full_join(x = ., y = eyedata)
+  ) |>
+  rename(trial_no = trial_number) |>
+  full_join(x = _, y = eyedata)
 ```
 
 `r solend()`
+
+<div class="divider div-transparent div-dot"></div>
 
 # Impossible Values 
 
@@ -471,7 +484,7 @@ Some impossible values in the `distractor_fix` variable.
 - We might not have come across this before, but there is a really useful function called `ifelse()`.  
     Play around with the below code to learn:
 ```{r eval=FALSE}
-tibble(x = 1:10) %>%
+tibble(x = 1:10) |>
   mutate(
     new_variable = ifelse(x>5,1,0),
     another_new_variable = ifelse(x>5,"peppapig","kermit"),
@@ -486,7 +499,7 @@ Below we've taken similar steps for both the `distractor_fix` and `rt` variables
 However, we know that the `distractor_fix` variable has no entries >5000 (because of the histogram above).  
 ```{r}
 blinks_full <- 
-  blinks_full %>%
+  blinks_full |>
   mutate(
     distractor_fix = as.numeric(distractor_fix),
     distractor_fix = ifelse(distractor_fix<0, NA, distractor_fix),
@@ -495,6 +508,8 @@ blinks_full <-
 ```
 Note how two steps (making it numeric, and replacing values with `NA`s) are combined for the `rt` variable. Note also how we have specified that we replace with `NA`s entries which meet either on condition (>5000) **or** (using `|`) another (<0). 
 `r solend()`
+
+<div class="divider div-transparent div-dot"></div>
 
 # Missing Data in R
 
@@ -521,12 +536,12 @@ Other functions include `na.omit()`, which remove any row with has an `NA` anywh
 complete_data <- na.omit(data)
 ```
 
+<div class="divider div-transparent div-dot"></div>
 
 # Outliers  
 
 *Outliers* are the extreme - but plausible - values in variables. 
-There is no one way to identify what is extreme enough to consider and outlier, nor is there one way to handle them.  
-
+There is no one way to identify what is extreme enough to consider and outlier, nor is there one way to handle them.   
 Some outliers could be considered important observations which we would not want to exclude. However, being an outlier *can* (but not always) result in an observation exerting too great an influence on our analysis.  
 
 :::statbox
@@ -559,6 +574,7 @@ It looks like there are possibly some outliers at the upper end of the distribut
 
 `r solend()`
 
+<div class="divider div-transparent div-dot"></div>
 
 # Custom Functions
 
@@ -689,6 +705,8 @@ ggplot(data = blinks_full, aes(y = distractor_fix)) +
 
 `r solend()`
 
+<div class="divider div-transparent div-dot"></div>
+
 # Summary plots  
 
 So where are we now? 
@@ -709,6 +727,23 @@ the `stat_summary()` function allows us to plot _summarised data_, rather than t
 ggplot(blinks_full, aes(x = nr_blinks, y = distractor_fix)) +
   stat_summary(geom = "pointrange")
 ```
+
+This is the same as doing some grouping and summarising first, and then giving those summarised values to the plot: 
+```{r}
+#| fig-height: 2.5
+blinks_full |>
+  group_by(nr_blinks) |>
+  summarise(mean = mean(distractor_fix, na.rm=TRUE),
+            se = sd(distractor_fix, na.rm=TRUE)/sqrt(n()),
+            lwr = mean-se,
+            upr = mean+se
+            ) |>
+  ggplot(aes(x = nr_blinks, y = mean, ymin = lwr, ymax = upr)) +
+  geom_pointrange()
+```
+
+
+
 
 
 
