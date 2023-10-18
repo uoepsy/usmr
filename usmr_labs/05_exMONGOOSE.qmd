@@ -1,0 +1,1100 @@
+---
+title: "Exercises: Covariance, Correlation & Linear Regression"
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+set.seed(017)
+```
+
+# Covariance & Correlation  
+
+`r qbegin(0)`
+Go to [http://guessthecorrelation.com/](http://guessthecorrelation.com/){target="_blank"} and play the "guess the correlation" game for a little while to get an idea of what different strengths and directions of $r$ can look like.
+`r qend()`
+
+
+
+## Sleepy time  
+
+:::frame
+__Data: Sleep levels and daytime functioning__  
+
+A researcher is interested in the relationship between hours slept per night and self-rated effects of sleep on daytime functioning. She recruited 50 healthy adults, and collected data on the Total Sleep Time (TST) over the course of a seven day period via sleep-tracking devices.  
+At the end of the seven day period, participants completed a Daytime Functioning (DTF) questionnaire. This involved participants rating their agreement with ten statements (see @tbl-sleepitems). Agreement was measured on a scale from 1-5. An overall score of daytime functioning can be calculated by:  
+
+1. reversing the scores for items 4,5 and 6 (because those items reflect agreement with _positive_ statements, whereas the other ones are agreement with _negative_ statement);
+2. summing the scores on each item; and 
+3. subtracting the sum score from 50 (the max possible score). This will make higher scores reflect better perceived daytime functioning.  
+
+The data is available at [https://uoepsy.github.io/data/sleepdtf.csv](https://uoepsy.github.io/data/sleepdtf.csv){target="_blank"}. 
+  
+```{r}
+#| label: tbl-sleepitems
+#| echo: false
+#| tbl-cap: Daytime Functioning Questionnaire
+tibble(
+  Item = paste0("Item_",1:10),
+  Statement = c("I often felt an inability to concentrate","I frequently forgot things","I found thinking clearly required a lot of effort","I often felt happy","I had lots of energy","I worked efficiently","I often felt irritable" ,"I often felt stressed","I often felt sleepy", "I often felt fatigued")
+) |> gt::gt()
+```
+:::
+
+`r qbegin(1)`
+Load the required libraries (probably just __tidyverse__ for now), and read in the data.  
+Calculate the overall daytime functioning score, following the criteria outlined above, and make this a new column in your dataset.  
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+To reverse items 4, 5 and 6, we we need to make all the scores of 1 become 5, scores of 2 become 4, and so on... What number satisfies all of these equations: `? - 5 = 1`, `? - 4 = 2`, `? - 3 = 3`?  
+  
+To quickly sum across rows, you might find the `rowSums()` function useful (you don't have to use it though)  
+If my items were in columns between 4 to 15:  
+```{r}
+#| eval: false
+dataframe$sumscore = rowSums(dataframe[, 4:15])
+```
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r message=FALSE}
+sleepdtf <- read_csv("https://uoepsy.github.io/data/sleepdtf.csv")
+summary(sleepdtf)
+```
+
+To reverse the items, we can simply do 6 minus the score: 
+```{r}
+sleepdtf <- 
+  sleepdtf |> mutate(
+    item_4=6-item_4,
+    item_5=6-item_5,
+    item_6=6-item_6
+  ) 
+```
+
+Now we can use `rowSums()`, and subtract the sum scores from from 50 (the max score):  
+```{r}
+sleepdtf$dtf = 50-rowSums(sleepdtf[, 2:11])
+```
+
+An alternative way to do this would be: 
+
+```{r}
+#| eval: false
+sleepdtf |> 
+  mutate(
+    dtf = 50 - (item_1 + item_2 + item_3 + item_4 + item_5 + item_6 + item_7 + item_8 + item_9 + item_10)
+  )
+```
+
+
+`r solend()`
+
+`r qbegin(2)`
+Calculate the correlation between the total sleep time (`TST`) and the overall daytime functioning score calculated in the previous question.  
+Conduct a test to establish the probability of observing a correlation this strong in a sample of this size assuming the true correlation to be 0.  
+
+Write a sentence or two summarising the results. 
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+You can do this all with one function, see [5A #correlation-test](05a_covcor.html#correlation-tests){target="_blank"}.  
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+cor.test(sleepdtf$TST, sleepdtf$dtf)
+```
+
+:::int
+There was a strong positive correlation between total sleep time and self-reported daytime functioning score ($r$ = `r cor(sleepdtf$TST, sleepdtf$dtf) |> round(2)`, $t(48)$ = `r cor.test(sleepdtf$TST, sleepdtf$dtf)$statistic |> round(2)`, $p < .001$) in the current sample. As total sleep time increased, levels of self-reported daytime functioning increased. 
+:::
+`r solend()`
+
+`r qbegin("3 (open-ended)")`
+Think about this relationship in terms of _causation_.  
+<br>
+Claim: _Less sleep causes poorer daytime functioning._  
+<br>
+Why might it be inappropriate to make the claim above based on these data alone? Think about what sort of study could provide stronger evidence for such a claim.  
+
+::: {.callout-tip collapse="true"}
+#### Things to think about:  
+
++ comparison groups.   
++ random allocation.  
++ measures of daytime functioning.   
++ measures of sleep time.  
++ other (unmeasured) explanatory variables.  
+
+:::
+`r qend()`
+
+<div class="divider div-transparent div-dot"></div>
+
+## Attendance and Attainment
+
+:::frame
+__Data: Education SIMD Indicators__  
+
+The Scottish Government regularly collates data across a wide range of societal, geographic, and health indicators for every "datazone" (small area) in Scotland.  
+
+The dataset at [https://uoepsy.github.io/data/simd20_educ.csv](https://uoepsy.github.io/data/simd20_educ.csv){target="_blank"} contains some of the education indicators (see @tbl-simd).  
+
+```{r}
+#| label: tbl-simd
+#| echo: false
+#| tbl-cap: "Education indicators from the 2020 SIMD data"  
+tibble(
+  variable=names(read_csv("../../data/simd20_educ.csv")),
+  description=c("Areas of scotland containing populations of between 2.5k-6k household residents", 
+                "Average School pupil attendance",
+                "Average attainment score of School leavers (based on Scottish Credit and Qualifications Framework (SCQF))",
+                "Proportion of 17-21 year olds entering university")
+) |> gt::gt()
+```
+
+:::
+
+`r qbegin(4)`
+Conduct a test of whether there is a correlation between school attendance and school attainment in Scotland.  
+
+Present and write up the results.  
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+
+The readings have _not_ included an example write-up for you to follow. Try to follow the logic of those for t-tests and $\chi^2$-tests. 
+
+  - describe the relevant data
+  - explain what test was conducted and why
+  - present the relevant statistic, degrees of freedom (if applicable), statement on p-value, etc. 
+  - state the conclusion.  
+ 
+Be careful figuring out how many observations your test is conducted on. `cor.test()` includes only the _complete_ observations. 
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+simd <- read_csv("https://uoepsy.github.io/data/simd20_educ.csv")
+```
+
+Here are the means of the two variables. We should remember that these calculations will include some observations which have missing data on the other variable.  
+```{r}
+simd |> 
+  summarise(
+    m_attendance = mean(attendance, na.rm = TRUE),
+    m_attainment = mean(attainment, na.rm = TRUE)
+)
+```
+Instead, to match with out analysis, we might be inclined to filter our data to complete data:  
+```{r}
+simd_comp <- simd |> 
+  filter(!is.na(attendance) & !is.na(attainment))
+
+simd_comp |>
+  summarise(
+    m_attendance = mean(attendance),
+    m_attainment = mean(attainment),
+    sd_attendance = sd(attendance),
+    sd_attainment = sd(attainment)
+)
+```
+
+```{r}
+cor.test(simd_comp$attendance, simd_comp$attainment)
+```
+
+
+
+:::int
+```{r}
+#| echo: false
+res = cor.test(simd_comp$attendance, simd_comp$attainment)
+```
+
+A correlation test was conducted to assess whether there is a relationship between an area's average school attendance, and its average school attainment level. A total of `r nrow(simd_comp)` geographical areas were included in the analysis, with a mean school attendance of `r round(mean(simd_comp$attendance),2)` (SD = `r round(sd(simd_comp$attendance),2)`) and a mean school attainment score of `r round(mean(simd_comp$attainment),2)` (SD = `r round(sd(simd_comp$attainment),2)`).  
+There was a strong positive correlation between a geographical area's level of school attendance and its school attainment ($r$ = `r round(res$estimate,2)`, $t(`r res$parameter`$ = `r round(res$statistic,2)`, $p `r format.pval(res$p.value,eps = .001)`$). We therefore reject the null hypothesis that there is no correlation between an area's school attendance and attainment. @fig-simdplot provides a visualisation of the relationship.  
+
+```{r}
+#| label: fig-simdplot
+#| fig-cap: "Positive relationship between geographical areas' level of school attendance and school attainment"
+#| code-fold: true
+ggplot(simd_comp, aes(x=attendance, y=attainment)) + 
+  geom_point() + 
+  labs(x = "School attendance",
+       y = "School attainment")
+```
+
+:::
+
+::: {.callout-note collapse="true"}
+#### Optional: some extra plotting bits  
+
+Sometimes we may want to highlight certain parts of a plot. We can do that using the __gghighlight__ package, and giving it a set of conditions (like we do for `filter()`) in order for it to decide which points to highlight.  
+You can see an example below.  
+We have also created the title by referring to the `cor()` function, and 'paste'ing it together to "r = " 
+
+```{r}
+library(gghighlight)
+
+ggplot(simd_comp, aes(x=attendance, y=attainment)) + 
+  geom_point() + 
+  gghighlight( (attainment>6 & attendance<.75) | 
+               attendance > .95 | 
+               (attendance > .82 & attainment<5),
+               label_key = intermediate_zone) + 
+  labs(x = "School attendance",
+       y = "School attainment",
+       title = paste0("r = ",
+                       round(
+                         cor(simd_comp$attendance,
+                                  simd_comp$attainment),
+                         2)
+                       ))
+```
+
+:::
+
+
+`r solend()`
+
+
+<div class="divider div-transparent div-dot"></div>
+
+
+
+<!-- ## Optional Extras: Functions & Models -->
+
+<!-- `r qbegin(qlabel = FALSE, "Optional Extra 1")` -->
+<!-- The Scottish National Gallery kindly provided us with measurements of side and perimeter (in metres) for a sample of 10 square paintings. -->
+
+<!-- The data are provided below:   -->
+<!-- _Note: this is a way of creating a "tibble" (a dataframe in 'tidyverse-style' language) in R, rather than reading one in from an external file._   -->
+<!-- ```{r eval=FALSE} -->
+<!-- sng <- tibble( -->
+<!--   side = c(1.3, 0.75, 2, 0.5, 0.3, 1.1, 2.3, 0.85, 1.1, 0.2), -->
+<!--   perimeter = c(5.2, 3.0, 8.0, 2.0, 1.2, 4.4, 9.2, 3.4, 4.4, 0.8) -->
+<!-- ) -->
+<!-- ``` -->
+
+<!-- Plot the data from the Scottish National Gallery using `ggplot()`, with the side measurements of the paintings on the x-axis, and the perimeter measurements on the y-axis.   -->
+
+<!-- We know that there is a mathematical model for the relationship between the side-length and perimeter of squares: $perimeter = 4 \times \ side$.   -->
+
+<!-- Try adding the following line to your plot: -->
+<!-- ```{r eval=FALSE} -->
+<!--   stat_function(fun = ~.x * 4) -->
+<!-- ``` -->
+<!-- `r qend()` -->
+<!-- `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)` -->
+<!-- ```{r} -->
+<!-- #| label: fig-squares-scatterplot -->
+<!-- #| fig.cap: 'The exact relationship between side and perimeter of squares.' -->
+<!-- sng <- tibble( -->
+<!--   side = c(1.3, 0.75, 2, 0.5, 0.3, 1.1, 2.3, 0.85, 1.1, 0.2), -->
+<!--   perimeter = c(5.2, 3.0, 8.0, 2.0, 1.2, 4.4, 9.2, 3.4, 4.4, 0.8) -->
+<!-- ) -->
+
+<!-- ggplot(data = sng, aes(x = side, y = perimeter)) + -->
+<!--   geom_point(colour = 'black', alpha = 0.5, size = 3) + -->
+<!--   labs(x = 'Side (m)', y = 'Perimeter (m)')+ -->
+<!--   stat_function(fun = ~.x * 4) -->
+<!-- ``` -->
+
+<!-- The above plot shows perfect agreement between the observed data and the model. -->
+<!-- `r solend()` -->
+
+<!-- `r qbegin(qlabel = FALSE, "Optional Extra 2")` -->
+<!-- Use our mathematical model to predict the perimeter of a painting with a side of 1.5 metres.   -->
+
+<!-- ::: {.callout-tip collapse="true"} -->
+<!-- #### Hints   -->
+<!-- We don't have a painting with a side of 1.5 metres within the random sample of paintings from the Scottish National Gallery, but we can work out the perimeter of an hypothetical square painting with 1.5m sides, using our model - either using the plot from the previous question, or calculating it algebraically.   -->
+<!-- ::: -->
+
+<!-- `r qend()` -->
+<!-- `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)` -->
+<!-- **Visual approach** -->
+
+<!-- ```{r echo=FALSE} -->
+<!-- ggplot(data = sng, aes(x = side, y = perimeter)) + -->
+<!--   geom_point(colour = 'black', alpha = 0.5, size = 3) + -->
+<!--   labs(x = 'Side (m)', y = 'Perimeter (m)')+ -->
+<!--   stat_function(fun = ~.x * 4) + -->
+<!--   geom_segment(aes(x = 1.5, xend = 1.5, y = 0, yend = 4 * 1.5), linetype = 2,  -->
+<!--                colour = 'red', arrow = arrow(length = unit(0.5, "cm"))) + -->
+<!--   geom_segment(aes(x = 1.5, xend = 0 , y = 4 * 1.5, yend = 4 * 1.5), linetype = 2,  -->
+<!--                colour = 'red', arrow = arrow(length = unit(0.5, "cm"))) + -->
+<!--   labs(x = 'Side (m)', y = 'Perimeter (m)') -->
+<!-- ``` -->
+
+<!-- Sometimes we can directly read a predicted value from the graph of the functional relationship. -->
+
+<!-- Consider the plot created in the previous question. First, we need to check where x = 1.5. Then, we draw a vertical dashed line until it meets the blue line. The y value corresponding to x = 1.5 can be read off the y-axis. -->
+
+<!-- However, in this case it is not that easy to read it from the drawing... Let's try the next approach. -->
+
+<!-- <br> -->
+<!-- **Algebraic approach** -->
+
+<!-- You can substitute the x value in the formula and calculate the corresponding y value. -->
+<!-- $$ -->
+<!-- \begin{align} -->
+<!-- perimeter &= 4 \times \ side \\ -->
+<!-- &= 4 \times \ (1.5) \\ -->
+<!-- &= 6 -->
+<!-- \end{align} -->
+<!-- $$ -->
+
+<!-- <br> -->
+
+<!-- :::int -->
+<!-- The predicted perimeter of squared paintings having a 1.5m side is 6m. -->
+<!-- ::: -->
+
+<!-- **NOTE**: Don't forget to always include the measurement units when reporting/writing-up results! -->
+
+<!-- `r solend()` -->
+
+<!-- :::frame -->
+<!-- __Data: HandHeight__ -->
+
+<!-- This dataset, from Jessican M Utts and Robert F Heckard. 2015. _Mind on Statistics_ (Cengage Learning)., records the height and handspan reported by a random sample of 167 students as part of a class survey.   -->
+
+<!-- The variables are: -->
+
+<!-- - `height`, measured in inches -->
+<!-- - `handspan`, measured in centimetres -->
+
+<!-- The data are available at [https://uoepsy.github.io/data/handheight.csv](https://uoepsy.github.io/data/handheight.csv){target="_blank"} -->
+
+<!-- ::: -->
+
+<!-- `r qbegin(qlabel = FALSE, "Optional Extra 3")` -->
+<!-- Consider the relationship between height (in inches) and handspan (in cm).   -->
+
+<!-- Read the handheight data into R, and investigate (visually) how handspan varies as a function of height for the students in the sample. -->
+
+<!-- Do you notice any outliers or points that do not fit with the pattern in the rest of the data?  -->
+
+<!-- Comment on any main differences you notice between this relationship and the relationship between sides and perimeter of squares. -->
+<!-- `r qend()` -->
+<!-- `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)` -->
+<!-- The `handheight` data set contains two variables, height and handspan, which are both numeric and continuous. We display the relationship between two numeric variables with a scatterplot.   -->
+
+<!-- We can also add marginal boxplots for each variable using the package `ggExtra`. Before using the package, make sure you have it installed via `install.packages('ggExtra')`. -->
+
+<!-- ```{r} -->
+<!-- #| label: fig-handheight-scatterplot -->
+<!-- #| fig.cap: 'The statistical relationship between height and handspan.' -->
+<!-- handheight <- read_csv(file = 'https://uoepsy.github.io/data/handheight.csv') -->
+
+<!-- library(ggExtra) -->
+
+<!-- plt <- ggplot(handheight, aes(x = height, y = handspan)) + -->
+<!--   geom_point(size = 3, alpha = 0.5) + -->
+<!--   labs(x = 'Height (in.)', y = 'Handspan (cm)') -->
+
+<!-- ggMarginal(plt, type = 'boxplot') -->
+<!-- ``` -->
+
+<!-- Outliers are extreme observations that do not seem to fit with the rest of the data. This could either be: -->
+
+<!-- - *marginally* along one axis: points that have an unusual (too high or too low) x-coordinate or y-coordinate; -->
+<!-- - *jointly*: observations that do not fit with the rest of the point cloud. -->
+
+<!-- The boxplots in fig-handheight-scatterplot do not highlight any outliers in the marginal distributions of height and handspan. -->
+<!-- Furthermore, from the scatterplot we do not notice any extreme observations or points that do not fit with the rest of the point cloud. -->
+
+<!-- We notice a moderate, positive (that is, increasing) linear relationship between height and handspan. -->
+
+<!-- Recall @fig-squares-scatterplot, displaying the relationship between side and perimeters of squares. -->
+<!-- In the plot we notice two points on top of each other, reflecting the fact that two squares having the same side will always have the same perimeter. -->
+<!-- In fact, the data from the Scottish National Gallery include two squared paintings with a side of 1.1m, both having a measured perimeter of 4.4m. -->
+
+<!-- fig-handheight-scatterplot, instead, displays the relationship between height and handspan of a sample of students. The first thing that grabs our attention is the fact that students having the same height do not necessarily have the same handspan. Rather, we clearly see a variety of handspan values for students all having a height of, for example, 70in. To be more precise, the seven students who are 70 in. tall all have differing handspans. -->
+<!-- `r solend()` -->
+
+<!-- `r qbegin(qlabel = FALSE, "Optional Extra 4")` -->
+<!-- Hopefully, as part of the previous question, you created a scatterplot of handspans against heights. If not, make one now.   -->
+
+<!-- Try adding the following line of code to the scatterplot. It will add a best-fit line describing how handspan varies as a function of height. -->
+<!-- For the moment, the argument `se = FALSE` tells R to not display uncertainty bands. -->
+<!-- ```{r} -->
+<!-- #| eval: false -->
+<!-- geom_smooth(method = lm, se = FALSE) -->
+<!-- ``` -->
+
+<!-- Think about the differences you notice with between this and the figure you made showing the side-lengths and perimeters of paintings.   -->
+<!-- `r qend()` -->
+<!-- `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)` -->
+<!-- ```{r} -->
+<!-- #| label: fig-handheight-fitted-model -->
+<!-- #| fig-cap: 'The best-fit line.' -->
+<!-- ggplot(handheight, aes(x = height, y = handspan)) + -->
+<!--   geom_point(size = 3, alpha = 0.5) + -->
+<!--   geom_smooth(method = lm, se = FALSE) + -->
+<!--   labs(x = 'Height (in.)', y = 'Handspan (cm)') -->
+<!-- ``` -->
+
+<!-- The line representing the relationship between side and perimeter of squares (@fig-squares-scatterplot) is able to predict the actual perimeter value from the measurement of the side of a square. This is possible because the relationship between side and perimeter is an **exact** one. That is, any squares having the same side will have the same perimeter, and there will be no variation in those values. -->
+
+<!-- The line that best fits the relationship between height and handspan (@fig-handheight-fitted-model) is only able to predict the **average** handspan for a given value of height. This is because there will be a distribution of handspans at each value of height. The line will fit the trend/pattern in the values, but there will be individual-to-individual variability that we must accept around that average pattern. -->
+<!-- `r solend()` -->
+
+
+<!-- :::statbox -->
+<!-- Relationships such as that between height and handspan show deviations from an "average pattern". To model this, we need need to create a model that allows for deviations from the linear relationship. This is called a _statistical_ model.   -->
+
+<!-- A statistical model includes **both** a deterministic function and a random error term: -->
+<!-- $$ -->
+<!-- Handspan = \beta_0 + \beta_1 \ Height + \epsilon -->
+<!-- $$ -->
+<!-- or, in short, -->
+<!-- $$ -->
+<!-- y = \underbrace{\beta_0 + \beta_1 \ x}_{f(x)} + \underbrace{\epsilon}_{\text{random error}} -->
+<!-- $$ -->
+
+<!-- The deterministic function $f(x)$ need not be linear if the scatterplot displays signs of nonlinearity, but in this course we focus primarily on linear relationships.    -->
+
+<!-- In the equation above, the terms $\beta_0$ and $\beta_1$ are numbers specifying where the line going through the data meets the y-axis and its slope (rate of increase/decrease).  -->
+<!-- ::: -->
+
+<!-- `r qbegin(qlabel = FALSE, "Optional Extra 5")` -->
+<!-- ```{r eval=FALSE, echo=FALSE} -->
+<!-- mdl <- lm(handspan ~ 1 + height, data = handheight) -->
+<!-- equatiomatic::extract_eq(mdl, ital_vars = TRUE, use_coefs = TRUE) -->
+<!-- ``` -->
+<!-- The line of best-fit is given by:^[Yes, the error term is gone. This is because the line of best-fit gives you the prediction of the average handspan for a given height, and not the individual handspan of a person, which will almost surely be different from the prediction of the line.] -->
+<!-- $$ -->
+<!-- \widehat{Handspan} = -3 + 0.35 \ Height -->
+<!-- $$ -->
+
+<!-- What is your best guess for the handspan of a student who is 73in tall? -->
+
+<!-- And for students who are 5in? -->
+<!-- `r qend()` -->
+<!-- `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)` -->
+<!-- The predicted average handspan for students who are 73in tall is $-3 + 0.35 * 73 = 22.55$cm. -->
+
+<!-- The predicted average handspan for students who are 5in tall is $-3 + 0.35 * 5 = -1.25$cm.  -->
+<!-- But wait, handspan can not be negative... This does not make any sense! -->
+<!-- That's right, we went too far off the range of the available data on heights, which were between 57in and 78in. We extrapolated. This is very dangerous... -->
+
+<!-- ```{r} -->
+<!-- #| label: fig-xkcd2 -->
+<!-- #| echo: false -->
+<!-- #| fig.cap: 'Source: Randall Munroe, xkcd.com' -->
+<!-- knitr::include_graphics('https://imgs.xkcd.com/comics/extrapolating.png') -->
+<!-- ``` -->
+<!-- `r solend()` -->
+
+
+# Simple Linear Regression
+
+```{r}
+#| include: false
+
+# y ~ x1
+# exploration_time ~ age
+#  
+# y ~ x2 | x1
+# exploration_time ~ obj_type | age
+# 
+# 
+# y ~ (x3 + x4 + ...) | (x1 + x2)
+# exploration_time ~ obj size, obj color | obj_type + age
+
+
+set.seed(7777777)
+df = 
+  expand_grid(
+    obj_type = 0:1,
+    obj_colour = 0:2,
+    obj_size = 0:2,
+    n = 1:6
+  ) |> select(-n) |>
+  mutate(
+    age = round(runif(n(),1,21) + 4*obj_type),
+    species = sample(c("macaque","capuchin"), n(), T)
+  )
+xm = model.matrix(lm(rnorm(nrow(df)) ~ age + obj_type + obj_size + species,df))
+
+df$exploration_time = xm %*% c(14,-.27, 2.5, -.5, -3) + rnorm(nrow(df),0,3.5)
+
+df$exploration_time = round(df$exploration_time[,1],1)
+# df |> mutate(adult=ifelse(age>8,1,0)) |> pairs()
+
+df <- df |> select(age,species,obj_type,obj_colour, obj_size,exploration_time) |>
+  mutate(
+    obj_type = factor(obj_type, labels=c("soft","moving")),
+    obj_colour = factor(obj_colour, labels=c("red","green","blue")),
+    obj_size = map_dbl(obj_size, ~30+round(rnorm(1,.*20,11.5)))
+    #obj_size = factor(obj_size, labels=c("small","medium","large")),
+  )
+
+somenames = read_csv("https://gist.githubusercontent.com/mbejda/9912f7a366c62c1f296c/raw/dd94a25492b3062f4ca0dc2bb2cdf23fec0896ea/10000-MTV-Music-Artists-page-1.csv")$name
+
+set.seed(6)
+df$name = sample(somenames[1:300], nrow(df))
+df <- df |> relocate(name)
+df$exploration_time[57] <- 33.1
+df$age[57]<-5
+df$exploration_time <- pmax(0,df$exploration_time)
+
+# lm(exploration_time ~ age, df) |> plot(which=5)
+# sjPlot::tab_model(
+#   lm(exploration_time ~ age, df),
+#   lm(exploration_time ~ age, df[-57,]),
+#   lm(exploration_time ~ I(age>=8), df)
+# )
+# sjPlot::tab_model(
+#   lm(exploration_time ~ obj_type, df),
+#   lm(exploration_time ~ age + obj_type, df)
+# )
+# anova(
+#   lm(exploration_time ~ age + obj_type, df),
+#   lm(exploration_time ~ age + obj_type + obj_size + obj_colour, df)
+# )
+# lm(exploration_time ~ age + obj_type*species, df) |> summary()
+# write_csv(df,"../../data/monkeyexplorers.csv")
+
+monkeyexp <- df
+monkeyexp <- read_csv("https://uoepsy.github.io/data/monkeyexplorers.csv")
+```
+
+
+
+
+## Monkey Exploration 
+
+:::frame
+__Data: monkeyexplorers.csv__  
+
+Liu, Hajnosz & Li (2023) have conducted a study on monkeys! They were interested in whether younger monkeys tend to be more inquisitive about new things than older monkeys do. They sampled `r nrow(monkeyexp)` monkeys ranging from `r min(monkeyexp$age)` to `r max(monkeyexp$age)` years old. Each monkey was given a novel object, the researchers recorded the time (in minutes) that each monkey spent exploring the object. 
+
+For this week, we're going to be investigating the research question:  
+
+> Do older monkeys spend more/less time exploring novel objects?  
+
+The data is available at [https://uoepsy.github.io/data/monkeyexplorers.csv](https://uoepsy.github.io/data/monkeyexplorers.csv){target="_blank"} and contains the variables described in @tbl-monkeydicts
+```{r}
+#| label: tbl-monkeydicts
+#| echo: false
+#| tbl-cap: "Data dictionary for monkeyexplorers.csv"
+tibble(
+  variable = names(monkeyexp),
+  description = c("Monkey Name","Age of monkey in years","Time (in minutes) spent exploring the object")
+  # , "Species", "Type of novel object given (soft / moving)","Main colour of object (red / green / blue)","Size of object in cm (length of largest dimension of the object)")
+) |>
+  gt::gt()
+```
+
+
+:::
+
+
+
+`r qbegin(5)`  
+For this week, we're going to be investigating the following research question:  
+
+> Do older monkeys spend more/less time exploring novel objects?  
+
+Read in the data to your R session, then visualise and describe the *marginal distributions* of those variables which are of interest to us. These are the distribution of each variable (time spent exploring, and monkey age) *without* reference to the values of the other variables.
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- You could use, for example, `geom_density()` for a density plot or `geom_histogram()` for a histogram.
+- Look at the shape, center and spread of the distribution. Is it symmetric or skewed? Is it unimodal or bimodal? 
+- Do you notice any extreme observations?
+
+:::
+`r qend()`
+
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+
+```{r, warning=FALSE, message=FALSE}
+monkeyexp <- read_csv("https://uoepsy.github.io/data/monkeyexplorers.csv")
+head(monkeyexp)
+```
+
+
+We can plot the marginal distribution of these two continuous variables as density curves, and add a boxplot underneath to check for the presence of outliers. The `width` of the geom_boxplot() is always quite wide, so I want to make it narrower so that we can see it at the same time as the density plot. Deciding on the exact value for the width here is just trial and error:
+
+```{r}
+#| label: fig-agetimeplot
+#| fig.cap: "Density plot and boxplot of monkey's age and their time spent exploring novel objects"
+
+library(patchwork)
+# the patchwork library allows us to combine plots together
+ggplot(data = monkeyexp, aes(x = age)) +
+  geom_density() +
+  geom_boxplot(width = 1/300) +
+  labs(x = "Age (in years)", 
+       y = "Probability density") +
+
+ggplot(data = monkeyexp, aes(x = exploration_time)) +
+  geom_density() +
+  geom_boxplot(width = 1/175) +
+  labs(x = "Time spent exploring a\n novel object (in minutes)", 
+       y = "Probability density")
+
+```
+
+The plots suggests that the distributions of monkeys' ages and the time they spend exploring novel objects are both unimodal. Most of the monkeys are between roughly 8 and 18 years old, and most of them spent between 7 and 12 minutes exploring the objects. The boxplots suggest an outlier in the distribution of exploration-times, with one monkeys spending more than $1.5 \times IQR$ beyond the 3rd quartile.  
+
+To further summarize a distribution, it is typical to compute and report numerical summary statistics such as the mean and standard deviation.  
+
+As we have seen, in earlier weeks, one way to compute these values is to use the `summarise()/summarize()` function from the `tidyverse` library:
+
+```{r}
+monkeyexp |> 
+  summarize(
+    mean_age = mean(age), 
+    sd_age = sd(age),
+    mean_exptime = mean(exploration_time),
+    sd_exptime = sd(exploration_time)
+    )
+```
+
+:::int
+The marginal distribution of age is unimodal with a mean of `r round(mean(monkeyexp$age),1)` years, and a standard deviation of `r round(sd(monkeyexp$age),1)`.  
+The marginal distribution of time-spent-exploring is unimodal with a mean
+of `r round(mean(monkeyexp$exploration_time),1)` years, and a standard deviation of `r round(sd(monkeyexp$exploration_time),1)`.   
+:::
+`r solend()`
+
+`r qbegin(6)`  
+After we've looked at the marginal distributions of the variables of interest in the analysis, we typically move on to examining *relationships* between the variables.  
+  
+Visualise and describe the relationship between age and exploration-time among the monkeys in the sample.  
+
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+Think about:  
+
+- *Direction* of association
+- *Form* of association (can it be summarised well with a straight line?)  
+- *Strength* of association (how closely do points fall to a recognizable pattern such as a line?)
+- *Unusual observations* that do not fit the pattern of the rest of the observations and which are worth examining in more detail.  
+:::
+`r qend()`
+
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+Because we are investigating how time-spent-exploring varies with monkeys' ages, the exploration-time here is the dependent variable (on the y-axis), and age is the independent variable (on the x-axis).
+
+```{r}
+#| label: fig-monkeyage-scatterplot
+#| fig.cap: "The relationship between monkeys' age and time-spent-exploring."
+ggplot(data = monkeyexp, aes(x = age, y = exploration_time)) +
+  geom_point(alpha = 0.5) +
+  labs(x = "Age (in years)", 
+       y = "Time spent exploring a\n novel object (in minutes)")
+```
+
+There appears to be a moderate negative linear relationship between age and exploration time in these monkeys. Older monkeys appear to spend less time, on average, exploring a novel object. The scatterplot does highlight that there is one one young monkey who is behaving a bit weirdly, and spent quite a long time exploring the object!  
+
+To comment numerically on the strength of the linear association we might compute the correlation coefficient that we were introduced to in [5A: Covariance & Correlation](05a_covcor.html)
+```{r}
+monkeyexp |>
+  select(age, exploration_time) |>
+  cor()
+```
+
+that is, $r_{\text{age, exploration-time}} = `r round(cor(monkeyexp[,c("age","exploration_time")])[1,2],2)`$
+
+`r solend()`
+
+
+`r qbegin(7)`
+Using the `lm()` function, fit a linear model to the sample data, in which time that monkeys spend exploring novel objects is explained by age. Assign it to a name to store it in your environment.  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+You can see how to fit linear models in R using `lm()` in [5B #fitting-linear-models-in-r](05b_slr.html#fitting-linear-models-in-r){target="_blank"}
+:::
+
+`r qend()`
+
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+As the variables are in the `monkeyexp` dataframe, we would write:  
+```{r}
+model1 <- lm(exploration_time ~ 1 + age, data = monkeyexp)
+```
+`r solend()`
+
+`r qbegin(8)`
+Interpret the estimated intercept and slope in the context of the question of interest.  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+We saw how to extract lots of information on our model using `summary()` (see [5B #model-summary](05b_slr.html#model-summary){target="_blank"}), but there are lots of other functions too.  
+
+If we called our linear model object "model1" in the environment, then we can use:  
+
+- type `model1`, i.e. simply invoke the name of the fitted model;
+- type `model1$coefficients`;
+- use the `coef(model1)` function;
+- use the `coefficients(model1)` function;
+- use the `summary(model1)$coefficients` to extract just that part of the summary.
+
+:::
+
+`r qend()`
+
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+```{r}
+coef(model1)
+```
+From this, we get that the fitted line is:
+$$
+\widehat{\text{ExplorationTime}} = 12.36 - 0.22 \cdot \text{Age} \\
+$$
+
+We can interpret the estimated intercept as:
+
+:::int
+The estimated average time spent exploring novel objects associated with age of zero is `r round(coef(model1)[1],2)` minutes.
+:::
+
+For the estimated slope we get:
+
+:::int
+The estimated decrease in average time spent exploring associated with a one year increase in age is `r round(coef(model1)[2],2)` minutes (or `r round(coef(model1)[2]*60)` seconds).
+:::
+`r solend()`
+
+
+`r qbegin(9)`
+Test the hypothesis that the population slope is zero --- that is, that there is no linear association between exploration time and age in the population.  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+You don't need to *do* anything for this, you can find all the necessary information in `summary()` of your model.  
+See [5B #inference-for-regression-coefficients](05b_slr.html#inference-for-regression-coefficients){target="_blank"}.
+:::
+
+`r qend()`
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+The information is already contained in the row corresponding to the variable "age" in the output of `summary()`, which reports the t-statistic under `t value` and the p-value under `Pr(>|t|)`:
+```{r}
+summary(model1)
+```
+
+Recall that very small p-values such as the one for the intercept `2e-16` in the `Pr(>|t|)` column simply means $2 \times 10^{-16}$, or `r format(2e-16,scientific=FALSE)`. Conventions such as the APA guidelines give rules on how to report these numbers (see, e.g. [APA's number and stats guide](https://apastyle.apa.org/instructional-aids/numbers-statistics-guide.pdf){target="_blank"}). For the p-values in this summary (the one for the intercept and the one for the slope) we could report them as "<.001" and "0.003" respectively.  
+
+:::int
+A significant association was found between age (in years) and time spent exploring novel objects, with exploration time decreasing by on average `r round(coef(model1)[2],2)` minutes (or `r round(coef(model1)[2]*60)` seconds) for every additional year of age ($b = `r round(coef(model1)[2],2)`$, $SE = `r round(sqrt(diag(vcov(model1)))[2],3)`$, $t(`r model1$df.residual`)=-3.103$, $p=.003$). 
+:::
+
+`r solend()`
+
+<!-- `r qbegin(10)` -->
+<!-- What is the proportion of the total variability in exploration-times explained by the linear relationship with monkeys' ages? -->
+
+<!-- ::: {.callout-tip collapse="true"} -->
+<!-- #### Hints -->
+
+<!-- - The question asks to compute the value of $R^2$, but you might be able to find it already computed somewhere (so much stuff is already in `summary()` of the model. -->
+<!-- - See [5B #r2](05b_slr.html#r2){target="_blank"} if you're unsure about what $R^2$ is.     -->
+
+<!-- ::: -->
+
+<!-- `r qend()` -->
+<!-- `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)` -->
+<!-- For the moment, ignore "Adjusted R-squared". We will come back to this later on.  -->
+<!-- ```{r} -->
+<!-- summary(model1) -->
+<!-- ``` -->
+
+<!-- :::int -->
+<!-- Approximately 17\% of the total variability in time spend exploring novel objects is explained by the linear association with age. -->
+<!-- ::: -->
+
+<!-- `r solend()` -->
+
+<!-- `r qbegin(11)` -->
+<!-- Look at the output of `summary()` of your model. Identify the relevant information to conduct an F-test against the null hypothesis that the model is ineffective at predicting exploration time using age.   -->
+
+<!-- ::: {.callout-tip collapse="true"} -->
+<!-- #### Hints -->
+<!-- [5B #the-f-statistic](05b_slr.html#the-f-statistic){target="_blank"} will help.   -->
+<!-- ::: -->
+
+<!-- `r qend()` -->
+<!-- `r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)` -->
+<!-- ```{r} -->
+<!-- summary(model1) -->
+<!-- ``` -->
+
+<!-- From the `summary(model1`), the relevant row is just below the $R^2$, where it states:  -->
+
+<!-- ``` -->
+<!-- F-statistic: 21.59 on 1 and 106 DF,  p-value: 9.755e-06 -->
+<!-- ``` -->
+
+<!-- :::int -->
+<!-- The overall test of model utility was significant $F(1, 106) = 21.59, p < .001$, indicating evidence against the null hypothesis that the model is ineffective (that age is not a useful predictor of time spent exploring novel objects).  -->
+<!-- ::: -->
+
+<!-- `r solend()` -->
+
+
+`r qbegin(10)`
+Create a visualisation of the estimated association between age and exploration time.   
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+There are lots of ways to do this. Check [5B #example](05b_slr.html#example){target="_blank"}, which shows an example of using the __sjPlot__ package to create a plot.  
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+#| message: false
+#| warning: false
+library(sjPlot)
+plot_model(model1, type="eff", show.data = TRUE)
+```
+
+`r solend()`
+
+
+`r qbegin("Optional: Question 11A", qlabel = FALSE)`
+Consider the following:  
+
+1. In fitting a linear regression model, we make the assumption that the errors around the line are normally distributed around zero (this is the $\epsilon \sim N(0, \sigma)$ bit.)  
+2. About 95\% of values from a normal distribution fall within two standard deviations of the centre.  
+
+We can obtain the estimated standard deviation of the errors ($\hat \sigma$) from the fitted model using `sigma()` and giving it the name of our model.  
+What does this tell us?  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+See [5B #the-error](05b_slr.html#the-error){target="_blank"}.
+:::
+
+`r qend()`
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+The estimated standard deviation of the errors can be obtained by:
+
+```{r}
+sigma(model1)
+```
+
+:::int
+For any particular age, the time monkeys spend exploring novel objects should be distributed above and below the regression line with standard deviation estimated to be $\hat \sigma = 4.32$. 
+Since $2 \hat \sigma = 2 (4.32) = 8.64$, we expect most (about 95\%) of the monkeys' exploration times to be within about 8.6 minutes from the regression line.
+:::  
+
+`r solend()`
+
+`r qbegin("Optional: Question 11B", qlabel=FALSE)`
+Compute the model-predicted exploration-time for a monkey that is 1 year old.  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+Given that you know the intercept and slope, you can calculate this algebraically. However, try to also use the `predict()` function (see [5B #model-predictions](05b_slr.html#model-predictions){target="_blank}). 
+:::
+
+`r qend()`
+`r solbegin(show = params$SHOW_SOLS, toggle = params$TOGGLE)`
+Using `predict()`, we need to give it our model, plus some new data which contains a monkey that has `1` in the `age` column.  First we make a new dataframe with an age variable, with one entry which has the value 1, and then we give that to `predict()`:  
+```{r}
+age_query <- data.frame(age = c(1))
+predict(model1, newdata = age_query)
+```
+
+Given that our fitted model takes the form: 
+
+$$
+\widehat{\text{ExplorationTime}} = 12.36 - 0.22 \cdot \text{Age}
+$$
+
+We are asking what the predicted exploration time is for a monkey with 1 year of age. So we can substitute in "1" for the Age variable:
+$$
+\begin{align}
+\text{ExplorationTime} &= 12.36 - 0.22 \cdot \text{Age} \\
+\text{ExplorationTime} &= 12.36 - 0.22 \cdot 1 \\
+\text{ExplorationTime} &= 12.36 - 0.22\\
+\text{ExplorationTime} &= 12.14\\
+\end{align}
+$$
+
+`r solend()`
+
+<div class="divider div-transparent div-dot"></div>
+
+### Influential Monkeys
+
+
+`r qbegin(12)`
+Take a look at the assumption plots (see [5B #assumptions](05b_slr.html#assumptions){target="_blank"}) for your model.  
+    
+- The trick to looking at assumption plots in linear regression is to look for "things that don't look random". 
+- As well as looking for patterns, these plots can also higlight individual datapoints that might be skewing the results. Can you figure out if there are any unusual monkeys in our dataset? Can you re-fit the model without that monkey? When you do so, do your conclusions change?  
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r echo=2}
+par(mfrow=c(2,2))
+plot(model1)
+par(mfrow=c(1,1))
+```
+
+From these plots, we can see that the 57th observation is looking a bit influential. It is the one datapoint that is looking weird in all of the plots.    
+Let's look at them:  
+```{r}
+monkeyexp[57, ]
+```
+
+This is a young monkey (5 years old) called "Lil Fizz", who seems to have spent quite a long time exploring the toy. It's important to remember that this monkey is a valuable datapoint, despite being a bit different from the general pattern.  
+
+However, it would be nice to know how much Lil Fizz is affecting our conclusions, so let's re-fit the model on everybody except that one monkey 
+
+```{r}
+model1a <- lm(exploration_time ~ age, data = monkeyexp[-57, ])
+summary(model1a)
+```
+
+Our conclusions haven't changed - we still have a significant association.  
+
+What we have just done is called a "sensitivity analysis" - we've asked if our analyses are sensitive to a specific decision we could make (whether or not we include/exclude this monkey).  
+
+```{r}
+#| fig-height: 3.5
+#| code-fold: true
+ggplot(monkeyexp, aes(x=age,y=exploration_time))+
+  geom_point()+
+  geom_smooth(method=lm, fullrange=TRUE)+
+  ylim(0,34) + 
+  labs(title="With monkey 57") +
+
+ggplot(monkeyexp[-57,], aes(x=age,y=exploration_time))+
+  geom_point()+
+  geom_smooth(method=lm, fullrange=TRUE)+
+  ylim(0,34) + 
+  labs(title="Without monkey 57")
+```
+
+We now have a decision to make. Do we continue with the monkey removed, or do we keep them in? There's not really a right answer here, but it's worth noting a practical issue - our assumption plots look considerably better for our model without this monkey.  
+
+Whatever we do, when writing up the analysis we need to mention clearly _if_ and _why_ we exclude any observations, and _how_ that decision has/hasn't influenced our conclusions. 
+
+
+`r solend()`
+
+
+
+
+
+
+
+### Monkey Exploration in Adulthood
+
+Let's suppose instead of having measured monkeys' ages in years, researchers simply recorded whether each monkey was an adult or a juvenile (both Capuchins and Rhesus Macaques reach adulthood at 8 years old).  
+The code below creates a this new variable for us:  
+```{r}
+monkeyexp <- monkeyexp |> 
+  mutate(
+    isAdult = ifelse(age >= 8, "yes","no")
+  )
+```
+
+`r qbegin(13)`
+
+Fit the following model, and interpret the coefficients.  
+
+$$
+\text{ExplorationTime} = b_0 + b_1 \cdot \text{isAdult} + \varepsilon
+$$
+
+::: {.callout-tip collapse="true"}
+#### Hints
+For help interpreting the coefficients, see [5B #binary-predictors](05b_slr.html#binary-predictors){target="_blank"}.  
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+model2 <- lm(exploration_time ~ 1 + isAdult, data = monkeyexp)
+summary(model2)
+```
+- `(Intercept)` = the estimated exploration time of juvenile monkeys (`r round(coef(model2)[1],1)` minutes)
+- `isAdultyes` = the estimated change in exploration time from juvenile monkeys to adult monkeys (`r round(coef(model2)[2],1)` minutes)  
+
+```{r}
+ggplot(monkeyexp, aes(x = isAdult, y = exploration_time)) +
+  geom_boxplot()
+```
+`r solend()`
+
+`r qbegin(14)`
+We've actually already seen a way to analyse questions of this sort ("is the average exploration-time different between juveniles and adults?")  
+
+Run the following t-test, and consider the statistic, p value etc. How does it compare to the model in the previous question?  
+```{r}
+#| eval: false
+t.test(exploration_time ~ isAdult, data = monkeyexp, var.equal = TRUE)
+```
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+t.test(exploration_time ~ isAdult, data = monkeyexp, var.equal = TRUE)
+```
+
+It is identical! the $t$-statistics are the same, the p-values are the same, the degrees of freedom. Everything!  
+
+The two sample t-test is actually just a special case of the linear model, where we have a numeric outcome variable and a binary predictor! 
+
+__And...__ the one-sample t-test is the linear model without any predictors, so just with an intercept.  
+```{r}
+t.test(monkeyexp$exploration_time, mu = 0)
+
+interceptonly_model <- lm(exploration_time ~ 1, data = monkeyexp)
+
+summary(interceptonly_model)$coefficients
+```
+
+
+`r solend()`
+
+# Extra! A team task!   
+
+`r qbegin("EXTRA!")`
+
+The data from this year's survey that you filled out in the first couple of weeks is available at [https://uoepsy.github.io/data/usmr2023.csv](https://uoepsy.github.io/data/usmr2023.csv).  
+
+- **Step 1:** Using the USMR 2023 survey data, make *either* the prettiest plot you can or the ugliest plot you can . 
+- **Step 2:** Submit your plot! Go to [https://forms.office.com/e/KiGevk6xH3](https://forms.office.com/e/KiGevk6xH3){target="_blank"} and upload your plot and the code used to create it (save the plot via the plot window in R/take a screenshot/put it in a .Rmd and knit/whatever gets the picture uploaded!)   
+
+All plots submitted by end-of-day on 25th October will be rated by a number of non-USMR staff, and prizes made of chocolate will be awarded to the team with the prettiest plot and to the team with the ugliest plot. 
+
+
+`r qend()`
+
+
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>

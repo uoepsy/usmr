@@ -381,6 +381,7 @@ The __test statistic__ for this test here is _another_ $t$ statistic, the formul
 
 $$t = r \sqrt{\frac{n-2}{1-r^2}}$$
 
+
 __p-value__  
 
 We calculate the p-value for our $t$-statistic as the long-run probability of a $t$-statistic with $n-2$ degrees of freedom being less than, greater than, or more extreme in either direction (depending on the direction of our alternative hypothesis) than our observed $t$-statistic.  
@@ -434,6 +435,43 @@ tstat = r * sqrt((n - 2) / (1 - r^2))
 #calculate p-value for t, with df = n-2 
 2*(1-pt(tstat, df=n-2))
 ```
+
+:::
+
+::: {.callout-caution collapse="true"}
+#### optional: (completely optional!) why t?
+
+Why exactly do we have a $t$ statistic? We're calculating $r$, not $t$??  
+
+Remember that in hypothesis testing, we need a distribution against which to compare a statistic. But $r$ is bounded (it can only be between -1 and 1). This means the distributions of "$r$'s that we would expect if under repeated sampling" is not easily defined in a standard way. Consider how the shape changes when our sample size changes:  
+```{r}
+#| echo: false
+sim<-function(s){
+  x<-runif(s,0,100)
+  y<-runif(s,0,100)
+  cor(x,y)
+}
+tibble(n=c(5,10,20,50,100)) |>
+  mutate(
+    r = map(n, ~tibble(r=replicate(1e4,sim(.))))
+  ) |> unnest(r) |>
+  mutate(n = factor(n)) |>
+  ggplot(aes(x=r,col=n))+
+  geom_density()
+```
+
+So what we do is convert the $r$ statistic to a $t$ statistic, and then we can compare _that_ to a $t$ distribution!  
+
+$t$ statistics are generally calculated by using $\frac{estimate - 0}{standard\, error}$.  
+The standard error for a correlation $r$ is quantifiable as $\sqrt{\frac{(1-r^2)}{(n-2)}}$.  
+We can think of this as what variance gets left-over ($1-r^2$) in relation to how much data is free to vary ($n-2$ because we have calculated 2 means in the process of getting $r$). This logic maps to how our standard error of the mean was calculated $\frac{\sigma}{\sqrt{n}}$, in that it is looking at $\frac{\text{leftover variation}}{\text{free datapoints}}$.  
+
+What this means is we can convert $r$ into a $t$ that we can then test!  
+
+$$
+t = \, \, \frac{r}{SE_r} \,\,=\,\, \frac{r}{\sqrt{\frac{(1-r^2)}{(n-2)}}} \,\,=\,\, r \sqrt{\frac{n-2}{1-r^2}}
+$$
+
 
 :::
 

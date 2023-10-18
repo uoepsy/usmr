@@ -7,14 +7,92 @@ editor_options:
   chunk_output_type: console
 ---
 
+# set 1
+
+data context
+```{r}
+df <- tibble(
+  x1 = rnorm(100),
+  x2 = rnorm(100),
+  x3 = .5*x1 + .4*x2 + rnorm(100),
+  y = x1 + x2 + rnorm(100)
+)
+psych::pairs.panels(df)
+cor(df)
+sjPlot::tab_model(
+  lm(y~x3,df),
+  lm(y~x1 + x2 + x3,df)
+)
+
+ggplot(df,aes(x=x3,y=y,col=x2))+
+  geom_point()
+```
+
+
+
+
+q1 -
+read subset data (no covs)
+plot and explore
+pairs and cor
+
+
+q2 - fit simple
+
+
+q3 - what if.. 
+read in full data
+plot x ~ covs
+
+
+q4 - fit model y~covs+x
+
+q5 - plot model fitted
+
+q6 - think! ommitted variables. 
+
+
+
+
+
+
+
+
+
+
 
 # More monkeys 
 
+:::frame
+__Data: monkeyexplorers.csv__  
+
+Our data for these exercises is from an hypothetical study of `r nrow(monkeyexp)` monkeys (`r sum(monkeyexp$species=="capuchin")` Capuchin monkeys and `r sum(monkeyexp$species=="macaque")` Rhesus Macaques), ranging from `r min(monkeyexp$age)` to `r max(monkeyexp$age)` years old. Each monkey was given a novel object that was either a soft toy or a plastic toy with moving parts such as wheels. Objects were either red, green or blue in colour, and varied in size from `r min(monkeyexp$obj_size)` to `r max(monkeyexp$obj_size)`cm. The researchers recorded the time (in minutes) that each monkey spent exploring the object. Research suggests that younger monkeys tend to be more inquisitive about new things than older monkeys. The present study is interested in whether monkeys show preferences for objects of certain types, and whether this is different for different species.  
+
+For this week, we're going to be investigating the initial research question:  
+> Do monkeys spend more/less time exploring novel objects?  
+
+> Do monkeys have a preference between soft toys vs toys with moving parts?
+
+The data is available at [https://uoepsy.github.io/data/monkeyexplorers.csv](https://uoepsy.github.io/data/monkeyexplorers.csv){target="_blank"} and contains the variables described in @tbl-monkeydicts
+```{r}
+#| label: tbl-monkeydicts
+#| echo: false
+#| tbl-cap: "Data dictionary for monkeyexplorers.csv"
+tibble(
+  variable = names(monkeyexp),
+  description = c("Monkey Name","Age of monkey in years", "Species", "Type of novel object given (soft / moving)","Main colour of object (red / green / blue)","Size of object in cm (length of largest dimension of the object)","Time (in minutes) spent exploring the object")
+) |>
+  gt::gt()
+```
+
+
+:::
 
 ```{r}
 #| eval: false
+library(tidyverse)
 monkeyexp <- read_csv("../../data/monkeyexplorers.csv")
-
+df <- monkeyexp
 sjPlot::tab_model(
   lm(exploration_time ~ obj_type, df),
   lm(exploration_time ~ age + obj_type, df)
@@ -25,4 +103,69 @@ anova(
 )
 ```
 
-> Do monkeys have a preference between soft toys vs toys with moving parts?  
+
+q1 = is the distribution of ages of monkeys seeing soft toys similar to those seeing moving toys? if not, what does this mean for our RQ
+(Remember, background suggests "Research suggests that younger monkeys tend to be more inquisitive about new things than older monkeys.".
+and this is borne out from our work last week).  
+
+q2 fit model exptime ~ obj_type
+nothing new here. this is like last week.
+
+
+q3 fit a model that examines exptime ~ obj_type while controlling age  
+
+
+q4 the thing we're interest in here is obj_type. how does it differ between the models in q2 and q3?  
+
+
+q5 we're going to plot the model estimated difference in exp time for each obj type. there are two ways to do this. one is much more straightforward, but hides what is happening. the other does it manually. 
+
+```{r}
+m = lm(exploration_time ~ age + obj_type, data = monkeyexp)
+plotdat <- data.frame(
+  obj_type = c("soft","moving"),
+  age = mean(monkeyexp$age)
+)
+
+plotdat$fitted = predict(m, plotdat)
+plotdat$se = predict(m, plotdat, se.fit = TRUE)$se
+plotdat$lower = plotdat$fitted + qt(.025, m$df.residual)*plotdat$se
+plotdat$upper = plotdat$fitted + qt(.975, m$df.residual)*plotdat$se
+ggplot(plotdat, aes(x=obj_type, y=fitted, ymin = lower,ymax=upper))+
+  geom_pointrange()
+
+ggplot(monkeyexp,aes(x=obj_type,y=exploration_time))+
+  stat_summary(geom="pointrange")
+
+```
+
+
+q6
+are other aspects of the toy (its size and colour) associated with more/less exploration time in monkeys?  
+
+we can phrase this as "do size and colour explain additional variance in exploration time?".
+how might we test such a question? (see model comp). 
+don't worry about interpreting the coefficients right now - we'll talk more about categorical predictors next week. 
+but we can still test whether the inclusion of size and colour improve our model!  
+
+
+
+
+# more rmarkdown
+
+here's a research q  
+here's the analysis code
+write it up!  
+
+
+- open rmd, delete all the template stuff.
+- keep setup chunk. set echo false
+- make analysis chunk. set include false
+- shove all our working analysis in there
+- write paragraph describing analysis. 
+- write a paragraph highlighting key results. try to use inline R code
+  - this logic may help:  
+  
+  
+
+write up guided q
