@@ -27,19 +27,19 @@ This reading:
 :::
 
 
-When we introduced simple linear regression, we talked about the assumptions that these models rely on (see [7A#assumptions](07a_slr.html#assumptions){target="_blank"}). 
+When we introduced simple linear regression, we talked about the assumptions that these models rely on (see [5B #a-first-look-at-linear-model-assumptions](05b_slr.html#a-first-look-at-linear-model-assumptions){target="_blank"}). 
 
 We talked about the very high-level view:
 $$
-\color{red}{reality} \color{black}{= }\color{blue}{model}\color{black}{ + randomness}
+\color{red}{outcome} \color{black}{= }\color{blue}{model}\color{black}{ + error}
 $$
-The idea here is that our _residuals_ (the deviations from observed values to model predicted values) should look more or less like randomness. If they don't, then it indicates that something might be wrong.  
+The idea here is that our _error_, which is represented by the _residuals_ from our model (the deviations from observed values to model predicted values) should look more or less like randomness. If they don't, then it indicates that something might be wrong.  
 
 To examine our assumptions, we can either rely on plotting, or on conducting statistical tests, or both. 
 
 # Plotting Assumptions
 
-We already saw how to interpret the plots in simple regression models ([7A#assumptions](07a_slr.html#assumptions){target="_blank"}), and this doesn't change when we move to multiple regression models.  
+We already saw how to interpret the plots in simple regression models ([5B #first-look-assumptions](05b_slr.html#a-first-look-at-linear-model-assumptions){target="_blank"}), and this doesn't change when we move to multiple regression models.  
 
 ```{r}
 #| eval: false
@@ -80,7 +80,7 @@ We can perform tests to examine how (un)likely we would be to see some residuals
 
 ## testing normality 
 
-The Shapiro-Wilk test (we saw this very briefly in [3B#checking/testing-assumptions](03b_inference2.html#checking-testing-assumptions){target="_blank"}) is a test against the alternative hypothesis that the residuals were not sampled from a normally distributed population. $p >.05$ indicates that we do _not_ have evidence that the assumption has been violated. We can perform this test quickly in R using `shapiro.test(residuals(modelname))`.  
+The Shapiro-Wilk test (we saw this very briefly with our $t$-tests in [3B#assumptions](03b_inference2.html#assumptions){target="_blank"}) is a test against the alternative hypothesis that the residuals were not sampled from a normally distributed population. $p >.05$ indicates that we do _not_ have evidence that the assumption has been violated. We can perform this test quickly in R using `shapiro.test(residuals(modelname))`.  
 
 ```{r}
 shapiro.test(residuals(mymodel))
@@ -208,15 +208,15 @@ You can get a whole bucket-load of these measures with the `influence.measures()
 summary(influence.measures(mymodel))
 ```
 
+### Sensitivity Analyses  
 
-If we wanted, we could re-fit the model with all of these observations removed. This little bit of code, to get the row numbers of influential points, is from the examples in the help documentation for `?influence.measures`:  
+Once we identify influential observations, it can often be sensible to re-fit our model with those observations excluded. We then examine whether the pattern of results change, and whether our conclusions (i.e. decisions based on significance tests) change.  
+This process can then go into our write-up!  
+
+To refit a model without the $n^{th}$ rows, we can simply remove those from the data that we give the `lm()` function.  
+For instance, if I want to fit my model to all the data _except_ the 10th and 32nd rows:  
 ```{r}
-inflm <- influence.measures(mymodel)
-inf_points <- which(apply(inflm$is.inf, 1, any))
-```
-And then remove those rows when we re-fit the model:
-```{r}
-mymodel_subset <- lm(y ~ x1 + x2, mydata[-inf_points, ])
+mymodel_subset <- lm(y ~ x1 + x2, mydata[-c(10,32), ])
 ```
 
 We can then compare `summary(mymodel)` and `summary(mymodel_subset)` to examine whether our conclusions about the relevant association changes when we exclude these people. If it doesn't change our conclusions, then our eventual findings are robust to the  influence of these people. If it does, then we have something we can discuss!  
@@ -284,7 +284,7 @@ The __big downside__ of transforming an outcome variable is that you are no long
 
 It's best to only transform your outcome variable if you have theoretical justification to do so. 
 
-## Back to the Bootstrap
+## Back to the Bootstrap?
 
 Bootstrapping provides a different technique for drawing inferences. We actually learned the logic of bootstrapping back in [2B#standard-error-in-practice](02b_sampling.html#standard-error-in-practice){target="_blank"}. It all comes down to the construction of the standard error. In the output of `summary(model)`, we are given, alongside each coefficient $b$, a standard error, a $t$-value and a $p$-value. These all rely on using a formula to calculate the standard error, and it is this which requires making assumptions about the distribution of residuals.  
 
@@ -309,11 +309,9 @@ Confint(bootmymodel)
 ```
 
 :::imp
-Bootstrapping doesn't fix everything!  
-The bootstrap may provide us with a more robust way of creating inferential information, but our model may still be misspecified.  
+**Bootstrapping is not a panacea!!**  
+The bootstrap may provide us with an alternative way of conducting inference, but our model may still be misspecified. Furthermore, studies show that bootstrap doesn't perform well in small samples, and actually results increased Type 1 errors([3A#making-mistakes](03a_inference.html#making-mistakes){target="_blank"}.  
 
-TODO no small samples
-
-Furthermore, it's very important to remember that we can't get something from nothing. Bootstrapping is all reliant on our original sample - if that sample is not representative of the population that we're interested in, bootstrapping doesn't help us at all. 
+It's very important to remember that we can't get something from nothing. Bootstrapping is entirely reliant on utilising our original sample to pretend that it is a population (and mimick sampling from that population). If our original sample is not representative of the population that we're interested in, bootstrapping doesn't help us at all. 
 
 :::
