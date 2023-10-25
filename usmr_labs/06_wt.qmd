@@ -745,9 +745,6 @@ blinks_full |>
 
 
 
-
-
-
 ## Build a model!
 
 We're now finally getting to the analysis. As we said earlier, this can sometimes be very straightforward in comparison to the amount of effort involved in cleaning data.
@@ -802,12 +799,42 @@ In what way are we violating the assumption of independence?
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-TODO change to aggregated
-The dataset to which we are fitting our model does not contain _independent_ observations. We have multiple observations from each participant. i.e. Subject 1 makes up 20 rows, and subject 2 makes up 20 rows.
 
-As such, this means that our linear regression model is not appropriate. We will learn about how to deal with this sort of study design next semester, in the _Multivariate Statistics & Methodoligy using R (MSMR)_ course.
+The dataset to which we are fitting our model does not contain _independent_ observations. We have multiple observations from each participant. i.e. Subject 1 makes up 20 rows, and subject 2 makes up 20 rows.  
+
+As such, this means that our linear regression model is not appropriate. We will learn about how to deal with this sort of study design next semester, in the _Multivariate Statistics & Methodoligy using R (MSMR)_ course.  
 
 `r solend()`
+
+`r qbegin("B14")`
+
+One option open to us now is to simply "aggregate up", so that we remove the dependence from our rows in our dataset. However, this means reducing the number of rows. 
+
+This is sub-optimal (and we'll see why next semester!), but we can calculate the average `distractor_fix` for each level of `nr_blinks`, and then use _those_ in our model.  
+
+We can do this the same way as we saw with our summary plots - with `group_by()` and `summarise()`!  
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+blinks_agg <- blinks_full |>
+  group_by(nr_blinks) |>
+  summarise(
+    meanDF = mean(distractor_fix, na.rm=TRUE)
+  )
+
+mod <- lm(meanDF ~ nr_blinks, data = blinks_agg)
+
+summary(mod)
+```
+
+Looking at the distractor increases by 64ms for every additional blink in the video!  
+
+
+
+`r solend()`
+
 
 
 <div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>

@@ -825,7 +825,16 @@ summary(model2)
 .pp(summary(lm(y ~ x1 + x2, data = mlr_data)),l=list(9:13))
 ```
 
-Imagine a person who scores 3 on $x_2$. what is the estimated change in $y$ if they scored 4 instead? The coefficient for $x_2$ tells us how much their score on $y$ would decrease by 0.65 _provided they don't also change on $x_1$._ So we are moving along the regression surface in the $x_2$ direction. This makes sense, because if they _also_ changed on $x_1$, then we would expect their score on $y$ to change because of this too (i.e. we would be moving diagonally on the surface).  
+Imagine a person who scores 3 on $x_2$. What is the estimated difference between in $y$ between them and someone who scored 4 instead? The coefficient for $x_2$ tells us their scores on $y$ would differ by -0.65 _provided they don't also differ on $x_1$._ So we are moving along the regression surface in the $x_2$ direction. This makes sense, because if they _also_ differed on $x_1$, then we would expect their score on $y$ to change because of this too (i.e. we would be moving diagonally on the surface).  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+
+:::
+
+
 
 ::: {.callout-caution collapse="true"}
 #### optional: F and t
@@ -873,90 +882,6 @@ summary(model2)
 ::::
 
 These are equivalent in this specific case, but when we more to more general forms of the model, it does not hold. The key reason being is that the model comparison in the linear regression world is assessing the reduction in residual sums of squares, which is directly linked to the slope of a regression line (see back to @fig-sstssrssm above). When we move to more general models, the way we assess "improvements in fit" is not always about reduction in residual sums of squares, and so this equivalence can break.  
-
-:::
-
-
-## Visualising Associations  
-
-The associations we get out from our coefficients are conditional upon holding constant other predictors. How are we supposed to visualise this? Three-dimensional plots like the ones above are lovely, but a) they're difficult to make and b) they only work when there is _one_ other predictor variable being controlled for.  
-
-The typical way to plot these associations is to make a 2-dimensional figure that shows the _model estimated_ increase in $y$ across values of $x$. Notice the use of "model estimated" - we are visualising the model, _not_ the data.  
-
-Luckily, the __sjPlot__ package can make it very easy for us to create plots of model estimated effects. We need to give it the model, the type of thing we want plotted (in this case "eff" for "effect"), and the relevant predictor term (in this case "x2"):  
-
-```{r}
-#| fig-height: 2.5
-model2 <- lm(y ~ x1 + x2, data = mlr_data)
-
-library(sjPlot)
-plot_model(model2, type = "eff", terms = "x2")
-```
-
-It might help to think of this as if we are just tilting the our view of the regression surface so that we see it from only one edge: 
-
-```{r}
-#| echo: false
-fit<-lm(y~x1+x2, data=mlr_data)
-steps=50
-x1 <- with(mlr_data, seq(min(x1),max(x1),length=steps))
-x2 <- with(mlr_data, seq(min(x2),max(x2),length=steps))
-newdat <- expand.grid(x1=x1, x2=x2)
-y <- matrix(predict(fit, newdat), steps, steps)
-par(mfrow=c(1,2))
-p <- persp(x1,x2,y, theta = 140,phi=10, col = NA,
-           zlim=c(min(mlr_data$y),max(mlr_data$y)))
-obs <- with(mlr_data, trans3d(x1,x2, y, p))
-pred <- with(mlr_data, trans3d(x1, x2, fitted(fit), p))
-points(obs, col = "red", pch = 16)
-segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
-
-p <- persp(x1,x2,y, theta = 90,phi=11, col = NA,
-           zlim=c(min(mlr_data$y),max(mlr_data$y)))
-obs <- with(mlr_data, trans3d(x1,x2, y, p))
-pred <- with(mlr_data, trans3d(x1, x2, fitted(fit), p))
-points(obs, col = "red", pch = 16)
-segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
-par(mfrow=c(1,1))
-```
-
-
-::: {.callout-caution collapse="true"}
-#### optional: manually making the plot  
-
-We can extract the predicted values, and confidence bounds, using `predict()`. First we create a dataset of the values of the predictors that we wish to predict across. We'll predict $y$ for all values of $x2$ from 1 to 23 (the range of x2 in our data), and holding $x1$ as 41.36 (the mean of x1 in our data): 
-
-```{r}
-plotdata <- data.frame(
-  x1 = 41.36,
-  x2 = 1:23
-)
-```
-Then we add the predictions and the standard error  
-```{r}
-plotdata <- plotdata |>
-  mutate(
-    predy = predict(model2, newdata=plotdata),
-    se = predict(model2, plotdata, se.fit = TRUE)$se
-  )
-```
-And use the standard error to create the confidence intervals. Doing $1.96 \times SE$ would get us close, but to do it properly we should use the $t$-distribution: 
-```{r}
-plotdata <- plotdata |> 
-  mutate(
-    lower = predy - (qt(.975, df=47) * se),
-    upper = predy + (qt(.975, df=47) * se)
-  )
-```
-
-And finally we can plot! 
-
-```{r}
-ggplot(plotdata, aes(x = x2, y = predy, 
-                     ymin = lower, ymax = upper)) +
-  geom_line() + 
-  geom_ribbon(alpha = .3) # alpha sets the transparency
-```
 
 :::
 
@@ -1058,6 +983,195 @@ The coefficients from a multiple regression model are more closely tied to the T
 
 
 :::
+
+
+<div class="divider div-transparent div-dot"></div>
+
+
+# Model Visualisations
+
+The associations we get out from our coefficients are conditional upon holding constant other predictors. How are we supposed to visualise this? Three-dimensional plots like the ones above are lovely, but a) they're difficult to make and b) they only work when there is _one_ other predictor variable being controlled for.  
+
+The typical way to plot these associations is to make a 2-dimensional figure that shows the _model estimated_ increase in outcome $y$ across values of predictor $x$.  
+
+Notice what we are doing here is plotting a "model estimated" slope. We can't just plot our data an add `geom_smooth(method=lm)`, because that would give a visualisation of a linear model **with just one predictor** (whichever one is on the x-axis). 
+
+Returning to our Happy Commuter example from above, we want a way to present the estimated slope of `commute` from the model which _also_ has `work_flex` in it.  
+```{r}
+happycommute <- read_csv("https://uoepsy.github.io/data/happycommute.csv")
+model2 <- lm(jobsat ~ work_flex + commute, data = happycommute)
+coef(model2)
+```
+In our Happy Commuters example, the difference between the coefficients when we did/didn't include the `work_flex` predictor were _very_ different.  
+```{r}
+#| echo: false
+#| out-width: "100%"
+plotdata <- data.frame(
+  work_flex = 20.75,
+  commute = 3:58
+)
+p2 <- broom::augment(model2, newdata = plotdata, interval="confidence") |>
+  ggplot(aes(x = commute, y = .fitted,
+                     ymin = .lower, ymax = .upper)) +
+  geom_line() +
+  geom_ribbon(alpha = .3)+
+  labs(title="model estimated slope",
+       subtitle="after accounting for work_flex", x="Commuting Time (minutes)",y="Job Satisfaction")
+
+p1 <- ggplot(happycommute, aes(x=commute,y=jobsat))+
+  geom_point() +
+  geom_smooth(method=lm)+
+  labs(title="ggplot(data)",subtitle="+ geom_smooth",x="Commuting Time (minutes)",y="Job Satisfaction")
+  
+p1 + p2
+```
+
+So how do we create plots like the on one the right? 
+There are various helpful packages (`plot_model()` from the **sjPlot** package, `effect()` from the **effects** package, `effect_plot()` from **jtools**, etc) that are designed to make this easy, but sometimes it is useful to do it _a little_ more manually.  
+
+Using the **broom** package is a nice way to get confidence intervals across a range of values that we want to plot.  
+
+First we create a dataset of the values of the predictors that we wish to predict across. We'll go across all values of `commute` from 3 to 58 (the range of commuting times in our data), and we'll keep `work_flex` as 20.75 (which is the mean of `work_flex` in our data):
+
+```{r}
+plotdata <- data.frame(
+  commute = 3:58, # integers from 3 to 58
+  work_flex = 20.75 # every value will be 20.75
+)
+```
+Then we use `augment()` from the **broom** package to give predictions and intervals^[these intervals are using the standard errors multiplied by the appropriate value of $t$. We did this more explicitly in previous weeks, but the `augment()` function will do it for us here] to that data:  
+```{r}
+library(broom)
+augment(model2, newdata = plotdata, interval="confidence")
+```
+
+And this looks like something we can put into ggplot!! 
+```{r}
+augment(model2, newdata = plotdata, interval="confidence") |>
+  ggplot(aes(x = commute, y = .fitted,
+                     ymin = .lower, ymax = .upper)) +
+  geom_line() +
+  geom_ribbon(alpha = .3) # alpha sets the transparency
+```
+
+
+
+<!-- ::::panelset -->
+<!-- :::panel -->
+<!-- #### sjPlot -->
+
+<!-- The __sjPlot__ package can make it very easy for us to create plots of model estimated effects. We need to give it the model, the type of thing we want plotted (in this case "eff" for "effect"), and the relevant predictor term (in this case "commute"):   -->
+
+<!-- ```{r} -->
+<!-- #| fig-height: 2.5 -->
+<!-- library(sjPlot) -->
+<!-- plot_model(model2, type = "eff", terms = "commute") -->
+<!-- ``` -->
+
+<!-- ::: -->
+<!-- :::panel -->
+<!-- #### jtools -->
+
+<!-- __jtools__ is an alternative to sjPlot, and it's just as easy:   -->
+<!-- ```{r} -->
+<!-- library(jtools) -->
+<!-- effect_plot(model2, pred=commute, interval=TRUE) -->
+<!-- ``` -->
+
+
+<!-- ::: -->
+<!-- :::panel -->
+<!-- #### effects -->
+
+<!-- The __effects__ package is handy because it can give us a dataframe of estimates with upper and lower intervals to plot. It's a bit more cumbersome than __sjPlot__, but can be handy if we want more customisation:   -->
+
+<!-- ```{r} -->
+<!-- library(effects) -->
+<!-- effect(term = "commute", mod = model2) |> -->
+<!--   as.data.frame() -->
+<!-- ``` -->
+<!-- That dataframe we can then use to plot:   -->
+<!-- ```{r} -->
+<!-- # the xlevels tells it to estimate at 50 different values. -->
+<!-- # this makes it a smoother plot: -->
+<!-- effect(term = "commute", mod = model2, xlevels=50) |> -->
+<!--   as.data.frame() |> -->
+<!--   ggplot(aes(x=commute,y=fit))+ -->
+<!--   geom_line()+ -->
+<!--   geom_ribbon(aes(ymin=lower,ymax=upper), alpha=.3) -->
+<!-- ``` -->
+
+<!-- ::: -->
+<!-- :::panel -->
+<!-- #### Manually (optional) -->
+
+<!-- We can extract the predicted values, and confidence bounds, using `predict()`. First we create a dataset of the values of the predictors that we wish to predict across. We'll predict `jobsat` for all values of `commute` from 3 to 58 (the range of commuting times in our data), and holding `work_flex` as 20.75 (the mean of `work_flex` in our data):  -->
+
+<!-- ```{r} -->
+<!-- plotdata <- data.frame( -->
+<!--   work_flex = 20.75, -->
+<!--   commute = 3:58 -->
+<!-- ) -->
+<!-- ``` -->
+<!-- Then we add the predictions and the standard error   -->
+<!-- ```{r} -->
+<!-- plotdata <- plotdata |> -->
+<!--   mutate( -->
+<!--     predy = predict(model2, newdata=plotdata), -->
+<!--     se = predict(model2, plotdata, se.fit = TRUE)$se -->
+<!--   ) -->
+<!-- ``` -->
+<!-- And use the standard error to create the confidence intervals. Doing $1.96 \times SE$ would get us close, but to do it properly we should use the $t$-distribution:  -->
+<!-- ```{r} -->
+<!-- plotdata <- plotdata |>  -->
+<!--   mutate( -->
+<!--     lower = predy - (qt(.975, df=47) * se), -->
+<!--     upper = predy + (qt(.975, df=47) * se) -->
+<!--   ) -->
+<!-- ``` -->
+
+<!-- And finally we can plot!  -->
+
+<!-- ```{r} -->
+<!-- ggplot(plotdata, aes(x = commute, y = predy,  -->
+<!--                      ymin = lower, ymax = upper)) + -->
+<!--   geom_line() +  -->
+<!--   geom_ribbon(alpha = .3) # alpha sets the transparency -->
+<!-- ``` -->
+
+
+<!-- ::: -->
+<!-- :::: -->
+
+
+
+<!-- It might help to think of this as if we are just tilting the our view of the regression surface so that we see it from only one edge:  -->
+
+<!-- ```{r} -->
+<!-- #| echo: false -->
+<!-- mlr_data <- happycommute |> transmute(y=jobsat,x1=work_flex,x2=commute) -->
+<!-- fit<-lm(y~x1+x2, data=mlr_data) -->
+<!-- steps=50 -->
+<!-- x1 <- with(mlr_data, seq(min(x1),max(x1),length=steps)) -->
+<!-- x2 <- with(mlr_data, seq(min(x2),max(x2),length=steps)) -->
+<!-- newdat <- expand.grid(x1=x1, x2=x2) -->
+<!-- y <- matrix(predict(fit, newdat), steps, steps) -->
+<!-- par(mfrow=c(1,2)) -->
+<!-- p <- persp(x1,x2,y, theta = 50,phi=25, col = NA, -->
+<!--            zlim=c(min(mlr_data$y),max(mlr_data$y))) -->
+<!-- obs <- with(mlr_data, trans3d(x1,x2, y, p)) -->
+<!-- pred <- with(mlr_data, trans3d(x1, x2, fitted(fit), p)) -->
+<!-- points(obs, col = "red", pch = 16) -->
+<!-- segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed") -->
+
+<!-- p <- persp(x1,x2,y, theta = 90,phi=46, col = NA, -->
+<!--            zlim=c(min(mlr_data$y),max(mlr_data$y))) -->
+<!-- obs <- with(mlr_data, trans3d(x1,x2, y, p)) -->
+<!-- pred <- with(mlr_data, trans3d(x1, x2, fitted(fit), p)) -->
+<!-- points(obs, col = "red", pch = 16) -->
+<!-- segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed") -->
+<!-- par(mfrow=c(1,1)) -->
+<!-- ``` -->
 
 
 

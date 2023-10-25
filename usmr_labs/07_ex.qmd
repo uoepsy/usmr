@@ -1,7 +1,7 @@
 ---
 title: "Exercises: Multiple Regression"
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
@@ -13,20 +13,29 @@ editor_options:
 source('assets/setup.R')
 library(tidyverse)
 library(patchwork)
-set.seed(017)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+qcounter <- function(){
+  if(!exists("qcounter_i")){
+    qcounter_i <<- 1
+  }else{
+    qcounter_i <<- qcounter_i + 1
+  }
+  qcounter_i
+}
 ```
 
 # More monkeys 
 
 ```{r}
-#| echo: false
-set.seed(226)
+#| include: false
+set.seed(919805)
 df = 
   expand_grid(
     obj_type = 0:1,
     obj_colour = 0:2,
     obj_size = 0:2,
-    n = 1:6
+    n = 1:7
   ) |> select(-n) |>
   mutate(
     age = round(runif(n(),1,21) + 4*obj_type),
@@ -41,35 +50,23 @@ df$exploration_time = round(df$exploration_time[,1],1)
 
 df <- df |> select(age,species,obj_type,obj_colour, obj_size,exploration_time) |>
   mutate(
-    obj_type = factor(obj_type, labels=c("soft","moving")),
+    obj_type = factor(obj_type, labels=c("soft","mechanical")),
     obj_colour = factor(obj_colour, labels=c("red","green","blue")),
     obj_size = map_dbl(obj_size, ~30+round(rnorm(1,.*20,11.5)))
     #obj_size = factor(obj_size, labels=c("small","medium","large")),
   )
 
-# somenames = read_csv("https://gist.githubusercontent.com/mbejda/9912f7a366c62c1f296c/raw/dd94a25492b3062f4ca0dc2bb2cdf23fec0896ea/10000-MTV-Music-Artists-page-1.csv")$name
-# somenames = somenames[!somenames %in% read_csv("../../data/monkeyexplorers.csv")$name]
-# 
-# set.seed(6)
-# df$name = sample(somenames[1:1000], nrow(df))
-# df <- df |> relocate(name)
 df$exploration_time <- pmax(0,df$exploration_time)
 df <- slice_sample(df,prop=.95)
-monkeytoys <- df |> select(-species)
-sjPlot::tab_model(
-  lm(exploration_time ~ age, df),
-  lm(exploration_time ~ I(age>=8), df)
-)
-sjPlot::tab_model(
-  lm(exploration_time ~ obj_type, df),
-  lm(exploration_time ~ age + obj_type, df)
-)
-anova(
-  lm(exploration_time ~ age + obj_type, df),
-  lm(exploration_time ~ age + obj_type + obj_size + obj_colour, df)
-)
-# lm(exploration_time ~ age + obj_type*species, df) |> summary()
-# write_csv(df,"../../data/monkeytoys.csv")
+
+
+somenames = read.table("https://artofmemory.com/files/forum/947/initials.txt",header=F,sep=",")
+set.seed(44)
+df$name = sample(somenames$V2, nrow(df))
+df <- df |> relocate(name)
+
+df <- monkeytoys <- df |> select(-species)
+# write_csv(monkeytoys,"../../data/monkeytoys.csv")
 
 ```
 
@@ -78,22 +75,22 @@ anova(
 :::frame
 __Data: monkeytoys.csv__  
 
-After their recent study investigating how age is associated with inquisitiveness in monkeys (see exercises from Week 5) our researchers have become interested in whether primates show preferences for certain types of object - are they more interested in toys with moving parts, or with soft plush toys?  
+After their recent study investigating how age is associated with inquisitiveness in monkeys (see [Week 5 Exercises](05_ex.html#monkey-exploration){target="_blank"}) our researchers have become interested in whether primates show preferences for certain types of object - are they more interested in toys with moving parts, or with soft plush toys?  
 
-They conduct another study (Liu, Hajnosz & Li (2023b)^[This is also all fake!]) in which they gave `r nrow(monkeytoys)` each a different toy, and recorded the amount of time each monkey spent exploring their toy. Toys were categorised as either having 'moving parts' or being 'soft plush' toys. They also recorded the age of each monkey, and the a few further attributes of each toy (its size and colour).  
+They conduct another study (Liu, Hajnosz, Xu & Li, 2023^[Another fake study!]) in which they gave `r nrow(monkeytoys)` monkeys each a different toy, and recorded the amount of time each monkey spent exploring their toy. Toys were categorised as either being 'mechanical' or 'soft'. Mechanical toys had several parts that could be manipulated, while soft toys did not. They also recorded the age of each monkey, and a few further attributes of each toy (its size and colour).  
 
-The aim of this study is to investigate the following question: 
+The aim of this study is to investigate the following question:  
+
 > Do monkeys have a preference between soft toys vs toys with moving parts?
 
-The data is available at [https://uoepsy.github.io/data/monkeytoys.csv](https://uoepsy.github.io/data/monkeytoys.csv){target="_blank"} and contains the variables described in @tbl-monkeydicts
+The data is available at [https://uoepsy.github.io/data/monkeytoys.csv](https://uoepsy.github.io/data/monkeytoys.csv){target="_blank"} and contains the variables described in @tbl-monkeytoys
 ```{r}
-#| eval: false
-#| label: tbl-monkeydicts
+#| label: tbl-monkeytoys
 #| echo: false
 #| tbl-cap: "Data dictionary for monkeytoys.csv"
 tibble(
   variable = names(monkeytoys),
-  description = c("Monkey Name","Age of monkey in years", "Type of novel object given (soft / moving)","Main colour of object (red / green / blue)","Size of object in cm (length of largest dimension of the object)","Time (in minutes) spent exploring the object")
+  description = c("Monkey Name","Age of monkey in years", "Type of novel object given (mechanical / soft)","Main colour of object (red / green / blue)","Size of object in cm (length of largest dimension of the object)","Time (in minutes) spent exploring the object")
 ) |>
   gt::gt()
 ```
@@ -101,173 +98,340 @@ tibble(
 
 :::
 
-`r qbegin()`
-fit model exptime ~ obj_type
-nothing new here. this is like last week.
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+`r qbegin(qcounter())`
+Fit a simple linear model examining whether `exploration_time` depends on the type of object given to monkeys (`obj_type`).  
 
-`r solend()`
-
-`r qbegin()`
-
-is the distribution of ages of the monkeys seeing soft toys similar to those seeing moving toys? 
-is there a way you could test this? 
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-`r solend()`
-
-`r qbegin()`
-what does this mean for the model we have just fitted? 
-Remember - the researchers already discovered last week that there is an association younger monkeys tend to be more inquisitive about new things than older monkeys.  
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-`r solend()`
-
-
-
-`r qbegin()`
-fit a model that examines exptime ~ obj_type while controlling age  
-
+Make a plot too if you want!  
 
 ::: {.callout-tip collapse="true"}
 #### Hints
 
-When adding multiple predictors in to `lm()`, it usually doesn't matter what order we put them in, but it _can_ (e.g. when using `anova(model)` to do a quick series of incremental model comparisons as in [7A #shortcuts-for-model-comparisons](07a_mlr.html#shortcuts-for-model-comparisons){target="_blank"}).  
-  
-Good practice is to put the thing you're interested in (the 'focal predictor') at the end, e.g. `lm(outcome ~ covariates + predictor-of-interest)`.    
+There's nothing new here. It's just `lm(outcome ~ predictor)`.  
+
+For the plot, try a boxplot maybe? or even a violin plot if you're feeling adventurous!  
 
 :::
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
+```{r}
+model1 <- lm(exploration_time ~ obj_type, data = monkeytoys)
+summary(model1)
+```
+
+From this, we would conclude that monkeys do not significantly differ in how much time they spend exploring one type of toy over another (mechanical or soft).  
+
+Let's go wild and put a boxplot _on top of_ a violin plot!  
+```{r}
+ggplot(monkeytoys, 
+       aes(x=obj_type, y=exploration_time, 
+           col=obj_type)) +
+  geom_violin() + 
+  geom_boxplot(alpha=.3, width=.4)
+```
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Is the distribution of ages of the monkeys with soft toys similar to those with mechanical toys?  
+
+Is there a way you could test this? 
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+We're wanting to know if age (continuous) is different between two groups (monkeys seeing soft toys and monkeys seeing moving toys). Anyone for $t$?  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+```{r}
+#| echo: false
+res <- t.test(age ~ obj_type, data = monkeytoys)
+```
+
+
+```{r}
+t.test(age ~ obj_type, data = monkeytoys)
+```
+
+:::int
+The average age of monkeys with the soft toys is `r with(monkeytoys,round(mean(age[obj_type=="soft"]),1))` years (SD = `r with(monkeytoys,round(sd(age[obj_type=="soft"]),1))`), and the average of those with the mechanical toys is `r with(monkeytoys,round(mean(age[obj_type=="mechanical"]),1))` (SD = `r with(monkeytoys,round(sd(age[obj_type=="mechanical"]),1))`). This difference is significant as indicated by a Welch two-sample $t$-test ($t(`r round(res[['parameter']],1)`)=`r round(res[['statistic']],2)`, \, p`r format.pval(res[['p.value']],eps=.001,digits=2)`$).  
+:::
+
+`r solend()`
+
+`r qbegin(qcounter())`
+**Discuss:** What does this mean for our model of `exploration_time`? Remember - the researchers already discovered last week that younger monkeys tend to be more inquisitive about new objects than older monkeys are.  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- If older monkeys spend less time exploring novel objects
+- And our group of monkeys with mechanical toys are older than the group with soft toys. 
+- Then... 
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+We have reason to believe that older monkeys spend less time exploring novel objects. We discovered this last week.  
+
+Because our group of monkeys with mechanical toys are of a different age than the group with soft toys, surely we can't discern whether any difference in `exploration_time` between the two types of toy is because of these age differences or because of the type of toy?  
+
+<a id='Kq5SmFeASyhw1TtTYj75YA' class='gie-single' href='http://www.gettyimages.com/detail/586024350' target='_blank' style='color:#a7a7a7;text-decoration:none;font-weight:normal !important;border:none;display:inline-block;'>Embed from Getty Images</a><script>window.gie=window.gie||function(c){(gie.q=gie.q||[]).push(c)};gie(function(){gie.widgets.load({id:'Kq5SmFeASyhw1TtTYj75YA',sig:'1fKQopDLlPOpG9cuEzA7G5fZuR_u8eWzlQV2GELvt2U=',w:'511px',h:'338px',items:'586024350',caption: true ,tld:'com',is360: false })});</script><script src='//embed-cdn.gettyimages.com/widgets.js' charset='utf-8' async></script>
+
 `r solend()`
 
 
-`r qbegin()`
-the thing we're interest in here is obj_type. how does it differ between the models in q2 and q3?  
+
+`r qbegin(qcounter())`
+Fit a model the association between exploration time and type of object while controlling for age.  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- When we add multiple predictors in to `lm()`, it can sometimes matter what order we put them in (e.g. if we want to use `anova(model)` to do a quick series of incremental model comparisons as in [7A #shortcuts-for-model-comparisons](07a_mlr.html#shortcuts-for-model-comparisons){target="_blank"}). Good practice is to put the thing you're interested in (the 'focal predictor') at the end, e.g.: `lm(outcome ~ covariates + predictor-of-interest)`    
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+model2 <- lm(exploration_time ~ age + obj_type, data = monkeytoys)
+
+summary(model2)
+```
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+The thing we're interested in here is association between `exploration_time` and `obj_type`.  
+How does it differ between the models we've created so far, and why?  
 
 ::: {.callout-tip collapse="true"}
 #### Hints
 
 - To quickly compare several models side by side, the `tab_model()` function from the **sjPlot** package can be quite useful, e.g. `tab_model(model1, model2, ...)`.  
+- alternatively, just use `summary()` on each model.  
 
 :::
 `r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
+
+```{r}
+library(sjPlot)
+tab_model(model1, model2)
+```
+
+  
+The coefficient for `obj_type` is much bigger when we include `age` in the model, and it is significant!  
+
+In the model without `age`, we're just comparing the two groups. We can see this in the left hand panel of the plot below - it's the difference between the two group means.  
+When we include `age` in the model, the coefficient for `obj_type` represents the difference in the heights of the two lines in the right hand panel below. 
+
+```{r}
+#| code-fold: true
+#| out-width: "100%"
+library(patchwork)
+p1 <- ggplot(monkeytoys, aes(x=obj_type, y=exploration_time,
+             col=obj_type))+
+  geom_jitter(width=.05)+
+  stat_summary(geom="pointrange", fun.data = mean_cl_normal, 
+               position = position_nudge(x=.14)) +
+  labs(subtitle="exploration_time~obj_type")+
+  scale_y_continuous(breaks=seq(0,22,2))+
+  guides(col="none")
+
+p2 <- broom::augment(model2, interval="confidence") |>
+  ggplot(aes(x=age, col=obj_type))+
+  geom_point(aes(y=exploration_time))+
+  geom_line(aes(y=.fitted))+
+  geom_ribbon(aes(ymin=.lower,ymax=.upper,
+                  fill=obj_type),col=NA,alpha=.2)+
+  scale_y_continuous(breaks=seq(0,22,2))+
+  labs(subtitle="exploration_time~age+obj_type")
+
+p1 + p2 
+```
 
 `r solend()`
 
+`r qbegin(qcounter())`
+Plot the *model estimated* difference in exploration time for each object type.  
 
-`r qbegin()`
-we're going to plot the model estimated difference in exp time for each obj type. there are two ways to do this. one is much more straightforward, but hides what is happening. the other does it manually. 
+To do this, you'll need to create a little data frame for plotting, then give that to the `augment()` function from the **broom** package. This will then give us the model fitted value and the confidence interval, which we can plot!    
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- An example of this whole process is in [7A#model-visualisations](07a_mlr.html#model-visualisations){target="_blank"}.  
+  - The example has a continuous predictor, so we plotted a line and a ribbon. An alternative for a categorical predictor might be a `geom_pointrange()`.  
+
+:::
+
 
 `r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+We've split this solution in to parts so that you can have a go at some bits without seeing it all at once.  
+
+`r solbegin(label="Solution Part 1 - make a dataframe", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+Here's our dataframe to add model estimated values to:  
 ```{r}
-m = lm(exploration_time ~ age + obj_type, data = monkeytoys)
 plotdat <- data.frame(
-  obj_type = c("soft","moving"),
+  obj_type = c("soft","mechanical"),
   age = mean(monkeytoys$age)
 )
-
-plotdat$fitted = predict(m, plotdat)
-plotdat$se = predict(m, plotdat, se.fit = TRUE)$se
-plotdat$lower = plotdat$fitted + qt(.025, m$df.residual)*plotdat$se
-plotdat$upper = plotdat$fitted + qt(.975, m$df.residual)*plotdat$se
-ggplot(plotdat, aes(x=obj_type, y=fitted, ymin = lower,ymax=upper))+
-  geom_pointrange()
-
-ggplot(monkeytoys,aes(x=obj_type,y=exploration_time))+
-  stat_summary(geom="pointrange")
-
 ```
+
+`r solend()`
+
+`r solbegin(label="Solution Part 2 - use broom::augment", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+This gives us our estimates and intervals:  
+```{r}
+library(broom)
+augment(model2, newdata = plotdat, interval="confidence")
+```
+
+
+`r solend()`
+
+`r solbegin(label="Solution Part 3 - into ggplot!", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+```{r}
+augment(model2, newdata = plotdat, interval="confidence") |>
+  ggplot(aes(x=obj_type,y=.fitted))+
+  geom_pointrange(aes(ymin=.lower,ymax=.upper))
+```
+
 `r solend()`
 
 
+`r qbegin(qcounter())`
+Are other aspects of the toys (their size and colour) also associated with more/less exploration time?  
 
-`r qbegin()`
-are other aspects of the toy (its size and colour) associated with more/less exploration time in monkeys?  
+We can phrase this as "do size and colour explain additional variance in exploration time?". How might we test such a question? 
 
-we can phrase this as "do size and colour explain additional variance in exploration time?".
-how might we test such a question? (see model comp). 
-don't worry about interpreting the coefficients right now - we'll talk more about categorical predictors next week. 
-but we can still test whether the inclusion of size and colour improve our model!  
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- We basically just want to add these new predictors into our model.  
+- Don't worry about interpreting the coefficients right now (we'll talk more about categorical predictors next week), but we can still test whether the inclusion of size and colour improve our model! (see [7A#model-comparisons](07a_mlr.html#model-comparisons){target="_blank"}).  
+
+
+:::
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+This is our current model: 
+```{r}
+model2 <- lm(exploration_time ~ age + obj_type, data = monkeytoys)
+```
+And we can add the two colour and size variables:  
+```{r}
+model3 <- lm(exploration_time ~ age + obj_type + obj_colour +
+               obj_size, data = monkeytoys)
+```
+
+Let's compare them:  
+```{r}
+anova(model2, model3)
+```
+
+```{r}
+#| echo: false
+res <- anova(model2, model3)
+```
+
+:::int
+After accounting for differences due to age and type of object (mechanical vs soft), other features of objects - size (cm) and colour (red/green/blue) - were found to significantly explain variation in the time monkeys spent exploring those objects ($F(`r res[2,3]`,`r res[2,1]`)=`r round(res[2,5],2)`, \, p=`r format.pval(res[2,6],eps=.001,digits=2)`$). 
+:::
 
 `r solend()`
 
+
+<div class="divider div-transparent div-dot"></div>
 
 # Social Media Use
 
 ```{r}
 #| include: false
+#| eval: false
 library(tidyverse)
+set.seed(764)
 N = runif(1,60,150)
 df <- tibble(
-  # x1 = rnorm(N),
-  # x2 = rnorm(N),
-  # x3 = .7*x1 + -.2*x2 + rnorm(N),
-  # y = .1*x3 + 1.1*x1 + .7*x2 + rnorm(N)
+  x1 = rnorm(N),
   x2 = rnorm(N),
-  x3 = -.8*x2 + rnorm(N),
-  y = -.01*x3 - 1*x2 + rnorm(N)
+  x3 = .7*x1 + -.5*x2 + rnorm(N),
+  y = .1*x3 + 1.1*x1 + .7*x2 + rnorm(N)
+  # x2 = rnorm(N),
+  # x3 = -.8*x2 + rnorm(N),
+  # y = -.01*x3 - 1*x2 + rnorm(N)
 )
 df |> transmute(
-  happy = round(scale(y)[,1]*7+25),
-  smm = (round((scale(x3)[,1]*24+76.4)/5)*5)/60,
-  #f2f = (round((scale(x1)[,1]*45 + 90)/15)*15)/60,
+  happy = round(scale(y)[,1]*7.02+25),
+  smm = (round((scale(x3)[,1]*24.2+76.4)/5)*5),
+  f2f = (round((scale(x1)[,1]*45 + 90)/15)*15)/60,
   age = round(scale(x2)[,1]*6.7 + 27)
 ) |> 
   mutate(
     happy = pmax(0,pmin(45,happy)),
     smm = pmax(0,smm),
-    #f2f = pmax(0,f2f),
+    f2f = pmax(0,f2f),
     age = pmax(12,age),
     name = randomNames::randomNames(nrow(df),which.names = "first")
   ) |> relocate(name, age) -> df
 
-psych::multi.hist(df[,-1], global=F)
-ggplot(df, aes(x=smm,y=happy))+
-  geom_point()
-
-sjPlot::tab_model(
-  lm(happy ~ smm,df),
-  #lm(happy ~ smm+f2f,df),
-  #lm(happy ~ smm+f2f+age,df)
-  lm(happy ~ smm+age,df)
-)
+# psych::multi.hist(df[,-1], global=F)
+# ggplot(df, aes(x=smm,y=happy))+
+#   geom_point()
+# 
+# sjPlot::tab_model(
+#   lm(happy ~ smm,df),
+#   lm(happy ~ smm+f2f,df),
+#   lm(happy ~ smm+age,df),
+#   lm(happy ~ smm+f2f+age,df)
+# )
 
 ch = sample(1:nrow(df),4)
-df$smm[ch] <- paste0(df$smm[ch]," hours")
+df$smm[ch] <- paste0(df$smm[ch]," minutes")
 df$happy[sample(1:nrow(df),1)] <- 47
 
 df1 <- df |> select(name, smm, happy)
 df2 <- df
+smmdat <- df
+write_csv(df, file="../../data/socmedmin.csv")
 ```
 
 :::frame
 __Data: socmedmin.csv__  
 
-Is more social media use associated with more happiness?  
+> Is more social media use associated with more happiness?  
 
-`r nrow(df)` participants completed a short online form that asked a short questionnaire (9 questions) to rate their happiness. Information was also recorded on the number of hours per day spent using social media.  
+`r nrow(df)` participants completed a short online form that included a questionnaire (9 questions) to get a measure of their happiness. Information was also recorded on their age, the number of minutes per day spent using social media, and the number of hours per day spent having face-to-face interactions.
 
 ```{r}
 #| echo: false
 #| tbl-cap: "Data Dictionary: socmedmin.csv"
 #| label: tbl-smmdict
+smmdat <- read_csv("../../data/socmedmin.csv")
 tibble(
-  variable = names(df),
+  variable = names(smmdat),
   description = c("Participant Name",
                   "Participant Age (years)",
-                  "Happiness Score (sum of 9 likert questions each scored 0-5)",
-                  "Social Media Use (hours per day)"
+                  "Happiness Score (sum of 9 likert questions each scored 1-5)",
+                  "Social Media Use (minutes per day)",
+                  "Face-to-face interactions (hours per day)"
                   )
 ) |> gt::gt()
 ```
@@ -275,7 +439,7 @@ tibble(
 :::
 
 
-`r qbegin()`
+`r qbegin(qcounter())`
 Read in the data and have a look around. 
 
 Data often doesn't come to us in a neat format. Something here is a bit messy, so you'll need to figure out how to tidy it up.
@@ -287,7 +451,7 @@ Is every variable of the right type (numeric, character, factor etc)? If not, we
 
 Be careful not to lose data when we convert things. Note that R cannot do this:  
 ```{r}
-as.numeric("2.5 hours")
+as.numeric("20 minutes")
 ```
 
 So maybe some combination of `as.numeric()` and `gsub()` might work? (see [6A #dealing-with-character-strings](06_wt.html#dealing-with-character-strings){target="_blank"}) 
@@ -295,11 +459,11 @@ So maybe some combination of `as.numeric()` and `gsub()` might work? (see [6A #d
 :::
 
 `r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+`r solbegin(label="Solution Part 1 - identify the problem", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
 
 ```{r}
-# smmdat <- read_csv("TODO")
-smmdat <- df
+#| eval: false
+smmdat <- read_csv("https://uoepsy.github.io/data/socmedmin.csv")
 ```
 
 Note that the `smm` variable seems to be a character..  
@@ -318,29 +482,39 @@ sum(is.na(smmdat$smm)) # NAs in original data
 sum(is.na(as.numeric(smmdat$smm))) # NAs in numeric-converted data
 ```
 
-If we look carefully, these entries that we are losing are all slightly different from the rest. They all have " hours" in them, rather than just the minutes.. 
+If we look carefully, these entries that we are losing are all slightly different from the rest. They all have " minutes" in them, rather than just the minutes.. 
 ```{r}
 smmdat$smm[is.na(as.numeric(smmdat$smm))]
 ```
 
 And when we ask R to make "20 minutes" into a number, it isn't clever enough to recognise that it is a number, so it just turns it into `NA`:
 ```{r}
-as.numeric("2.5 hours")
+as.numeric("20 minutes")
 ```
 
-So we need to _first_ remove the " hours" bit, and _then_ change to numeric.  
-We can use `gsub()` to substitute " hours" with "" (i.e. nothingness):
+`r solend()`
+`r solbegin(label="Solution Part 2 - figure out a fix", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+So we need to _first_ remove the " minutes" bit, and _then_ change to numeric.  
+We can use `gsub()` to substitute " minutes" with "" (i.e. nothingness):
 ```{r}
-gsub(" hours", "", "2.5 hours")
+gsub(" minutes", "", "20 minutes")
 ```
 And we can then turn _that_ into numbers.. 
+```{r}
+as.numeric(gsub(" minutes", "", "20 minutes"))
+```
+
+`r solend()`
+`r solbegin(label="Solution Part 3 - implement!", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
 
 Now that we've figured out how to convert it, I'm just going to overwrite the `smm` variable, rather than creating a new one.  
+
 ::::panelset
 :::panel
 #### base R
 ```{r}
-smmdat$smm <- as.numeric(gsub(" hours", "", smmdat$smm))
+smmdat$smm <- as.numeric(gsub(" minutes", "", smmdat$smm))
 ```
 :::
 :::panel
@@ -348,7 +522,7 @@ smmdat$smm <- as.numeric(gsub(" hours", "", smmdat$smm))
 ```{r}
 smmdat <- smmdat |> 
   mutate(
-    smm = as.numeric(gsub(" hours", "", smm))
+    smm = as.numeric(gsub(" minutes", "", smm))
   )
 ```
 :::
@@ -361,7 +535,8 @@ summary(smmdat)
 
 `r solend()`
 
-`r qbegin()`
+
+`r qbegin(qcounter())`
 Something we haven't really come across until now is the importance of checking the _range_ (i.e. min and max) of our variables. 
 This is a good way to check for errors in the data (i.e. values that we shouldn't be able to obtain using our measurement tool).  
 
@@ -382,7 +557,8 @@ Check the range of the `happy` variable - does it look okay, based on the descri
 range(smmdat$happy)
 ```
 The minimum is `r min(smmdat$happy)`, and the maximum is `r max(smmdat$happy)`.  
-But our scores are based on the sum of 9 questions that can each score from 0 to 5. So surely that means the maximum someone could score would be 45?  
+
+But our scores are based on the sum of 9 questions that can each score from 1 to 5. So surely that means the minimum someone could score would be 5, and the maximum they could score would be 45?  
 
 ```{r}
 smmdat <- smmdat |>
@@ -393,13 +569,19 @@ smmdat <- smmdat |>
 
 `r solend()`
 
-`r qbegin()`
+`r qbegin(qcounter())`
 Finally, we've got to a point where we can look at some descriptive statistics - e.g. mean and standard deviations for continuous variables, frequencies (counts) if there are any categorical variables.  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
 
 You can do this the manual way, calculating it for each variable, but there are also lots of handy functions to make use of.  
 
 - `describe()` from the __psych__ package
 - `CreateTableOne()` from the __tableone__ package  
+
+:::
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -438,7 +620,8 @@ describe(smmdat)
 
 The tableone package will also be clever and give counts and percentages for categorical data like the `name` variable. However, names aren't something we really want to summarise, so it's easier just to give the function everything except the `name` variable.  
 ```{r}
-tableone::CreateTableOne(data = smmdat[,-1])
+library(tableone)
+CreateTableOne(data = smmdat |> select(-name) )
 ```
 
 :::
@@ -446,115 +629,446 @@ tableone::CreateTableOne(data = smmdat[,-1])
 
 `r solend()`
 
-`r qbegin()`
-Fit a simple linear regression model to address our research question ("Is more social media use associated with more happiness?").  
+<!-- `r qbegin(qcounter())` -->
+<!-- Again, we're going to start with a one-predictor model.   -->
 
-Make a plot too.  
+<!-- Fit a simple linear regression model to address our research question ("Is more social media use associated with more happiness?").   -->
 
-What do we conclude?  
+<!-- Make a plot too.   -->
+
+<!-- What do you conclude?   -->
+
+
+<!-- ::: {.callout-tip collapse="true"} -->
+<!-- #### Hints -->
+
+<!-- We're using `lm()` again.  -->
+
+<!-- To make a plot, because we just have a very simple one predictor model, we could just plot the data itself and then add `geom_smooth(method=lm)` to it to display the model.   -->
+
+
+<!-- ::: -->
+
+<!-- `r qend()` -->
+<!-- `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)` -->
+
+<!-- From the model below, we would conclude that more social media use is associated with more happiness. The coefficient from our model is positive (more social media = more happiness), and significantly different from zero.   -->
+
+<!-- ```{r} -->
+<!-- mod1 <- lm(happy ~ smm, smmdat) -->
+<!-- summary(mod1) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- ggplot(smmdat, aes(x=smm,y=happy))+ -->
+<!--   geom_point()+ -->
+<!--   geom_smooth(method=lm)+ -->
+<!--   labs(x="Social Media Usage (minutes per day)", -->
+<!--        y="Happiness Score") -->
+<!-- ``` -->
+
+<!-- `r solend()` -->
+
+`r qbegin(qcounter())`
+
+For our research question ("Is more social media use associated with more happiness?"), we could consider fitting the following model:  
+```
+lm(happy ~ smm, data = smmdat)
+```
+
+**But** is it not a bit more complicated than that? Surely there are lots of other things that are relevant? For instance, it's quite reasonable to assume that social media use is related to someone's age? It's also quite likely that happiness changes with age too. But that means that our coefficient of `happy ~ smm` could actually just be changes in happiness due to something else (like age)? Similarly, people who use social media might just be more sociable people (i.e. they might see more people in real life, and that might be what makes them happy).  
+
+Especially in observational research (i.e. we aren't intervening and asking some people to use social media and others to not use it), figuring out the relevant association that we want can be incredibly tricky.  
+
+As it happens, we _do_ have data on these participants' ages, and on the amount of time they spend having face-to-face interactions with people!  
+
+Look at how all these variables correlate with one another, and make some quick plots.  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- You can give a data frame of numeric variables to `cor()` and it gives you all the correlations between pairs of variables in a "correlation matrix"  
+- if you want some quick pair-wise plots (not pretty, but useful!), try the `pairs.panels()` function from the __psych__ package.  
+
+:::
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Here is a correlation matrix. It shows the correlations between each pair of variables.  
+Note that the bit below the diagonal is the same as the bit above. The diagonal is always going to be all 1's, because a variable is always perfectly correlated with itself.  
+```{r}
+smmdat |> 
+  select(-name) |>
+  filter(!is.na(happy)) |>
+  cor()
+```
+
+The `pairs.panels()` function is a useful way to quickly explore the bivariate (two-variables) patterns in a dataset:  
+```{r}
+library(psych)
+smmdat |> 
+  select(-name) |>
+  pairs.panels()
+```
+
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Is social media usage associated with happiness, after accounting for age and the number of face-to-face interactions?  
 
 
 ::: {.callout-tip collapse="true"}
 #### Hints
 
-We're using `lm()` again. 
+- This question can be answered in a couple of ways. You might be able to do some sort of model comparison, or you could look at the test of a coefficient.  
 
-To make a plot, because we just have a very simple one predictor model, we could just plot the data itself and then add `geom_smooth(method=lm)` to it to display the model.  
+:::
 
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+We could do this by fitting the model with `age` and `f2f` predicting `happy`, and then compare that to the model _also_ with `smm`:  
+```{r}
+mod1 <- lm(happy ~ age + f2f, smmdat)
+mod2 <- lm(happy ~ age + f2f + smm, smmdat)
+anova(mod1, mod2)
+```
+
+This is testing the addition of **one** parameter (thing being estimated) to our model - the coefficient for `smm`.  
+We can see that it is just one more parameter because the table abovw shows that the additional degrees of freedom taken up by `mod2` is 1 (the "Df" column, and the change in the "Res.Df" column).  
+
+So we could actually just look at the test of that individual parameter, and whether it is different from zero. 
+It's the same:  
+```{r}
+summary(mod2)
+```
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Plot the model estimated association between social media usage and happiness.  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+This follows just the same logic as we did for the monkeys!  
 
 :::
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-mod1 <- lm(happy ~ smm, smmdat)
-summary(mod1)
-```
 
 ```{r}
-ggplot(smmdat, aes(x=smm,y=happy))+
-  geom_point()+
-  geom_smooth(method=lm)
+plotdat <- data.frame(
+  age = mean(smmdat$age), # mean age
+  f2f = mean(smmdat$f2f), # mean f2f interactions
+  smm = 0:150 # social media use from 0 to 150 mins
+)
+
+augment(mod2, newdata = plotdat, interval = "confidence") |>
+  ggplot(aes(x = smm, y = .fitted)) + 
+  geom_line() + 
+  geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha=.3)+
+  labs(x = "social media usage\n(minutes per day)",
+       y = "Happiness Score",
+       title = "Happiness and social media usage",
+       subtitle = "controlling for age and IRL interactions")
 ```
 
 `r solend()`
 
-`r qbegin()`
-In the questions above, our theoretical model might be represented as:  
-TODO IMG
-with the coefficient being the thing we're interested in estimating. 
 
-**But** is it not a bit more complicated than that? Surely there are lots of other things that are relevant. For instance, it's quite reasonable to assume that social media use is related to someone's age? It's also quite likely that happiness changes with age too. But that means that our coefficient of `happy ~ smm` could actually just be changes in happiness due to something else (like age)?    
+`r qbegin("Optional Extra", qlabel=FALSE)`
 
-As it happens, we _do_ have data on these participants' ages!  
-Make some quick plots to see how `age` is related to `smm` and `happy`.  
+In all the plots we have been making from our models, the other predictors in our model (e.g. `age` and `f2f` in this case) have been held at their mean.  
+
+What happens if you create a plot estimating the association between happiness and social media usage, but having `age` at 15, or 30, or 45?  
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-library(patchwork)
-p1 <- ggplot(smmdat, aes(x=age, y=smm))+
-  geom_point()
-p2 <- ggplot(smmdat, aes(x=age, y=happy))+
-  geom_point()
 
-p1 / p2
+```{r}
+#| echo: false
+#| out-height: "350px"
+plotdat <- 
+  expand_grid(
+    age = c(15,30,45),
+    f2f = mean(smmdat$f2f),
+    smm = 0:150 
+  )
+
+augment(mod2, newdata = plotdat, interval = "confidence") |>
+  ggplot(aes(x = smm, y = .fitted)) + 
+  geom_line() + 
+  geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha=.3) +
+  facet_wrap(~age)
 ```
+
+The **slope** doesn't change at all, but note that it moves up and down. This makes sense, because our model coefficients indicated that happiness goes up with age.  
+Note also that the uncertainty changes, and this is what we want - we have less data on people at age 45, or 15, so we are less confident in our estimates.  
+
+I'm going to use this space to show you a little trick that may come in handy. The function `expand_grid()` will take all combinations of the values you give it for each variable, and expand outwards:  
+e.g.  
+```{r}
+expand_grid(
+  v1 = c("a","b"),
+  v2 = 1:4
+)
+```
+
+So instead of creating lots of individual `plotdat` dataframes for each value of `age` 15, 30, and 45, we can create just one that contains all three. Then we can just deal with that in the ggplot.  
+
+::::panelset
+:::panel
+#### One-by-one  
+```{r}
+plotdat1 <- data.frame(
+  age = 15,
+  f2f = mean(smmdat$f2f), 
+  smm = 0:150 
+)
+plotdat2 <- data.frame(
+  age = 30,
+  f2f = mean(smmdat$f2f), 
+  smm = 0:150 
+)
+plotdat3 <- data.frame(
+  age = 45,
+  f2f = mean(smmdat$f2f), 
+  smm = 0:150 
+)
+
+p1 <- augment(mod2, newdata = plotdat1, interval = "confidence") |>
+  ggplot(aes(x = smm, y = .fitted)) + 
+  geom_line() + 
+  geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha=.3)+
+  ylim(5,45)
+
+p2 <- augment(mod2, newdata = plotdat2, interval = "confidence") |>
+  ggplot(aes(x = smm, y = .fitted)) + 
+  geom_line() + 
+  geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha=.3)+
+  ylim(5,45)
+
+p3 <- augment(mod2, newdata = plotdat3, interval = "confidence") |>
+  ggplot(aes(x = smm, y = .fitted)) + 
+  geom_line() + 
+  geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha=.3)+
+  ylim(5,45)
+
+# the patchwork package allows us to add plots together:
+p1 + p2 + p3
+```
+
+:::
+:::panel
+#### All-in-one
+`
+```{r}
+plotdat <- 
+  expand_grid(
+    age = c(15,30,45),
+    f2f = mean(smmdat$f2f),
+    smm = 0:150 
+  )
+
+augment(mod2, newdata = plotdat, interval = "confidence") |>
+  ggplot(aes(x = smm, y = .fitted)) + 
+  geom_line() + 
+  geom_ribbon(aes(ymin = .lower, ymax = .upper), alpha=.3) +
+  facet_wrap(~age)
+```
+
+:::
+::::
+
 
 
 `r solend()`
 
-`r qbegin()`
-Fit a model to estimated the association between social media use and happiness, while controlling for age.  
+`r qbegin(qcounter())`
+How many observations has our model been fitted to?  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+It's not just the 77 people why have in the dataset.. 
+
+:::
 
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Because we had that very happy person (`happy` variable was 47) that we replaced with an `NA`, we have one fewer bit of data to fit our model to.  
+
+That's because `lm()` will default to something called "listwise deletion", which will remove any observation where any variable in the model (outcome or predictor) is missing. 
+
+We can see how many observations went into our model because we know how many residuals we have: 
 ```{r}
-mod2 <- lm(happy ~ age + smm, smmdat)
-library(sjPlot)
-tab_model(mod1,mod2)
+length(residuals(mod2))
+```
+
+And we can also see it from the degrees of freedom at the bottom of the `summary()` output. We know that we have $n-k-1$ degrees of freedom (see [7A #the-f-statistic-a-joint-test](07a_mlr.html#the-f-statistic-a-joint-test){target="_blank"}), and that is shown as 72 here. $k$ is the number of predictors, which we know is 3. So $n$ is 76!  
+```{r}
+#| eval: false
+summary(mod2)
+```
+```
+...
+F-statistic: 98.09 on 3 and 72 DF,  p-value: < 2.2e-16
+```
+
+
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+Check the assumptions of your model.  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+[7B Assumptions & Diagnostics](07b_assumptdiag.html){target="_blank"} shows how we can do this. We can rely on tests if we like, or we can do it visually through plots. Getting a good sense of "what looks weird" in these assumption plots is something that comes with time.  
+
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Here are our plots..  
+They don't look too bad _to me_ (you might feel differently!)
+```{r echo=c(2)}
+par(mfrow=c(2,2))
+plot(mod2)
+par(mfrow=c(1,1))
 ```
 
 `r solend()`
 
-`r qbegin()`
-plot model fitted
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# More RMarkdown
+
+`r qbegin(qcounter())`
+
+
+1. Open a .Rmd document, and delete all the template stuff.  
+    - Keep the code chunk at the top called "setup"  
+2. In the "setup" chunk, change it to `echo = FALSE`. This will make sure all code gets hidden from the final rendered document.  
+3. Make a new code chunk called "analysis", and for this chunk, set `include = FALSE`. This will make sure that the code in that chunk gets run, but does not actually produce any output.  
+4. Shove all our working analysis (below) in that 'analysis' code chunk.  
+5. Write a paragraph describing the analysis.  
+    - what type of model/analysis is being conducted?
+    - what is the outcome? the predictors? how are they scaled?
+6. Write a paragraph highlighting the key results. Try to use inline R code. [This example](https://uoepsy.github.io/usmr/2324/misc/socmedmin.Rmd){target="_blank"} may help.  
+7. In a new code chunk, create and show a plot. Make sure this code chunk is set to `include = TRUE`, because we _do_ want the output to show (leaving it blank will also work, because this is the default).  
+8. Click Knit! 
+
+
+::: {.callout-note collapse="true"}
+#### Study: Lie detectors
+
 ```{r}
-plot_model(mod2, type="eff",terms=c("smm"))
+#| include: false
+ss=88173#round(runif(1,1e3,1e5))
+set.seed(ss)
+ldf = tibble(
+  age = round(runif(142,22,64)),
+  anx = round(rnorm(142,0,1),2),
+  strategy = rbinom(142, 3, plogis(scale(anx)*2)),
+  hr = 45 + .3*age +3*anx+ (strategy==2)*-3.4 + (strategy==3)*-5.6 + rnorm(142,0,3)
+) 
+#psych::pairs.panels(ldf)
+#summary(lm(hr~age+anx+factor(strategy),ldf))
+#plot(lm(hr~age+anx+factor(strategy),ldf),which=4)
+ldf$hr <- round(ldf$hr,1)
+ldf$strategy[60] <- 5
+ldf$hr[ldf$hr>75]<- 37.0
+#write_csv(ldf,file="../../data/usmr_polygraph.csv")
 ```
 
-`r solend()`
+Law enforcement in some countries regularly rely on 'polygraph' tests as a form of 'lie detection'. These tests involve measuring heart rate, blood pressure, respiratory rate and sweat. However, there is very little evidence to suggest that these methods are remotely accurate in being able to determine whether or not someone is lying.  
 
-`r qbegin()`
-think! ommitted variables. 
+Researchers are interested in if peoples' heart rates during polygraph tests can be influenced by various pre-test strategies, including deep breathing, or closing their eyes. They recruited `r nrow(ldf)` participants (ages `r min(ldf$age)` to `r max(ldf$age)`). Participants were told they were playing a game in which their task was to deceive the polygraph test, and they would receive financial rewards if they managed successfully. Participants chose one of 4 strategies to prepare themselves for the test, each lasting 1 minute. These were "do nothing", "deep breathing", "close your eyes" or "cough"^[apparently coughing is a method of immediately lowering heart rate!]. Participants average heart rate was recorded during the test, and then they completed a post-test questionnaire asking how anxious they had felt during the test.  
+
+
+```{r}
+#| echo: false
+tibble(
+  variable = names(ldf),
+  description = c(
+    "Age of participant (years)",
+    "Anxiety measure (Z-scored)",
+    "Pre-test Strategy (0 = do nothing, 1 = close eyes, 2 = cough, 3 = deep breathing)",
+    "Average Heart Rate (bpm) during test"
+  )
+) |> gt::gt()
+```
+
+__Analysis__  
+
+```{r}
+#| eval: false
+#| code-fold: true
+# load libraries
+library(tidyverse)
+library(psych)
+# read in the data
+liedf <- read_csv("https://uoepsy.github.io/data/usmr_polygraph.csv")
+
+# there seems to be a 5 there.. 
+table(liedf$strategy)
+# the other variables look okay though
+describe(liedf)
+pairs.panels(liedf)
+
+
+liedf <- liedf |> 
+  filter(strategy!=5) |>
+  mutate(
+    # strategy is a factor. but currently numbers
+    # i'm going to give them better labels too.. 
+    # to do this is need to tell factor() what "levels" to look for
+    # and then give it some "labels" to apply to those.
+    strategy = factor(strategy, 
+                      levels = c("0","1","2","3"),
+                      labels = c("do nothing", "close eyes",
+                                 "cough", "deep breathing")
+                      )
+  )
+
+liemod <- lm(hr ~ age + anx + strategy, data = liedf)
+
+# Does HR differ between strategies?
+anova(liemod)
+# the above is a shortcut for getting this comparison out:
+anova(
+  lm(hr ~ age + anx, data = liedf),
+  lm(hr ~ age + anx + strategy, data = liedf)
+)
+
+# i want a plot to show the HRs of different strategies.. 
+# ??
+```
+
+
+:::
+
+
+
+
+
+
 `r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-
-`r solend()`
 
 
 
-# More rmarkdown
-
-here's a research q  
-here's the analysis code
-write it up!  
-
-
-- open rmd, delete all the template stuff.
-- keep setup chunk. set echo false
-- make analysis chunk. set include false
-- shove all our working analysis in there
-- write paragraph describing analysis. 
-  - what type of model/analysis is being done?
-  - what are the outcome and predictor(s)
-    - how are they scaled?  
-- write a paragraph highlighting key results. try to use inline R code
-  - this logic may help:  
-  
-  
-
-write up guided q

@@ -1,0 +1,35 @@
+---
+title: "social media use"
+author: "jk"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+smmdat <- read_csv("https://uoepsy.github.io/data/socmedmin.csv")
+```
+
+
+```{r include=FALSE}
+# tidy my data!
+# we have some " minutes", so i need to remove those, and turn them to numeric
+# there's also a value of happy which is more than 45. so i need to remove that person (they're too happy!)
+smmdat <- smmdat |>
+  mutate(
+    smm = as.numeric(gsub(" minutes", "", smm)),
+    happy = ifelse(happy > 45, NA, happy)
+  )
+
+# here's the model 
+mod2 <- lm(happy ~ age + f2f + smm, smmdat)
+
+# this is the coefficients, which i can then use in inline R code
+rescoef <- summary(mod2)$coefficients
+```
+
+- I have a slope: `r round(rescoef[4,2],2)`  
+- I have a $t$ statistic with `r mod2$df.residual` degrees of freedom: `r round(rescoef[4,3],2)`  
+- I have a $p$ value which is `r format.pval(rescoef[4,4], eps=.001, digits=3)`
+
