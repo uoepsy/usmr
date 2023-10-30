@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -74,6 +108,8 @@ if(f.classList.contains('jk-circle-right')) {
 </script>
 
 <!---<script src="https://kit.fontawesome.com/120b08a6f5.js" crossorigin="anonymous"></script>-->
+<link href="site_libs/panelset-0.2.6/panelset.css" rel="stylesheet">
+<script src="site_libs/panelset-0.2.6/panelset.js"></script>
 
 
 </head>
@@ -336,6 +372,7 @@ if(f.classList.contains('jk-circle-right')) {
   <li><a href="#scaling-predictors" id="toc-scaling-predictors" class="nav-link" data-scroll-target="#scaling-predictors">scaling predictors</a></li>
   <li><a href="#standardised-coefficients" id="toc-standardised-coefficients" class="nav-link" data-scroll-target="#standardised-coefficients">standardised coefficients</a></li>
   <li><a href="#packages" id="toc-packages" class="nav-link" data-scroll-target="#packages">packages</a></li>
+  <li><a href="#caution" id="toc-caution" class="nav-link" data-scroll-target="#caution">caution!!!</a></li>
   </ul>
 </nav>
     </div>
@@ -361,7 +398,45 @@ if(f.classList.contains('jk-circle-right')) {
 
 <section id="centeringscalingstandardising" class="level1">
 <h1>centering/scaling/standardising</h1>
-<p>sticky centering moving the location by subtracting some value. such as mean-centering subtract the mean</p>
+<p>There are many transformations we can do to a continuous variable, but far and away the most common ones are <em>centering</em> and <em>scaling.</em></p>
+<div class="sticky">
+<p><strong>Centering</strong></p>
+<p>Centering simply means moving the entire distribution to be centered on some new value. We achieve this by subtracting our desired center from each value of a variable. A common option is to <em>mean center</em> (i.e.&nbsp;to subtract the mean from each value).</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>dd <span class="ot">=</span> <span class="fu">tibble</span>(<span class="at">heights =</span> <span class="fu">rnorm</span>(<span class="dv">100</span>,<span class="dv">168</span>,<span class="dv">12</span>),<span class="at">heightsc=</span>heights<span class="sc">-</span><span class="fu">mean</span>(heights))</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(dd,<span class="fu">aes</span>(<span class="at">x=</span>heights))<span class="sc">+</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>() <span class="sc">+</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(dd,<span class="fu">aes</span>(<span class="at">x=</span>heightsc))<span class="sc">+</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="08a_scaling_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>This makes our new values all relative to the mean. In the table below, the average age of our 4 people is 20.5.<br>
+When we subtract 20.5 from each persons age, we get the mean-centered age (the <code>ageC</code> column below).</p>
+<div class="cell" data-layout-align="center">
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 3
+  name       age  ageC
+  &lt;chr&gt;    &lt;dbl&gt; &lt;dbl&gt;
+1 Jeremy      18  -2.5
+2 Alysh       20  -0.5
+3 Danielle    22   1.5
+4 Majeeda     22   1.5</code></pre>
+</div>
+</div>
+<p>We can center a variable on other things, such as the minimum or maximum value of the scale we are using, or some judiciously chosen value of interest.</p>
+</div>
+<div class="sticky">
+<p><strong>scaling/standardising</strong></p>
+<p>Scaling changes the <em>units</em> of the variable, and we do this by dividing the observations by some value. E.g., moving from “36 months” to “3 years” involves scaling by 12.</p>
+<p>Far and away the most common sort of scaling is ‘standardisation’.</p>
+<p>Centering simply means moving the entire distribution to be centered on some new value. We achieve this by subtracting our desired center from each value of a variable. A common option is to <em>mean center</em> (i.e.&nbsp;to subtract the mean from each value).</p>
+</div>
 <p>sticky scaling/standardising subtract the mean, divide by the standard deviation what does it do - makes sd 1, mean 0</p>
 <p>consider Martin. he goes on a lot about people’s heights. he is 182cm tall. and he has size 43 feet (in EU sizes) is his tallness more unusual than his feet?</p>
 </section>
@@ -381,6 +456,64 @@ if(f.classList.contains('jk-circle-right')) {
 <section id="packages" class="level1">
 <h1>packages</h1>
 <p>BE CAREFUL THOUGH</p>
+</section>
+<section id="caution" class="level1">
+<h1>caution!!!</h1>
+<p>standardised coefficients are dependent upon sample variances</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>df1 <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">age =</span> <span class="fu">round</span>(<span class="fu">runif</span>(<span class="dv">100</span>,<span class="dv">18</span>,<span class="dv">40</span>)),</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">vocabulary =</span> age<span class="sc">*</span><span class="dv">1</span> <span class="sc">+</span> <span class="fu">rnorm</span>(<span class="dv">100</span>,<span class="dv">0</span>,<span class="dv">3</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>df2 <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">age =</span> <span class="fu">round</span>(<span class="fu">runif</span>(<span class="dv">100</span>,<span class="dv">18</span>,<span class="dv">80</span>)),</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">vocabulary =</span> age<span class="sc">*</span><span class="dv">1</span> <span class="sc">+</span> <span class="fu">rnorm</span>(<span class="dv">100</span>,<span class="dv">0</span>,<span class="dv">3</span>)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(<span class="fu">scale</span>(vocabulary) <span class="sc">~</span> <span class="fu">scale</span>(age), <span class="at">data =</span> df1) <span class="sc">|&gt;</span> </span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summary</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = scale(vocabulary) ~ scale(age), data = df1)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-1.05472 -0.31642 -0.03888  0.33583  1.14620 
+
+Coefficients:
+             Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 1.438e-17  4.541e-02    0.00        1    
+scale(age)  8.921e-01  4.564e-02   19.55   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.4541 on 98 degrees of freedom
+Multiple R-squared:  0.7958,    Adjusted R-squared:  0.7937 
+F-statistic:   382 on 1 and 98 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(<span class="fu">scale</span>(vocabulary) <span class="sc">~</span> <span class="fu">scale</span>(age), <span class="at">data =</span> df2) <span class="sc">|&gt;</span> </span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summary</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = scale(vocabulary) ~ scale(age), data = df2)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.36883 -0.12020  0.00142  0.11038  0.33003 
+
+Coefficients:
+              Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) -9.002e-17  1.646e-02    0.00        1    
+scale(age)   9.865e-01  1.654e-02   59.62   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.1646 on 98 degrees of freedom
+Multiple R-squared:  0.9732,    Adjusted R-squared:  0.9729 
+F-statistic:  3555 on 1 and 98 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
 
 
 </section>
