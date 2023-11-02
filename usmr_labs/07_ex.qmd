@@ -116,6 +116,9 @@ For the plot, try a boxplot maybe? or even a violin plot if you're feeling adven
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 ```{r}
+monkeytoys <-  read_csv("https://uoepsy.github.io/data/monkeytoys.csv")
+
+
 model1 <- lm(exploration_time ~ obj_type, data = monkeytoys)
 summary(model1)
 ```
@@ -558,12 +561,12 @@ range(smmdat$happy)
 ```
 The minimum is `r min(smmdat$happy)`, and the maximum is `r max(smmdat$happy)`.  
 
-But our scores are based on the sum of 9 questions that can each score from 1 to 5. So surely that means the minimum someone could score would be 5, and the maximum they could score would be 45?  
+But our scores are based on the sum of 9 questions that can each score from 1 to 5. So surely that means the minimum someone could score would be 9, and the maximum they could score would be 45?  
 
 ```{r}
 smmdat <- smmdat |>
   mutate(
-    happy = ifelse(happy > 45, NA, happy)
+    happy = ifelse(happy < 9 | happy > 45, NA, happy)
   )
 ```
 
@@ -906,7 +909,7 @@ It's not just the 77 people why have in the dataset..
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
-Because we had that very happy person (`happy` variable was 47) that we replaced with an `NA`, we have one fewer bit of data to fit our model to.  
+Because we had those very happy and very unhappy people (`happy` variable was outside our range) that we replaced with `NA`, we have fewer bits of data to fit our model to.  
 
 That's because `lm()` will default to something called "listwise deletion", which will remove any observation where any variable in the model (outcome or predictor) is missing. 
 
@@ -915,14 +918,14 @@ We can see how many observations went into our model because we know how many re
 length(residuals(mod2))
 ```
 
-And we can also see it from the degrees of freedom at the bottom of the `summary()` output. We know that we have $n-k-1$ degrees of freedom (see [7A #the-f-statistic-a-joint-test](07a_mlr.html#the-f-statistic-a-joint-test){target="_blank"}), and that is shown as 72 here. $k$ is the number of predictors, which we know is 3. So $n$ is 76!  
+And we can also see it from the degrees of freedom at the bottom of the `summary()` output. We know that we have $n-k-1$ degrees of freedom (see [7A #the-f-statistic-a-joint-test](07a_mlr.html#the-f-statistic-a-joint-test){target="_blank"}), and that is shown as 71 here. $k$ is the number of predictors, which we know is 3. So $n$ is 75!  
 ```{r}
 #| eval: false
 summary(mod2)
 ```
 ```
 ...
-F-statistic: 98.09 on 3 and 72 DF,  p-value: < 2.2e-16
+F-statistic: 98.23 on 3 and 71 DF,  p-value: < 2.2e-16
 ```
 
 
@@ -1003,6 +1006,7 @@ Researchers are interested in if peoples' heart rates during polygraph tests can
 
 ```{r}
 #| echo: false
+#| tbl-cap: "usmr_polygraph.csv data dictionary"
 tibble(
   variable = names(ldf),
   description = c(
