@@ -1,7 +1,7 @@
 ---
 title: "Exercises: Scaling | Categorical Predictors"
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
@@ -43,6 +43,7 @@ df = tibble(
     (condition=="text+brain+graph")*5.322 + 
     rnorm(120, 0, 10.3)
 )
+#write_csv(df,file="../../data/usmr_neuronews.csv")
 lm(credibility~condition,df) |> summary()
 ```
 
@@ -75,9 +76,7 @@ Read in the data and take a look around (this is almost always the first thing t
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 ```{r}
-# nndat <- read_csv("https://uoepsy.github.io/data/usmr_neuronews.csv")
-# TODO
-nndat <- df
+nndat <- read_csv("https://uoepsy.github.io/data/usmr_neuronews.csv")
 
 hist(nndat$credibility)
 # geom jitter is a way of randomly 'jittering' points so that the don't overlap
@@ -509,8 +508,11 @@ A company is worried about employee turnover, and they are trying to figure out 
 
 The company then linked their responses on the questionnaire with various bits of information they could get from their human resources department, as seen in @tbl-jobsatdict.  
 
+The data are available at [https://uoepsy.github.io/data/usmr_jobsatpred.csv](https://uoepsy.github.io/data/usmr_jobsatpred.csv){target="_blank"}.  
+
 ```{r}
 #| echo: false
+#| label: tbl-jobsatdict
 #| tbl-cap: "usmr_jobsatpred.csv data dictionary"
 
 N = 93
@@ -536,7 +538,7 @@ df$commute = format(df$commute,digits=1)
 df$commute = gsub("\\.",",",df$commute)
 df$remote[sample(1:N,1)] <- 2
 df$jobsat[sample(1:N,2)] <- 0
-
+#write_csv(df,file="../../data/usmr_jobsatpred.csv")
 jsdat <- df
 # summary(df)
 # psych::multi.hist(df[,-c(1,2)], global=FALSE)
@@ -565,9 +567,7 @@ Read in the data. Look around, do any cleaning that might be needed.
 `r solbegin(label="Solution Part 1 - identifying problems", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
 
 ```{r}
-# jsdat <- read_csv("")
-# TODO
-jsdat <- df
+jsdat <- read_csv("https://uoepsy.github.io/data/usmr_jobsatpred.csv")
 ```
 Just looking at the top of the data, I already know that `commute` is a problem..  
 ```{r}
@@ -654,7 +654,7 @@ It's not impossible though (`r round(max(jsdat$commute))` km commute?), it's jus
 `r solend()`
 
 `r qbegin(qcounter())`
-Fit a model to examine the independent associations between job satisfaction and all of these aspects of work life.  
+Fit a model to examine the independent associations between job satisfaction and all of the aspects of working patterns collected by the company.  
 
 
 ::: {.callout-tip collapse="true"}
@@ -675,11 +675,103 @@ summary(jsmod)
 
 `r solend()`
 
+
 `r qbegin(qcounter())`
-Now fit a second model, in which the predictors are standardised (those that can be). 
+Check the assumption plots from the model. Remember we had that employee who was commuting quite far - are they exerting too much influence on our model?  
+If so, maybe refit the model without them.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+We can see below that there is that one very influential observation (see bottom right plot). It's almost 6 times more than the next most influential one.  
+```{r echo=c(2)}
+par(mfrow=c(2,2))
+plot(jsmod, which=c(1:4))
+par(mfrow=c(1,1))
+```
+
+We'll refit the model without that observation:  
+```{r}
+jsmod1 <- lm(jobsat ~ commute + hrs_worked + 
+               team_size + remote + salary_band, 
+             data = jsdat[-1,])
+```
+And check again. These look much better in terms of influencers. The main assumption plots don't look _terrible_, but they're not perfect (but then nothing ever is!).  
+```{r echo=c(2)}
+par(mfrow=c(2,2))
+plot(jsmod1, which=c(1:4))
+par(mfrow=c(1,1))
+```
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+Now fit a second model, in which the predictors are standardised (those that can be).  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- You can either standardise just the predictors, or standardise both predictors and outcome (see [8A #standardised-coefficients](08a_scaling.html#standardised-coefficients){target="_blank"}).
+- If you've excluded some data in the model from the previous question, you should exclude them here too.  
+
+:::
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+jsmodZ <- lm(scale(jobsat) ~ scale(commute) + scale(hrs_worked) + 
+               scale(team_size) + remote + scale(salary_band), 
+             data = jsdat[-1,])
+```
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+Looking at the standardised coefficients, which looks to have the biggest impact on employees' job satisfaction?  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Salary has a big positive impact.
+Then remote working (negative impact)
+Then hours worked (negative impact)
+Then team size (positive)
+Then commuting distance (positive, but non-significant)
+```{r}
+summary(jsmodZ)
+```
+
+
+`r solend()`
+
+`r qbegin(qcounter())`
+The company can't afford to pay employees anymore, and they are committed to letting staff work remotely. 
+What would you suggest they do to improve job satisfaction?  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+You might argue here that because `hrs_worked` has the next biggest effect, we should suggest the company reduces the working hours.  
+
+The standardised coefficients are telling us that:  
+
+- a person who works 1 SD hours more is .19 SD lower on job satisfaction
+- a person in a team 1 SD bigger is .16 SD higher on job satisfaction  
+
+So what _are_ the standard deviations of `hrs_worked` and of `team_size`? Are they even worth comparing?  
+
+```{r}
+sd(jsdat$hrs_worked)
+sd(jsdat$team_size)
+```
+
+So what our standardised coefficients are really saying is:
+
+- a person works 13.4 hours more is .19 SD lower on job satisfaction
+- a person in a team 1.67 people bigger is .16 SD higher on job satisfaction  
+
+You could easily argue from this that a much easier way the company could improve job satisfaction is to make team sizes a bit bigger - rathe than letting people work 13 hours less than they currently do! 
 
 `r solend()`
 
