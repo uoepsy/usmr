@@ -1,7 +1,7 @@
 get_my_data <- function(group_name = NULL, individual = FALSE){
   
-  # load(url("https://uoepsy.github.io/usmr/2324/misc/pptnames.rdata"))
-  load("../docs/2324/misc/pptnames.rdata")
+  load(url("https://uoepsy.github.io/usmr/2324/misc/pptnames.rdata"))
+  #load("../docs/2324/misc/pptnames.rdata")
   
   groups_2324 = c("aggregating_anteaters","analytical_aardvarks","calculating_chinchillas","data_dingoes","diverging_dragonflies","evaluating_elephants","gaussian_gannets","histogram_hedgehogs","hypothesizing_hamsters","inferring_iguanas","linear_lemurs","modeling_meerkats","normal_narwhals","numbercrunching_newts","observing_otters","plotting_pumas","quantifying_quokkas","regression_rhinos","sampling_seahorses","trending_turtles","zscore_zebras")
   
@@ -16,7 +16,7 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   }
   
   if(is.null(group_name)){
-    stop('\nPLEASE SUPPLY YOUR GROUP NAME.\nIf you are completing the assignment individually, then use your exam number and set individual=TRUE')
+    stop(paste0("\nPlease supply a valid group name.\n\nIf you are completing the assignment individually, then use your exam number and set individual = TRUE.\n\navailable group names are:\n\n", paste0(paste0('"',groups_2324, '"'),collapse=' , ')))
   }
   
   if(individual){
