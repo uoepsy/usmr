@@ -56,6 +56,13 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   # EMI = ifelse(EMI == 0, "??","??") make this flipped (so they have to recode)
   
   
+  # influential
+  # cleaning stuff
+  # no joining
+  # EMI - flip
+  # fe ~ opsys unequal vars
+  
+  
   data.frame(
     name = sample(pptnames, N),
     age,opsys=os,freq_emu,em_cat=factor(em_cat),ERS,EMI
