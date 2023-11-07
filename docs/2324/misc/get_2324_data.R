@@ -7,10 +7,10 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   
   .groupseed <- function(gname){
     gseed = gsub("[\\d]+", "", gname, perl=TRUE) |> 
-        strsplit(split="") |> 
-        unlist() |> 
-        sapply(X=_, function(c) which(letters==c)) |>
-        unlist() |> sum()
+      strsplit(split="") |> 
+      unlist() |> 
+      sapply(X=_, function(c) which(letters==c)) |>
+      unlist() |> sum()
     #cat(gseed^3)
     set.seed(gseed^3)
   }
@@ -39,35 +39,34 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   }
   
   N=232
-  
-  age = round(runif(N,14,59))
+  age = round(runif(N,14,round(runif(1,55,65))))
   os = sample(c("android","apple"),N,replace=TRUE)
-  freq_emu = rpois(N, lambda = exp(scale(age*-1 + (os=="apple")*1)))
+  freq_emu1 = rpois(N, lambda = exp(scale(age*-1.3)+1))
+  freq_emu2 = rpois(N, lambda = exp(scale(age*-1.3)+
+                                      runif(1,1,1.48)))
+  freq_emu = ifelse(os=="apple",freq_emu2,freq_emu1)
+  
+  
   em_cat = sample(c("loudly crying face","slightly smiling face","thumbs up"),N,replace=TRUE)
   # model.matrix(lm(rnorm(N)~freq_emu + age * em_cat)) |> colnames()
-  ERS = model.matrix(lm(rnorm(N)~freq_emu + scale(age) * em_cat)) %*% 
-    c(0,1,-1,0,0,4,4) + 
-    rnorm(N,0,4)
+  EVS = model.matrix(lm(rnorm(N)~freq_emu + scale(age) * em_cat)) %*% 
+    c(0,1,-2,0,0,4,4) + 
+    rnorm(N,0,5)
   
-  # model.matrix(lm(rnorm(N)~freq_emu + scale(age) + em_cat)) |> colnames()
-  EMI_lp = model.matrix(lm(rnorm(N)~freq_emu + scale(age) + em_cat)) %*% 
-    c(-1,-4,3,6,2)
-  EMI = rbinom(N,1,prob=plogis(scale(EMI_lp)))
-  # EMI = ifelse(EMI == 0, "??","??") make this flipped (so they have to recode)
-  
-  
-  # influential
-  # cleaning stuff
-  # no joining
-  # EMI - flip
-  # fe ~ opsys unequal vars
-  
+  # model.matrix(lm(rnorm(N)~ os + freq_emu + scale(age) + em_cat)) |> colnames()
+  EMI_lp = model.matrix(lm(rnorm(N)~ os + scale(freq_emu) + scale(age) + em_cat)) %*% 
+    c(-.5,1,-1,1.2,1.1,.4)
+  #hist(plogis(EMI_lp))
+  EMI = rbinom(N,1,prob=plogis(EMI_lp))
+  EI = ifelse(EMI == 0, "accurate","inaccurate")
+  #glm(EMI~os+freq_emu+age+em_cat,family=binomial) |> summary()
   
   data.frame(
     name = sample(pptnames, N),
-    age,opsys=os,freq_emu,em_cat=factor(em_cat),ERS,EMI
+    age,opsys=os,freq_emu,em_cat=factor(em_cat),EVS,EI
   )
 }
+
 
 
  
