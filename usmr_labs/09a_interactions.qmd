@@ -24,7 +24,7 @@ contcont <- tibble(
   wellbeing = 20 + (scale(y)[,1]*5)
 ) %>% mutate(x1=partner_time,x2=relationship_qual,y=wellbeing)
 
-partnertime <- contcont %>%
+ptdat <- contcont %>%
   select(partner_time,relationship_qual,wellbeing)
 concont <- contcont %>%
   select(x1,x2,y)
@@ -53,7 +53,7 @@ catcat <- tibble(
   candybars = y
 )
 candy <- catcat %>% select(anonymity, asgroup, candybars)
-# write_csv(partnertime, "../../data/usmr_partnertime.csv")
+# write_csv(ptdat, "../../data/usmr_partnertime.csv")
 # write_csv(candy, "../../data/usmr_candy.csv")
 # write_csv(airpol, "../../data/usmr_airpol.csv")
 ```
@@ -61,15 +61,14 @@ candy <- catcat %>% select(anonymity, asgroup, candybars)
 
 # Holding Constant...
 
-So far, when we've been using multiple linear regression models, all our coefficients have been being interpreted as the "change in $y$ for a 1-unit change in $x$ "while holding constant" the other predictors in the model.   
+So far, when we've been using multiple linear regression models, all our coefficients have been being interpreted as the "change in $y$ for a 1-unit change in $x$ **while holding constant** the other predictors in the model".   
 
 Consider a model with the following structure:    
-
 $$
 y = b_0 + b_1 \cdot x_1 + b_2 \cdot x_2 + \epsilon
 $$
 
-When we _fit_ this model to our data, what we get out is some _estimated_ values for the coefficients $b_0$, $b_1$, and $b_2$:  
+When we fit this model structure to some data, we get out our estimated values for the coefficients $b_0$, $b_1$, and $b_2$, e.g.,:   
 
 ```{r}
 mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
@@ -85,26 +84,65 @@ x2          -0.64756    0.19959  -3.244  0.00217 **
 
 The coefficient we get out for $x_1$ tells us that the model estimates that $y$ will increase by 0.17 for every increase of 1 unit in $x_1$, _provided that we hold $x_2$ constant._  
 
-What this means is that whatever value $x_2$ is, provided it stays the same, a one unit increase in $x_1$ is associated with a $b_1$ change in $y$.  
+So for _any_ value of $x_2$, a one unit increase in $x_1$ is associated with a $b_1$ change in $y$, provided that $x_2$ value stays as it is.  
 
-As it happens, we can use `plot_model` to show us the how $y$ changes with $x_1$ _for some specific values of $x_2$_.  
-Below, the three lines show the association between $y$ and $x_1$ when:  
-  
-- $x_2 = 3$ (red line)
-- $x_2 = 12$ (blue line)
-- $x_2 = 20$ (green line)
-
-As we can see, the slope of $y$ on $x_1$ is the same.  
+Let's use our primate brains data for a more realistic example: 
 
 ```{r}
-library(sjPlot)
-# plot the effect of x1, at 3 specific values of x2
-plot_model(mymodel, type = "eff", terms=c("x1", "x2 [3, 12, 20]"))
+#| output: false
+braindata <- read_csv("https://uoepsy.github.io/data/usmr_braindata.csv")
+braindata <- braindata %>% mutate(
+  isMonkey = ifelse(species != "Human", "YES", "NO")
+)
+
+monkeymod <- lm(mass_brain ~ age + isMonkey, data = braindata)
+summary(monkeymod)
+```
+```
+...
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.668308   0.050478  13.240 1.57e-14 ***
+age         -0.004081   0.002337  -1.746   0.0904 .  
+isMonkeyYES -0.246933   0.044152  -5.593 3.54e-06 ***
+---
 ```
 
+Our coefficient for `isMonkeyYES` coefficient is the estimated difference in brain mass between a human and a monkey **of the same age**.  
+Similarly, our coefficient for `age` is the estimated change in brain mass for every additional year of age, provided we are not comparing a monkey to a human. 
 
-:::frame
-__Example__
+The idea of this can be seen on the plot in @fig-constplot. Imagine 4 different participants in our data. The coefficient for `isMonkeyYES` is the difference between A and C, or the difference between B and D. It doesn't matter where on the x-axis we go, it is the _vertical_ distance between the two lines.  
+The `age` coefficient is the comparison between A and B, or between C and D.  
+
+```{r}
+#| label: fig-constplot
+#| fig-cap: "multiple regression model of brain mass predicted by age and isMonkey. The age coefficient is the slope of the lines, and the isMonkey coefficient is the difference in their heights"
+#| echo: false
+mm = data.frame(
+  who = c("A\nHuman age 10","C\nMonkey age 10","B\nHuman age 11","D\nMonkey age 11"),
+  age = c(10,10,11,11),
+  agelab = c(6,6,16,16),
+  isMonkey=rep(c("NO","YES"),2)
+) |> broom::augment(monkeymod, newdata=_)
+
+expand_grid(
+  age = min(braindata$age):max(braindata$age),
+  isMonkey = c("NO","YES")
+) |>
+  broom::augment(monkeymod, 
+                 newdata = _, 
+                 interval="confidence") |>
+  ggplot(aes(x=age,y=.fitted))+
+  geom_line(aes(col=isMonkey))+
+  geom_ribbon(aes(col=isMonkey,fill=isMonkey,
+                  ymin=.lower,ymax=.upper), alpha=.2)+
+  geom_point(data=mm)+
+  geom_segment(data=mm,aes(x=agelab,xend=age,y=.fitted-.1,yend=.fitted))+
+  geom_label(data=mm,aes(x=agelab,y=.fitted-.1,label=who), fill="white")
+```
+
+::: {.callout-note collapse="true"}
+#### *another* example (if you want one)
 
 We're interested in estimating the association between BMI and cognition, after controlling for differences due to age.  
 
@@ -177,7 +215,7 @@ Below are some examples of this idea, where the explanatory variables (the predi
 Variables:  
 
 - __Outcome:__ Wellbeing (questionnaire score ranging from 0 to 32)
-- __Continuous Predictor:__ Time spent with partner (hours per week)  
+- __Continuous Predictor:__ Time spent with partner (hours per day)  
 - __Continuous Predictor:__ Relationship Quality (rating from 0 to 100)  
 
 
@@ -332,7 +370,7 @@ We can see in @fig-i.contcat that cognition decreases as air pollution increases
 
 In the model:  
 $$
-\text{Cognition} = b_0 + b_1 \cdot\text{air pollution} + b_2\cdot\text{APOE4+} + b_3\cdot\text{air pollution} \cdot \text{APOE4+}
+\text{Cognition} = b_0 + b_1 \cdot\text{air_poll} + b_2\cdot\text{APOE4+} + b_3\cdot\text{air_poll} \cdot \text{APOE4+}
 $$
 
 The interaction term $b_3$ is the estimated adjustment made to the slope of cogition across air pollution to move from one group to the other. e.g. the slope for the APOE4-positive group is equal to the slope of the APOE4-negative group _plus the interaction term_.
@@ -410,7 +448,23 @@ _"Except in special circumstances, a model including a product term for interact
 
 # Interpretation
 
-When we include an interaction term in our model, we are saying that two effects on the outcome are _dependent upon_ one another. This means that with an interaction in the model `lm(y ~ x1 + x2 + x1:x2)` we can no longer talk about the "effect of $x_1$ on $y$_'holding $x_2$ constant'_". Instead we have to talk about _conditional effects_ - e.g. the effect of $x_1$ _at a **specific** value_ of $x_2$.    
+When we include an interaction term in our model, we are saying that two effects of the two predictors on the outcome are _dependent upon_ one another. This means that with an interaction in the model `lm(y ~ x1 + x2 + x1:x2)` we can no longer talk about the "effect of $x_1$ on $y$_'holding $x_2$ constant'_". Instead we have to talk about _conditional effects_ - e.g. the effect of $x_1$ _at a **specific** value_ of $x_2$.   
+
+When we fit a model with an interaction in R, we get out coefficients for both predictors, and for the interaction. The coefficients for each individual predictor reflect the effect on the outcome _when the other predictor is zero_. 
+
+```
+lm(formula = y ~ x1 * x2, data = df)
+...
+...
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)  
+(Intercept)  ...        ....       ...      ...  
+x1           ...        ....       ...      ...  
+x2           ...        ....       ...      ...  
+x1:x2        ...        ....       ...      ...  
+---
+```
+
 
 :::sticky
 
@@ -418,54 +472,44 @@ The individual coefficients for each predictor that is involved in an interactio
 
 :::
 
- 
 
-For example:  
-```{r}
-#| echo: false
-set.seed(933)
-tibble(
-  c1 = rnorm(100),
-  x1 = rnorm(100),
-  x2 = rnorm(100),
-  y = 70 + 3*c1 + 3*x1 + 2*x2 + (-1.7*x1*x2) + rnorm(100,0,10),
-  
-) -> df
-m <- lm(y~x1+x2+x1:x2,df)
-.pp(summary(m), l=list(3,9:14))
-```
-
-These coefficients are interpreted, in turn as:  
+These coefficients can be interpreted, in turn as:  
 
 | Coefficient      | Interpretation |
 | ----------- | ----------- |
-| `(Intercept)` | the estimated $y$ when all predictors ($x_1$ and $x_2$) are zero is `r round(coef(m)[1],2)` |
-| `x1`  | **when $x_2$ is zero,** a 1 unit increase in $x_1$ is associated with a `r round(coef(m)[2],2)` change in $y$ |
-| `x2`  | **when $x_1$ is zero,** a 1 unit increase in $x_2$ is associated with a `r round(coef(m)[3],2)` change in $y$. |
-| `x1:x2`  | as $x_2$ increases by 1, the association between $x_1$ and $y$ changes by `r round(coef(m)[4],2)`<br>_**or**_<br>as $x_1$ increases by 1, the association between $x_2$ and $y$ changes by `r round(coef(m)[4],2)` |
+| `(Intercept)` | the estimated $y$ when all predictors ($x_1$ and $x_2$) are zero is [*estimate*] |
+| `x1`  | **when $x_2$ is zero,** a 1 unit increase in $x_1$ is associated with a [*estimate*] change in $y$ |
+| `x2`  | **when $x_1$ is zero,** a 1 unit increase in $x_2$ is associated with a [*estimate*] change in $y$. |
+| `x1:x2`  | as $x_2$ increases by 1, the association between $x_1$ and $y$ changes by [*estimate*]<br>_**or**_<br>as $x_1$ increases by 1, the association between $x_2$ and $y$ changes by [*estimate*] |
 
 
-`r optbegin("What if there are other things in the model too?", olabel=FALSE)`
+
+
+
+::: {.callout-note collapse="true"}
+#### What if there are other things in the model too?
+
 Note that the interaction `x1:x2` changes how we interpret the individual coefficients for `x1` and `x2`.  
 
-It does __*not*__ change how we interpret coefficients for other predictors that might be in our model.  
+It does __*not*__ change how we interpret coefficients for other predictors that might be in our model. For variables that **aren't** involved in the interaction term, these are still held constant.  
 
 For example, suppose we _also_ had another predictor $c_1$ in our model: 
-```{r}
-#| echo: false
-m <- lm(y~c1+x1+x2+x1:x2,df)
-.pp(summary(m), l=list(3,9:15))
+```
+lm(y ~ c1 + x1 + x2 + x1:x2)
 ```
 
 | Coefficient      | Interpretation |
 | ----------- | ----------- |
-| `(Intercept)` | the estimated $y$ when all predictors ($c_1$, $x_1$ and $x_2$) are zero is `r round(coef(m)[1],2)` |
-| `c1` | a 1 unit increase in $c_1$ is associated with a `r round(coef(m)[2],2)` increase in $y$, holding constant all other variables in the model ($x_1$ and $x_2$) |
-| `x1`  | holding $c_1$ constant, **when $x_2$ is zero,** a 1 unit increase in $x_1$ is associated with a `r round(coef(m)[3],2)` change in $y$ |
-| `x2`  | holding $c_1$ constant, **when $x_1$ is zero,** a 1 unit increase in $x_2$ is associated with a `r round(coef(m)[4],2)` change in $y$. |
-| `x1:x2`  | holding $c_1$ constant, as $x_2$ increases by 1, the association between $x_1$ and $y$ changes by `r round(coef(m)[5],2)`<br>_**or**_<br>holding $c_1$ constant, as $x_1$ increases by 1, the association between $x_2$ and $y$ changes by `r round(coef(m)[5],2)` |
+| `(Intercept)` | the estimated $y$ when all predictors ($c_1$, $x_1$ and $x_2$) are zero is [*estimate*] |
+| `c1` | a 1 unit increase in $c_1$ is associated with a [*estimate*] increase in $y$, holding constant all other variables in the model ($x_1$ and $x_2$) |
+| `x1`  | holding $c_1$ constant, **when $x_2$ is zero,** a 1 unit increase in $x_1$ is associated with a [*estimate*] change in $y$ |
+| `x2`  | holding $c_1$ constant, **when $x_1$ is zero,** a 1 unit increase in $x_2$ is associated with a [*estimate*] change in $y$. |
+| `x1:x2`  | holding $c_1$ constant, as $x_2$ increases by 1, the association between $x_1$ and $y$ changes by [*estimate*]<br>_**or**_<br>holding $c_1$ constant, as $x_1$ increases by 1, the association between $x_2$ and $y$ changes by [*estimate*] |
 
-`r optend()`
+
+:::
+
+
 
 <br><br>
 
@@ -477,8 +521,10 @@ m <- lm(y~c1+x1+x2+x1:x2,df)
 > The amount to which spending time with my partner influences my wellbeing _depends on_ the quality of our relationship.  
 
 ```{r}
-partnertime <- read_csv("https://uoepsy.github.io/data/usmr_partnertime.csv")
-eg1mod <- lm(wellbeing ~ partner_time * relationship_qual, data = partnertime)
+# data
+ptdat <- read_csv("https://uoepsy.github.io/data/usmr_partnertime.csv")
+# model
+eg1mod <- lm(wellbeing ~ partner_time * relationship_qual, data = ptdat)
 summary(eg1mod)
 ```
 
@@ -495,7 +541,9 @@ summary(eg1mod)
 > The influence of air-pollution on cognitive functioning _depends on_ your genetic status.  
 
 ```{r}
+# data
 airpol <- read_csv("https://uoepsy.github.io/data/usmr_airpol.csv")
+# model
 eg2mod <- lm(mmse ~ aqpi * apoe4, data = airpol)
 summary(eg2mod)
 ```
@@ -513,7 +561,9 @@ summary(eg2mod)
 > The influence of being anonymous on childrens' greedy behaviours _depends on_ if they are alone or part of a group.
 
 ```{r}
+# data
 candy <- read_csv("https://uoepsy.github.io/data/usmr_candy.csv")
+# model
 eg3mod <- lm(candybars ~ anonymity * asgroup, data = candy)
 summary(eg3mod)
 ```
@@ -562,14 +612,24 @@ We have seen lots of 3-dimensional plots above to try and help in building our i
 
 What we therefore need to do is find ways to represent these relationships in 2-dimensional plots. This is slightly different depending on the type of variables we are dealing with. 
 
-- For a continuous $\times$ categorical interaction, we can plot the association of the continuous predictor with the outcome for each level of the categorical variable. 
-- For a continuous $\times$ continuous interaction, we can plot the association of one predictor at some judiciously chosen values of the other (e.g. at the min, mean and max, or at -1 SD, mean, and +1 SD).  
-- For a categorical $\times$ categorical interaction, we can plot the various group means, with optional dotted^[dotted is a good way to indicate that there is no data across that line - it is linking two categories] lines to illustrate the non-parallelism   
+- For a continuous $\times$ categorical interaction, we can plot the association of the continuous predictor with the outcome *for each level* of the categorical variable. 
+- For a continuous $\times$ continuous interaction, we can plot the association of one predictor *at some judiciously chosen values* of the other (e.g. at the min, mean and max, or at -1 SD, mean, and +1 SD).  
+- For a categorical $\times$ categorical interaction, we can plot the various estimated group means, with optional dotted^[dotted is a good way to indicate that there is no data across that line - it is linking two categories. Martin disagrees and thinks you should never have lines] lines to illustrate the non-parallelism   
 
-Fortunately, we can do a lot of this with a variety of useful packages, such as:  
 
-- From the **sjPlot** package: `plot_model(model, type = "int")` or `plot_model(model, type = "eff", terms = c("x1","x2"))  
-- From the **interactions** package: `interact_plot(model, pred = "x1", modx = "x2")`, and `cat_plot()`    
+::: {.callout-note collapse="true"}
+#### optional helper packages
+
+We can make these sort of plots very easily using handy packages that are designed to make our lives easier. The _big_ downside is that when we reliance on these packages will a) make it harder to customise plots, b) make it harder to troubleshoot when things go wrong, and c) stop us frmo having to *think* (and thinking is always good!).  
+
+Use with caution:  
+
+- From the **sjPlot** package: `plot_model(model, type = "int")` or `plot_model(model, type = "eff", terms = c("x1","x2"))`  
+- From the **interactions** package: `interact_plot(model, pred = "x1", modx = "x2")`, and `cat_plot()` for categorical interactions.     
+
+
+:::
+
 
 
 :::panelset
@@ -580,25 +640,56 @@ Fortunately, we can do a lot of this with a variety of useful packages, such as:
 > The amount to which spending time with my partner influences my wellbeing _depends on_ the quality of our relationship.  
 
 Plotting continuous by continuous interactions requires choosing a set of values for one of our predictors, at which we plot the slope of the other.  
-By default, the `plot_model` function chooses to show `y~x1` when x2 is at its min and max.  
-The interactions package defaults to showing the `y~x1` relationship when x2 is at -1 SD below the mean, at the mean, and +1 SD above the mean.  
+
+Here, we could choose to plot the slope of `wellbeing ~ partner_time` for the mean `relationship_qual`, and for 1 SD above and below that mean.  
 
 ```{r}
-library(sjPlot)
-library(interactions)
-library(patchwork)
-partnertime <- read_csv("https://uoepsy.github.io/data/usmr_partnertime.csv")
-eg1mod <- lm(wellbeing ~ partner_time * relationship_qual, data = partnertime)
+#| code-fold: true
+# data
+ptdat <- read_csv("https://uoepsy.github.io/data/usmr_partnertime.csv")
+# model
+eg1mod <- lm(wellbeing ~ partner_time * relationship_qual, data = ptdat)
 
-plot_model(eg1mod, type = "int") / 
+# plot data
+plotdat <- expand_grid(
+  partner_time = 0:13, #min to max of sample
+  relationship_qual = c(
+    mean(ptdat$relationship_qual)-sd(ptdat$relationship_qual),
+    mean(ptdat$relationship_qual),
+    mean(ptdat$relationship_qual)+sd(ptdat$relationship_qual)
+  )
+)
+# plot
+broom::augment(eg1mod, newdata = plotdat, interval="confidence") |>
+  ggplot(aes(x=partner_time, y=.fitted, group=relationship_qual))+
+  geom_line(aes(col=relationship_qual))+
+  geom_ribbon(aes(ymin=.lower,ymax=.upper,fill=relationship_qual),
+              alpha=.2)
+
+```
+
+::: {.callout-tip collapse="true"}
+#### optional helper packages
+
+The interactions package defaults to showing the y~x1 relationship when x2 is at -1 SD below the mean, at the mean, and +1 SD above the mean.  
+```{r}
+library(interactions)
 interact_plot(eg1mod, pred = "partner_time", modx = "relationship_qual", interval = TRUE)
 ```
 
-We can change these manually, for instance. For instance, to make `plot_model` show the association when relationship quality is zero, when it is 50, and when it is 100, we could use: 
+The __sjPlot__ package can do this too, but wil default to showing it at the min and max of the other predictor.  
+```{r}
+library(sjPlot)
+plot_model(eg1mod, type="int")
+```
+We can change these manually. For instance, to make `plot_model` show the association when relationship quality is zero, when it is 50, and when it is 100, we could use: 
 ```{r}
 #| eval: false
 plot_model(eg1mod, type = "eff", terms=c("partner_time","relationship_qual [0, 50, 100]"))
 ```
+
+:::
+
 
 :::
 :::panel
@@ -609,12 +700,36 @@ plot_model(eg1mod, type = "eff", terms=c("partner_time","relationship_qual [0, 5
 This is the most straightforward type of interaction to visualise, as there are only a set number of values that one of the variables can take, meaning only a finite number of lines we need to draw:  
 
 ```{r}
+#| code-fold: true
+# data
 airpol <- read_csv("https://uoepsy.github.io/data/usmr_airpol.csv")
+# model
 eg2mod <- lm(mmse ~ aqpi * apoe4, data = airpol)
 
-plot_model(eg2mod, type = "int") / 
-interact_plot(eg2mod, pred = "aqpi", modx = "apoe4", interval = TRUE)
+# plot data
+plotdat <- expand_grid(
+  aqpi = 0:500,
+  apoe4 = c("neg","pos")
+)
+# plot
+broom::augment(eg2mod, newdata = plotdat, interval="confidence") |>
+  ggplot(aes(x=aqpi, y = .fitted, 
+             col = apoe4, fill = apoe4)) + 
+  geom_line() +
+  geom_ribbon(aes(ymin=.lower,ymax=.upper), alpha=.3)
+
 ```
+
+
+::: {.callout-tip collapse="true"}
+#### optional helper packages
+
+```{r}
+p1 <- sjPlot::plot_model(eg2mod, type = "int")
+p2 <- interactions::interact_plot(eg2mod, pred = "aqpi", modx = "apoe4", interval = TRUE)
+p1 / p2
+```
+:::
 
 
 :::
@@ -623,15 +738,41 @@ interact_plot(eg2mod, pred = "aqpi", modx = "apoe4", interval = TRUE)
 
 > The influence of being anonymous on childrens' greedy behaviours _depends on_ if they are alone or part of a group.
 
-For these types of interactions (between categorical variables), plotting the estimates from our model is best done as our set of group means. This what functions like `plot_model()` and `cat_plot()` will do!  
-
+For these types of interactions (between categorical variables), plotting the estimates from our model is best done as our set of estimated group means.   
 ```{r}
+#| code-fold: true
+# data
 candy <- read_csv("https://uoepsy.github.io/data/usmr_candy.csv")
+# model
 eg3mod <- lm(candybars ~ anonymity * asgroup, data = candy)
 
-plot_model(eg3mod, type = "int") / 
-cat_plot(eg3mod, pred = "anonymity", modx = "asgroup", interval = TRUE)
+# plot data
+plotdat <- expand_grid(
+  anonymity = c("anonymous","identifiable"),
+  asgroup = c("alone","group")
+)
+
+# plot
+broom::augment(eg3mod, newdata=plotdat, interval="confidence") |>
+  ggplot(aes(x = anonymity, col = asgroup)) + 
+  geom_pointrange(aes(y=.fitted, ymin=.lower, ymax=.upper),
+                  position = position_dodge(width=.2))
 ```
+
+
+::: {.callout-tip collapse="true"}
+#### optional helper packages
+
+```{r}
+p1 <- sjPlot::plot_model(eg3mod, type = "int") 
+p2 <- interactions::cat_plot(eg3mod, pred = "anonymity", modx = "asgroup", interval = TRUE)
+
+p1 / p2
+```
+
+
+:::
+
 
 
 ```{r}
@@ -820,19 +961,22 @@ p1 + theme_bw(base_size = 12)
 p2 + theme_bw(base_size = 12)
 ```
 
-:::sticky
-__Mapping model estimates to model plots__  
+<!-- :::sticky -->
+<!-- __Mapping model estimates to model plots__   -->
 
-To help with interpretation of the estimated coefficients from a model, a very useful exercise is to try and map them to what we see in our model plots (as seen above).  
+<!-- To help with interpretation of the estimated coefficients from a model, a very useful exercise is to try and map them to what we see in our model plots (as seen above).   -->
 
-As models get more complex, there is a very important distinction to make between plotting the data, and plotting the model estimates. Whereas previously we could plot a simple regression `lm(y~x)` by plotting the _data_ and adding `geom_smooth(method=lm)`, now that we are working with multiple regression in order to visualise our results we should think of it as plotting the _model_ (and we can add the data if desired).  
+<!-- As we've talked about already - as models get more complex, there is a very important distinction to make between plotting the data and plotting the model estimates.   -->
+<!-- Whereas previously we could plot a simple regression `lm(y~x)` by plotting the _data_ and adding `geom_smooth(method=lm)`, now that we are working with multiple regression in order to visualise our results we should think of it as plotting the _model_ (and we can add the data if desired).   -->
 
-:::
+<!-- ::: -->
 
 
 <div class="divider div-transparent div-dot"></div>
 
-# Optional Extra: Getting non-linear  
+
+::: {.callout-caution collapse="true"}
+#### Optional Extra: Getting non-linear  
 
 You might be noticing that when we start talking about our regression surface "twisting" (e.g. in @fig-i.contcont), we're starting to see curves in our model.  
 
@@ -886,15 +1030,16 @@ It is estimating a persons' height as:
 So for a 4 year old, the estimated height is: 
 
 $$
-height = `r coef(mod2)[1] %>% round(2)` + (`r coef(mod2)[1] %>% round(2)` \times 4) + (`r coef(mod2)[1] %>% round(2)` \times 4^2) = `r round(coef(mod2),1) %*% c(1,4,16)`
+height = `r coef(mod2)[1] %>% round(2)` + (`r coef(mod2)[2] %>% round(2)` \times 4) + (`r coef(mod2)[3] %>% round(2)` \times 4^2) = `r round(coef(mod2),1) %*% c(1,4,16)`
 $$
 and for a 10 year old, it is:  
 
 $$
-height = `r coef(mod2)[1] %>% round(2)` + (`r coef(mod2)[1] %>% round(2)` \times 10) + (`r coef(mod2)[1] %>% round(2)` \times 10^2) = `r round(coef(mod2),1) %*% c(1,10,100)`
+height = `r coef(mod2)[1] %>% round(2)` + (`r coef(mod2)[2] %>% round(2)` \times 10) + (`r coef(mod2)[3] %>% round(2)` \times 10^2) = `r round(coef(mod2),1) %*% c(1,10,100)`
 $$
-We can see how the quadratic "$\text{age}^2$ term has a larger effect as age increases, capturing the plateauing of heights as children get older.  
+We can see how the quadratic "$\text{age}^2$ term has a larger (negative) effect as age increases (for the 4 year old it makes the estimated height $`r coef(mod2)[3] %>% round(2)` \times 4^2 = `r round(coef(mod2)[3]*4^2,1)`$ lower, and for the 10 year old it makes the estimated height $`r coef(mod2)[3] %>% round(2)` \times 10^2 = `r round(coef(mod2)[3]*10^2,1)`$ lower). This captures the plateauing of heights as children get older.  
 
+:::
 
 <!-- # Optional: further exploration -->
 
