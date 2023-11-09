@@ -1,0 +1,100 @@
+---
+title: "Exercises: Interactions!"
+params: 
+    SHOW_SOLS: FALSE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+qcounter <- function(){
+  if(!exists("qcounter_i")){
+    qcounter_i <<- 1
+  }else{
+    qcounter_i <<- qcounter_i + 1
+  }
+  qcounter_i
+}
+```
+
+# The monkeys are back!  
+
+```{r}
+#| include: false
+ss = runif(1,1e3,1e6)
+set.seed(ss)
+df = 
+  expand_grid(
+    obj_type = 0:1,
+    obj_colour = 0:2,
+    obj_size = 0:2,
+    n = 1:12
+  ) |> select(-n) |>
+  mutate(
+    age = round(runif(n(),1,21) + 4*obj_type),
+    species = sample(c("macaque","capuchin"), n(), T)
+  )
+xm = model.matrix(lm(rnorm(nrow(df)) ~ age + obj_type + obj_size * species,df))
+colnames(xm)
+df$exploration_time = xm %*% c(14,-.2, 4.5, -.5, -3, -2) + rnorm(nrow(df),0,3.5)
+
+df$exploration_time = round(df$exploration_time[,1],1)
+# df |> mutate(adult=ifelse(age>8,1,0)) |> pairs()
+
+df <- df |> select(age,species,obj_type,obj_colour, obj_size,exploration_time) |>
+  mutate(
+    obj_type = factor(obj_type, labels=c("soft","mechanical")),
+    obj_colour = factor(obj_colour, labels=c("red","green","blue")),
+    obj_size = map_dbl(obj_size, ~30+round(rnorm(1,.*20,11.5)))
+    #obj_size = factor(obj_size, labels=c("small","medium","large")),
+  )
+
+df$exploration_time <- pmax(0,df$exploration_time)
+#df <- slice_sample(df,prop=.95)
+
+somenames = read.table("https://artofmemory.com/files/forum/947/initials.txt",header=F,sep=",")
+df$name = sample(somenames$V2, nrow(df))
+df <- df |> relocate(name)
+
+mctoys <- df
+#write_csv(monkeytoys2,"../../data/maccaptoys.csv")
+
+```
+
+
+
+:::frame
+__Data: maccaptoys.csv__  
+
+So far, we have analysed the data for two (fake) studies of the inquisitive nature of monkeys. Initially ([week 5 exercises](05_ex.html#monkey-exploration){target="_blank"}), Liu, Hajnosz & Li (2023) investigated age differences in exploration of novel objects, and found that older monkeys spend on average less time playing with a novel object than their younger counterparts (we looked at this with both with the linear effect of age in years, and by comparing adults to juveniles). Following this Liu, Hajnosz, Xu & Li (2023) wanted to see if monkeys showed a preference for different _types_ of object (i.e. ones with moving parts vs ones that are soft). They found that, after accounting for differences due to age, monkeys showed a significant preference for toys with moving parts in comparison to soft toys.  
+
+In our next study, Hajnosz & Xu (2023) are asking for our help with a bigger study, of `r nrow(df)` monkeys. They are interested in whether the preference for mechanical toys over soft toys is different for different species of monkey, so they have re-run the same experiment on `r sum(grepl("cap",df$species))` Capuchin monkeys and `r sum(grepl("mac",df$species))` Macaques.  
+
+The aim of this study is to investigate the following question:  
+
+> Are preferences between soft toys vs toys with moving parts different for different species of monkey?  
+
+The data is available at [https://uoepsy.github.io/data/maccaptoys.csv](https://uoepsy.github.io/data/maccaptoys.csv){target="_blank"} and contains the variables described in @tbl-maccaptoys
+```{r}
+#| label: tbl-maccaptoys
+#| eval: false
+#| tbl-cap: "Data dictionary for maccaptoys.csv"
+tibble(
+  variable = names(mctoys),
+  description = c("Monkey Name","Age of monkey in years", "Type of novel object given (mechanical / soft)","Main colour of object (red / green / blue)","Size of object in cm (length of largest dimension of the object)","Time (in minutes) spent exploring the object")
+) |>
+  gt::gt()
+```
+
+:::
+
+
+# 
