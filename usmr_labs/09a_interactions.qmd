@@ -301,6 +301,33 @@ What this is doing is saying that our outcome $y$ is predicted by:
 
 To provide a visual intuition and build on how we have been thinking of multiple regression upto this point, when we have two predictors that interact, our regression surface is no longer flat, but _twists_. This is because the slope along values of $x_1$ _changes_ as we move up $x_2$:   
 
+
+::: {.callout-caution collapse="true"}
+#### why is it multiplication?  
+
+If we think about the simple additive model (additive = **without** the interaction), then what we're saying is that the effect of $x_1$ on $y$ is simply $b_1$, which is a _constant_ (i.e. just a single number).  
+  
+$$
+y = b_0 + \underbrace{b_1}_{\text{effect}\\ \text{of } x_1} \cdot x_1 + b_2 \cdot x_2 + \epsilon
+$$
+But what we want to model is that "the effect of $x_1$ _depends_ on $x_2$", so the effect is not just a single constant number, it's more like "some number plus an amount of $x_2$".  
+For "an amount of $x_2$" let's use $b_3 \cdot x_2$:  
+
+$$
+y = b_0 + \underbrace{(\overbrace{b_1}^{\,\,\text{ some}\\ \text{number}} + \overbrace{b_{3} \cdot x_2}^{\text{some amount}\\ \,\,\,\,\,\,\,\,\,\text{of }x_2})}_{\text{effect of } x_1} \cdot x_1 + b_2 \cdot x_2 + \epsilon
+$$
+
+Which really expands out to:  
+
+$$
+y = b_0 + b_1 \cdot x_1 + b_3 \cdot x_2 \cdot x_2 + b_2 \cdot x_2 + \epsilon
+$$
+
+:::
+
+
+
+
 :::panelset
 
 :::panel
@@ -452,7 +479,7 @@ _"Except in special circumstances, a model including a product term for interact
 
 # Interpretation
 
-When we include an interaction term in our model, we are saying that two effects of the two predictors on the outcome are _dependent upon_ one another. This means that with an interaction in the model `lm(y ~ x1 + x2 + x1:x2)` we can no longer talk about the "effect of $x_1$ on $y$_'holding $x_2$ constant'_". Instead we have to talk about _conditional effects_ - e.g. the effect of $x_1$ _at a **specific** value_ of $x_2$.   
+When we include an interaction term in our model, we are saying that two effects of the two predictors on the outcome are _dependent upon_ one another. This means that with an interaction in the model `lm(y ~ x1 + x2 + x1:x2)` we can no longer talk about the "effect of $x_1$ on $y$_'holding $x_2$ constant'_". Instead we have to talk about **marginal effects** - e.g. the effect of $x_1$ _at a **specific** value_ of $x_2$.   
 
 When we fit a model with an interaction in R, we get out coefficients for both predictors, and for the interaction. The coefficients for each individual predictor reflect the effect on the outcome _when the other predictor is zero_. 
 
@@ -471,6 +498,7 @@ x1:x2        ...        ....       ...      ...
 
 
 :::sticky
+**marginal effects when the other predictor is zero**  
 
 The individual coefficients for each predictor that is involved in an interaction are estimated _when the other predictor in the interaction is zero._  
 
@@ -624,9 +652,9 @@ What we therefore need to do is find ways to represent these relationships in 2-
 ::: {.callout-note collapse="true"}
 #### optional helper packages
 
-We can make these sort of plots very easily using handy packages that are designed to make our lives easier. The _big_ downside is that when we reliance on these packages will a) make it harder to customise plots, b) make it harder to troubleshoot when things go wrong, and c) stop us frmo having to *think* (and thinking is always good!).  
+We can make these sort of plots very easily using handy packages that are designed to make our lives easier. The _big_ downsides are that reliance on these packages will a) make it harder to customise plots, b) make it harder to troubleshoot when things go wrong, and c) stop us from having to *think* (and thinking is always good!).  
 
-Use with caution:  
+**Use with caution:**    
 
 - From the **sjPlot** package: `plot_model(model, type = "int")` or `plot_model(model, type = "eff", terms = c("x1","x2"))`  
 - From the **interactions** package: `interact_plot(model, pred = "x1", modx = "x2")`, and `cat_plot()` for categorical interactions.     
@@ -817,7 +845,7 @@ Reporting on interactions is a bit like telling a story. Listing the interpretat
 
 ## Mean Centering
 
-By mean centering a continuous predictor, we change what "0" means. Normally, when we don't have an interaction, this simply changes the intercept value (see [TODO](){target="_blank"}. If we have the interaction `y ~ x1 + x2 + x1:x2`, then mean centering `x1` will make the coefficient for `x2` now represent "the association between $x_2$ and $y$ for someone at the _average_ of $x_1$". 
+By mean centering a continuous predictor, we change what "0" means. Normally, when we don't have an interaction, this simply changes the intercept value (see [8A #centering-and-scaling-predictors](08a_scaling.html#centering-and-scaling-predictors){target="_blank"}). If we have the interaction `y ~ x1 + x2 + x1:x2`, then mean centering `x1` will make the coefficient for `x2` now represent "the association between $x_2$ and $y$ for someone at the _average_ of $x_1$". 
 
 Using one of our examples from throughout this reading, we might mean-center the air-pollution so that we can consider the difference in MMSE scores between APOE4 positive and negative people _at the average air-pollution level_
 
@@ -886,7 +914,7 @@ candy <-
 Once they are factors, we can see the default levels:  
 
 :::: {.columns}
-::: {.column width="40%"}
+::: {.column width="47.5%"}
 ```{r}
 levels(candy$anonymity)
 ```
@@ -894,7 +922,7 @@ levels(candy$anonymity)
 ::: {.column width="5%"}
 <!-- empty column to create gap -->
 :::
-::: {.column width="40%"}
+::: {.column width="47.5%"}
 ```{r}
 levels(candy$asgroup)
 ```
@@ -906,7 +934,6 @@ levels(candy$asgroup)
 This is the original model, with the default levels:  
 ```{r}
 eg3mod <- lm(candybars ~ anonymity * asgroup, data = candy)
-
 coef(eg3mod)
 ```
 
@@ -927,7 +954,7 @@ Again, the model doesn't change, we are simply extracting different bits from it
 
 ::::panelset
 :::panel
-#### Original model visualised
+#### reference level = "anonymous"
 
 ```{r}
 #| echo: false
@@ -943,7 +970,7 @@ p1 <- plot_model(eg3mod, type = "int") +
                 col="orange3", lwd=1,
                 arrow = arrow(length = unit(0.5, "cm"))) +
   geom_segment(x = 1.05, xend = 2.05, y = sum(coef(eg3mod)[c(1,3)]), yend=sum(coef(eg3mod)[c(1,2,3)]), 
-                col="black", lty="dotted", lwd=1) +
+                col="black", lty="dotted", lwd=.5,alpha=.2) +
   
   geom_segment(x = 2.05, xend = 2.05, y = sum(coef(eg3mod)[c(1:3)]), yend=sum(coef(eg3mod)[c(1:4)]), 
                 col="purple", lwd=1,
@@ -960,7 +987,7 @@ p1 + theme_bw(base_size = 12)
 
 :::
 :::panel
-#### anonymity relevelled
+#### reference level = "identifiable"
 
 ```{r}
 #| echo: false
@@ -975,7 +1002,7 @@ p2 <- plot_model(eg3mod, type = "int") +
                 col="orange3", lwd=1,
                 arrow = arrow(length = unit(0.5, "cm"))) +
   geom_segment(x = 2, xend = 1, y = sum(coef(eg3mod_rel)[c(1,3)]), yend=sum(coef(eg3mod_rel)[c(1,2,3)]), 
-                col="black", lty="dotted", lwd=1) +
+                col="black", lty="dotted", lwd=.5, alpha=.2) +
   
   geom_segment(x = 1, xend = 1, y = sum(coef(eg3mod_rel)[c(1:3)]), yend=sum(coef(eg3mod_rel)[c(1:4)]), 
                 col="purple", lwd=1,
@@ -1047,7 +1074,19 @@ modplot <- as.data.frame(effects::effect("condition * grouping",model)) %>%
   theme_classic()
 ```
 
-When we have categorical predictors, and we are using the default contrasts coding in R, then our coefficients for the individual predictors represent moving along between the dots in the plots we can make.   
+
+When we have categorical predictors, our choice of contrasts coding changes the bits that we're getting our of our model.  
+
+Suppose we have a 2x2 design (condition A and B, in groups 1 and 2):  
+
+```{r}
+#| label: fig-sumplot
+#| fig-cap: "Categorical x Categorical Interaction plot"
+#| echo: false
+modplot
+```
+
+When we are using the default contrasts coding (treatment - [see 8B #contrasts](08b_catpred.html#contrasts){target="_blank"}) in R, then our coefficients for the individual predictors represent moving between the dots in @fig-sumplot.  
 
 ```
 Coefficients:
@@ -1059,15 +1098,11 @@ conditionB:grouping2  -2.1627     0.3519  -6.146 1.15e-08 ***
 ---
 ```
 
-The coefficient for condition is the difference between the red circle and the red triangle in @fig-sumplot.  
-The coefficient for grouping is the difference between the red circle and the blue circle in @fig-sumplot.  
+- The intercept is the red circle in @fig-sumplot.  
+- The coefficient for condition is the difference between the red circle and the red triangle in @fig-sumplot.  
+- The coefficient for grouping is the difference between the red circle and the blue circle in @fig-sumplot.  
+- The interaction coefficient is the difference from the slope of the red line to the slope of the blue line.  
 
-```{r}
-#| label: fig-sumplot
-#| fig-cap: "Categorical x Categorical Interaction plot"
-#| echo: false
-modplot
-```
 
 However, when we change to using sum contrasts, we're switching where zero is in our model. So if we change to sum contrasts (here we've changed __both__ predictors to using sum contrasts), then we end up estimating the effect of each predictor averaged across the other.  
 
@@ -1075,14 +1110,16 @@ However, when we change to using sum contrasts, we're switching where zero is in
 Coefficients:
                      Estimate Std. Error t value Pr(>|t|)    
 (Intercept)           1.13577    0.08796  12.912  < 2e-16 ***
-condition1            0.05141    0.08796   0.584     0.56    
-grouping1            -1.36607    0.08796 -15.530  < 2e-16 ***
-condition1:grouping1 -0.54066    0.08796  -6.146 1.15e-08 ***
+conditionB            0.05141    0.08796   0.584     0.56    
+grouping2            -1.36607    0.08796 -15.530  < 2e-16 ***
+conditionB:grouping2 -0.54066    0.08796  -6.146 1.15e-08 ***
 ---
 ```
 
-The coefficient for condition is the difference between the grey X and the grey triangle in @fig-sumplot2.  
-The coefficient for grouping is the difference between the grey X and the blue line in @fig-sumplot2.  
+- The intercept is the grey X in @fig-smmplot2.  
+- The coefficient for condition is the difference between the grey X and the grey triangle in @fig-sumplot2.  
+- The coefficient for grouping is the difference between the grey X and the blue line in @fig-sumplot2.  
+- The interaction coefficient is the difference from the slope of the grey line to slope of the blue line.  
 
 ```{r}
 #| echo: false
@@ -1096,11 +1133,11 @@ modplot +
                col="black") +
   geom_segment(x = 1.5, xend = 1.5, 
                y = coef(model1)[1], yend = sum(coef(model1)[c(1,3)]),
-               lty = "dashed", linewidth = 1, alpha = .05, 
+               lty = "dotted", linewidth = 1, alpha = .05, 
                col="black") +
   geom_segment(x = 1.5, xend = 1.5, 
                y = coef(model1)[1], yend = coef(model1)[1]-coef(model1)[3],
-               lty = "dashed", linewidth = 1, alpha = .05, 
+               lty = "dotted", linewidth = 1, alpha = .05, 
                col="black") +
   geom_point(x=1,
              y=(coef(model1)[1]-coef(model1)[2]),
@@ -1118,12 +1155,101 @@ modplot +
 ```
 
 
+It can get quite confusing when we start switching up the contrasts, but it's all just because we're changing what "zero" means, and what "moving 1" means:  
+
+::::panelset
+:::panel
+#### Treatment contrasts
+
+```{r}
+#| echo: false
+dd = tibble(
+  #lab=letters[1:4],
+  clab=c(1,1,0,0),
+  glab=c(1,0,1,0),
+  lab=paste0("condition: ",clab,"\ngroup: ",glab),
+  condition=c(2,2,1,1),
+  ff=c(
+    #c(1,0,0,0) %*% coef(model1),
+    #c(1,1,0,0) %*% coef(model1),
+    #c(1,0,1,0) %*% coef(model1),
+    c(1,1,1,1) %*% coef(model1),
+    #c(1,-1,0,0) %*% coef(model1),
+    #c(1,0,-1,0) %*% coef(model1),
+    c(1,1,-1,-1) %*% coef(model1),
+    c(1,-1,1,-1) %*% coef(model1),
+    c(1,-1,-1,1) %*% coef(model1)
+  )
+)
+modplot+
+  geom_label(inherit.aes=F,data=dd,aes(x=condition,
+                                       y=ff,label=lab),alpha=.8)+
+  labs(subtitle="y~condition*group with treatment contrasts")
+```
+
+
 
 :::
+:::panel
+#### Sum contrasts
+
+```{r}
+#| echo: false
+dd = tibble(
+  #lab=letters[1:9],
+  clab=c(0,1,0,1,-1,0,1,-1,-1),
+  glab=c(0,0,1,1,0,-1,-1,1,-1),
+  lab=paste0("condition: ",clab,"\ngroup: ",glab),
+  condition=c(1.5,2,1.5,2,1,1.5,2,1,1),
+  ff=c(
+    c(1,0,0,0) %*% coef(model1),
+    c(1,1,0,0) %*% coef(model1),
+    c(1,0,1,0) %*% coef(model1),
+    c(1,1,1,1) %*% coef(model1),
+    c(1,-1,0,0) %*% coef(model1),
+    c(1,0,-1,0) %*% coef(model1),
+    c(1,1,-1,-1) %*% coef(model1),
+    c(1,-1,1,-1) %*% coef(model1),
+    c(1,-1,-1,1) %*% coef(model1)
+  )
+)
+modplot+
+  geom_segment(x = 1, xend = 2, 
+               y = (coef(model1)[1]-coef(model1)[2]), 
+               yend = sum(coef(model1)[c(1,2)]),
+               lty = "dashed", linewidth = 1, alpha = .05, 
+               col="black") +
+  geom_segment(x = 1.5, xend = 1.5, 
+               y = coef(model1)[1], yend = sum(coef(model1)[c(1,3)]),
+               lty = "dotted", linewidth = 1, alpha = .05, 
+               col="black") +
+  geom_segment(x = 1.5, xend = 1.5, 
+               y = coef(model1)[1], yend = coef(model1)[1]-coef(model1)[3],
+               lty = "dotted", linewidth = 1, alpha = .05, 
+               col="black") +
+  geom_point(x=1,
+             y=(coef(model1)[1]-coef(model1)[2]),
+             size = 7, alpha = .05,
+             aes(shape="A")) +
+  geom_point(x=2,
+             y=sum(coef(model1)[1:2]),
+             size = 7, alpha = .05,
+             aes(shape="B")) +
+  geom_point(x=1.5,
+             y=coef(model1)[1],
+             size = 7, alpha = .2,
+             shape=4) + 
+  geom_label(inherit.aes=F,data=dd,aes(x=condition,
+                                       y=ff,label=lab),alpha=.8)+
+  labs(subtitle="y~condition*group with sum contrasts")
+```
+
+:::
+::::
 
 
 
-<div class="divider div-transparent div-dot"></div>
+:::
 
 
 ::: {.callout-caution collapse="true"}
