@@ -112,7 +112,7 @@ hodat |> group_by(alc) |>
 `r qbegin(qcounter())`
 Make a plot of SDMT predicted by hours slept, and colour the points by whether or not the participants had drank alcohol.  
 
-Can you plot a separate `lm` using `geom_smooth` for each group (alcohol v no alcohol)?  
+Can you plot a separate `lm` line on the graph using `geom_smooth` for each group (alcohol v no alcohol)?  
 
 
 ::: {.callout-tip collapse="true"}
@@ -136,7 +136,7 @@ ggplot(hodat, aes(x = hrs_sleep, y = sdmt, col = alc)) +
 `r qbegin(qcounter())`
 Adding a different `geom_smooth(method=lm)` for each group is just fitting a different model to each groups' data - i.e. a slope of `sdmt~hrs_sleep` for the drinkers and a slope for the non-drinkers.  
 
-But we actually want to _test_ if the two slopes are different, and for that we need it all in the one model, and we need the interaction.  
+But we actually want to _test_ if the two slopes are different, and for that we need to create a model which includes the appropriate interaction term.  
 Fit the model to examine whether the association between `hrs_sleep` and `sdmt` is different depending upon alcohol consumption.  
 
 ::: {.callout-tip collapse="true"}
@@ -207,6 +207,8 @@ transmute(
 `r qbegin(qcounter())`
 Construct a plot of the model estimated associations between hours-slept and SDMT for drinkers and non-drinkers.  
 
+Because we have nothing else in our model, this should end up looking exactly the same as our initial plot in Question 2!    
+
 
 ::: {.callout-tip collapse="true"}
 #### Hints
@@ -258,7 +260,7 @@ broom::augment(mod_int, newdata = plotdat, interval="confidence") |>
 `r qbegin(qcounter())`
 No one in our dataset has slept zero hours, and i'm probably not interested in differences between drinkers/non-drinkers who never sleep.  
 
-Refit the model to adjust the intercept to a more meaningful place. Everyone always goes on about 8 hours of sleep being the minimum?  
+Refit the model to adjust the intercept to a more meaningful value. Everyone always goes on about 8 hours of sleep being the minimum?  
 
 How has the interpretation of your coefficient(s) changed?  
 
@@ -492,7 +494,7 @@ Then think about the specific research question and what is needed to test it.
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 ```{r}
-modmonk <- lm(exptime ~ age + obj_size + obj_colour +
+modelmonkey <- lm(exptime ~ age + obj_size + obj_colour +
                 obj_type * species, data = ctmtoys)
 ```
 
@@ -505,7 +507,7 @@ modmonk <- lm(exptime ~ age + obj_size + obj_colour +
 ::: {.callout-tip collapse="true"}
 #### Hints
 
-Think about how the question is worded - there's no "how"/"what" etc, it's just "*are* there differences?" (this is just the same as we did last week, and in [8B #testing-group-differences](08b_catpred.html#testing-group-differences){target="_blank"}).  
+Think about how the question is worded - there's no "how"/"what" etc, it's just "*are* there differences?" (this is just the same as we did last week, and in [8B #testing-group-differences](08b_catpred.html#testing-group-differences){target="_blank"} - try a model comparison?).  
 
 :::
 
@@ -515,15 +517,15 @@ Think about how the question is worded - there's no "how"/"what" etc, it's just 
 Let's compare a reduced model _without_ the interaction to our model _with_ the interaction:  
 
 ```{r}
-modmonk0 <- lm(exptime ~ age + obj_size + obj_colour +
+modelmonkey0 <- lm(exptime ~ age + obj_size + obj_colour +
                 obj_type + species, data = ctmtoys)
 
-anova(modmonk0, modmonk)
+anova(modelmonkey0, modelmonkey)
 ```
 
 ```{r}
 #| include: false
-res<-anova(modmonk0, modmonk)
+res<-anova(modelmonkey0, modelmonkey)
 ```
 
 
@@ -536,21 +538,37 @@ Species significantly differed in the extent to which exploration time varied be
 `r qbegin(qcounter())`
 Now, we want to know __how__ species differ in their preferences for different types of object?  
 
-Note - from our coefficients we always have to answer a question like this by starting with a reference point (i.e. capuchins with mechanical toys). We can change what this reference is though, if we want to.  
+Take a look at the model coefficients.  
+`r qend()`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
+
+```{r}
+summary(modelmonkey)
+```
+
+In our model coefficients, both interaction terms are non-significant.  
+But we just said before that in the previous question that there _is_ an interaction (we got our F test for it).  
+
+The coefficients above are telling us that, compared to the reference species (capuchins), neither macaques nor tamarins show significant differences in their preference for mechanical toys vs soft toys.  
+
+But while macaques and tamarins may not be different from capuchins, it is entirely possible that macaques and tamarins could be different _from each other_?  
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+Model coefficients are always relative to some reference point (i.e. capuchins with mechanical toys).  
+
+1. Change the reference point to Macaques with soft toys.  
+2. Refit the model.
+3. Interpret the coefficients.  
 
 `r qend()`
 `r solbegin(show=TRUE, toggle=params$TOGGLE)`
 
-Here are our model coefficients:  
-```{r}
-summary(modmonk)
-```
+We always get to choose which level we want as a reference. Sometimes, this will be easy because on level represents the norm/status quo. In this context, Macaques is possibly a more useful reference, given that the study description earlier mentioned the previous studies were conducted on Macaques.   
 
-Note that both interaction terms are non-significant.  
-i.e. compared to the reference species (capuchins), neither macaques nor tamarins show significantly differences in the preference for mechanical toys vs soft toys.  
-
-Watch what happens when we re-level to have Macaques as the reference. In this context, Macaques is possibly a more useful reference, given that the study description earlier mentioned the previous studies were conducted on Macaques.   
-While we're there, we can also re-level `obj_type` to have "soft" as the reference (although it doesn't really matter which we use here as it's binary, so we get out the same difference just in reverse)
+Re-levelling `obj_type` to have "soft" as the reference won't make much difference - it will just swap the signs of the coefficients (comparing mechanical to soft, as opposed to comparing soft to mechanical).  
 ```{r}
 ctmtoys <- 
   ctmtoys |>
@@ -571,7 +589,7 @@ These coefficients show us that Macaques tend to spend 3.5 more minutes playing 
 `r qbegin(qcounter())`
 The interpretation of interaction coefficients tends to be quite confusing, and invariably it helps to tie these to a visualisation. We're going to do it manually here, because it's a very useful learning exercise. 
 
-Below are the coefficients from the model, when the reference level for `obj_type` is "soft" and for `species` is "macaque".  
+Below are our coefficients of interest from the model, when the reference level for `obj_type` is "soft" and for `species` is "macaque".  
 ```
 ...
 obj_typemechanical                  3.47317    0.76957   4.513 1.07e-05 ***
@@ -581,17 +599,19 @@ obj_typemechanical:speciescapuchin -1.51124    1.11855  -1.351  0.17816
 obj_typemechanical:speciestamarin  -3.05110    1.11480  -2.737  0.00674 ** 
 ```
 
-Grab a piece of paper, and draw the points for each species & obj_type combination, relative to the reference point. Don't worry about the y-axis (there's lots of other stuff in our model), we're just wanting to plot them relative to macaques with soft toys, so start with the plot below:  
+Grab a piece of paper, and draw the points for each species & obj_type combination, relative to the reference point.  
+Start with the plot below:  
 
 ```{r}
 #| echo: false
-effects::effect("obj_type*species",modmonk) |>
+effects::effect("obj_type*species",modelmonkey) |>
   as.data.frame() |> 
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
   mutate(fit=ifelse(obj_type=="soft",10.2587,NA),p = c(1,1,2,2,0,0)) |>
   arrange(p) |>
   ggplot(aes(x=obj_type, y=fit, col=species))+
   geom_point(size=3)+
-  scale_y_continuous(NULL,limits=c(4,18),breaks=10.26, labels = "macaques\nwith soft toys")
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
 ```
 
 `r qend()`
@@ -603,8 +623,9 @@ So we know that macaques spend 3.5 more minutes with mechanical toys compared to
 
 ```{r}
 #| echo: false
-effects::effect("obj_type*species",modmonk) |>
+effects::effect("obj_type*species",modelmonkey) |>
   as.data.frame() |> 
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
   mutate(fit=
            case_when(
              obj_type=="mechanical" & species=="macaque" ~ fit,
@@ -615,7 +636,7 @@ effects::effect("obj_type*species",modmonk) |>
   arrange(p) |>
   ggplot(aes(x=obj_type, y=fit, col=species))+
   geom_point(size=3)+
-  scale_y_continuous(NULL,limits=c(4,18),breaks=10.26, labels = "macaques\nwith soft toys")
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
 ```
 
 
@@ -628,8 +649,9 @@ So we know that capuchins spend 5.4 more minutes with soft toys compared to maca
 
 ```{r}
 #| echo: false
-effects::effect("obj_type*species",modmonk) |>
+effects::effect("obj_type*species",modelmonkey) |>
   as.data.frame() |> 
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
   mutate(fit=
            case_when(
              obj_type=="mechanical" & species=="macaque" ~ fit,
@@ -641,7 +663,7 @@ effects::effect("obj_type*species",modmonk) |>
   arrange(p) |>
   ggplot(aes(x=obj_type, y=fit, col=species))+
   geom_point(size=3)+
-  scale_y_continuous(NULL,limits=c(4,18),breaks=10.26, labels = "macaques\nwith soft toys")
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
 ```
 
 `r solend()`
@@ -653,8 +675,9 @@ So we know that capuchins spend 1.9 more minutes with soft toys compared to maca
 
 ```{r}
 #| echo: false
-effects::effect("obj_type*species",modmonk) |>
+effects::effect("obj_type*species",modelmonkey) |>
   as.data.frame() |> 
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
   mutate(fit=
            case_when(
              obj_type=="mechanical" & species=="macaque" ~ fit,
@@ -665,7 +688,7 @@ effects::effect("obj_type*species",modmonk) |>
   arrange(p) |>
   ggplot(aes(x=obj_type, y=fit, col=species))+
   geom_point(size=3)+
-  scale_y_continuous(NULL,limits=c(4,18),breaks=10.26, labels = "macaques\nwith soft toys")
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
 ```
 
 `r solend()`
@@ -676,11 +699,16 @@ The coefficient "obj_typemechanical:speciescapuchin" tells us the difference bet
 i.e. when moving from macaques to capuchins, the soft-to-mechanical difference changes by this much.  
 
 So we know that whereas macaques spend 3.5 more minutes with mechanical toys compared to soft toys, for capuchins this is 1.9 minutes less.  
-So rather than going up 3.5, we go up $3.5-1.9=1.6$:    
+So rather than going up 3.5, we go up $3.5-1.9=1.6$.  
+
+However, this is non-significant. So the difference could easily just be 0 - i.e. they could increase by the same 3.5 minutes as Macaques do. So we know that the uncertainty here should also capture as if Capuchins and Macaques have the same increases from soft to mechanical.  
 
 ```{r}
 #| echo: false
-effects::effect("obj_type*species",modmonk) |>
+
+dd = tibble(obj_type="mechanical",species="capuchin",fit=17.63906,
+            fit2=3.5+15.67713)
+effects::effect("obj_type*species",modelmonkey) |>
   as.data.frame() |> 
   mutate(fit=
            case_when(
@@ -688,10 +716,12 @@ effects::effect("obj_type*species",modmonk) |>
              TRUE ~ fit
            ),
          p = c(1,1,2,2,0,0)) |>
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
   arrange(p) |>
   ggplot(aes(x=obj_type, y=fit, col=species))+
   geom_point(size=3)+
-  scale_y_continuous(NULL,limits=c(4,18),breaks=10.26, labels = "macaques\nwith soft toys")
+  geom_segment(data=dd,aes(x=obj_type,xend=obj_type,y=fit,yend=fit2),lwd=1)+
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
 ```
 
 `r solend()`
@@ -705,63 +735,83 @@ So rather than going up 3.5, we go up $3.5-3.05=0.45$:
 
 ```{r}
 #| echo: false
-effects::effect("obj_type*species",modmonk) |>
+effects::effect("obj_type*species",modelmonkey) |>
   as.data.frame() |>
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
   ggplot(aes(x=obj_type, y=fit, col=species))+
   geom_point(size=3)+
-  scale_y_continuous(NULL,limits=c(4,18),breaks=10.26, labels = "macaques\nwith soft toys")
+  geom_segment(data=dd,aes(x=obj_type,xend=obj_type,y=fit,yend=fit2),lwd=1)+
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
 ```
 
 `r solend()`
 
 
-<!-- `r qbegin(qlabel=F,label="OPTIONAL")` -->
-<!-- Okay, now let's make a plot in R.   -->
+`r qbegin(qcounter())`
+Okay, now let's make a plot in R.  
 
-<!-- Up to now, when we've been plotting our associations of interest we've been choosing to construct our plots at the mean of our other predictors (e.g. below).   -->
+Try running this code in pieces to see what each bit does, and then running it all at once to get the plot.  
 
-<!-- However, in our current monkey model, we've also got a categorical covariate (`obj_colour`) in our model. What should we do with that?   -->
+Does it match with what you sketched in the previous question?  
 
-<!-- ```{r} -->
-<!-- #| eval: false -->
-<!-- plotdat <- expand_grid( -->
-<!--   age = mean(ctmtoys$age), -->
-<!--   obj_size = mean(ctmtoys$obj_size), -->
-<!--   obj_colour = ??? -->
-<!--   obj_type = c("soft","mechanical"), # of interest -->
-<!--   species = c("macaque","capuchin","tamarin") # of interest -->
-<!-- ) -->
-<!-- ``` -->
-
-<!-- We could:   -->
-
-<!-- a) choose just one colour to plot it at -->
-<!-- b) make separate plots to  each colour -->
-<!-- c) plot the association of interest holding the colours at their proportions   -->
-
-<!-- To achieve a) or b), we can use the strategy we have been using already. However, to achieve c), it is easiest to use something like the `effect()` function from the __effects__ package.   -->
-
-<!-- Try the code below, and seeing if you can use it to create a plot:     -->
-<!-- ```{r} -->
-<!-- #| eval: false -->
-<!-- library(effects) -->
-<!-- effect("obj_type*species",modmonk) |> -->
-<!--   as.data.frame() -->
-<!-- ``` -->
+```{r}
+#| eval: false
+library(effects)
+effect("obj_type*species",modelmonkey) |>
+  as.data.frame() |>
+  mutate(
+    obj_type = fct_relevel(factor(obj_type), "soft")
+  ) |>
+  ggplot(aes(x=obj_type, y=fit, col=species)) +
+  geom_pointrange(aes(ymin=lower,ymax=upper))
+```
 
 
-<!-- `r qend()` -->
-<!-- `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)` -->
+::: {.callout-note collapse="true"}
+#### Why use the effects package?  
 
+Up to now, when we've been plotting our associations of interest we've been choosing to construct our plots at the mean of our other predictors.  
 
-<!-- ```{r} -->
-<!-- effect("obj_type*species",modmonk) |> -->
-<!--   as.data.frame() |>  -->
-<!--   ggplot(aes(x=obj_type, y=fit, col=species))+ -->
-<!--   geom_pointrange(aes(ymin=lower,ymax=upper)) -->
-<!-- ``` -->
+However, in our current monkey model, we've also got a categorical covariate (`obj_colour`) in our model. What should we do with that?
 
-<!-- `r solend()` -->
+```{r}
+#| eval: false
+plotdat <- expand_grid(
+  age = mean(ctmtoys$age),
+  obj_size = mean(ctmtoys$obj_size),
+  obj_colour = ???
+  obj_type = c("soft","mechanical"), # of interest
+  species = c("macaque","capuchin","tamarin") # of interest
+)
+```
+
+We could:
+
+a) choose just one colour to plot it at
+b) make separate plots to  each colour
+c) plot the association of interest holding the colours at their proportions
+
+To achieve a) or b), we can use the strategy we have been using already (make a little dataframe, use `augment` etc).  
+
+However, to achieve c), it is easiest to use something like the `effect()` function from the __effects__ package. This will also come in handy next semester, as we will use it for plotting effects from more complex models.  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+library(effects)
+effect("obj_type*species",modelmonkey) |>
+  as.data.frame() |>
+  mutate(
+    obj_type = fct_relevel(factor(obj_type), "soft")
+  ) |>
+  ggplot(aes(x=obj_type, y=fit, col=species)) +
+  geom_pointrange(aes(ymin=lower,ymax=upper))
+```
+
+`r solend()`
 
 <div class="divider div-transparent div-dot"></div>
 
@@ -805,7 +855,8 @@ tibble(
 `r qbegin(qcounter())`
 Below, we have provided a regression table, a plot, and a written paragraph.  
 
-There are _lots_ of mistakes in the writing (both mismatching numbers _and_ errors in interpretation). note down as many errors as you can find.  
+There are _lots_ of mistakes in the writing (both mismatching numbers _and_ errors in interpretation). Note down as many errors as you can find.  
+Feel free to read in the data yourself to play around.  
 
 ::::panelset
 :::panel
