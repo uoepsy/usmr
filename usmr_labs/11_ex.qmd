@@ -1,7 +1,7 @@
 ---
 title: "Week 11 Exercises: Tying up Loose Ends"
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
@@ -75,8 +75,9 @@ Column    | Content
 Have a look at the data. Check for impossible values and deal with these in an appropriate manner. Describe the data, either in words or using suitable graphs (or a combination). Remember to detail the decisions you have made.  
 
 
-:::hints
-__Hints:__  
+
+::: {.callout-tip collapse="true"}
+#### Hints
 
 - to clean data, go through each variable in turn. If numeric, what is the min and max? If categorical, what are the possible levels?  
 - to describe data, you might want to use tables and plots, or you might find describing in text can work too.  
@@ -84,7 +85,7 @@ __Hints:__
   - one option is to cross-tabulate the _reasons for_ missingness, and then remove them from the dataset at this point. This means all your analyses are conducted on the same set of "complete cases". This can be the neat and tidy option, but if some variables have lots of missingness, you might end up needlessly limiting some of your analyses in terms of statistical power. 
   - another option is to leave all missing values in the dataset and let them be dealt with by each of your model(s) and test(s). The downside of this is that different tests end up being performed on different subsets of data, making it harder to describe (it also means you need to be very careful with model comparisons)
 - There's no right way to deal with outliers.  
-  - Some fields of research will identify at the outset any observations that are outlying by looking at each variable individually. These they will then remove, or scale back ([6WalkThrough#outliers](06_wt.html#outliers){target="_blank"}) prior to any analysis. This should really only be done if you are sure that these observations are outlying because of either a) measurement error or b) not belonging to the target population of interest. If the outlyingness could well simply be natural variation in the variable, keep it in. You can always then examine its influence on subsequent analyses!  
+  - Some fields of research will identify at the outset any observations that are outlying by looking at each variable individually. These they will then remove, or scale back ([6A #outliers](06_wt.html#outliers){target="_blank"}) prior to any analysis. This should really only be done if you are sure that these observations are outlying because of either a) measurement error or b) not belonging to the target population of interest. If the outlyingness could well simply be natural variation in the variable, keep it in. You can always then examine its influence on subsequent analyses!  
 
 :::
 
@@ -93,7 +94,7 @@ __Hints:__
 `r solbegin("Explore", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 ```{r}
-couchto5k <- read_csv("../../data/couchto5k.csv")
+couchto5k <- read_csv("https://uoepsy.github.io/data/couchto5k.csv")
 ```
 
 
@@ -201,8 +202,9 @@ The median number of weeks spent in the 'couch-to-5k' programme was `r median(co
 
 The researchers conducting the study want to first find out a little more about differences between the Edinburgh and Glasgow study sites. Specifically, they would like to investigate whether dropping out of the programme early (prior to week 5), late (week 5 onwards) or not at all (completed all 9 weeks), is different between Edinburgh and Glasgow participants. They would also like to know if the average age of participants is different between the cities.  
 
-:::hints
-__Hints:__ 
+
+::: {.callout-tip collapse="true"}
+#### Hints
 
 - The first 5 weeks of the course focused on some of the more fundamental tests of relationships between two variables. Some of these might be useful here!  
 
@@ -230,7 +232,7 @@ table(couchto5k$dropout, couchto5k$week_stopped)
 ```
 
 and let's look at the differences between the cities, and also perform a $\chi^2$ test. 
-We're going to simulate the p-value here, because some of our expected cell counts are going to be $<5$ (see e.g. [Week 4 Exercises #eye-colours](04_ex.html#eye-colours){target="_blank"})  
+We're going to simulate the p-value here, because some of our expected cell counts are going to be $<5$ (see e.g. [Week 4 Exercises #favourite-colours](04_ex.html#childrens-favourite-colours){target="_blank"})  
 
 ```{r}
 #| eval: false
@@ -250,7 +252,7 @@ The `age ~ city` question, on the other hand, is asking whether a continuous var
 
 Let's first assess the extent to which the ages of two groups of participants (Edinburgh folk and Glasgow folk) have similar variances (an assumption of the standard t-test), as well as the extent to which they are normally distributed: 
 
-```{r echo=c(-1,-14)}
+```{r echo=c(-1)}
 #| fig-height: 4
 par(mfrow=c(2,2))
 
@@ -264,9 +266,12 @@ qqline(couchto5k$age[couchto5k$city=="Edinburgh"])
 
 qqnorm(couchto5k$age[couchto5k$city=="Glasgow"], main = "Glasgow")
 qqline(couchto5k$age[couchto5k$city=="Glasgow"])
-
+```
+```{r}
+#| echo: false
 par(mfrow=c(1,1))
 ```
+
 
 These look almost okay to me. Not great, but not completely awful. We should bear in mind that we have >30 participants in each group, which means we can be a little more relaxed about requiring very close to normal data.  
 
@@ -298,17 +303,15 @@ The mean age of participants was not significantly different between the two cit
 `r solend()`
 
 `r qbegin("Happiness, Health, and a 5k Run", qlabel=FALSE)`
-Researchers would like you to examine whether, beyond seasonal and age-related variation, happiness ratings are influenced by how far participants get through the couchto5k programme. 
-They would also like you to investigate whether - and how - the effects of couchto5k progression are amplified by feeling healthy, such that getting further along in the programme might lead to greater increases in happiness when people are healthier.    
+Researchers would like you to examine whether, beyond seasonal and age-related variation, happiness ratings are influenced by how far participants get through the couchto5k programme. Note that they are interested specifically in whether - and how - the effects of couchto5k progression are amplified by feeling healthy, such that getting further along in the programme might lead to greater increases in happiness when people are healthier.    
 
-:::hints
-__Hints:__  
+
+::: {.callout-tip collapse="true"}
+#### Hints
 
 - The use of the word "beyond" here should cue us to be thinking in terms of multiple regression. The question is asking about the relationship between happiness and couchto5k progression _after_ we account for participants' ages and the season in which they took the programme.  
 - We also have a clear suggestion of an interaction here, because it asks about an effect of one predictor on the outcome (programme progression on happiness) being "amplified" (i.e. _different_) by another predictor (health)
-- This feels a bit like two questions, but we might not need to fit two models.  
-  - for instance by fitting `mod <- lm(y ~ x1 + x2 + x3 + x4 + x3:x4)`, use of `anova(mod)` might allow us to answer multiple "_is_ there an effect of ?" questions, with `coef(mod)` telling us _what_.    
-
+- This feels a bit like two questions, but the latter really supersedes the first - if we have an interaction, then the question of "what is the effect of progression on happiness?" can only really be answered with "it depends..".      
 
 :::
 
@@ -316,15 +319,16 @@ __Hints:__
 `r qend()`
 `r solbegin("Fitting model(s)", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
-here's our model.  
 let's standardise the health measure, because we probably don't want to look at things where people have health of 0, and i'm not sure that an increase of 1 is that meaningful..    
 ```{r}
 couchto5k <- couchto5k %>%
   mutate(
-    healthC = (health-mean(health))/sd(health),
+    healthZ = (health-mean(health))/sd(health),
   )
-
-hhmod <- lm(happiness ~ age + season + week_stopped * healthC, couchto5k)
+```
+Here's our model:  
+```{r}
+hhmod <- lm(happiness ~ age + season + week_stopped * healthZ, couchto5k)
 ```
 
 let's take a look at assumptions
@@ -334,19 +338,17 @@ plot(hhmod)
 par(mfrow=c(1,1))
 ```
 so this looks a little weird - we've got some sharp 'edges' to our cloud of data in the residual vs fitted plot.  
-What I think this is reflecting is that we are being limited by the bounds of the happiness measure (i.e. people are using the full scale of 0 upto 100). Consider how this might influence the residuals. As predicted values get closer to the edges of the scale, the residuals will get smaller. This might not be too much of a problem, but may well be worth discussing. 
+What I think this is reflecting is that we are being limited by the bounds of the happiness measure (i.e. people are using the full scale of 0 up to 100). Consider how this might influence the residuals. As predicted values get closer to the edges of the scale, the residuals will get smaller. This might not be too much of a problem, but may well be worth discussing. 
 
-Let's conduct an anova in order to look at how weekstopped and health explain variance after the season and age. Remember that the order of the predictors in the model matters here, so i was careful to put age and season first, _then_ week stopped, _then_ the health and interaction bit. 
+Let's conduct an F-test of the interaction:  
 ```{r}
 anova(hhmod)
 ```
 
-- the third row tells us that after accounting for age and season, weekstopped explains more variance than we would expect by chance
-- the final row tells us the interaction weekstopped*health also explains significantly more variance than we would expect by chance
+- the final row tells us that the interaction weekstopped*health explains significantly more variance than we would expect by chance
 
 
-- the coefficients can tell us effects sizes, directions etc.  
-- we can also, if we want, get out some standardised coefficients.
+- the coefficients can tell us effect sizes, directions etc.  
 ```{r}
 #| eval: false
 summary(hhmod)
@@ -356,30 +358,49 @@ summary(hhmod)
 .pp(summary(hhmod), l=list(10:19))
 ```
 
-- and plots are going to be a useful way to understand and to present.  
+getting further along the couchto5k programme is associated with being more happy, the more healthy you feel. 
 
-getting further along the couchto5k programme is associated with being more happy, the more healthy you feel
+
+- and plots are going to be a *very* useful way to understand and to present.  
 
 ```{r}
-library(interactions)
-interact_plot(hhmod, pred="week_stopped",
-              modx = "healthC", 
-              interval=TRUE)
+#| code-fold: true
+plotdat <- expand_grid(
+  age = mean(couchto5k$age),
+  season = "spring",
+  week_stopped=1:9,
+  healthZ = c(-1, 0, 1)
+)
+
+broom::augment(hhmod, newdata = plotdat, interval="confidence") |>
+  mutate(
+    health = factor(healthZ, levels=c("-1","0","1"),
+                    labels=c("Poor health (-1 SD)", 
+                             "Average health",
+                             "Good health (+1 SD)")
+                    )
+  ) |> ggplot(aes(x=week_stopped,y=.fitted, col=health,fill=health))+
+  geom_line() +
+  geom_ribbon(aes(ymin=.lower,ymax=.upper), alpha=.2) +
+  scale_color_viridis_d(option="C")+
+  scale_fill_viridis_d(option="C")+
+  scale_x_continuous(breaks=1:9)+
+  facet_wrap(~health) +
+  labs(y="Happiness (0-100)",x="- Week Stopped -") +
+  guides(col="none",fill="none")
 ```
 
-We can also get out some coefficients in terms of standard deviations if we want (for those predictors where SD is applicable).  
+- we can also, if we want, get out some standardised coefficients - i.e. some coefficients in terms of standard deviations (for those predictors where SD is applicable). Note that healthZ is _already_ standardised.   
 
-:::imp
-__note:__ post-hoc standardising of coefficient with pacakges like __lsr__ and __lm.beta__ is probably best avoided when your model contains either categorical predictors or interactions.
-:::
+
 ```{r}
 #| eval: false
-hhmod2 <- lm(scale(happiness) ~ scale(age) + season + scale(week_stopped) * scale(healthC), data = couchto5k)
+hhmod2 <- lm(scale(happiness) ~ scale(age) + season + scale(week_stopped) * healthZ, data = couchto5k)
 summary(hhmod2)
 ```
 ```{r}
 #| echo: false
-hhmod2 <- lm(scale(happiness) ~ scale(age) + season + scale(week_stopped) * scale(healthC), data = couchto5k)
+hhmod2 <- lm(scale(happiness) ~ scale(age) + season + scale(week_stopped) * healthZ, data = couchto5k)
 .pp(summary(hhmod2), l=list(10:19))
 ```
 
@@ -407,9 +428,7 @@ To investigate the extent to which, over and above seasonal and age related diff
 
 The number of weeks at which participants stopped (1-9), a multi-test measure of health (Z-scored) and their interaction were included as predictors, along with the covariates of age (years) and season (treatment coded with spring as the reference level). The regression model appeared to meet all assumptions, with residuals displaying a constant mean at approximately zero, although the boundaries of the happiness scale induced a smaller residual variance at the tail ends of the fitted values (see Appendix X). This is corroborated by 30% of participants reporting happiness in either the bottom or top 10th of the scale. 
 
-<!-- Analysis of variance indicated that after accounting for season and age, there was a significant interaction between participants' self-reported health at the end of the programme and the week at which they stopped ($F(`r res1[5,1]`,`r res1[6,1]`)=`r res1[5,4]`$,  $p `r res1[5,5]`$). The full model explained approximately `r round(summary(hhmod)$adj.r.squared*100)`% (adjusted $R^2$) of the variance in happiness scores.  -->
-
-Analysis of variance indicated that after accounting for season and age, the week at which participants stopped the couch-to-5k programme explained significantly more variation in happiness ratings than would be expected by chance ($F(`r res1[3,1]`,`r res1[6,1]`)=`r res1[3,4]`$, $p = `r res1[3,5]`$). Results also showed a significant interaction between health and programme progression ($F(`r res1[5,1]`,`r res1[6,1]`)=`r res1[5,4]`$,  $p `r res1[5,5]`$). The full model explained approximately `r round(summary(hhmod)$adj.r.squared*100)`% (adjusted $R^2$) of the variance in happiness scores. 
+Analysis of variance indicated that after accounting for season and age, there was a significant interaction between participants' self-reported health at the end of the programme and the week at which they stopped ($F(`r res1[5,1]`,`r res1[6,1]`)=`r res1[5,4]`$,  $p `r res1[5,5]`$). The full model explained approximately `r round(summary(hhmod)$adj.r.squared*100)`% (adjusted $R^2$) of the variance in happiness scores.
 
 ```{r}
 #| echo: false
@@ -432,17 +451,31 @@ Happiness following the couch-to-5k programme was found to be related to how far
 
 ```{r}
 #| label: fig-couchint
-#| fig-cap: "Interaction between health and duration completed of couch-to-5k on happiness"
+#| fig-cap: "Interaction between health and duration completed of couch-to-5k on happiness, estimated for the average age and commencing the programme in Spring"
 #| echo: false
-interact_plot(hhmod, pred="week_stopped",
-              modx = "healthC", 
-              facet.modx = TRUE,
-              modx.labels = c("Poor health (-1 SD)", "Average health","Good health (+1 SD)"),
-              x.label = "Week Stopped",
-              y.label = "Happiness (0-100)",
-              colors = viridisLite::plasma(3),
-              interval=TRUE) + 
-  scale_x_continuous(breaks=1:9)
+plotdat <- expand_grid(
+  age = mean(couchto5k$age),
+  season = "spring",
+  week_stopped=1:9,
+  healthZ = c(-1, 0, 1)
+)
+
+broom::augment(hhmod, newdata = plotdat, interval="confidence") |>
+  mutate(
+    health = factor(healthZ, levels=c("-1","0","1"),
+                    labels=c("Poor health (-1 SD)", 
+                             "Average health",
+                             "Good health (+1 SD)")
+                    )
+  ) |> ggplot(aes(x=week_stopped,y=.fitted, col=health,fill=health))+
+  geom_line() +
+  geom_ribbon(aes(ymin=.lower,ymax=.upper), alpha=.2) +
+  scale_color_viridis_d(option="C")+
+  scale_fill_viridis_d(option="C")+
+  scale_x_continuous(breaks=1:9)+
+  facet_wrap(~health) +
+  labs(y="Happiness (0-100)",x="- Week Stopped -") +
+  guides(col="none",fill="none")
 ```
 
 ```{r}
@@ -464,8 +497,9 @@ tab_model(hhmod, dv.labels = "Happiness (0-100)",
 The second aim of the research is to examine the psychological factors that are associated with people completing the programme. 
 
 
-:::hints
-__Hints:__  
+
+::: {.callout-tip collapse="true"}
+#### Hints
 
 - Completing vs Dropping-out? Sounds like a binary outcome!  
 - Recall (from study description above) that completing the programme has previously been found to vary substantially across the year. _We may well therefore want to account for this in our model!_  
@@ -529,12 +563,28 @@ summary(compmod2)
 .pp(summary(compmod2), l = list(c(3,10:19)))
 ```
 
-worth visualising the two focal predictors in terms of predicted probability of completion
+It's always worth visualising the two focal predictors in terms of predicted probability of completion.  
+
+Note that because so few people took part in autumn and winter, this introduces a lot of uncertainty if we try and get at the effect holding `season` at its proportion, so we might be better off just providing the plot for Spring, as that is the most frequent season that people start the programme.  
 ```{r}
-library(sjPlot)
-library(patchwork)
-plot_model(compmod2, type="pred", term=c("accountabilityZ")) +
-  plot_model(compmod2, type="pred", term=c("selfmotZ"))
+library(effects)
+p1 <- effect(c("selfmotZ","season"), compmod2, xlevels=20) |>
+  as.data.frame() |>
+  filter(season=="spring") |>
+  ggplot(aes(x=selfmotZ,y=fit))+
+  geom_line()+
+  geom_ribbon(aes(ymin=lower,ymax=upper),alpha=.2) +
+  labs(title="Predicted probability of\ncouch-to-5k completion",x="Self Motivation (Z-scored)",y="P(Completed)")
+
+p2 <- effect(c("accountabilityZ","season"), compmod2, xlevels=20) |>
+  as.data.frame() |>
+  filter(season=="spring") |>
+  ggplot(aes(x=accountabilityZ,y=fit))+
+  geom_line()+
+  geom_ribbon(aes(ymin=lower,ymax=upper),alpha=.2) +
+  labs(title="Predicted probability of\ncouch-to-5k completion",x="Accountability (Z-scored)",y="P(Completed)")
+
+p1 + p2
 ```
 
 
@@ -559,13 +609,8 @@ The present study indicated that the psychometric factors of accountability and 
 
 ```{r}
 #| label: fig-couchglm
-#| fig-cap: "Model estimated probability of completing the couch-to-5k programme across measures of accountability and self-motivation (both Z-scored)"
+#| fig-cap: "Model estimated probability of completing the couch-to-5k programme across measures of accountability and self-motivation (both Z-scored), estimated for starting the programme in spring, and holding other predictors at their average/proportions"
 #| echo: false
-p1 <- plot_model(compmod2, type="pred", term=c("accountabilityZ")) +
-  labs(title="Predicted probability of\ncouch-to-5k completion",x="Accountability (Z-scored)",y="P(Completed)")
-
-p2 <- plot_model(compmod2, type="pred", term=c("selfmotZ")) +
-  labs(title="Predicted probability of\ncouch-to-5k completion",x="Self Motivation (Z-scored)",y="P(Completed)")
 
 p1 + p2 & theme_bw(base_size=12)
 ```
