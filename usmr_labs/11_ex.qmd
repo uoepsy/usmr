@@ -16,16 +16,28 @@ library(xaringanExtra)
 library(tidyverse)
 library(patchwork)
 xaringanExtra::use_panelset()
+qcounter <- function(){
+  if(!exists("qcounter_i")){
+    qcounter_i <<- 1
+  }else{
+    qcounter_i <<- qcounter_i + 1
+  }
+  qcounter_i
+}
 set.seed(nchar("everybody loves USMR"))
 couchto5k <- read_csv("../../data/couchto5k.csv")
 ```
 
 
 :::lo
-__Please Note__  
+__Please Note__
 
-This might look like a lot of stuff, but it is just writing, bit by bit, the stuff that we have covered through the course. This is not a "perfect" answer (I may well have made mistakes, or have written certain sections unclearly).  
-With regards to the coursework report, there are marks available even if you don't get all of the "bits" -- most important is to think carefully about what the questions are really asking (and therefore what kind of test might be appropriate), and to explain your analytical process as clearly as you can, pulling out and interpreting the key information from the models that help to guide the reader to your conclusion.  
+This might look like a lot of stuff, but it is just writing, bit by bit, the stuff that we have covered through the course. 
+
+When writing up -- most important is to think carefully about what the questions are really asking (and therefore what kind of test might be appropriate), and to explain your analytical process as clearly as you can, pulling out and interpreting the key information from the models that help to guide the reader to your conclusion.
+
+<!-- This is not a "perfect" answer (I may well have made mistakes, or have written certain sections unclearly). -->
+<!-- With regards to the coursework report, there are marks available even if you don't get all of the "bits" -->
 
 :::
 
@@ -71,9 +83,14 @@ Column    | Content
 
 :::
 
-`r qbegin("Clean and describe", qlabel=FALSE)`
-Have a look at the data. Check for impossible values and deal with these in an appropriate manner. Describe the data, either in words or using suitable graphs (or a combination). Remember to detail the decisions you have made.  
+<br>  
 
+## Clean and describe
+
+`r qbegin(qcounter())`
+Have a look at the data. Check for impossible values and deal with these in an appropriate manner. Describe the data, either in words or using suitable graphs (or a combination).  
+
+Write it up! Remember to detail the decisions you have made.  
 
 
 ::: {.callout-tip collapse="true"}
@@ -198,23 +215,27 @@ The median number of weeks spent in the 'couch-to-5k' programme was `r median(co
 
 `r solend()`
 
-`r qbegin("City differences", qlabel = FALSE)`
+<br>  
+
+## City differences
+
+`r qbegin(qcounter())`
 
 The researchers conducting the study want to first find out a little more about differences between the Edinburgh and Glasgow study sites. Specifically, they would like to investigate whether dropping out of the programme early (prior to week 5), late (week 5 onwards) or not at all (completed all 9 weeks), is different between Edinburgh and Glasgow participants. They would also like to know if the average age of participants is different between the cities.  
 
+Perform any appropriate analyses and write up your methods and results, providing plots and tables where useful.  
 
 ::: {.callout-tip collapse="true"}
 #### Hints
 
+- There are two questions here: city differences in dropout, and city differences in age. These are nice and simple questions about the relationships between only two variables.  
 - The first 5 weeks of the course focused on some of the more fundamental tests of relationships between two variables. Some of these might be useful here!  
 
 :::
 
 `r qend()`
 
-`r solbegin("Conducting the tests", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-There are two questions here, `dropout ~ city` and `age ~ city`. These are nice and simple questions about the relationships between only two variables.  
-
+`r solbegin("Testing City Dropouts", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 The `dropout ~ city` question is asking us to categorise when participants stop the programme into "early", "late", or "not at all". So the question is `categorical ~ categorical`. Sounds like a $\chi^2$ test to me!  
 
 ```{r}
@@ -246,7 +267,8 @@ res_dropout <- chisq.test(table(couchto5k$dropout, couchto5k$city), simulate.p.v
 res_dropout
 ```
 
-<br><br>
+`r solend()`
+`r solbegin("Testing City Differences in Age", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 The `age ~ city` question, on the other hand, is asking whether a continuous variable is different between two groups (Edinburgh and Glasgow). We can do this with a $t$-test!   
 
@@ -302,9 +324,14 @@ The mean age of participants was not significantly different between the two cit
 
 `r solend()`
 
-`r qbegin("Happiness, Health, and a 5k Run", qlabel=FALSE)`
+<br>  
+
+## Happiness, Health, and a 5k Run  
+
+`r qbegin(qcounter())`
 Researchers would like you to examine whether, beyond seasonal and age-related variation, happiness ratings are influenced by how far participants get through the couchto5k programme. Note that they are interested specifically in whether - and how - the effects of couchto5k progression are amplified by feeling healthy, such that getting further along in the programme might lead to greater increases in happiness when people are healthier.    
 
+Perform an appropriate analysis and write up your methods and results, providing plots and tables where useful.  
 
 ::: {.callout-tip collapse="true"}
 #### Hints
@@ -331,6 +358,10 @@ Here's our model:
 hhmod <- lm(happiness ~ age + season + week_stopped * healthZ, couchto5k)
 ```
 
+`r solend()`
+`r solbegin("Check Assumptions", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+
 let's take a look at assumptions
 ```{r echo=c(2)}
 par(mfrow=c(2,2))
@@ -339,6 +370,9 @@ par(mfrow=c(1,1))
 ```
 so this looks a little weird - we've got some sharp 'edges' to our cloud of data in the residual vs fitted plot.  
 What I think this is reflecting is that we are being limited by the bounds of the happiness measure (i.e. people are using the full scale of 0 up to 100). Consider how this might influence the residuals. As predicted values get closer to the edges of the scale, the residuals will get smaller. This might not be too much of a problem, but may well be worth discussing. 
+
+`r solend()`
+`r solbegin("Testing", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 Let's conduct an F-test of the interaction:  
 ```{r}
@@ -360,6 +394,8 @@ summary(hhmod)
 
 getting further along the couchto5k programme is associated with being more happy, the more healthy you feel. 
 
+`r solend()`
+`r solbegin("Visualising", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 - and plots are going to be a *very* useful way to understand and to present.  
 
@@ -380,15 +416,17 @@ broom::augment(hhmod, newdata = plotdat, interval="confidence") |>
                              "Good health (+1 SD)")
                     )
   ) |> ggplot(aes(x=week_stopped,y=.fitted, col=health,fill=health))+
-  geom_line() +
+  geom_line(aes(lty=health)) +
   geom_ribbon(aes(ymin=.lower,ymax=.upper), alpha=.2) +
   scale_color_viridis_d(option="C")+
   scale_fill_viridis_d(option="C")+
   scale_x_continuous(breaks=1:9)+
-  facet_wrap(~health) +
   labs(y="Happiness (0-100)",x="- Week Stopped -") +
   guides(col="none",fill="none")
 ```
+
+`r solend()`
+`r solbegin("Standardised Coefs?", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 - we can also, if we want, get out some standardised coefficients - i.e. some coefficients in terms of standard deviations (for those predictors where SD is applicable). Note that healthZ is _already_ standardised.   
 
@@ -403,7 +441,6 @@ summary(hhmod2)
 hhmod2 <- lm(scale(happiness) ~ scale(age) + season + scale(week_stopped) * healthZ, data = couchto5k)
 .pp(summary(hhmod2), l=list(10:19))
 ```
-
 
 
 `r solend()`
@@ -452,6 +489,7 @@ Happiness following the couch-to-5k programme was found to be related to how far
 ```{r}
 #| label: fig-couchint
 #| fig-cap: "Interaction between health and duration completed of couch-to-5k on happiness, estimated for the average age and commencing the programme in Spring"
+#| out-width: "100%"
 #| echo: false
 plotdat <- expand_grid(
   age = mean(couchto5k$age),
@@ -493,10 +531,14 @@ tab_model(hhmod, dv.labels = "Happiness (0-100)",
 
 `r solend()`
 
-`r qbegin("Predictors of Drop-out", qlabel=FALSE)`
+<br>  
+
+## Predictors of Drop-out
+
+`r qbegin(qcounter())`
 The second aim of the research is to examine the psychological factors that are associated with people completing the programme. 
 
-
+Perform an appropriate analysis and write up your methods and results, providing plots and tables where useful.  
 
 ::: {.callout-tip collapse="true"}
 #### Hints
@@ -509,9 +551,10 @@ The second aim of the research is to examine the psychological factors that are 
 :::
 
 `r qend()`
-`r solbegin("Fitting model(s)", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
-We need to make a binary outcome, out of the `week_stopped` variable. 
+`r solbegin("Outcome Variable", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+We need to make a binary outcome out of the `week_stopped` variable. 
 ```{r}
 couchto5k <- couchto5k %>%
   mutate(
@@ -519,11 +562,13 @@ couchto5k <- couchto5k %>%
   )
 ```
 
-here are our variables:  
-```{r}
-names(couchto5k)
-```
-per the study description, many of these were measured after participants stopped programme 
+`r solend()`
+`r solbegin("Fitting model(s)", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+So what is going into our model? We know that we're interested in the 'psychological factors' (i.e. the variables `accountability` and `selfmot`), so at the very least we will have `dropout ~ ?? + accountability + selfmot`.  
+
+But what about controlling for other variables?  
+Per the study description, many of these were measured after participants stopped programme.  
 ```{r}
 #| echo: false
 tibble(
@@ -532,11 +577,11 @@ tibble(
 ) %>% pander::pander()
 ```
 
-it doesn't really make sense for us to think about your happiness _after_ the programme influencing whether or not you complete it (this is not to say that it will not be associated).  
+It doesn't really make sense for us to think about your happiness _after_ the programme influencing whether or not you complete it (this is not to say that it will not be associated).  
 
-age, season and city are all things that *might* influence completion, or might influence predictors of interest like accountability or self-motivation. We know specifically that season has previously been found to influence completion, so it would be good to at least include that. We also did a test early on that indicated that cities didn't differ in their dropout rates, and also that they didn't differ in the average age of participants. 
+age, season and city are all things that *might* influence completion, or might influence predictors of interest like accountability or self-motivation. We know specifically that season has previously been found to influence completion, so it would be good to at least include that. I can think up some argument that older people are more motivated/hold themselves more accountable, and so I might want to control for age to ensure I am looking at the independent effects of these psychological features separate from any age effects.  
 
-It's probably worth scaling the psychometric variables. They are both the sum of 7 questions, each scored 1-5, so it's slightly unclear what a "1 unit increase" really means. It's answering.  
+It's probably worth scaling the `accountability` and `selfmot` variables. They are both the sum of 7 questions, each scored 1-5, so it's slightly unclear what a "1 unit increase" really means. It's answering.  
 ```{r}
 couchto5k <-
   couchto5k %>% 
@@ -544,31 +589,56 @@ couchto5k <-
     accountabilityZ = scale(accountability)[,1],
     selfmotZ = scale(selfmot)[,1]
   )
+```
 
-compmod1 <- glm(completed ~ season + age + city, data = couchto5k, family=binomial)
+And here's a model!  
+```{r}
+compmod <- glm(completed ~ season + age + city + accountabilityZ + selfmotZ, 
+               data = couchto5k, family=binomial)
+```
 
-compmod2 <- glm(completed ~ season + age + city + accountabilityZ + selfmotZ, data = couchto5k, family=binomial)
+`r solend()`
+`r solbegin("Testing the influence of 'psychological factors'", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
-anova(compmod1, compmod2, test="Chisq")
+To examine whether psychological factors (collectively) are associated with more/less probability of completing the couchto5k programme, we can compare our model:  
+```{r}
+compmod <- glm(completed ~ season + age + city + accountabilityZ + selfmotZ, 
+               data = couchto5k, family=binomial)
+```
+
+With a restricted model that doesn't include them:
+```{r}
+compmod0 <- glm(completed ~ season + age + city, data = couchto5k, family=binomial)
+
+```
+
+```{r}
+anova(compmod0, compmod, test="Chisq")
 ```
 
 beyond participants' age, location and which season programme is undertaken in, psychological factors of accountability and self motivation _do_ appear to improve model fit  
 
+From our coefficients, we can see that this is likely being driven by an association between self-motivation and the probability of completing the couchto5k programme:  
+
 ```{r}
 #| eval: false
-summary(compmod2)
+summary(compmod)
 ```
 ```{r}
 #| echo: false
-.pp(summary(compmod2), l = list(c(3,10:19)))
+.pp(summary(compmod), l = list(c(3,10:19)))
 ```
+
+`r solend()`
+`r solbegin("Visualising", slabel=FALSE, show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 It's always worth visualising the two focal predictors in terms of predicted probability of completion.  
 
 Note that because so few people took part in autumn and winter, this introduces a lot of uncertainty if we try and get at the effect holding `season` at its proportion, so we might be better off just providing the plot for Spring, as that is the most frequent season that people start the programme.  
 ```{r}
+#| out-width: "100%"
 library(effects)
-p1 <- effect(c("selfmotZ","season"), compmod2, xlevels=20) |>
+p1 <- effect(c("selfmotZ","season"), compmod, xlevels=20) |>
   as.data.frame() |>
   filter(season=="spring") |>
   ggplot(aes(x=selfmotZ,y=fit))+
@@ -576,7 +646,7 @@ p1 <- effect(c("selfmotZ","season"), compmod2, xlevels=20) |>
   geom_ribbon(aes(ymin=lower,ymax=upper),alpha=.2) +
   labs(title="Predicted probability of\ncouch-to-5k completion",x="Self Motivation (Z-scored)",y="P(Completed)")
 
-p2 <- effect(c("accountabilityZ","season"), compmod2, xlevels=20) |>
+p2 <- effect(c("accountabilityZ","season"), compmod, xlevels=20) |>
   as.data.frame() |>
   filter(season=="spring") |>
   ggplot(aes(x=accountabilityZ,y=fit))+
@@ -594,8 +664,8 @@ p1 + p2
 
 ```{r}
 #| echo: false
-res3 = anova(compmod1, compmod2, test="Chisq")
-res4 = exp(car::Confint(compmod2))
+res3 = anova(compmod0, compmod, test="Chisq")
+res4 = exp(car::Confint(compmod))
 res4 = apply(res4,2, function(x) round(x,2))
 ```
 
@@ -603,7 +673,7 @@ Couch-to-5k completion (completed vs dropped out) was modelled using logistic re
 
 In keeping with previous research, completion of the programme was found to differ between seasons, with participants undertaking the programme in both summer and autumn being associated with increased odds of programme completion ($OR: `r res4[2,1]`$, $95\% CI [`r paste0(res4[2,2:3],collapse=", ")`]$ and $`r res4[3,1]`$ $[`r paste0(res4[3,2:3],collapse=", ")`]$ respectively). Age and city were not found to significantly predict completion.  
 
-While the likelihood of completing the programme was not significantly associated with scores on the accountability measure, a relationship was found between self motivation and programme completion; a 1 standard deviation increase in self-motivation was associated with doubling the odds of finishing the entire 9-weeks ($OR: `r res4[8,1]`\, [`r paste0(res4[8,2:3],collapse=", ")`]$). The model-predicted probabilities of programme completion across values of the two psychometric measures are visualised in @fig-couchglm. Full table of results can be found in @tbl-couchglmcoef  
+While completing the programme was not significantly associated with scores on the accountability measure, a relationship was found between self motivation and programme completion; a 1 standard deviation increase in self-motivation was associated with doubling the odds of finishing the entire 9-weeks ($OR: `r res4[8,1]`\, [`r paste0(res4[8,2:3],collapse=", ")`]$). The model-predicted probabilities of programme completion across values of the two psychometric measures are visualised in @fig-couchglm. Full table of results can be found in @tbl-couchglmcoef  
 
 The present study indicated that the psychometric factors of accountability and self motivation, taken together, were useful in predicting the completion (vs drop out) of the couch-to-5k programme. Specifically, a strong association was found between self-motivation and programme completion, with more motivated participants have a higher probability of finishing the full 9 weeks.  
 
@@ -619,7 +689,7 @@ p1 + p2 & theme_bw(base_size=12)
 #| label: tbl-couchglmcoef
 #| tbl-cap: "Couch-to-5k completion modeled using logistic regression. Table of coefficients."
 #| echo: false
-cis = cbind(exp(coef(compmod2)), exp(confint(compmod2)))
+cis = cbind(exp(coef(compmod)), exp(confint(compmod)))
 cis[4,3]<-Inf
 cis = tibble(
   Predictors = c("(Intercept)","Season [Summer]","Season [Autumn]",
