@@ -407,19 +407,21 @@ Matthews (2000). <https://doi.org/10.1111/1467-9639.00013>
 
 `lm (y ~ x)` and `lm (x ~ y)` are "the same" (`cor.test(y,x)`)
 
-
-## [A Take-Home Message: 'Many Analysts']{.r-fit-text}
-
-> Twenty-nine teams involving 61 analysts used the same data set to address the same research question: whether soccer referees are more likely to give red cards to dark-skin-toned players than to light-skin-toned players. Analytic approaches varied widely across the teams, and the estimated effect sizes ranged from 0.89 to 2.93 (Mdn = 1.31) in odds-ratio units. Twenty teams (69%) found a statistically significant positive effect, and 9 teams (31%) did not observe a significant relationship.
-
-::: attribution
-Silberzahn, R., et al. (2018). <https://doi.org/10/gd2429>
+::: notes
+- random allocation (for example, to group) can help us claim that a predictor is causal
 :::
+
+## {.nostretch}
+
+![](https://imgs.xkcd.com/comics/correlation.png){width="80%" fig-align="center"}
 
 . . .
 
-- statistics is a _language for talking about patterns in data_
+> Correlation doesn't imply causation, but it does waggle its eyebrows suggestively and gesture furtively while mouthing 'look over there'.
 
+::: attribution
+Randall Munroe <https://xkcd.com/552>
+:::
 
 # [The Bits We Didn't Talk About]{.r-fit-text style="text-align: center;"}
 
@@ -627,15 +629,141 @@ $$b_{1j}=\gamma_{01}+\zeta_{1j}$$
 
 ![](img/blank.png){fig-align="center"}
 
-## Take It Apart
+## R is a Language
+
+- no 'perfect way' to speak it
+
+  - 'dialects' such as `{tidyverse}` and `{data.table}`
+
+- constantly changing
+
+  - new libraries (`{magrittr}` introduced `%>%`)
+  
+  - new syntax (R v4.1.0 introduced `|>`)
+  
+- we are all constantly learning new things
+
+## Learn by Taking It Apart {auto-animate=true}
+
+```{r}
+#| include: false
+load('R/singers.Rdata')
+singers <- singers |> rename(SPLATTED=splatted)
+```
+
+```{r}
+#| label: CODE
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+
+singers |>
+  mutate(bin = cut_interval(quality, 10)) |>
+  group_by(bin) |>
+  summarise(prop = mean(SPLATTED)) |>
+  ggplot(aes(x = bin, y = prop)) +
+    xlab("quality bin") +
+    ylab("prop splatted") +
+    geom_point(size = 3) +
+    scale_x_discrete(label = 1:10)
+```
+
+## Learn by Taking It Apart {visibility="uncounted" auto-animate=true}
+
+```{r}
+#| label: CODE2
+singers |>
+  mutate(bin = cut_interval(quality, 10))
+```
+## Learn by Taking It Apart {visibility="uncounted" auto-animate=true}
+
+```{r}
+#| label: CODE4
+singers |>
+  mutate(bin = cut_interval(quality, 10)) |>
+  group_by(bin) |>
+  summary()
+```
 
 
+
+## Learn by Taking It Apart {visibility="uncounted" auto-animate=true}
+
+```{r}
+#| label: CODE3
+singers |>
+  mutate(bin = cut_interval(quality, 10)) |>
+  group_by(bin) |>
+  summarise(prop = mean(SPLATTED))
+```
 
 ## Never Trust Yourself
 
+```{r}
+#| include: false
+singers <- singers[-1,]
+```
+
+```r
+singers <- read_csv('some file.csv') 
+```
+
+#### check and continue
+
+```{r}
+#| warning: true
+if (nrow(singers != 1000)) {
+  warning ("unexpected number of rows -> ", nrow(singers))
+}
+```
+
+#### check and stop
+
+```{r}
+#| warning: true
+#| eval: false
+if (nrow(singers != 1000)) {
+  stop ("unexpected number of rows -> ", nrow(singers))
+}
+```
+
+
 ## Don't Trust Magic
 
+:::: {.columns}
 
+::: {.column width="50%"}
+
+`{sjPlot}`, `{effects}` etc.
+
+- set some parameters
+
+- instant pretty output
+
+![](img/playmo_magic.jpg){width="45%" fig-align="center"}
+
+:::
+
+::: {.column width="50%"}
+
+`{broom}`, `{ggplot2}`, etc.
+
+- intermediate calculations
+
+- work to make pretty output
+
+::: r-stack
+
+![](img/playmo_spanner.jpg){width="50%" fig-align="center" .fragment fragment-index=1 .fade-out}
+
+:::: {.myblock .fragment fragment-index=1}
+more likely to understand where the numbers come from
+::::
+
+:::
+
+:::
+
+::::
 
 
 ## Want to Play?
@@ -643,10 +771,12 @@ $$b_{1j}=\gamma_{01}+\zeta_{1j}$$
 - reanalyse your own undergraduate data
 
 ```r
-library(help="haven")
+library(help="haven") # tools for reading SPSS data
 ```
 
 - play with other datasets
+
+- many datasets built in to R and its libraries
 
 ```r
 data()
@@ -658,7 +788,22 @@ data()
 
 - Oscar Baruffa's _Big Book of R_ <https://bigbookofr.com>
 
+## [A Take-Home Message: 'Many Analysts']{.r-fit-text}
 
+> Twenty-nine teams involving 61 analysts used the same data set to address the same research question: whether soccer referees are more likely to give red cards to dark-skin-toned players than to light-skin-toned players. Analytic approaches varied widely across the teams, and the estimated effect sizes ranged from 0.89 to 2.93 (Mdn = 1.31) in odds-ratio units. Twenty teams (69%) found a statistically significant positive effect, and 9 teams (31%) did not observe a significant relationship.
+
+::: attribution
+Silberzahn, R., et al. (2018). <https://doi.org/10/gd2429>
+:::
+
+. . .
+
+- statistics is a _language for talking about patterns in data_
+
+
+# {#q}
+
+![](img/question.svg){fig-align="center"}
 
 ## Goodbye! {background-image="img/playmo_goodbye.jpg" background-size="contain"}
 
