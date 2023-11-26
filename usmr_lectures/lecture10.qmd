@@ -1,0 +1,811 @@
+---
+title: "[Some Kind of End to the Course]{.r-fit-text}"
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tidyverse)
+source('_theme/theme_quarto.R')
+```
+
+
+# Zen and the Art of Stats {style="text-align: center;"}
+![](img/zen.png){fig-align="center"}
+
+## Null-Hypothesis Statistical Testing
+
+:::: {.columns}
+::: {.column width="70%"}
+founded on **two principles**
+
+1. you can't prove a hypothesis to be true
+:::
+
+::: {.column width="30%"}
+
+:::
+::::
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](img/playmo_sun.jpg){width="65%"}
+
+_the sun will rise every day_
+:::
+
+::: {.column width="50%" .fragment}
+![](img/playmo_nosun.jpg){width="65%"} 
+
+just _one_ counterexample...
+:::
+
+::::
+
+## Null-Hypothesis Statistical Testing
+
+:::: {.columns}
+
+::: {.column width="60%"}
+founded on **two principles**
+
+1. you can't prove a hypothesis to be true
+
+2. the universe is governed by chance
+:::
+
+::: {.column width="40%"}
+
+
+![](img/q1.gif)
+:::
+
+::::
+
+
+## Null-Hypothesis Statistical Testing
+
+:::: {.columns}
+
+::: {.column width="70%"}
+founded on **two principles**
+
+1. you can't prove a hypothesis to be true
+
+2. the universe is governed by chance
+:::
+
+::: {.column width="30%"}
+<!-- FIXME -->
+{{< video "img/video/galton.mp4" >}}
+:::
+
+::::
+
+
+
+
+
+## [A Theory about the Structure of Chance]{.r-fit-text}
+
+- if we deviate _enough_ from that structure, we assume that something else is at play
+
+```{r}
+#| echo: false
+#| layout-ncol: 2
+#| fig-asp: .8
+x <- tibble(x=c(-4,4))
+x %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,linewidth=1.5) +
+  xlab("variable") + ylab("density") +
+  ggtitle("Chance")+
+  scale_y_continuous(labels=NULL)
+
+db <- function(x) {dnorm(x-2)+dnorm(x+1)}
+x %>% ggplot(aes(x=x)) +
+  stat_function(fun=db,linewidth=1.5) +
+  xlab("variable") + ylab("density") +
+  ggtitle("Something Else?") +
+  scale_y_continuous(labels=NULL)
+
+```
+
+## What is Enough?
+
+:::: {.columns}
+
+::: {.column width="40%"}
+![](img/playmo_frazzled.jpg){width="80%" fig-align="center"}
+:::
+
+::: {.column width="60%"}
+
+- _enough_ is operationalised as a probability
+
+  - based on summary statistics (e.g., $\bar{x}, \sigma, n, \textrm{se}$)
+  
+- summaries _assume that chance is ruling things_
+
+- summary statistics are often
+
+  - $\frac{x-\bar{x}}{\sigma}$ (single observations)
+  - $\frac{\bar{x}}{\textrm{se}}$ (group summaries)
+  
+- (these are basically the same thing, compared to $z$ or $t$ as appropriate)
+:::
+::::
+
+---
+
+::: myblock
+if the probability of obtaining the data we have observed (or more extreme data) under the null hypothesis is low enough...
+:::
+
+[if]{.red}
+
+- we have made the right assumptions about chance
+
+- we have calculated the right summary
+
+- we have looked up the appropriate probability (of obtaining summary statistic or more)
+
+- that probability is below the $\alpha$ level we have previously set
+
+[then]{.red}
+
+- we can, tentatively, suggest that maybe the pattern we have observed is not due to chance
+
+## But Linear Models...?
+
+::: myyellowblock
+$$\color{red}{\textrm{outcome}_i} = \color{blue}{(\textrm{model})_i} + \textrm{error}_i$$
+:::
+
+- essentially, these are based on _covariance_
+
+- the [_model_]{.blue} expresses the amount that variables covary
+
+- the _error_ is the unexplained variance, and we have a theory about its distribution
+
+- we want the _model_ (SS) to be big compared to the _error_ (SS)
+
+  - the $F$ ratio measures this (so does $R^2$, less directly)
+  
+- again, we're calculating summary statistics and looking up the probability of obtaining them (or more) in a chance universe
+
+## Coefficients
+
+- coefficients tell you about (hypothetical) lines through data
+
+- the most important (and often least exciting) coefficient is the _intercept_
+
+  - other properties of the line are always relative to this
+
+  - we can change the interpretation of the intercept by _scaling_ predictors
+
+::: fragment
+
+### when predictors are _categories_
+
+- we assign numbers to the category values (one pair of values for each of $n-1$ comparisons)
+
+  - the interpretation of the intercept depends on these values
+  
+:::
+
+## Non-Linear Outcomes
+
+:::: {.columns}
+
+::: {.column width="40%"}
+![](img/playmo_pirate_ghost.jpg){width="80%" fig-align="center"}
+:::
+
+::: {.column width="60%"}
+- use **generalized linear models**
+
+- specify **link function**
+
+- most frequent case is _binomial_
+
+  → **logit** (log-odds) link function
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+::: {.fragment}
+
+```{r}
+#| echo: false
+#| fig.asp: .8
+#| layout-ncol: 3
+
+pt <- tibble(x=seq(-4.5,4.5,length=49),lo=x,o=exp(x),p=o/(1+o))
+
+p1 <- pt |> ggplot(aes(x=x,y=p)) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("probability") +
+  ggtitle("probability") +
+  annotate("text",-1,.75,label="p=.5",size=12) +
+  theme(plot.title = element_text(size=72))
+
+p2 <- pt |> ggplot(aes(x=x,y=o)) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("odds") +
+  ggtitle("odds") +
+  annotate("text",-1.2,15,label="odds=1",size=12) +
+  theme(plot.title = element_text(size=72))
+
+p3 <- pt |> ggplot(aes(x=x,y=lo)) +
+  geom_path(size=2,colour="red") +
+  scale_x_continuous() +
+  geom_vline(xintercept = 0,linetype="dashed") +
+  ylab("log(odds)") +
+  ggtitle("log-odds (logits)")
+
+p4 <- p3 + annotate("text",-2.2,2,label="log(odds)=0",size=12) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  theme(plot.title = element_text(size=72))
+p1
+p2
+p4
+```
+:::
+
+:::
+
+::::
+
+## Non-Linear Outcomes
+
+- main things to remember:
+  - we're dealing in _deviance_, not variance
+  - _how to convert_ the coefficients
+
+::: {layout="[2,2,2,2,2]"}
+
+```{r}
+#| echo: false
+#| fig-asp: .9
+p1
+```
+
+::: {#unit}
+→ `p/(1-p)`
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+ ← `o/(o+1)`
+:::
+
+```{r}
+#| echo: false
+#| fig-asp: .9
+p2
+```
+
+::: {#unit}
+→ `log(o)`
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+← `exp(l)`
+:::
+
+```{r}
+#| echo: false
+#| fig-asp: .9
+p4
+```
+
+:::
+
+- some papers talk about odds, some about probabilities
+
+# Model Building
+
+## [When Should I Put Things in My Models?]{.r-fit-text}
+
+:::: {.columns}
+
+::: {.column width="70%"}
+
+
+1. to estimate and test an association/difference of interest
+2. to get the "best" fitting/predicting model
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+- psych research _typically_ interested in (1).
+
+:::
+
+::: {.column width="30%"}
+![](img/playmo_spanner.jpg)
+:::
+
+::::
+
+. . .
+
+## Control Isn't Always Easy {.nostretch}
+
+- draw your theory out:
+
+![](img/lab_attendance_1.png){width="70%" fig-align="center"}
+
+```r
+model <- lm(grade ~ attendance)
+```
+
+## Control Isn't Always Easy {.nostretch visibility="uncounted"}
+
+- draw your theory out:
+
+![](img/lab_attendance_2.png){width="70%" fig-align="center"}
+
+```r
+model <- lm(grade ~ knowledge + attendance)
+```
+
+## Control Isn't Always Easy {.nostretch visibility="uncounted"}
+
+- draw your theory out:
+
+![](img/lab_attendance_3.png){width="70%" fig-align="center"}
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+- maybe "knowledge" isn't a good control variable?
+
+## Conclusions Aren't Always Easy {.nostretch}
+
+- draw your theory out:
+
+![](img/storks_1.png){width="70%" fig-align="center"}
+
+## Conclusions Aren't Always Easy {.nostretch visibility="uncounted"}
+
+![](img/storks_g.png){width="80%" fig-align="center"}
+
+::: attribution
+Matthews (2000). <https://doi.org/10.1111/1467-9639.00013>
+:::
+
+
+## Conclusions Aren't Always Easy {.nostretch visibility="uncounted"}
+
+![](img/storks_2.png){width="70%" fig-align="center"}
+
+- the _direction_ is something we reason about
+
+- the _model_ doesn't care:
+
+`lm (y ~ x)` and `lm (x ~ y)` are "the same" (`cor.test(y,x)`)
+
+::: notes
+- random allocation (for example, to group) can help us claim that a predictor is causal
+:::
+
+## {.nostretch}
+
+![](https://imgs.xkcd.com/comics/correlation.png){width="80%" fig-align="center"}
+
+. . .
+
+> Correlation doesn't imply causation, but it does waggle its eyebrows suggestively and gesture furtively while mouthing 'look over there'.
+
+::: attribution
+Randall Munroe <https://xkcd.com/552>
+:::
+
+# [The Bits We Didn't Talk About]{.r-fit-text style="text-align: center;"}
+
+![](img/harvard2.png){fig-align="center"}
+
+## ANOVA 
+
+> If you should say to a mathematical statistician that you have discovered that linear multiple regression and the analysis of variance (and covariance)
+> are identical systems, he would mutter something like "Of course—general linear model," and you might have trouble maintaining his attention. If you
+> should say this to a typical psychologist, you would be met with incredulity, or worse. Yet it is true, and in its truth lie possibilities for more relevant and
+> therefore more powerful research data.
+
+Cohen, 1968
+
+## History
+
+:::: {.columns}
+
+::: {.column width="48%"}
+
+### Multiple Regression
+
+- introduced c. 1900 in biological and behavioural sciences
+
+- aligned to "natural variation" in observations
+
+- shows that means $\bar{y}$ are related to groups $g_1,g_2,\ldots,g_n$
+
+:::
+
+::: {.column width="4%"}
+
+
+:::
+
+::: {.column width="48%"}
+
+
+### ANOVA
+
+- introduced c. 1920 in agricultural research
+
+- aligned to experimentation and manipulation
+
+- shows that groups $g_1,g_2,\ldots,g_n$ have different means $\bar{y}$
+
+
+:::
+
+::::
+
+- both produce $F$-ratios, discussed in different language, but identical
+
+
+## Why Teach GLM/Regression?
+
+- GLM has less restrictive assumptions
+
+  - especially true for unbalanced designs/missing data
+  
+- GLM is far better at dealing with covariates
+
+  - can arbitrarily mix continuous and discrete predictors
+  
+- GLM is the gateway to other powerful tools
+
+  - mixed models and factor analysis (→ MSMR)
+
+  - structural equation models
+
+## ANOVA in R
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r makedat-again}
+#| echo: false
+library(gt)
+doit <- 1
+while (doit) {
+  toys <- tibble(type=gl(2,1,10,labels=c('playmo','zing')),UTILITY=round(runif(10,0,10),1))
+  tt <- toys %>% group_by(type) %>% summarise(mean=mean(UTILITY))
+  if (tt$mean[1] <= tt$mean[2]) {
+    next
+  }
+  if (t.test(UTILITY~type,data=toys)$p.value < .05)
+  {
+    doit <- 0
+  }
+}
+### adding lego
+t1 <- toys %>% filter(type=='playmo')
+doit <- 1
+while (doit) {
+  t2 <- tibble(type="lego",UTILITY=round(runif(5,0,10),1))
+  if (mean(t1$UTILITY) > mean(t2$UTILITY) && t.test(t1$UTILITY,t2$UTILITY,data=toys)$p.value < .05)
+  {
+    doit <- 0
+  }
+}
+toys <- toys %>% full_join(t2)
+toys <- toys %>% group_by(type) %>% mutate(id=1:n()) %>% ungroup() %>% arrange(id,desc(type)) %>% select(-id) %>% mutate(type=as_factor(type))
+
+head(toys,10) %>% gt() |> tab_options(table.font.size=pct(70))
+```
+
+:::
+
+::: {.column width="50%"}
+![](img/playmo_3.jpg){fig-align="center"}
+:::
+
+::::
+
+## GLM vs ANOVA
+
+```{r lmod}
+l.mod <- lm(UTILITY~type, data=toys)
+anova(l.mod)
+```
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+```{r}
+a.mod <- aov(UTILITY~type, data=toys)
+summary(a.mod)
+```
+
+
+## GLM vs ANOVA
+
+```{r lm1, eval=F}
+summary(l.mod) #<<
+```
+```{r lm2,echo=F}
+.pp(summary(l.mod),l=list(0,10:13,0))
+```
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+```{r aov1}
+model.tables(a.mod)
+```
+
+::: notes
+- the (default) model table shows you the differences from the grand mean, which is `r mean(toys$UTILITY)`
+
+- so in the linear model summary the mean value for playmos is `r coef(l.mod)[1]` + `r coef(l.mod)[2]` or `r coef(l.mod)[1]+coef(l.mod)[2]`
+
+- in the anova summary the mean value for playmos is `r mean(toys$UTILITY)` + `r model.tables(a.mod)$tables$type[2]` or `r mean(toys$UTILITY)+model.tables(a.mod)$tables$type[2]`
+
+- however in the model table (from ANOVA) we don't know what differences are statistically significant, and we don't have diagnostics such as $R^2$
+:::
+
+
+## The Elephant in the Room {auto-animate=true}
+
+![](img/playmo_elephant.png){fig-align="center"}
+
+## Repeated Measures {auto-animate=true}
+
+:::: {.columns}
+
+::: {.column width="60%"}
+- so far, every model we've looked at has been "one observation per participant"
+
+- however, most experiments have a structure
+
+- some observations are "more related" to each other than others
+
+- for example, because they come from the same person (repeated measures)
+:::
+
+::: {.column width="40%"}
+![](img/playmo_elephant.png)
+:::
+
+::::
+
+## ![](img/css/what.jpg){width=70px style="transform: translateY(50%);"} Mixed-Effects Models
+
+::: myblock
+$$y_{ij}=b_{0j}+b_{1j}x_{1ij}+\epsilon_{ij}$$
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+$$b_{0j}=\gamma_{00}+\zeta_{0j}$$
+$$b_{1j}=\gamma_{01}+\zeta_{1j}$$
+
+:::
+
+- relatedness accounted for by more regression equations
+
+- all part of the linear model → [next semester]{.red}
+
+
+# Reaching Nirv-R-na {style="text-align: center;" background-image="img/nirvana.png" background-size="contain"}
+
+![](img/blank.png){fig-align="center"}
+
+## R is a Language
+
+- no 'perfect way' to speak it
+
+  - 'dialects' such as `{tidyverse}` and `{data.table}`
+
+- constantly changing
+
+  - new libraries (`{magrittr}` introduced `%>%`)
+  
+  - new syntax (R v4.1.0 introduced `|>`)
+  
+- we are all constantly learning new things
+
+## Learn by Taking It Apart {auto-animate=true}
+
+```{r}
+#| include: false
+load('R/singers.Rdata')
+singers <- singers |> rename(SPLATTED=splatted)
+```
+
+```{r}
+#| label: CODE
+#| output-location: column
+#| tidy.opts: { width.cutoff: 24 }
+
+singers |>
+  mutate(bin = cut_interval(quality, 10)) |>
+  group_by(bin) |>
+  summarise(prop = mean(SPLATTED)) |>
+  ggplot(aes(x = bin, y = prop)) +
+    xlab("quality bin") +
+    ylab("prop splatted") +
+    geom_point(size = 3) +
+    scale_x_discrete(label = 1:10)
+```
+
+## Learn by Taking It Apart {visibility="uncounted" auto-animate=true}
+
+```{r}
+#| label: CODE2
+singers |>
+  mutate(bin = cut_interval(quality, 10))
+```
+## Learn by Taking It Apart {visibility="uncounted" auto-animate=true}
+
+```{r}
+#| label: CODE4
+singers |>
+  mutate(bin = cut_interval(quality, 10)) |>
+  group_by(bin) |>
+  summary()
+```
+
+
+
+## Learn by Taking It Apart {visibility="uncounted" auto-animate=true}
+
+```{r}
+#| label: CODE3
+singers |>
+  mutate(bin = cut_interval(quality, 10)) |>
+  group_by(bin) |>
+  summarise(prop = mean(SPLATTED))
+```
+
+## Never Trust Yourself
+
+```{r}
+#| include: false
+singers <- singers[-1,]
+```
+
+```r
+singers <- read_csv('some file.csv') 
+```
+
+#### check and continue
+
+```{r}
+#| warning: true
+if (nrow(singers != 1000)) {
+  warning ("unexpected number of rows -> ", nrow(singers))
+}
+```
+
+#### check and stop
+
+```{r}
+#| warning: true
+#| eval: false
+if (nrow(singers != 1000)) {
+  stop ("unexpected number of rows -> ", nrow(singers))
+}
+```
+
+
+## Don't Trust Magic
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+`{sjPlot}`, `{effects}` etc.
+
+- set some parameters
+
+- instant pretty output
+
+![](img/playmo_magic.jpg){width="45%" fig-align="center"}
+
+:::
+
+::: {.column width="50%"}
+
+`{broom}`, `{ggplot2}`, etc.
+
+- intermediate calculations
+
+- work to make pretty output
+
+::: r-stack
+
+![](img/playmo_spanner.jpg){width="50%" fig-align="center" .fragment fragment-index=1 .fade-out}
+
+:::: {.myblock .fragment fragment-index=1}
+more likely to understand where the numbers come from
+::::
+
+:::
+
+:::
+
+::::
+
+
+## Want to Play?
+
+- reanalyse your own undergraduate data
+
+```r
+library(help="haven") # tools for reading SPSS data
+```
+
+- play with other datasets
+
+- many datasets built in to R and its libraries
+
+```r
+data()
+```
+
+. . .
+
+### Want to Learn?
+
+- Oscar Baruffa's _Big Book of R_ <https://bigbookofr.com>
+
+## [A Take-Home Message: 'Many Analysts']{.r-fit-text}
+
+> Twenty-nine teams involving 61 analysts used the same data set to address the same research question: whether soccer referees are more likely to give red cards to dark-skin-toned players than to light-skin-toned players. Analytic approaches varied widely across the teams, and the estimated effect sizes ranged from 0.89 to 2.93 (Mdn = 1.31) in odds-ratio units. Twenty teams (69%) found a statistically significant positive effect, and 9 teams (31%) did not observe a significant relationship.
+
+::: attribution
+Silberzahn, R., et al. (2018). <https://doi.org/10/gd2429>
+:::
+
+. . .
+
+- statistics is a _language for talking about patterns in data_
+
+
+# {#q}
+
+![](img/question.svg){fig-align="center"}
+
+## Goodbye! {background-image="img/playmo_goodbye.jpg" background-size="contain"}
+
+<!--![](img/playmo_goodbye.jpg){fig-align="center"}-->
+
