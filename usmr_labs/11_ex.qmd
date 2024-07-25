@@ -1,7 +1,7 @@
 ---
 title: "Week 11 Exercises: Tying up Loose Ends"
 params: 
-    SHOW_SOLS: FALSE
+    SHOW_SOLS: TRUE
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
@@ -36,7 +36,7 @@ This might look like a lot of stuff, but it is just writing, bit by bit, the stu
 
 When writing up -- most important is to think carefully about what the questions are really asking (and therefore what kind of test might be appropriate), and to explain your analytical process as clearly as you can, pulling out and interpreting the key information from the models that help to guide the reader to your conclusion.
 
-<!-- This is not a "perfect" answer (I may well have made mistakes, or have written certain sections unclearly). -->
+**NOTE** This is not a "perfect" answer (I may well have made mistakes, or have written certain sections unclearly).
 <!-- With regards to the coursework report, there are marks available even if you don't get all of the "bits" -->
 
 :::
@@ -130,8 +130,8 @@ hist(couchto5k$age)
 We can see that `accountability` looks to be okay, but `selfmot` has a minimum value of -99, which we can't have.  
 
 ```{r}
-couchto5k %>% 
-  select(accountability, selfmot) %>%
+couchto5k |> 
+  select(accountability, selfmot) |>
   summary()
 ```
 
@@ -140,8 +140,8 @@ couchto5k %>%
 
 both `health` and `happiness` variables are within the possible ranges  
 ```{r}
-couchto5k %>% 
-  select(health, happiness) %>%
+couchto5k |> 
+  select(health, happiness) |>
   summary()
 ```
 
@@ -175,7 +175,7 @@ We'll do all of our cleaning inside one `mutate()`.
 
 ```{r}
 couchto5k <- 
-  couchto5k %>% 
+  couchto5k |> 
   mutate(
     # ages >100, make NA
     age = ifelse(age>100, NA, age),
@@ -229,6 +229,7 @@ Perform any appropriate analyses and write up your methods and results, providin
 #### Hints
 
 - There are two questions here: city differences in dropout, and city differences in age. These are nice and simple questions about the relationships between only two variables.  
+- You might need to make a new variable for "early/late/no dropout".  
 - The first 5 weeks of the course focused on some of the more fundamental tests of relationships between two variables. Some of these might be useful here!  
 
 :::
@@ -240,7 +241,7 @@ The `dropout ~ city` question is asking us to categorise when participants stop 
 
 ```{r}
 couchto5k <- 
-  couchto5k %>%
+  couchto5k |>
     mutate(
       dropout = ifelse(week_stopped < 5, "early",
                       ifelse(week_stopped <9, "late", "not at all"))
@@ -317,7 +318,7 @@ res_age <- t.test(age ~ city, data = couchto5k, var.equal = TRUE)
 ```
 
 
-A $\chi^2$ test of independence indicated that rate of attrition (early-/late-/no- dropout) did not significantly differ between Edinburgh and Glasgow ($\chi^2$(2, n=`r sum(res_dropout$observed)`) = `r round(res_dropout$statistic,3)`, Monte Carlo simulated (B=2000) p = `r round(res_dropout$p.value,3)`). From both cities, approximately half of participants did not drop out of the programme, late drop-outs made up 13% of Glasgow participants and 9% of those from Edinburgh, with the remainder dropping out early (39% of Glasgow, 40% of Edinburgh).  
+A $\chi^2$ test of independence indicated that rate of attrition (early-/late-/no- dropout) did not significantly differ between Edinburgh and Glasgow ($\chi^2$(n=`r sum(res_dropout$observed)`) = `r round(res_dropout$statistic,3)`, Monte Carlo simulated (B=2000) p = `r round(res_dropout$p.value,3)`). From both cities, approximately half of participants did not drop out of the programme, late drop-outs made up 13% of Glasgow participants and 9% of those from Edinburgh, with the remainder dropping out early (39% of Glasgow, 40% of Edinburgh).  
 
 The mean age of participants was not significantly different between the two cities ($t( `r res_age[['parameter']]` )=`r round(res_age[['statistic']],2)`$, $p=`r round(res_age[['p.value']],2)`$), with a mean age in Edinburgh of `r round(res_age$estimate,1)[1]` and in Glasgow of `r round(res_age$estimate,1)[2]`.
 
@@ -348,7 +349,7 @@ Perform an appropriate analysis and write up your methods and results, providing
 
 let's standardise the health measure, because we probably don't want to look at things where people have health of 0, and i'm not sure that an increase of 1 is that meaningful..    
 ```{r}
-couchto5k <- couchto5k %>%
+couchto5k <- couchto5k |>
   mutate(
     healthZ = (health-mean(health))/sd(health),
   )
@@ -556,7 +557,7 @@ Perform an appropriate analysis and write up your methods and results, providing
 
 We need to make a binary outcome out of the `week_stopped` variable. 
 ```{r}
-couchto5k <- couchto5k %>%
+couchto5k <- couchto5k |>
   mutate(
     completed = ifelse(week_stopped == 9, 1, 0)
   )
@@ -574,7 +575,7 @@ Per the study description, many of these were measured after participants stoppe
 tibble(
   variable = names(couchto5k)[-11],
   when = c(NA, "unclear when measured, but assume it is consistent at both points", "measured at start","measured at start", rep("measured at end", 2), "measured at start", "unclear when measured, but assume it is consistent at both points", rep("measured at end", 3))
-) %>% pander::pander()
+) |> pander::pander()
 ```
 
 It doesn't really make sense for us to think about your happiness _after_ the programme influencing whether or not you complete it (this is not to say that it will not be associated).  
@@ -584,7 +585,7 @@ age, season and city are all things that *might* influence completion, or might 
 It's probably worth scaling the `accountability` and `selfmot` variables. They are both the sum of 7 questions, each scored 1-5, so it's slightly unclear what a "1 unit increase" really means. It's answering.  
 ```{r}
 couchto5k <-
-  couchto5k %>% 
+  couchto5k |> 
   mutate(
     accountabilityZ = scale(accountability)[,1],
     selfmotZ = scale(selfmot)[,1]
@@ -621,12 +622,7 @@ beyond participants' age, location and which season programme is undertaken in, 
 From our coefficients, we can see that this is likely being driven by an association between self-motivation and the probability of completing the couchto5k programme:  
 
 ```{r}
-#| eval: false
 summary(compmod)
-```
-```{r}
-#| echo: false
-.pp(summary(compmod), l = list(c(3,10:19)))
 ```
 
 `r solend()`
@@ -744,7 +740,7 @@ gt::gt(cis)
 <!-- tibble( -->
 <!--   variable = c("ID","Sex","Age","Condition","Accuracy"), -->
 <!--   description = c("Unique ID number","Children's gender","Children's age","The video children watched: singly-determined vs. over-determined. In the singly-determined condition, the brick was the single cause that caused Ball E to go into the goal. In the over-determined condition, the brick was not the single cause because Ball E would have gone into the goal without it.","Whether children answered the question correctly (1) or no (0). The correct answer should be “no” for the singly-determined condition and should be “yes” for the over-determined condition") -->
-<!-- ) %>% gt::gt() -->
+<!-- ) |> gt::gt() -->
 <!-- ``` -->
 
 <!-- Researchers were interested in children’s counterfactual thinking ability: How did children perform in the singly-determined vs. over-determined situations, and whether it differed between ages? -->
@@ -755,13 +751,14 @@ gt::gt(cis)
 
 ```{r}
 #| include: false
-kkdat <- read_csv("../../data/Kominsky2021.csv") %>%
+#| eval: false
+kkdat <- read_csv("../../data/Kominsky2021.csv") |>
   mutate(age = factor(ifelse(age>=5 & age<=6, "5-6",
                       ifelse(age>=7 & age<=8, "7-8",
                       "9-10")))
          )
 glm(accuracy ~ sex + condition + age, 
-    data = kkdat, family=binomial) %>% summary
+    data = kkdat, family=binomial) |> summary
 ```
 
 
