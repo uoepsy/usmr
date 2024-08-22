@@ -1,0 +1,776 @@
+---
+title: "Exercises: Scaling | Categorical Predictors"
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+qcounter <- function(){
+  if(!exists("qcounter_i")){
+    qcounter_i <<- 1
+  }else{
+    qcounter_i <<- qcounter_i + 1
+  }
+  qcounter_i
+}
+```
+
+
+# Pictures of a Brain
+
+:::frame
+__neuronews.csv__  
+
+```{r}
+#| include: false
+set.seed(9)
+df = tibble(
+  pid = paste0("ppt_",1:120),
+  name = randomNames::randomNames(120, which.names="first"),
+  condition = rep(c("text-only","text+brain","text+brain+graph"),e=40),
+  credibility = 58.2 + 
+    (condition=="text+brain")*4.7 +
+    (condition=="text+brain+graph")*5.322 + 
+    rnorm(120, 0, 10.3)
+)
+#write_csv(df,file="../../data/usmr_neuronews.csv")
+lm(credibility~condition,df) |> summary()
+```
+
+This dataset is from a study^[not a real one, but inspired very loosely by [this one](https://bpspsychub.onlinelibrary.wiley.com/doi/full/10.1111/bjep.12162){target="_blank"}] looking at the influence of presenting scientific news with different pictures on how believable readers interpret the news.  
+`r nrow(df)` participants took part in the study. Participation involved reading a short article about some research in neuroscience, and then rating how credible they found the research. Participants were randomly placed into one of three conditions, in which the article was presented a) in text alone, b) with a picture of a brain, or c) with a picture of a brain and a fancy looking (but unrelated to the research) graph. They rated credibility using a sliding scale from 0 to 100, with higher values indicating more credibility.  
+
+The data is available at [https://uoepsy.github.io/data/usmr_neuronews.csv](https://uoepsy.github.io/data/usmr_neuronews.csv){target="_blank"}.  
+
+```{r}
+#| echo: false
+#| tbl-cap: "usmr_neuronews.csv data dictionary"
+tibble(
+  variable=names(df),
+  description = c(
+    "Participant ID",
+    "Participant Name",
+    "Condition (text-only / text+brain / text+brain+graph)",
+    "Credibility rating (0-100)"
+  )
+) |> gt::gt()
+```
+
+
+:::
+
+`r qbegin(qcounter())`
+Read in the data and take a look around (this is almost always the first thing to do!)  
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+nndat <- read_csv("https://uoepsy.github.io/data/usmr_neuronews.csv")
+
+hist(nndat$credibility)
+# geom jitter is a way of randomly 'jittering' points so that the don't overlap
+# i want them to be the right height, so no jitter in height, but i'll give them a little width jitter
+ggplot(nndat, aes(x=condition,y=credibility)) +
+   geom_jitter(height = 0, width = .2)
+```
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Fit a model examining whether credibility of the research article differs between conditions.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+mod1 <- lm(credibility ~ condition, data = nndat)
+```
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+Do conditions differ in credibility ratings?  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+This is an overall question, not asking about differences between specific levels. You can find a way to test this question either at the bottom of the `summary()` output, or by comparing it with a model without condition differences in it (see [8B #testing-group-differences](08b_catpred.html#testing-group-differences){target="_blank"}).  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+We can either do this as a model comparison:
+```{r}
+mod0 <- lm(credibility ~ 1, data = nndat)
+anova(mod0, mod1)
+```
+
+and this info is also at the bottom of the summary, because we just have one predictor in the model
+```{r}
+#| eval: false
+summary(mod1)
+```
+```
+F-statistic: 3.246 on 2 and 117 DF,  p-value: 0.04245
+```
+
+:::int
+Conditions significantly differed in credibility ratings $F(2,117) = 3.25, p = .0425$
+:::
+
+`r solend()`
+
+`r qbegin(qcounter())`
+__How__ do groups differ?  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+Note that this is a subtly different question to the previous one. It will require us to look at something that tests between specific groups ([8B #testing-differences-between-specific-groups](08b_catpred.html#testing-differences-between-specific-groups){target="_blank"}).  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+#| include: false
+res = broom::tidy(mod1)
+res$estimate = round(res$estimate,2)
+res$statistic = round(res$statistic,2)
+res$p.value = format.pval(res$p.value,eps=.001,digits=2)
+res$p.value = ifelse(grepl("<",res$p.value), res$p.value, paste0("=",res$p.value))
+```
+
+
+```{r}
+summary(mod1)
+```
+
+:::int
+Compared to when presented in text-only, conditions where the article was presented alongside a picture of a brain, or alongside both a brain-picture and a graph, resulted in higher average credibility ratings. Including a picture of a brain was associated with a `r res[2,2]` increase in credibility over the text-only article ($b = `r res[2,2]`$, $t(`r mod1['df.residual']`)=`r res[2,4]`$, $p`r res[2,5]`$), and including both a brain-picture and a graph was associated with a `r res[3,2]` higher average credibility rating ($b = `r res[3,2]`$, $t(`r mod1['df.residual']`)=`r res[3,4]`$, $p`r res[3,5]`$).  
+:::
+
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Let's prove something to ourselves.  
+Because we have no other predictors in the model, it should be possible to see how the coefficients from our model map exactly to the group means.  
+
+Calculate the mean credibility for each condition, and compare with your model coefficients.  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+To calculate group means, we can use `group_by()` and `summarise()`! 
+
+:::
+
+
+`r qend()`
+`r solbegin(label="Solution Part 1 - calculate group means", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+```{r}
+nndat |> 
+  group_by(condition) |>
+  summarise(
+    meancred = mean(credibility)
+  )
+```
+
+`r solend()`
+`r solbegin(label="Solution Part 2 - compare to the coefficients", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+Here are our model coefficients:
+```{r}
+coef(mod1)
+```
+
+And here are our means:
+```{r}
+nndat |> 
+  group_by(condition) |>
+  summarise(
+    meancred = mean(credibility)
+  )
+```
+
+We can see that the intercept is the mean of the `text-only` group.  
+
+The next coefficient - named "conditiontext+brain" is the difference from the `text-only` group to the `text+brain` group.  
+
+The final coefficient - named "conditiontext+brain+graph" is the difference from the `text-only` group to the `text+brain+graph` group.  
+
+So this means we can get to our group means by using:
+```{r}
+coef(mod1)[c(1,2)] |> sum() # the mean of text+brain
+coef(mod1)[c(1,3)] |> sum() # the mean of text+brain+graph
+```
+
+`r solend()`
+
+<div class="divider div-transparent div-dot"></div>
+
+# Detectorists
+
+`r qbegin(qcounter())`
+We saw this study briefly at the end of last week and we're going to continue where we left off.  
+
+Below is the description of the study, and the code that we had given you to clean the data and fit a model that assessed whether different strategies (e.g. breathing, closing eyes) were associated with changes in heart rate during a lie-detection test. The model also accounts for differences in heart rates due to age and pre-test anxiety.  
+
+Run the code given below to ensure that we are all at the same place.  
+
+::: {.callout-note collapse="true"}
+#### Study: Lie detectors
+
+```{r}
+#| include: false
+ss=88173#round(runif(1,1e3,1e5))
+set.seed(ss)
+ldf = tibble(
+  age = round(runif(142,22,64)),
+  anx = round(rnorm(142,0,1),2),
+  strategy = rbinom(142, 3, plogis(scale(anx)*2)),
+  hr = 45 + .3*age +3*anx+ (strategy==2)*-3.4 + (strategy==3)*-5.6 + rnorm(142,0,3)
+) 
+#psych::pairs.panels(ldf)
+#summary(lm(hr~age+anx+factor(strategy),ldf))
+#plot(lm(hr~age+anx+factor(strategy),ldf),which=4)
+ldf$hr <- round(ldf$hr,1)
+ldf$strategy[60] <- 5
+ldf$hr[ldf$hr>75]<- 37.0
+#write_csv(ldf,file="../../data/usmr_polygraph.csv")
+```
+
+Law enforcement in some countries regularly rely on 'polygraph' tests as a form of 'lie detection'. These tests involve measuring heart rate, blood pressure, respiratory rate and sweat. However, there is very little evidence to suggest that these methods are remotely accurate in being able to determine whether or not someone is lying.  
+
+Researchers are interested in if peoples' heart rates during polygraph tests can be influenced by various pre-test strategies, including deep breathing, or closing their eyes. They recruited `r nrow(ldf)` participants (ages `r min(ldf$age)` to `r max(ldf$age)`). Participants were told they were playing a game in which their task was to deceive the polygraph test, and they would receive financial rewards if they managed successfully. At the outset of the study, they completed a questionnaire which asked about their anxiety in relation to taking part. Participants then chose one of 4 strategies to prepare themselves for the test, each lasting 1 minute. These were "do nothing", "deep breathing", "close your eyes" or "cough"^[apparently coughing is a method of immediately lowering heart rate!]. The average heart rate of each participant was recorded during their test. 
+
+```{r}
+#| echo: false
+#| tbl-cap: "usmr_polygraph.csv data dictionary"
+tibble(
+  variable = names(ldf),
+  description = c(
+    "Age of participant (years)",
+    "Anxiety measure (Z-scored)",
+    "Pre-test Strategy (0 = do nothing, 1 = close eyes, 2 = cough, 3 = deep breathing)",
+    "Average Heart Rate (bpm) during test"
+  )
+) |> gt::gt()
+```
+
+__Analysis__  
+
+```{r}
+#| eval: false
+#| code-fold: true
+# load libraries
+library(tidyverse)
+library(psych)
+# read in the data
+liedf <- read_csv("https://uoepsy.github.io/data/usmr_polygraph.csv")
+
+# there seems to be a 5 there.. 
+table(liedf$strategy)
+# the other variables look okay though
+describe(liedf)
+pairs.panels(liedf)
+
+liedf <- liedf |> 
+  filter(strategy!=5) |>
+  mutate(
+    # strategy is a factor. but currently numbers
+    # i'm going to give them better labels too.. 
+    # to do this is need to tell factor() what "levels" to look for
+    # and then give it some "labels" to apply to those.
+    strategy = factor(strategy, 
+                      levels = c("0","1","2","3"),
+                      labels = c("do nothing", "close eyes",
+                                 "cough", "deep breathing")
+                      )
+  )
+
+liemod <- lm(hr ~ age + anx + strategy, data = liedf)
+
+# Does HR differ between strategies?
+anova(liemod)
+# the above is a shortcut for getting this comparison out:
+anova(
+  lm(hr ~ age + anx, data = liedf),
+  lm(hr ~ age + anx + strategy, data = liedf)
+)
+```
+
+:::
+
+`r qend()`
+```{r}
+#| include: false
+liedf <- read_csv("https://uoepsy.github.io/data/usmr_polygraph.csv")
+liedf <- liedf |> 
+  filter(strategy!=5) |>
+  mutate(
+    strategy = factor(strategy, 
+                      levels = c("0","1","2","3"),
+                      labels = c("do nothing", "close eyes",
+                                 "cough", "deep breathing")
+                      )
+  )
+liemod <- lm(hr ~ age + anx + strategy, data = liedf)
+```
+
+
+`r qbegin(qcounter())`
+Our model includes a predictor with 4 levels (the 4 different strategies).  
+
+This means we will have 3 coefficients pertaining to this predictor. Take a look at them. Write a brief sentence explaining what each one represents.  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+We're still all using R's defaults ([8B #treatment-contrasts-the-default](08b_catpred.html#treatment-contrasts-the-default){target="_blank"}), so these follow the logic we have seen already above. 
+
+:::
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+coef(liemod)
+```
+
+```{r}
+#| echo: false
+broom::tidy(liemod) |>
+  transmute(
+    term, estimate = round(estimate,2),
+    interpretation = c(
+      "estimated HR for someone age 0, anxiety 0 (the mean), who 'does nothing' prior to the test",
+      "estimated change in HR for an additional year of age, holding constant anxiety and strategy",
+      "estimated change in HR for an additional SD of anxiety, holding constant age and strategy",
+      "estimated difference in HR between 'doing nothing' strategy and 'close eyes' strategy, holding constant age and anxiety",
+      "estimated difference in HR between 'doing nothing' strategy and 'cough' strategy, holding constant age and anxiety",
+      "estimated difference in HR between 'doing nothing' strategy and 'deep breathing' strategy, holding constant age and anxiety"
+    )
+  ) |> gt::gt()
+```
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Calculate the mean heart rate for each strategy group.  
+Do they match to our model coefficients?  
+`r qend()`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
+```{r}
+liedf |> 
+  group_by(strategy) |>
+  summarise(
+    meanHR = mean(hr)
+  )
+```
+
+They don't match! For instance, in our group means above the 'close eyes' strategy has a _higher_ average heart rate than the 'do nothing' strategy. But that's not what our model coefficients said - they said the opposite! 
+
+Why is this? It's because we have other things in our model, so these model estimated differences are now "holding age and anxiety constant". 
+
+`r solend()`
+
+`r qbegin(qcounter())`
+At the end last week's exercises, we wanted you to make a plot of the model estimated differences in heart rates between the strategies.  
+
+Chances are that you followed the logic of 1) create a little plotting data frame, 2) use `augment()` from the broom package, and 3) shove it into ggplot.  
+
+You may have ended up with something like this:  
+```{r}
+#| code-fold: true
+#| out-height: "300px"
+plotdat <- data.frame(
+  age = mean(liedf$age),
+  anx = mean(liedf$anx),
+  strategy = unique(liedf$strategy)
+)
+broom::augment(liemod, 
+               newdata=plotdat, 
+               interval="confidence") |>
+  ggplot(aes(x=strategy,y=.fitted, col=strategy))+
+  geom_pointrange(aes(ymin=.lower,ymax=.upper)) +
+  guides(col="none")
+```
+
+These plots are great, but they don't really show the underlying spread of the data. They make it seem like _everybody_ in the 'do nothing' strategy will have a heart rate between 56 and 59bpm. But that interval is where we expect the _mean_ to be, not where we expect the individuals.  
+
+Can you add the original raw datapoints to the plot, to present a better picture?  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+This is tricky, and we haven't actually seen it anywhere in the readings or lectures.  
+The thing that we're giving to ggplot (the output of the `augment` function) doesn't have the data in it.  
+With ggplot we can actually pull in data from different sources:  
+```{r}
+#| eval: false
+ggplot(data1, aes(x=x,y=y)) + 
+  geom_point() +
+  geom_point(data = data2, aes(x=x,y=newy))
+```
+:::
+
+`r qend()`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
+
+So here was our nice plot:  
+```{r}
+plotdat <- data.frame(
+  age = mean(liedf$age),
+  anx = mean(liedf$anx),
+  strategy = unique(liedf$strategy)
+)
+broom::augment(liemod, 
+               newdata=plotdat, 
+               interval="confidence") |>
+  ggplot(aes(x=strategy,y=.fitted, col=strategy))+
+  geom_pointrange(aes(ymin=.lower,ymax=.upper)) +
+  guides(col="none")
+```
+
+We want to add to that the original data.. but all that original data is in a different dataset!  
+However, that doesn't mean we can't use it.  
+Let's try to add points for all our heart rates, and we'll tell `geom_point()` to look in the original dataset.  
+The thing we need to be careful with is that our original dataset doesn't have anything called `.fitted` in it, which is currently on our y-axis. So we need to specify the y we want it to use (in this case, the `hr` variable)
+
+```{r}
+broom::augment(liemod, 
+               newdata=plotdat, 
+               interval="confidence") |>
+  ggplot(aes(x=strategy,y=.fitted, col=strategy))+
+  geom_pointrange(aes(ymin=.lower,ymax=.upper)) +
+  guides(col="none") +
+  geom_point(data = liedf, aes(y = hr))
+```
+
+Okay, the data is on there.. now we just need to make it look nice. My instinct here is to jitter again.
+I'm also going to make the plots black, and a little transparent, so that we can still see the means.  
+
+```{r}
+broom::augment(liemod, 
+               newdata=plotdat, 
+               interval="confidence") |>
+  ggplot(aes(x=strategy,y=.fitted, col=strategy))+
+  geom_pointrange(aes(ymin=.lower,ymax=.upper)) +
+  guides(col="none") +
+  geom_jitter(data = liedf, aes(y = hr), width = .2, height = 0,
+              col = "black", alpha = .3)
+```
+
+This is just _one_ way to better visualise our findings.  
+
+If you're feeling adventurous, try: 
+
+- a violin plot to show the distributions, rather than jittered points
+- what happens when you put `position = position_nudge(x=.3)` inside the `geom_pointrange()`?  
+- what happens if you add `coord_flip()` to the plot?  
+
+`r solend()`
+
+<div class="divider div-transparent div-dot"></div>
+
+# Job Satisfaction, Guaranteed
+
+:::frame
+__jobsatpred.csv__  
+
+A company is worried about employee turnover, and they are trying to figure out what are the main aspects of work life that predict their employees' job satisfaction. 86 of their employees complete a questionnaire that leads to a 'job satisfaction score', that can range between 6 to 30 (higher scores indicate more satisfaction).     
+
+The company then linked their responses on the questionnaire with various bits of information they could get from their human resources department, as seen in @tbl-jobsatdict.  
+
+The data are available at [https://uoepsy.github.io/data/usmr_jobsatpred.csv](https://uoepsy.github.io/data/usmr_jobsatpred.csv){target="_blank"}.  
+
+```{r}
+#| echo: false
+#| label: tbl-jobsatdict
+#| tbl-cap: "usmr_jobsatpred.csv data dictionary"
+
+N = 93
+set.seed(974255.8)
+df = tibble(
+  name = randomNames::randomNames(N,which.names="last"),
+  commute = rchisq(N,4),
+  hrs_worked = round(sample(c(16,28,35,40),86,T,prob=c(.1,.05,.6,.25)) +
+                       rnorm(N,0,10)),
+  team_size = rpois(N,3.2),
+  remote = sample(0:1,N,T,c(.8,.2)),
+  salary_band = sample(1:10, N, T, prob = (10:1)/(sum(1:10)))
+) |>
+  mutate(
+    hrs_worked = pmax(0,hrs_worked),
+    jobsat = commute*0 + hrs_worked*-.1 + team_size*1.2 + remote*-4 + salary_band*3 + rnorm(N,0,4),
+    jobsat = round(scale(jobsat)[,1]*4.5 + 19.5),
+    commute = round(commute,1)
+  )
+
+df$commute[which.max(df$commute)] <- df$commute[which.max(df$commute)]*3
+df$commute = format(df$commute,digits=1)
+df$commute = gsub("\\.",",",df$commute)
+df$remote[sample(1:N,1)] <- 2
+df$jobsat[sample(1:N,2)] <- 0
+#write_csv(df,file="../../data/usmr_jobsatpred.csv")
+jsdat <- df
+# summary(df)
+# psych::multi.hist(df[,-c(1,2)], global=FALSE)
+# lm(jobsat ~ ., df) |> summary()
+tibble(
+  variable = names(df),
+  description  = c(
+    "Employee Surname",
+    "Distance (km) to employee residence (note, records have used a comma in place of a decimal point)",
+    "Hours worked in previous week",
+    "Size of the team in which the employee works",
+    "Whether the employee works in the office or remotely (0 = office, 1 = remote)",
+    "Salary band of employee (range 1 to 10, with those on band 10 earning the most)",
+    "Job Satisfaction Score (sum of 6 questions each scored on 1-5 likert scale)"
+  )
+) |> gt::gt()
+```
+
+:::
+
+
+`r qbegin(qcounter())`
+Read in the data. Look around, do any cleaning that might be needed.
+
+`r qend()`
+`r solbegin(label="Solution Part 1 - identifying problems", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+```{r}
+jsdat <- read_csv("https://uoepsy.github.io/data/usmr_jobsatpred.csv")
+```
+Just looking at the top of the data, I already know that `commute` is a problem..  
+```{r}
+head(jsdat)
+```
+
+The summary shows us a few other things..
+
+- `remote` has a max of 2, but it should be 0s and 1s, because it's a binary variable according to our data dictionary.  
+- `jobsat` should surely be between 6 and 30 (this is that idea of 6 questions where you score between 1 and 6 means your minimum should be 6, and maximum should be 30). Here we have a min of 0 and a max of 31 so something's amiss there.  
+
+```{r}
+summary(jsdat)
+```
+
+
+`r solend()`
+`r solbegin(label="Solution Part 2 - figuring out fixes", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+Variables are all appropriate types apart from `commute`.  
+If we're being good, we should probably also set `remote` to be a factor as it is two distinct categories.  
+
+For the commute variable, we need to first (prior to making it a numeric variable), replace all the commas with a point - ".". We can do this using `gsub()`.  
+
+For the remote variable, we know it only has two possible levels - 0 and 1. However, we saw earlier that there was a 2 in there as well. But there's only one of them, so it's probably a typo or something.  
+```{r}
+sum(df$remote==2)
+```
+We should probably replace that with an NA as it is an impossible value, and we have no idea whether it is supposed to be a 0 or a 1.  
+As it happens, by giving the `factor()` function only the levels we want to keep, it will replace any others with `NA`s.  
+```{r}
+factor(c("dog","cat","parrot"), levels=c("dog","cat"))
+```
+
+We also noted that the `jobsat` variable had some values that were $<6$ and $>30$. 
+We can replace those with NAs as well, using that handy `ifelse()` function!  
+```{r}
+x <- c(1,16,50,72)
+# if x is less than 10 or x is less than 70, give me an NA, 
+# otherwise give me the value of x
+ifelse(x<10 | x>70, NA, x)
+```
+
+`r solend()`
+`r solbegin(label="Solution Part 3 - implementing", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+Let's do this bit of cleaning all in one mutate:  
+```{r}
+jsdat <- 
+  jsdat |> 
+    mutate(
+      commute = as.numeric(gsub(",",".",commute)),
+      remote = factor(remote, levels = c("0","1"),
+                      labels = c("office","remote")),
+      jobsat = ifelse(jobsat < 6 | jobsat > 30, NA, jobsat)
+    )
+```
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Explore! Make some quick plots and calculate some quick descriptives.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+library(tableone)
+CreateTableOne(data = jsdat |> select(-name))
+```
+
+
+```{r}
+library(psych)
+pairs.panels(jsdat)
+```
+
+It looks like `commute` has a __big__ outlier!! 
+```{r}
+max(jsdat$commute)
+```
+It's not impossible though (`r round(max(jsdat$commute))` km commute?), it's just quite different.. chances are this may come out as an influential datapoint in our model, but I have no obvious reason to exclude this observation just because they live far away! 
+
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Fit a model to examine the independent associations between job satisfaction and all of the aspects of working patterns collected by the company.  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+We want to look at the independent associations, so we want a multiple regression model.  
+We don't really have any theoretical order in which to put the predictors in our model. However, this mainly matters when we use `anova(model)` - if we are just going to look at the coefficients (which is what we will be doing), then we can put them in any order for now. 
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+jsmod <- lm(jobsat ~ commute + hrs_worked + team_size + remote + salary_band, jsdat)
+summary(jsmod)
+```
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+Check the assumption plots from the model. Remember we had that employee who was commuting quite far - are they exerting too much influence on our model?  
+If so, maybe refit the model without them.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+We can see below that there is that one very influential observation (see bottom right plot). It's almost 6 times more than the next most influential one.  
+```{r echo=c(2)}
+par(mfrow=c(2,2))
+plot(jsmod, which=c(1:4))
+par(mfrow=c(1,1))
+```
+
+We'll refit the model without that observation:  
+```{r}
+jsmod1 <- lm(jobsat ~ commute + hrs_worked + 
+               team_size + remote + salary_band, 
+             data = jsdat[-1,])
+```
+And check again. These look much better in terms of influencers. The main assumption plots don't look _terrible_, but they're not perfect (but then nothing ever is!).  
+```{r echo=c(2)}
+par(mfrow=c(2,2))
+plot(jsmod1, which=c(1:4))
+par(mfrow=c(1,1))
+```
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+Now fit a second model, in which the predictors are standardised (those that can be).  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- You can either standardise just the predictors, or standardise both predictors and outcome (see [8A #standardised-coefficients](08a_scaling.html#standardised-coefficients){target="_blank"}).
+- If you've excluded some data in the model from the previous question, you should exclude them here too.  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+jsmodZ <- lm(scale(jobsat) ~ scale(commute) + scale(hrs_worked) + 
+               scale(team_size) + remote + scale(salary_band), 
+             data = jsdat[-1,])
+```
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+Looking at the standardised coefficients, which looks to have the biggest impact on employees' job satisfaction?  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Salary has a big positive impact.
+Then remote working (negative impact)
+Then hours worked (negative impact)
+Then team size (positive)
+Then commuting distance (positive, but non-significant)
+```{r}
+summary(jsmodZ)
+```
+
+
+`r solend()`
+
+`r qbegin(qcounter())`
+The company can't afford to pay employees anymore, and they are committed to letting staff work remotely. 
+What would you suggest they do to improve job satisfaction?  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+You might argue here that because `hrs_worked` has the next biggest effect, we should suggest the company reduces the working hours.  
+
+The standardised coefficients are telling us that:  
+
+- a person who works 1 SD hours more is .19 SD lower on job satisfaction
+- a person in a team 1 SD bigger is .16 SD higher on job satisfaction  
+
+So what _are_ the standard deviations of `hrs_worked` and of `team_size`? Are they even worth comparing?  
+
+```{r}
+sd(jsdat$hrs_worked)
+sd(jsdat$team_size)
+```
+
+So what our standardised coefficients are really saying is:
+
+- a person works 13.4 hours more is .19 SD lower on job satisfaction
+- a person in a team 1.67 people bigger is .16 SD higher on job satisfaction  
+
+You could easily argue from this that a much easier way the company could improve job satisfaction is to make team sizes a bit bigger - rather than letting people work 13 hours less than they currently do! 
+
+`r solend()`
+
+
+
+
+
