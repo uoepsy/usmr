@@ -685,6 +685,9 @@ __Confidence Interval__
 
 A confidence interval is a range of plausible values for the thing we are estimating.  
 
+People make lots of mistakes with confidence intervals, so here are two additional things to keep in mind. 
+
+1. The thing we are estimating is unknown but __fixed__ (i.e. it doesn't move). So our "95% confidence" is about the interval, not about the thing being estimated. 
 
 ::: {.callout-caution collapse="true"}
 #### statisticians can be very pedantic
@@ -702,6 +705,44 @@ So when we say that we have "95% confidence", we mean that if we were to do the 
 One way to think of it is like a [game of ring toss](https://en.wikipedia.org/wiki/Ring_toss){target="_blank"}: our intervals are the rings, and the value we are trying to estimate is the stake. We are [X]% confident that the ring will land on the stake. 
 
 :::
+
+2. Overlapping confidence intervals do not necessarily indicate "no difference". Lots of people will see a figure such as the left-hand one below, and conclude that there is no difference. However, the sampling variability for a single mean is _not_ the same as the sampling variability for a _difference in means_, and so despite the overlap, when we "test" for a difference we may well find one (the right hand plot makes it look like there _is_ a difference).  
+We'll see a whole lot more about actually _doing_ these "tests" next week!  
+
+```{r}
+#| echo: false
+#| fig-height: 3
+set.seed(66)
+test1=rnorm(100,2,3)
+test2=rnorm(100,3,3)
+tibble::tibble(
+  test=c("group 1","group 2"),
+  est = c(mean(test1),mean(test2)),
+  lwr = c(t.test(test1)$conf.int[1],t.test(test2)$conf.int[1]),
+  upr = c(t.test(test1)$conf.int[2],t.test(test2)$conf.int[2])
+) |>
+  ggplot(aes(x=test,y=est,ymin=lwr,ymax=upr))+
+  geom_col(alpha=.6)+
+  geom_errorbar(width=.2) +
+  labs(x="",y="score")-> p1
+
+tibble(
+  test="group 1 - group 2",
+  est=-diff(t.test(test1,test2)$estimate),
+  lwr=t.test(test1,test2)$conf.int[1],
+  upr=t.test(test1,test2)$conf.int[2]
+) |>
+  ggplot(aes(x=test,y=est,ymin=lwr,ymax=upr))+
+  geom_point()+
+  geom_errorbar(width=.2)+
+  geom_hline(yintercept=0,lty="dashed")+
+  labs(x="",y="mean difference")-> p2
+
+library(patchwork)
+p1 + p2
+```
+
+
 
 :::
 
