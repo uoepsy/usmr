@@ -1,7 +1,7 @@
 ---
-title: "Exercises: Chi-Square Tests"
+title: "Exercises: Binomial & Chi-Square Tests"
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
@@ -26,6 +26,87 @@ qcounter <- function(){
 }
 set.seed(017)
 ```
+
+# Binomials
+
+## Cats n Dogs
+
+> **Research Question:** Is the probability that student prefer Dogs over Cats greater than 50%?
+
+:::frame
+__Data: Past Surveys__  
+In the last few years, we have asked students of the statistics courses in the Psychology department to fill out a little survey.  
+Anonymised data are available at [https://uoepsy.github.io/data/surveydata_historical.csv](https://uoepsy.github.io/data/surveydata_historical.csv).  
+
+__Note:__ this does _not_ contain the responses from this year. 
+
+```{r}
+surveydata <- 
+  read_csv("https://uoepsy.github.io/data/surveydata_historical.csv")
+```
+:::
+
+
+`r qbegin(qcounter())`
+Calculate the proportion of students who chose cats vs dogs in the survey.
+If the probability that a student prefers dogs to cats is 50%, what would we _expect_ to see?  
+
+::: {.callout-tip collapse="true"}
+#### Hints  
+`table() |> prop.table()` might be the quickest way here.   
+:::
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+I sometimes like adding a `|> print() |>` in the middle of these sequences of pipes to print out the intermediary output as well:  
+```{r}
+table(surveydata$catdog) |>
+  print() |>
+  prop.table()
+```
+
+If the probability was 50%, or 0.5, then we would expect the numbers to be equal. We have `r sum(!is.na(surveydata$catdog))` responses here, so we would expect `r sum(!is.na(surveydata$catdog))/2` to be team cats, and `r sum(!is.na(surveydata$catdog))/2` to be team dogs!  
+
+`r solend()`
+
+`r qbegin(qcounter())`
+> **Research Question:** Is the probability that student prefer Dogs over Cats **greater** than 50%?
+
+Conduct a test to address the research question.  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- Note the "tailedness" of the question. Just like `t.test()`, the function we use here should allow us to specify our hypothesis.  
+- You can see an example of this test in [4A #binomials](04a_chisq.html#binomials){target="_blank"}.   
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+We're going to want to use the `binom.test()` function. This is just like the reading, where we tested the proportion of our sample who were left-handed.  
+
+We can either type in the numbers of "Dog" people out of our total number:
+```{r}
+binom.test(317, 539, p = 0.5, alternative = "greater")
+```
+Or give the function a table.  
+_BUT_ we need to make sure that it is picking up the right value as "successes".  
+Notice that this gives us a different result:
+```{r}
+#| echo: false
+table(surveydata$catdog) |>
+  binom.test(p = 0.5, alternative = "greater")
+```
+This is because it is taking the first entry as the number of successes. So it is saying that Cat people = 1 and Dog people = 0. But we want it the other way around! You could either create a different table (or switch its order), or simply switch to the alternative being "less" (because in this unrealistic binary world, the question "is the probability of being Dog person >0.5?" is the same thing as "is probability of being Cat person <0.5?")
+
+
+`r solend()`
+
+
+
 
 # Chi-Square Tests
 

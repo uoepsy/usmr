@@ -34,7 +34,7 @@ timehands <- expand_grid(
   ampm = c("morning","night")
 ) |>
   mutate(
-    n = ceiling(c(c(.8, .2)*.1, c(.5,.5)*.84, c(.2,.8)*.03) * 1000)
+    n = ceiling(c(c(.8, .2)*.1, c(.5,.5)*.84, c(.2,.8)*.03) * 100)
   ) |> uncount(n) |>
   sample_n(n()) |> mutate(isLeft = ifelse(handed=="left","left","other"))
 # write_csv(timehands,"../../data/timehands.csv")
@@ -54,20 +54,24 @@ timehands <- read_csv("https://uoepsy.github.io/data/timehands.csv") |>
 table(timehands$isLeft) 
 ```
 
+# Binomials
+
 If we just have two categories, then our frequency table really can be summarised as a proportion. E.g., "the proportion who are left-handed". We know that the other number (the proportion who are *not* left-handed) *has* to be 1-the proportion who _are_:  
 ```{r}
 table(timehands$isLeft) |>
   prop.table() # turn into proportions
 ```
 
-Really, these proportions are "the number of $x$'s out of $n$ things", and we often see this written as "$k$ successes in $n$ trials". The reason for this is because it is built upon counting up a series of independent binary observations.  
+Really, these proportions are "the number of $x$'s out of $n$ things", and we often see this written as "$k$ successes in $n$ trials". The reason for this is because it is built upon counting up a series of independent binary observations. The distribution of "$k$ successes in $n$ trials" is known as the **Binomial distribution**. 
 
-For example, if we think of what probability distribution governs a single coin flip, it would look something like the Left hand plot in @fig-bernbin. But if we are instead considering what governs the behaviour of "number of tails in 5 coin flips" then our probabilities of each possible outcome look like the Right hand panel.   
+As an example, if we think of what probability distribution governs a single coin flip, it would look something like the Left hand plot in @fig-bernbin. But if we are instead considering what governs the behaviour of "number of tails in 5 coin flips" then our probabilities of each possible outcome look like the Right hand panel.   
 
 ```{r}
 #| echo: false
 #| label: fig-bernbin
-#| fig-cap: "Left: the probability distribution for a single observation (e.g. a single coin flip) with a binary outcome, where the probability of 'success' (i.e. Tails) is 0.5. Right: the probability distribution of k success in n trials, each with a binary outcome (e.g., number of tails in 5 coin flips)."
+#| out-width: "100%"
+#| fig-height: 4
+#| fig-cap: "Left: A 'Bernoulli distribution' - the probability for a single observation (e.g. a single coin flip) with a binary outcome, where the probability of 'success' (i.e. Tails) is 0.5. Right: A 'Binomial distribution' - the probability of k success in n trials, each with a binary outcome (e.g., number of tails in 5 coin flips)."
 library(patchwork)
 p1 <- 
   tibble(response = 0:1, prob = .5) %>%
@@ -76,8 +80,7 @@ ggplot(., aes(x=response, y=prob))+
   geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
   scale_x_continuous("single coin flips", limits=c(-.5,1.5),breaks=0:1, labels=c("Heads","Tails"))+
   scale_y_continuous("probability")+
-  theme_classic()+
-  theme(text = element_text(size = 24))
+  theme_classic()
 
 p2 <- tibble(response = 0:5, prob = sapply(0:5,\(x) dbinom(x,5,.5))) %>%
 ggplot(., aes(x=response, y=prob))+
@@ -85,46 +88,118 @@ ggplot(., aes(x=response, y=prob))+
   geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
   scale_x_continuous("numbers of Tails in 5 coin flips")+
   scale_y_continuous("probability")+
-  theme_classic()+
-  theme(text = element_text(size = 24))
+  theme_classic()
 
 p1 + p2
 ```
+::: {.callout-caution collapse="true"}
+#### optional: Bernoulli and Binomial
 
-So in our example of "the proportion of people who are left-handed", the internet (and everything on there is true, of course) tells me that 12% of the population is left-handed.  
-We have 1000 people in our dataset, 
-So our expectation is therefore: 
+The distribution of something that can just take one of two discrete values (i.e. a single binary outcome like one coin flip) is referred to as a "Bernoulli" probability distribution. A "distribution" here is just a way of expressing the probability of seeing different values, and we can write it mathematically if we are that way inclined:  
 
+$$
+P(k) = p^k(1-p)^{1-k} \qquad \textrm{for } k \in \{0,1\}
+$$
+This looks a bit nonsensical at first, but it's actually just a complicated way of saying "the probability of seeing $k = 1$ is the probability that $k = 1$".  
+For instance, if we had a coin-flip, and we said that Tails is our "success" (and we give it the value 1) then the probability of seeing Heads and of seeing Tails is: 
+$$
+\begin{align}
+\textrm{Probability of failure (Heads)} = P(0) &= 0.5^0(1-0.5)^{1-0} \\
+&= 0.5^0(0.5)^{1} \\
+&= 0.5 \\
+\textrm{Probability of success (Tails)} = P(1) &= 0.5^1(1-0.5)^{1-1} \\
+&= 0.5^1(0.5)^{0} \\
+&= 0.5
+\end{align}
+$$
+When we move to thinking about the number of success in a set of trials, there we have to factor in the different ways in which we could see that number of success. For instance, if we had 3 coin flips, we could either see 0 Tails, 1 Tails, 2 Tails, or 3 Tails. There is only _one_ way we could see "0 Tails", but there are 3 different ways we could see "1 Tails" - we could have THH, HTH, or HHT!  
 
+The probability of $k$ successes in $n$ trials is the Binomial distribution, and is written as:
+ 
+$$
+P(k) = {n \choose k}p^k(1-p)^{n-k}
+$$
+Which can be read as: the probability of seeing $k$ successes is "the number of ways in which we could see k successes in n trials" (this is the ${n \choose k}$ bit) multiplied by the probability of success in a single trial to the power of $k$, multiplied by the probability of failure in a single trial to the power of $n-k$.  
 
+To make more sense, let's put it in the context of our "1 Tails in 3 coin flips". The coin is fair, so the probability of a single Tails is 0.5 (so below we replace $p$ with 0.5), and we saw just above that there are 3 ways that we can get 1 success in 3 trials (so the calculation ${3 \choose 1}$ becomes 3)  
+$$
+\begin{align}
+\text{Probabiltiy of 1 Tails in 3 flips} = P(1) &= {3 \choose 1}0.5^1(1-0.5)^{3-1} \\
+&= {3 \choose 1}0.5^1(0.5)^{2} \\
+&= {3 \choose 1}0.5 \times 0.25 \\
+&= {3 \choose 1} 0.125 \\
+&= 3 \times 0.125 \\
+&= 0.375 \\
+\end{align}
+$$
+
+We can actually check this in R using a handy function: 
 ```{r}
-table(timehands$isLeft) |> prop.table()
+dbinom(x = 1, size = 3, prob = 0.5)
 ```
 
 
 
+:::
 
 
-With 1 variable, we have a 1 dimensional table. For example, how many people in the data are left-handed, right-handed, or ambidextrous:  
+Returning to "the proportion of people who are left-handed", the internet (and everything on there is true, of course) tells me that 10% of the population is left-handed. As we have 100 people in our dataset, our expectation of what we are likely to see from samples of 100 people (if the probability of being left-handed is 0.10) therefore looks something like @fig-exp100.  
 
 ```{r}
-timehands <- read_csv("https://uoepsy.github.io/data/timehands.csv")
+#| echo: false
+#| label: fig-exp100
+#| out-width: "100%"
+#| fig-height: 4
+#| fig-cap: "Expected distribution of 'number of left-handed people out of 100', assuming the true probability of being left-handed is 0.1"
+tibble(response = 0:100, prob = sapply(0:100,\(x) dbinom(x,100,.1))) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(size=3)+
+  geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
+  scale_x_continuous("numbers of left-handers in n=100\nwhere p(Left)=0.1")+
+  scale_y_continuous("probability")+
+  theme_classic()
+```
+
+Much like the null hypothesis testing we have seen already concerning whether our observed mean is different from some hypothesised value (see [3B #one-sample-t-test](03b_inference2.html#one-sample-t-test){target="_blank"}), we can conduct a test of whether our observed sample proportion (12/100 = 0.12) is likely to have been drawn from a population where the true probability is 0.1:  
+
+```{r}
+table(timehands$isLeft)
+```
+
+Either of these will work, and both will produce the same output:
+```{r}
+#| eval: false
+binom.test(x = 12, n = 100, p = 0.1)
+table(timehands$isLeft) |> binom.test(p = 0.1)
+```
+```{r}
+#| echo: false
+binom.test(x = 12, n = 100, p = 0.1)
+```
+
+In this case, the p-value is >.05^[the conventional $\alpha$ level used in psychology], so we fail to reject the null hypothesis that the probability of being left-handed is 0.1.  
+
+# More than 2 categories
+
+While the binomials capture the distribution of a series of binary trials, what happens when we are interested in something that _isn't_ binary? There are lots of categorical variables that have more than two possible values. 
+For example, handedness isn't as simple as "Left vs Others", we might have 3 categories: 
+
+```{r}
 table(timehands$handed)
 ```
 
-and with 2 variables, we have a 2-dimensional table (also referred to as a 'contingency table'). For instance, splitting up those left/right/ambidextrous groups across whether they prefer the morning or night:  
+Furthermore, we might have a slightly more nuanced question that involves two variables, rather than just one! For instance, we might be interested in whether left/right/ambidextrous proportions are different across people who prefer the morning or night.  
+In this case, with 2 variables, we have a 2-dimensional table (also referred to as a 'contingency table'):
 ```{r}
 table(timehands$handed, timehands$ampm)
 ```
 
-
-
-We can perform tests to examine things such as:  
+So we want to be able to perform tests to examine things such as:  
 
 b) how likely we are to see our sample frequencies in a single categorical variable, if some some hypothesised null distribution were true (e.g. how likely are we to see the numbers of left/right/ambi people in our sample if in bigger population we expect a 1/3 chance of each?)  
 c) how likely we are to see our sample frequencies across two categorical variables, if these variables are _independent_ in the population. (e.g. how likely are we to see the counts in the 2x2 table above, if being left/right/ambi has _nothing to do with_ whether you are a morning or night person).  
 
-The test-statistics for these tests (denoted $\chi^2$, spelled *chi-square*, pronounced "kai-square") are obtained by adding up the standardized squared deviations in each cell of a table of frequencies:  
+The test-statistics for these sort of tests (denoted $\chi^2$, spelled *chi-square*, pronounced "kai-square") are obtained by adding up the standardized squared deviations in each cell of a table of frequencies:  
 
 $$
 \chi^2 = \sum_{all\ cells} \frac{(\text{Observed} - \text{Expected})^2}{\text{Expected}}
