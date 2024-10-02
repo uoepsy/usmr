@@ -1,5 +1,5 @@
 ---
-title: "4A: Chi-Square Tests"
+title: "4A: Binomial & Chi-Square Tests"
 params: 
     SHOW_SOLS: TRUE
     TOGGLE: TRUE
@@ -19,6 +19,7 @@ set.seed(017)
 This reading:  
 
 - What are the basic hypothesis tests that we can conduct when we are interested in variables that have categories instead of numbers?  
+  - Tests of a proportion
   - Tests of the distribution of a single categorical variable
   - Tests of the relationship between two categorical variables
 
@@ -33,17 +34,78 @@ timehands <- expand_grid(
   ampm = c("morning","night")
 ) |>
   mutate(
-    n = ceiling(c(c(.8, .2)*.1, c(.5,.5)*.87, c(.2,.8)*.03) * 1000)
+    n = ceiling(c(c(.8, .2)*.1, c(.5,.5)*.84, c(.2,.8)*.03) * 1000)
   ) |> uncount(n) |>
-  sample_n(n())
-#write_csv(timehands,"../../data/timehands.csv")
+  sample_n(n()) |> mutate(isLeft = ifelse(handed=="left","left","other"))
+# write_csv(timehands,"../../data/timehands.csv")
 ```
 
 Just like we did with the various types of $t$-test, we're going to continue with some more brief explainers of different basic statistical tests. The past few weeks have focused on tests for __numeric__ outcome variables, where we have been concerned with the mean of that variable (e.g. whether that mean is different from some specific value, or whether it is different between two groups). 
 We now turn to investigate tests for __categorical__ outcome variables. 
 
-When studying categorical variables, we tend to be interested in __counts__ (or "frequencies"). These can be presented in tables. With 1 variable, we have a 1 dimensional table.  
-For example, how many people in the data are left-handed, right-handed, or ambidextrous:  
+When studying categorical variables, we tend to be interested in __counts__ (or "frequencies"), and these can be presented in tables:
+
+```{r}
+timehands <- read_csv("https://uoepsy.github.io/data/timehands.csv") |>
+  mutate(
+    isLeft = ifelse(handed=="left", "left", "other")
+  )
+
+table(timehands$isLeft) 
+```
+
+If we just have two categories, then our frequency table really can be summarised as a proportion. E.g., "the proportion who are left-handed". We know that the other number (the proportion who are *not* left-handed) *has* to be 1-the proportion who _are_:  
+```{r}
+table(timehands$isLeft) |>
+  prop.table() # turn into proportions
+```
+
+Really, these proportions are "the number of $x$'s out of $n$ things", and we often see this written as "$k$ successes in $n$ trials". The reason for this is because it is built upon counting up a series of independent binary observations.  
+
+For example, if we think of what probability distribution governs a single coin flip, it would look something like the Left hand plot in @fig-bernbin. But if we are instead considering what governs the behaviour of "number of tails in 5 coin flips" then our probabilities of each possible outcome look like the Right hand panel.   
+
+```{r}
+#| echo: false
+#| label: fig-bernbin
+#| fig-cap: "Left: the probability distribution for a single observation (e.g. a single coin flip) with a binary outcome, where the probability of 'success' (i.e. Tails) is 0.5. Right: the probability distribution of k success in n trials, each with a binary outcome (e.g., number of tails in 5 coin flips)."
+library(patchwork)
+p1 <- 
+  tibble(response = 0:1, prob = .5) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(size=3)+
+  geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
+  scale_x_continuous("single coin flips", limits=c(-.5,1.5),breaks=0:1, labels=c("Heads","Tails"))+
+  scale_y_continuous("probability")+
+  theme_classic()+
+  theme(text = element_text(size = 24))
+
+p2 <- tibble(response = 0:5, prob = sapply(0:5,\(x) dbinom(x,5,.5))) %>%
+ggplot(., aes(x=response, y=prob))+
+  geom_point(size=3)+
+  geom_segment(aes(x=response, xend=response, y=0,yend=prob),lty="dotted")+
+  scale_x_continuous("numbers of Tails in 5 coin flips")+
+  scale_y_continuous("probability")+
+  theme_classic()+
+  theme(text = element_text(size = 24))
+
+p1 + p2
+```
+
+So in our example of "the proportion of people who are left-handed", the internet (and everything on there is true, of course) tells me that 12% of the population is left-handed.  
+We have 1000 people in our dataset, 
+So our expectation is therefore: 
+
+
+
+```{r}
+table(timehands$isLeft) |> prop.table()
+```
+
+
+
+
+
+With 1 variable, we have a 1 dimensional table. For example, how many people in the data are left-handed, right-handed, or ambidextrous:  
 
 ```{r}
 timehands <- read_csv("https://uoepsy.github.io/data/timehands.csv")
@@ -55,10 +117,12 @@ and with 2 variables, we have a 2-dimensional table (also referred to as a 'cont
 table(timehands$handed, timehands$ampm)
 ```
 
+
+
 We can perform tests to examine things such as:  
 
-a) how likely we are to see our sample frequencies in a single categorical variable, if some some hypothesised null distribution were true (e.g. how likely are we to see the numbers of left/right/ambi people in our sample if in bigger population we expect a 1/3 chance of each?)  
-b) how likely we are to see our sample frequencies across two categorical variables, if these variables are _independent_ in the population. (e.g. how likely are we to see the counts in the 2x2 table above, if being left/right/ambi has _nothing to do with_ whether you are a morning or night person).  
+b) how likely we are to see our sample frequencies in a single categorical variable, if some some hypothesised null distribution were true (e.g. how likely are we to see the numbers of left/right/ambi people in our sample if in bigger population we expect a 1/3 chance of each?)  
+c) how likely we are to see our sample frequencies across two categorical variables, if these variables are _independent_ in the population. (e.g. how likely are we to see the counts in the 2x2 table above, if being left/right/ambi has _nothing to do with_ whether you are a morning or night person).  
 
 The test-statistics for these tests (denoted $\chi^2$, spelled *chi-square*, pronounced "kai-square") are obtained by adding up the standardized squared deviations in each cell of a table of frequencies:  
 
