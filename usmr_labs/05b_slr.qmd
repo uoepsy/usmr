@@ -1,0 +1,900 @@
+---
+title: "5B: Simple Linear Regression"
+params: 
+    SHOW_SOLS: FALSE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(xaringanExtra)
+library(tidyverse)
+library(patchwork)
+xaringanExtra::use_panelset()
+```
+
+:::lo
+This reading:  
+
+- Modelling an outcome variable as a linear function of an explanatory variable (correlation as an intercept and a slope).  
+- Testing the parameters that define our model.  
+- Simple statistical tests as linear models.  
+
+:::
+
+# The Linear Model
+
+```{r}
+#| include: false
+set.seed(023)
+df <- tibble(
+  x = rnorm(100,3,1),
+  y = 0.5+.8*x + rnorm(100,0,1)
+)
+df$y=df$y+1
+model1 <- lm(y ~ x, data = df)
+# write_csv(df, "../../data/usmr_slr.csv")
+my_data <- df
+```
+
+In its simplest form, linear regression is a way to make a model of the relationship between two variables. When both variables are continuous, it is nice and intuitive to envisage this as the 'line of best fit' on a scatterplot. For instance, in @fig-lmintro we see two variables `y` and `x`, and our linear regression model is the blue line.  
+
+```{r}
+#| label: fig-lmintro
+#| fig-cap: y regressed onto x.
+#| echo: false
+#| fig-height: 2.5
+ggplot(df,aes(x=x,y=y))+
+  geom_point(col="tomato1", size=3,alpha=.3)+
+  geom_smooth(method=lm,se=F)+
+  xlim(0,6)+ylim(0,7)+scale_x_continuous(breaks=0:6)
+```
+
+We're going to use the data in this plot for the remainder of the reading. If you wish to play around with it yourself, it is available at [https://uoepsy.github.io/data/usmr_slr.csv](https://uoepsy.github.io/data/usmr_slr.csv), and contains a sample of 100 observations on variables `x` and `y`.   
+
+```{r}
+library(tidyverse)
+my_data <- read_csv("https://uoepsy.github.io/data/usmr_slr.csv")
+head(my_data)
+```
+
+@fig-lmintro, above, highlights a linear relationship, where the data points are scattered around an underlying linear pattern with a roughly-constant spread as we move along `x`.  
+
+In [5A: Covariance & Correlation](05a_covcor.html){target="_blank"} we have already talked about one way to describe this relationship, by calculating either the covariance or the correlation between `x` and `y`. However, as we will see in the coming weeks, the linear model provides us with the scope to extend our analysis to many more situations - it is the building block of many more complex analytical methods.  
+
+The simple linear regression model takes the form:  
+
+$$
+\begin{align}
+& y = b_0 + b_1 \cdot x + \varepsilon \quad \\
+\end{align}
+$$
+
+:::column-margin
+You will see a variety of different ways of specifying the linear model form in different resources, some use $\beta$, some use $b$. Sometimes you will see $\alpha$ instead of $b_0$.
+:::
+
+We typically refer to the outcome ('dependent') variable with the letter $y$ and to our predictor ('explanatory'/'independent') variables with the letter $x$. When we construct a linear model we are trying to re-express our outcome variable $y$ with some linear transformation of our predictor variable $x$.  
+
+You can think of this in broader terms as: 
+$$
+\begin{align}
+& \color{red}{Outcome}\color{} = \color{blue}{Model}\color{black}{} + Error\\
+\end{align}
+$$
+
+
+## The Model 
+
+When we fit a simple regression model, the bit we refer to as the 'model' is the line that is defined by two numbers, an 'intercept' and a 'slope' (see @fig-slr):
+
+- the __intercept__, denoted $b_0$, is the point at which the line hits the y-axis (i.e. where $x=0$)
+- the __slope__, denoted $b_1$, is the angle of the line. It is the amount which the line increases for every 1 increase in $x$.  
+
+```{r}
+#| label: fig-slr
+#| echo: false
+#| fig-cap: "Simple linear regression model, with the systematic part of the model in blue"
+#| fig-height: 3
+betas <- coef(model1)
+intercept <- betas[1]
+slope <- betas[2]
+
+broom::augment(model1) %>%
+ggplot(., aes(x = x, y = y)) +
+  geom_point(col="tomato1", size=3,alpha=.3)+
+  geom_abline(intercept = intercept, slope = slope, 
+              color = 'blue', size = 1) + 
+  xlim(0,6)+ylim(0,7)+
+  geom_vline(xintercept=0,lty="dashed")+
+  geom_label(x=0,y=1.8,label="intercept",hjust=0,col="blue")+
+  geom_point(aes(x=0,y=intercept),size=4,col="blue")+
+  scale_x_continuous(breaks=0:6)+
+  geom_segment(col="blue",lty="dashed",x=1,xend=2,y=sum(coef(model1)), yend=sum(coef(model1)))+
+  geom_segment(col="blue",lty="dashed",x=2,xend=2,y=sum(coef(model1)), yend=sum(coef(model1))+coef(model1)[2])+
+  geom_label(x=2.05,y=2.7,label="slope",hjust=0,col="blue")+
+  labs(x = "X (predictor)", 
+       y = "Y (outcome)")
+```
+
+This line implies some _predicted_ values for our observed $x$ values. For instance, we can see that when $x=3$, the model (the blue line) will predict that $y$ is approximately 4. If we take each of our datapoints, and project them up/down to the line, then we get our fitted values (@fig-slrfit). We often denote these as $\hat y$ (or "y hat"), with the hat indicating that they are the model-estimated values of $y$. 
+
+$$
+\begin{align}
+\color{red}{Outcome}\color{black} \qquad=\qquad & \color{blue}{Model}\color{black}{} & +\qquad Error\\
+\color{red}{y}\color{black} \qquad = \qquad & \color{blue}{\hat y}\color{black} & +\qquad \varepsilon \quad \\
+\color{red}{y}\color{black} \qquad = \qquad & \color{blue}{b_0 + b_1 \cdot x}\color{black} & +\qquad \varepsilon \quad \\
+\end{align}
+$$
+
+```{r}
+#| label: fig-slrfit
+#| echo: false
+#| fig-cap: "Simple linear regression model, fitted values in blue"
+#| fig-height: 3
+betas <- coef(model1)
+intercept <- betas[1]
+slope <- betas[2]
+
+broom::augment(model1) %>%
+ggplot(., aes(x = x)) +
+  geom_segment(aes(x=x, xend=x, y=y, yend=.fitted),lty="dotted",alpha=.7) + 
+  geom_point(col="tomato1", aes(y=y),size=3,alpha=.3)+
+  geom_point(aes(y=.fitted),size=3,col="blue")+
+  geom_abline(intercept = intercept, slope = slope, color = 'blue', size = .5) + 
+  xlim(0,6)+ylim(0,7)+
+  geom_vline(xintercept=0,lty="dashed")+
+  scale_x_continuous(breaks=0:6)+
+  labs(x = "X (predictor)", 
+       y = "Y (outcome)")
+```
+
+::: {.callout-caution collapse="true"}
+#### optional: Regression Slope vs Covariance  
+
+With simple linear regression, the fitted line we are describing is actually a scaled version of our covariance.  
+
+Remember that covariance is the average of the products of $(x_{i}-\bar{x})(y_{i}-\bar{y})$, which is a bit like the average area of the rectangles in @fig-covsq. If we think about what the average __width__ of these rectangles is, it is the average of $(x_{i}-\bar{x})$, which is actually just the variance of $x$! 
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| label: fig-covsq
+#| fig-cap: "Covariance" 
+set.seed(7135)
+tibble(x=runif(10,20,80),y=rnorm(10,160,10)) %>%
+  mutate(y=y+x/2,
+         coldir = ifelse( (x>mean(x) & y>mean(y)) | (x<mean(x) & y<mean(y)), "pos","neg")
+  ) -> df
+p5<-ggplot(df,aes(x=x,y=y))+
+  geom_point(aes(col=coldir))+
+  scale_color_manual("",values=c("blue","red"))+
+  theme_classic()+
+  theme(legend.position = "none")+
+  geom_vline(aes(xintercept=mean(x)), lty="dashed")+
+  annotate("text",x=mean(df$x)-1, y=max(df$y)-5,label=expr(bar("x")))+
+  geom_hline(aes(yintercept=mean(y)), lty="dashed")+
+  annotate("text",x=min(df$x)+5, y=mean(df$y)+1,label=expr(bar("y")))+
+  geom_segment(aes(x = mean(x), y = 200.9559, xend = 69.47989, yend = 200.9559), color="tomato1", data = df)+
+  geom_segment(aes(x = 69.47989, y = mean(y), xend = 69.47989, yend = 200.9559), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 211.5757, xend = 56.36053, yend = 211.5757), color="tomato1", data = df)+
+  geom_segment(aes(x = 56.36053, y = mean(y), xend = 56.36053, yend = 211.5757), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 180.5799, xend = 44.37031, yend = 180.5799), color="tomato1", data = df)+
+  geom_segment(aes(x = 44.37031, y = mean(y), xend = 44.37031, yend = 180.5799), color="tomato1",data = df)+
+  geom_segment(aes(x = mean(x), y = 194.4188, xend = 45.32536, yend = 194.4188), color="skyblue3", data = df)+
+  geom_segment(aes(x = 45.32536, y = mean(y), xend = 45.32536, yend = 194.4188), color="skyblue3",data = df)+
+  geom_segment(aes(x = mean(x), y = 182.6440, xend = 66.73541, yend = 182.6440), color="skyblue3", data = df)+
+  geom_segment(aes(x = 66.73541, y = mean(y), xend = 66.73541, yend = 182.6440), color="skyblue3",data = df)
+p5
+```
+
+We can divide the area of the average rectangle ($cov(x, y)$) by its width ($var(x)$), thereby scaling it so that the width is 1. What we're getting from our coefficient is the area of this new rectangle which has width = 1. Because width = 1, the area is also the height ($\text{area} = \text{width} \times \text{height} = 1 \times \text{height}$). So what we get is the amount that $y$ increases (the height) as $x$ increases by 1 (the width).  
+
+We can see this working: 
+```{r}
+cov(my_data$x, my_data$y)
+var(my_data$x)
+```
+This calculation gives us the same linear regression slope of `r round(cov(my_data$x, my_data$y)/var(my_data$x),2)` that we see when we fit the model using `lm()`.  
+```{r}
+cov(my_data$x, my_data$y)/var(my_data$x)
+```
+
+:::
+
+## The Error 
+
+Our model is not perfect. It is a _model_ - i.e. it is a _simplification_ of the world, and so is inherently going to be inaccurate for individuals. This inaccuracy can be seen in our plots so far - some points are higher than the model predicts, some lower. These deviations from the model (shown by the black dotted lines in @fig-slr2) from the model are the random error component $\hat \varepsilon$, or "residuals".  
+
+$$
+\begin{align}
+Error &= \color{red}{Outcome}\color{black}-\color{blue}{Model} \\
+\hat{\varepsilon} &= \color{red}{y}\color{black}- \color{blue}{\hat{y}}
+\end{align}
+$$
+
+```{r}
+#| label: fig-slr2
+#| echo: false
+#| fig-cap: "Simple linear regression model, with the systematic part of the model in blue, and residuals in red"
+#| fig-height: 3
+betas <- coef(model1)
+intercept <- betas[1]
+slope <- betas[2]
+
+broom::augment(model1) %>%
+ggplot(., aes(x = x, y = y)) +
+  geom_segment(aes(x=x, xend=x, y=y, yend=.fitted), col="black",lty="dotted")+
+  geom_point(col="tomato1", size=3,alpha=.3)+
+  geom_abline(intercept = intercept, slope = slope, 
+              color = 'blue', size = 1) + 
+  xlim(0,6)+ylim(0,7)+
+  geom_vline(xintercept=0,lty="dashed")+
+  scale_x_continuous(breaks=0:6)+
+  labs(x = "X (predictor)", 
+       y = "Y (outcome)")
+  
+```
+
+In full, we should really write our linear regression model out as: 
+
+$$
+\begin{align}
+& y = b_0 + b_1 \cdot x + \varepsilon \quad \\
+& \text{where} \\
+& \varepsilon \sim N(0, \sigma) \text{ independently}
+\end{align}
+$$
+
+The new bit here: "$\varepsilon \sim N(0, \sigma) \text{ independently}$" means that the errors around the line have mean zero and constant spread as x varies (we'll read more about what this means later on when we discuss the assumptions underlying regression). You can think of $\sim N(0, \sigma)$ as meaning "normally distributed with a mean of zero and a standard deviation of $\sigma$".  
+
+The standard deviation of the errors, denoted by $\sigma$, is an important quantity that our model estimates. It measures how much individual data points tend to deviate above and below the regression line. A small $\sigma$ indicates that the points hug the line closely and we should expect fairly accurate predictions, while a large $\sigma$ suggests that, even if we estimate the line perfectly, we can expect individual values to deviate from it by substantial amounts.
+
+$\sigma$ is estimated by essentially averaging squared residuals (giving the variance) and taking the square-root:  
+$$
+\begin{align}
+& \hat \sigma = \sqrt{\frac{SS_{Residual}}{n - 2}} \\
+\qquad \\
+& \text{where} \\
+& SS_{Residual} = \textrm{Sum of Squared Residuals} = \sum_{i=1}^n{(\varepsilon_i)^2}
+\end{align}
+$$
+
+<div class="divider div-transparent div-dot"></div>
+
+# Fitting Linear Models in R
+
+## lm()
+
+In R it is very easy to fit linear models, we just need to use the `lm()` function.  
+
+The syntax of the `lm()` function is:  
+
+```
+model_name <- lm(outcome ~ 1 + predictor, data = dataframe)
+```
+
+We don't _have_ to include the `1 + ` when we specify the model, as this will be included by default, so we can also simply write: 
+
+```
+model_name <- lm(outcome ~ predictor, data = dataframe)
+```
+
+::: {.callout-note collapse="true"}
+#### What is the ~1 + doing?  
+
+The fitted model can be written as
+$$
+\hat y = \hat b_0 + \hat b_1 \cdot x
+$$
+The predicted values for the outcome are equal to our intercept, $\hat b_0$, plus our slope $\hat b_1$ multiplied by the value on our explanatory variable $x$.  
+The intercept is a _constant_. That is, we could write it as multiplied by 1:
+$$
+\hat y = \color{blue}{\hat b_0}\color{black}{}\cdot\color{orange}{1}\color{blue}{ + \hat b_1 }\color{black}{}\cdot\color{orange}{x}\color{black}{}
+$$
+
+When we specify the linear model in R, we include after the tilde sign `~` all the things which appear to the right of each of the $\hat b$s (the bits in green in the equartion above). That's why the 1 is included. It is just saying "we want the intercept, $b_0$, to be estimated".   
+
+:::
+
+## Model Summary
+
+We can then view lots of information by giving our model to the `summary()` function:
+
+```{r}
+#| echo: true
+#| output: false
+my_model <- lm(y ~ x, data = my_data)
+summary(my_model)
+```
+```{r}
+#| label: fig-lmoutput
+#| fig-cap: "Output of lm() for a simple regression in R"
+#| echo: false
+knitr::include_graphics("images/slr/slr1.png")
+```
+
+The __intercept__ $b_0$ is the point at which the line hits the y-axis (i.e. where $x=0$), and the __slope__ $b_1$ is the amount which the line increases for every 1 increase in $x$. We can see the estimated values of these in @fig-lmoutput, and these provide us with our fitted lin:  
+$$
+\begin{align}
+y =& 1.54 + 0.78 \cdot x + \varepsilon \\
+\end{align}
+$$
+We also see that the standard deviation of the residuals, $\sigma$, is 0.93, which means we consider the actual observed values of Y to vary randomly around this line with a standard deviation of 0.93.  
+```{r}
+#| label: fig-slrest
+#| echo: false
+#| fig-cap: "Simple linear regression model, estimated intercept and slope included"
+#| fig-height: 3
+betas <- coef(model1)
+intercept <- betas[1]
+slope <- betas[2]
+
+broom::augment(model1) %>%
+ggplot(., aes(x = x, y = y)) +
+  geom_point(col="tomato1", size=3,alpha=.3)+
+  geom_abline(intercept = intercept, slope = slope, 
+              color = 'blue', size = 1) + 
+  xlim(0,6)+ylim(0,7)+
+  geom_vline(xintercept=0,lty="dashed")+
+  geom_label(x=0,y=1.8,label="1.54",hjust=0,col="blue")+
+  geom_point(aes(x=0,y=intercept),size=4,col="blue")+
+  scale_x_continuous(breaks=0:6)+
+  geom_segment(col="blue",lty="dashed",x=1,xend=2,y=sum(coef(model1)), yend=sum(coef(model1)))+
+  geom_segment(col="blue",lty="dashed",x=2,xend=2,y=sum(coef(model1)), yend=sum(coef(model1))+coef(model1)[2])+
+  geom_label(x=2.05,y=2.7,label="0.78",hjust=0,col="blue")+
+  labs(x = "X (predictor)", 
+       y = "Y (outcome)")
+```
+
+
+
+## Model Predictions
+
+We can get out the model predicted values for $y$, the "y hats" ($\hat y$), using functions such as:  
+
+- `predict(my_model)`
+- `fitted(my_model)`
+- `fitted.values(my_model)`
+- `my_model$fitted.values`
+
+A nice package which will come in handy is the __broom__ package. It allows us to use the function `augment()`, which gives us out lots of information, such as the model predicted values, the residuals, and many more:  
+
+```{r}
+library(broom)
+augment(my_model)
+```
+
+We can also compute model-predicted values for other (unobserved) data. For instance, what about for an observation where $x=10$, or $20$?  
+
+```{r}
+# make a dataframe with values for the predictor:
+some_newdata <- data.frame(x=c(10, 20))
+# model predicted values of y, for the values of x inside the 'some_newdata' object:
+predict(my_model, newdata = some_newdata)
+```
+
+Given that our fitted model takes the form below, we can work this out ourselves as well: 
+
+$$
+\begin{align}
+y &= 1.54 + 0.78\cdot x \\
+y &= 1.54 + 0.78\cdot 10 \\
+y &= 1.54 + 7.80\\
+y &= 9.34 \\
+\end{align}
+$$
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Tests of regression coefficients  
+
+Now that we have fitted a linear model, and we know how we interpret our coefficient estimates, we would like to be able to make a statement on whether these relationships are likely to hold in the population.  
+Our coefficients accurately describe the relationship between $y$ (outcome) and $x$ (predictor) in our sample, but we are yet to perform a statistical test. A test will enable us to discuss how likely it is that we would see this relationship in our sample, if the relationship doesn't hold for the population.  
+
+```{r}
+#| label: fig-sillyfig
+#| fig.cap: "Estimates without inference"
+#| echo: false
+knitr::include_graphics("images/slr/conv1a.png")
+```
+
+Much like our discussion of sample means and intervals in [2B: Sampling & Curves](02b_sampling.html){target="_blank"}, we have our coefficients: 
+```{r}
+coef(my_model)
+```
+
+and to quantify the amount of uncertainty in each estimated coefficient that is due to sampling variability, we use the standard error (SE)^[Recall that a standard error gives a numerical answer to the question of how variable a statistic will be because of random sampling.] of the coefficient.
+
+The standard errors are found in the column "Std. Error" of the `summary()` of a model:
+```{r}
+summary(my_model)$coefficients
+```
+
+In this example the slope, 0.78, has a standard error of 0.10. One way to envision this is as a distribution. Our best guess (mean) for the slope parameter is 0.78. The standard deviation of this distribution is 0.10, which indicates the precision (uncertainty) of our estimate.
+
+```{r}
+#| label: fig-sampbeta
+#| echo: false
+#| fig.cap: 'Sampling distribution of the slope coefficient. The distribution is approximately bell-shaped with a mean of 0.78 and a standard error of 0.10.'
+#| fig.height: 2.5
+ggplot(tibble(x = c(-3 * 0.10 + 0.78, 3 * 0.1 + 0.78)), aes(x = x)) +
+    stat_function(fun = dnorm, args = list(mean = 0.78, sd = 0.10)) +
+  labs(x = "Estimate for slope of x", y = '')
+```
+
+We can perform a test against the null hypothesis that the estimate is zero. The reference distribution in this case is a t-distribution with $n-2$ degrees of freedom^[Why $n-2$? The most intuitive answer is that we have already used up 2 pieces of information in estimating the intercept and the slope. Once these things are fixed, $n-2$ of the datapoints could be wherever they like around that line, but the remaining 2 must be placed in such a way that results in that line], where $n$ is the sample size, and our test statistic is:  
+
+$$
+t = \frac{\hat b_1 - 0}{SE(\hat b_1)}
+$$
+
+This allows us to test the hypothesis that the population slope is zero --- that is, that there is no linear association between income and education level in the population.  
+
+We don't actually have to **do** anything for this, it's all provided for us in the `summary()` of the model! The information is contained in the row corresponding to the variable "education" in the output of `summary()`, which reports the t-statistic under `t value` and the p-value under `Pr(>|t|)`:
+```{r}
+summary(my_model)$coefficients
+```
+
+:::int
+A significant association was found between x and y ($b = 0.78$, $SE = 0.10$, $t(98)=7.83$, $p<.001$).
+:::
+:::column-margin
+Recall that the p-value `5.92-e12` in the `Pr(>|t|)` column simply means $5.92 \times 10^{-12}$. This is a very small value, hence we will report it as <.001 following the APA guidelines.
+:::
+
+```{r}
+#| label: fig-sillyfig2
+#| fig.cap: "Conversations with statisticians"
+#| echo: false
+knitr::include_graphics("images/slr/conv2a.png")
+```
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Binary Predictors
+
+Let's suppose that instead of having measured $x$ so accurately, we simply had information on whether $x>3$ or not. Our predictor variable would be binary categorical (think back to our discussion of types of data in [2A: Measurement](02a_measurement.html){target="_blank"}) - it would have 2 levels:    
+```{r}
+my_data <- 
+  my_data |> 
+  mutate(
+    x_cat = ifelse(x < 3, "level1","level2")
+  )
+```
+
+We may then plot our relationship as a boxplot. If you want to see the individual points, you could always "jitter" them (right-hand plot below)
+```{r}
+#| fig-height: 3.5
+ggplot(my_data, aes(x = x_cat, y = y)) + 
+  geom_boxplot() +
+ggplot(my_data, aes(x = x_cat, y = y)) + 
+  geom_jitter(height=0, width=.05)
+```
+
+
+We can include categorical predictors such as this in a linear regression, but the interpretation of the coefficients is very specific.  
+
+Up to now we have talked about coefficients being interpreted as "the change in $y$ associated with a 1-unit increase in $x$". For categorical explanatory variables, our coefficients can be considered to examine differences in group means. However, they are actually doing exactly the same thing - the model is simply translating the levels (like "Level1"/"Level2", or "Yes"/"No", or "High"/"Low") in to 0s and 1s! While we may have in our dataframe a categorical predictor like the middle column "x_cat", below, what is inputted into our model is more like the third column, "isLevel2". 
+```{r echo=FALSE}
+my_data |> sample_n(size=n()) |>
+  mutate(
+    isLevel2 = ifelse(x_cat == "level2", 1, 0)
+  ) |> select(y, x_cat, isLevel2)
+```
+
+Our coefficients are actually following the same logic as for a continuous predictor. The intercept is the estimated average outcome _when our predictor equals zero_, and the slope is the change in our outcome variable associated with a _1-unit change in our predictor._    
+It's just that "zero" for this predictor variable now corresponds to a whole group. This is known as the "reference group" or "reference level". So the intercept is the estimated mean of $y$ when `x_cat == "level1"` (it will default to alphabetical, so "level1" will be treated as zero). Accordingly, the 1-unit change in our predictor (the move from 0 to 1) corresponds to the estimated change in mean of $y$ when moving from "level1" to "level2" (i.e. the difference between the two levels). 
+
+
+```{r echo=FALSE}
+cstat = coef(lm(y~x_cat,my_data))
+my_data |>
+  mutate(
+    isLevel2 = ifelse(x_cat=="level2", 1, 0)
+  ) %>% ggplot(.,aes(x=factor(isLevel2), y=y))+
+  #geom_boxplot(fatten=NULL)+
+  geom_jitter(col="tomato1", size=3, alpha=.3, height=0, width=.05)+
+  geom_smooth(method="lm",aes(x=isLevel2+1), se=F)+
+  geom_segment(aes(x="1",xend="1",y=cstat[1],yend=cstat[1]+cstat[2]), lty="dashed",col="blue")+
+  geom_segment(aes(x="0",xend="1",y=cstat[1],yend=cstat[1]), lty="dashed",col="blue")+
+  annotate("text",x=2.2,y=mean(c(cstat[1], sum(cstat)))-.1,label=expression(paste(beta[1], " (slope)")), col="blue")+
+  geom_point(x=1,y=cstat[1], col="blue",size=3)+
+  annotate("text",x=1,y=cstat[1],label=expression(paste(beta[0], " (intercept)")), col="blue", hjust=1.1)+
+  labs(x="isLevel2")
+```
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# A first look at linear model assumptions
+
+All our work here is in aim of making **models of the world**.  
+
+- Models are models. They are simplifications. They are therefore wrong.  
+- Our residuals ( $y - \hat{y}$ ) reflect everything that we **don't** account for in our model.  
+- In an ideal world, our model accounts for _all_ the systematic relationships. The leftovers (our residuals) are just random noise.  
+- If our model is mis-specified, or we don't measure some systematic relationship, then our residuals will reflect this.  
+We check by examining how much "like randomness" the residuals appear to be (zero mean, normally distributed, constant variance, i.i.d ("independent and identically distributed"). These ideas tend to get referred to as our __"assumptions".__  
+- While we will **never** know whether our residuals contain only randomness (we can never observe everything), our ability to generalise from the model we fit on sample data to the wider population relies on these assumptions.  
+
+:::statbox
+__Assumptions in a nutshell__   
+
+In using linear regression, we have assumptions about our model in that we assume that modelling the outcome variable as a **linear** combination of the explanatory variables is an appropriate thing to do.  
+We also make certain assumptions about what we have _left out_ of our model - the **errors** component.    
+<!-- $$ -->
+<!-- \color{red}{y} = \color{blue}{\underbrace{\beta_0 \cdot{} 1 + \beta_1 \cdot{} x_1 + ... + \beta_k \cdot x_k}_{X \boldsymbol \beta}} + \varepsilon -->
+<!-- $$ -->
+
+Specifically, we assume that our errors have __"zero mean and constant variance"__.  
+
+- mean of the residuals = zero across the predicted values on the linear predictor.  
+- spread of residuals is normally distributed and constant across the predicted values on the linear predictor.  
+
+
+::: {.callout-note collapse="true"}
+#### What does it look like?  
+
+```{r echo=FALSE, fig.height=4}
+library(ggdist)
+library(tidyverse)
+df<-tibble(x=runif(1000,1,10),xr = round(x), y=1*x+rnorm(1000))
+df$y2 <- resid(lm(y~x,df))
+#df$y[df$x==6]<-6+rnorm(100,0,3)
+df |> group_by(xr) |> summarise(m=mean(y2), s=sd(y2)) -> dfd
+p1 <- ggplot(df, aes(x=x,y=y))+
+  geom_point()+
+  geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("y")
+p2 <- ggplot(df, aes(x=xr,y=y2))+
+  geom_jitter(height=0,width=1, alpha=.3)+
+  stat_dist_halfeye(inherit.aes=F,data=dfd, aes(x=xr,dist="norm",arg1=m,arg2=s),alpha=.6, fill="orange")+
+  #geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("residuals")
+
+p1 + p2
+```
+
+:::
+
+::: {.callout-note collapse="true"}
+#### What does it <b>not</b> look like?   
+
+Things look a bit wrong (like there is something systematic that we haven't accounted for), when our residuals do not have mean zero:  
+```{r echo=FALSE, fig.height=4}
+library(ggdist)
+library(tidyverse)
+tibble(x = runif(1000,1,10),
+       xr = round(x),
+       s = abs(5-x)*2,
+       e = map_dbl(s,~rnorm(1,0,1)),
+       y = x + s + e) -> df
+df$y2 <- resid(lm(y~x,df))
+#df$y[df$x==6]<-6+rnorm(100,0,3)
+df |> group_by(xr) |> summarise(m=mean(y2), s=sd(y2)) -> dfd
+p1 <- ggplot(df, aes(x=x,y=y))+
+  geom_point()+
+  geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("y")
+p2 <- ggplot(df, aes(x=xr,y=y2))+
+  geom_jitter(height=0,width=1, alpha=.3)+
+  stat_dist_halfeye(inherit.aes=F,data=dfd, aes(x=xr,dist="norm",arg1=m,arg2=s),alpha=.6, fill="orange")+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("residuals")
+
+p1 + p2
+```
+
+Or do not have constant variance: 
+```{r echo=FALSE, fig.height=4}
+library(ggdist)
+library(tidyverse)
+tibble(x = runif(1000,1,10),
+       xr = round(x),
+       s = abs(x)/2,
+       e = map_dbl(s,~rnorm(1,0,.)),
+       y = x + e) -> df
+df$y2 <- resid(lm(y~x,df))
+#df$y[df$x==6]<-6+rnorm(100,0,3)
+df |> group_by(xr) |> summarise(m=mean(y2), s=sd(y2)) -> dfd
+p1 <- ggplot(df, aes(x=x,y=y))+
+  geom_point()+
+  geom_smooth(method="lm",se=F, fullrange=T)+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("y")
+p2 <- ggplot(df, aes(x=xr,y=y2))+
+  geom_jitter(height=0,width=1, alpha=.3)+
+  stat_dist_halfeye(inherit.aes=F,data=dfd, aes(x=xr,dist="norm",arg1=m,arg2=s),alpha=.6, fill="orange")+
+  scale_x_continuous("x",1:10, breaks=seq(1,10,2))+
+  scale_y_continuous("residuals")
+
+p1 + p2
+```
+:::
+
+:::
+
+:::rtip
+__Assumptions in R__  
+
+We can get a lot of plots for this kind of thing by using __plot(model)__
+
+Here's what it looks like for a nice neat model:  
+```{r echo=FALSE}
+set.seed(993)
+df<-tibble(x=runif(150,1,10),xr = round(x), y=1*x+rnorm(150))
+my_model <- lm(y ~ x, data = df)
+```
+
+```{r eval=FALSE}
+plot(my_model)
+```
+```{r echo=FALSE}
+par(mfrow=c(2,2))
+plot(my_model)
+par(mfrow=c(1,1))
+```
+
+- Top Left: For the __Residuals vs Fitted__ plot, we want the red line to be horizontal at close to zero across the plot. We don't want the residuals (the points) to be fanning in/out.  
+- Top Right: For the __Normal Q-Q__ plot, we want the residuals (the points) to follow closely to the diagonal line, indicating that they are relatively normally distributed _(QQplots plot the values against the associated percentiles of the normal distribution. So if we had ten values, it would order them lowest to highest, then plot them on the y against the 10th, 20th, 30th.. and so on percentiles of the standard normal distribution (mean 0, SD 1))_.
+- Bottom Left: For the __Scale-Location__ plot, we want the red line to be horizontal across the plot. These plots allow us to examine the extent to which the variance of the residuals changes accross the fitted values. If it is angled, we are likely to see fanning in/out of the points in the residuals vs fitted plot.
+- Bottom Right: The __Residuals vs Leverage__ plot indicates points that might be of individual interest as they may be unduly influencing the model. There are funnel-shaped lines that will appear on this plot for messier data (not visible above as the data is too neat!), ideally, the further the residual is to the right, the closer to the 0 we want it to be. We'll look at this in more depth in a future reading. 
+
+:::
+
+<div class="divider div-transparent div-dot"></div>
+
+
+# Example
+
+:::frame
+> **Research Question:** Is perceptual speed associated with age?  
+
+The data for this example contains a sample of 130 participants all of whom are over the age of 65, with ages ranging from 67 to 88. All participants completed a short task measuring Perceptual Speed and Accuracy that scores from 0 to 50.  
+
+```{r}
+#| eval: false
+#| echo: false
+set.seed(993)
+perc <- tibble(
+  id = paste0("ppt",1:130),
+  gmv = round(rnorm(130, 65, 7),2),
+  age = 60 + .27*gmv + rnorm(130,0,3),
+  percept = pmax(2,79 - 0.4*age - .4*gmv + rnorm(130,0,12))
+) |>
+  mutate(
+    gmv_cm3 = round(gmv*10),
+    age = round(age),
+    percept = pmin(50,round(percept))
+  )
+# ggplot(perc,aes(x=gmv,y=percept))+
+#  geom_point()+
+#  geom_smooth(method=lm)
+# lm(percept~age,perc) |> summary #|> pluck(coefficients)
+# lm(percept~age+gmv,perc) |> summary #|> pluck(coefficients)
+perc |> select(id,age,percept) |> write_csv("../../data/usmr_percept1.csv")
+```
+
+The data are accessible at [https://uoepsy.github.io/data/usmr_percept1.csv](https://uoepsy.github.io/data/usmr_percept1.csv).  
+
+:::
+
+:::panelset
+
+:::panel
+#### Exploring 
+
+```{r}
+percdat <- read_csv("https://uoepsy.github.io/data/usmr_percept1.csv")
+```
+
+Some visualisations:  
+```{r}
+plt1 <- 
+  ggplot(percdat, aes(x = percept)) + 
+  geom_density() +
+  geom_boxplot(width = 1/300)
+
+plt2 <- 
+  ggplot(percdat, aes(x = age)) + 
+  geom_density() +
+  geom_boxplot(width = 1/80)
+
+plt3 <- ggplot(percdat, aes(x = age, y = percept)) + 
+  geom_point()
+
+library(patchwork)
+(plt1 + plt2) / plt3
+```
+
+:::
+:::panel
+#### Fitting  
+
+```{r}
+p_model <- lm(percept ~ age, data = percdat)
+summary(p_model)
+```
+
+:::
+:::panel
+#### Checking
+
+These plots don't look too bad to me. The Residuals vs Fitted plot looks like a random cloud of points (which is good). The residuals look relatively normally distributed (see the QQ plot), and apart from at the lower end of the fitted values, the variance is fairly constant across (see the Scale-Location plot) - this may be due to scarcity of data from younger people. 
+
+```{r}
+#| eval: false
+plot(p_model)
+```
+```{r}
+#| echo: false
+par(mfrow=c(2,2))
+plot(p_model)
+par(mfrow=c(1,1))
+```
+
+
+:::
+:::panel
+#### Interpreting
+
+```{r}
+coef(p_model)
+```
+
+- `(Intercept)`: For someone of age zero, the estimated average score on the Perceptual Speed task is 77.2  
+- `age`: For each additional year of age, the estimated average score on the task is -0.695 points lower. 
+
+Note the intercept isn't very useful here at all. It estimates the score for a newborn (who wouldn't be able to complete the task anyway). Furthermore, it estimates a score of 77, when the task only scores up to 50. This is because these models are _linear_, so the lines just keep on going outside of the range.  
+
+
+<!-- ```{r} -->
+<!-- summary(p_model)$r.squared -->
+<!-- ``` -->
+
+<!-- - age explains approximately 4.5% of the variance in scores of the perceptual speed task.  -->
+
+:::
+:::panel
+#### Visualising
+
+For a simple linear regression model (with just one predictor like we have here), then the easiest way to plot this model is to use `geom_smooth()`. When we add `geom_smooth(method=lm)` to a ggplot, it will take the variable on the y-axis and "regresses it on to" the variable on the x-axis:  
+```{r}
+ggplot(percdat, aes(x = age, y = percept)) + 
+  geom_point() +
+  geom_smooth(method=lm)
+```
+
+The line here represents our model - the slope is the estimated slope coefficient, and if we extended it all the way back to where age = 0, the height of it would be the intercept! The grey bands represent the 95% confidence interval bands.  
+
+::: {.callout-caution collapse="true"}
+#### optional: if we want to do it manually  
+
+To do it manually, we need to first get the model predicted values, and then add the confidence bounds above and below it. To do that we need the standard error, multiplied by whatever t-value would capture 95% of the distribution:  
+```{r}
+percdat |> 
+  mutate(
+    # get the fitted values
+    fit = predict(p_model),
+    # get the SE at each level of fitted values
+    se = predict(p_model, se = TRUE)$se.fit,
+    # create confidence intervals
+    # df = 128 because we have 130 observations
+    c.lwr = fit - qt(.975, df = 128) * se,
+    c.upr = fit + qt(.975, df = 128) * se
+  ) |>
+  # plot!
+  ggplot(aes(x = age, y = percept))+
+  geom_point()+
+  geom_ribbon(aes(ymin = c.lwr, ymax = c.upr), alpha = .2) + 
+  geom_line(aes(y = fit))
+```
+
+:::
+
+:::
+:::panel
+#### Tabulating
+
+The same package (**sjPlot**) provides some nice quick ways to create regression tables (a bit like what we get from `summary(model)`, only presented a lot more nicely!)  
+
+```{r}
+library(sjPlot)
+tab_model(p_model)
+```
+
+:::
+:::panel
+#### Writing up
+
+A total of `r nrow(percdat)` participants were included in the analysis, with ages ranging from `r min(percdat$age)` to `r max(percdat$age)` (Mean = `r round(mean(percdat$age),1)`, sd = `r round(sd(percdat$age),1)`). On average, participants scored `r round(mean(percdat$percept),1)` (SD = `r round(sd(percdat$percept),1)`) on the perceptual speed task. 
+
+A simple linear regression model was fitted, with scores on the perceptual speed task regressed on to age. A significant association was found, with scores on the task decreasing by `r round(coef(p_model)[2],2)` with every year of age ($b = `r round(coef(p_model)[2],3)`$, $SE = `r round(summary(p_model)$coefficients[2,2],2)`$, $t(`r p_model$df.residual`)=`r round(summary(p_model)$coefficients[2,3],2)`$, $p = `r format.pval(summary(p_model)$coefficients[2,4], digits=3)`$), suggesting that perception may get worse in older age.   
+
+:::
+
+:::
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Simple Statistical Tests as Regression Models
+
+The simple linear regression model with a single predictor `lm(y ~ x1)` is a useful introduction to the idea of model-based thinking. In fact, it is another way of framing the same simple statistical tests that we have already been doing in the previous weeks:  
+
+```{r}
+#| echo: false
+tribble(
+  ~`outcome (y)`, ~`predictor (x)`, ~`regression`, ~`equivalent to`,
+  "continuous","continuous","lm(y ~ x)","cor.test(x, y) and cor.test(y, x)",
+  "continuous","binary","lm(y ~ x)","t.test(y ~ x)",
+) %>% knitr::kable()
+```
+
+
+```{r}
+#| include: false
+set.seed(993)
+library(tidyverse)
+df <- 
+  tibble(
+    x_cont = rnorm(100),
+    x_cat = cut(x_cont, 2, labels = c(0,1)),
+    y = 1.2*x_cont + rnorm(100,0,6)
+  )
+```
+
+
+::: {.callout-caution collapse="true"}
+#### optional: correlation = regression
+
+Remember, the covariance is a measure of the shared variance in two variables (i.e., how one variable varies with the other). However, it is hard to interpret because it is dependent on the units of the variables. Correlation is a _standardised_ way of expressing this. 
+
+One way to think about this is to remember that we can __standardise__ our variables (subtract each value from the mean and divide by the standard deviation (See, e.g. [2B #the-standard-normal-distribution](02b_sampling.html#the-standard-normal-distribution){target="_blank"})), which transforms our set of numbers so that they have a mean of zero and a standard deviation of one. If we standardise both variable $x$ and variable $y$, the covariance of $x_{standardised}$ and $y_{standardised}$ is the same as the correlation between $x$ and $y$ (see [5A #correlation](05a_covcor.html#correlation){target="_blank"}).  
+
+If you've been reading these "optional dropdowns", you may remember that the regression coefficient from `lm(y ~ x)` is _also_ the covariance between $x$ and $y$, simply rescaled to be the amount of change in $y$ when $x$ changes by 1 (see the optional dropdown in [#the-model](#the-model)).  
+
+So actually, all these metrics are pretty much the same thing, only scaled in different ways. And whether we perform a test of the relationship (e.g. test the correlation using `cor.test()`, or test of the regression slope from `lm(y~x)`), we're actually testing the same thing.  
+
+Note that the $t$-statistics and $p$-values are identical:  
+```{r}
+cor.test(df$x_cont, df$y)
+summary(lm(y ~ x_cont, data = df))$coefficients
+```
+
+In fact, the __"correlation coefficient"__ $r$ is equivalent to the __standardised__ regression slope of $y_{standardised} \sim b_0 + b_1 \cdot x_{standardised}$. 
+
+:::
+::: {.callout-caution collapse="true"}
+#### optional: t.test = regression  
+
+We saw last week about when we have a linear regression model with one binary predictor, we interpret the regression coefficient as the difference in mean $y$ between the two levels of our predictor (see [#binary-predictors above](#binary-predictors)).  
+
+We've actually seen this idea before. [3B #two-sample-t-test](03b_inference2.html#two-sample-t-test){target="_blank"} saw how we can use a $t$-test to test whether the mean of some variable is different between two groups.  
+
+These are actually just different expressions of the same thing. The $t$-statistics and $p$-values are identical:  
+```{r}
+t.test(df$y ~ df$x_cat, var.equal = TRUE)
+summary(lm(y ~ x_cat, data = df))$coefficients
+```
+
+__Note:__ The `t.test()` function allows us to perform a Welch t-test, which means we can relax the assumption of equal variance in the two groups. Simple linear regression does not allow us to do this, so if our research question is straightforward enough to be simply "is the mean of $y$ different between these two groups", then a Welch t-test _may_ be preferable. 
+
+:::
+
+
+
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
