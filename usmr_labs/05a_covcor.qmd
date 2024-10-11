@@ -226,14 +226,16 @@ knitr::include_graphics("images/cov.gif")
 ```{r}
 #| eval: false
 #| include: false
+set.seed(899)
 mkd <- function(cv){
   MASS::mvrnorm(n=40,mu=c(0,0),Sigma=Matrix::nearPD(matrix(c(40,cv,cv,70),nrow=2))$mat) |>
-    as.data.frame()
+    as.data.frame() |> 
+    mutate(V1=V1+15,V2=V2+25)
 }
 
 init = tibble(
   frm = 0,
-  data = mkd(-40)
+  data = mkd(-50)
 ) |> unnest()
 ss = init |> transmute(
   V1,
@@ -243,7 +245,8 @@ ss = init |> transmute(
   V2l = map2(V2,V2e,~seq(..1,..2,length.out=100)),
 ) |> unnest() |>
   group_by(frm) |> 
-  mutate(v1m=mean(V1),
+  mutate(V2l = V2l - (mean(V2l)-25),
+         v1m=mean(V1),
          v2m=mean(V2l),
          cov = round(cov(V1,V2l),2),
          cor = round(cor(V1,V2l),2),
@@ -264,6 +267,7 @@ animp <- ggplot(ss, aes(x=V1,y=V2l))+
   geom_rect(aes(xmin=V1,xmax=v1m,ymin=V2l,ymax=v2m,fill=col),alpha=.2)+
   scale_color_manual(values=c("skyblue3","tomato1"))+
   scale_fill_manual(values=c("skyblue3","tomato1"))+
+  guides(col="none",fill="none")+
   labs(x="X",y="Y", title=paste0("cov = ","{closest_state}"))+
   #facet_wrap(~frm)
   transition_states(cov)+ease_aes('sine-in-out')
@@ -299,6 +303,7 @@ animp2 <- ggplot(ss, aes(x=V1,y=V2l))+
   geom_rect(aes(xmin=V1,xmax=v1m,ymin=V2l,ymax=v2m,fill=col),alpha=.2)+
   scale_color_manual(values=c("skyblue3","tomato1"))+
   scale_fill_manual(values=c("skyblue3","tomato1"))+
+  guides(col="none",fill="none")+
   labs(x="X",y="Y", title=paste0("cor = ","{closest_state}"))+
   #facet_wrap(~frm)
   transition_states(cor)+ease_aes('sine-in-out')
