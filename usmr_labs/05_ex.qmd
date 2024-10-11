@@ -1,7 +1,7 @@
 ---
 title: "Exercises: Covariance, Correlation & Linear Regression"
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
@@ -14,12 +14,20 @@ editor_options:
 source('assets/setup.R')
 library(tidyverse)
 library(patchwork)
+qcounter <- function(){
+  if(!exists("qcounter_i")){
+    qcounter_i <<- 1
+  }else{
+    qcounter_i <<- qcounter_i + 1
+  }
+  qcounter_i
+}
 set.seed(017)
 ```
 
 # Covariance & Correlation  
 
-`r qbegin(0)`
+`r qbegin(qcounter())`
 Go to [http://guessthecorrelation.com/](http://guessthecorrelation.com/){target="_blank"} and play the "guess the correlation" game for a little while to get an idea of what different strengths and directions of $r$ can look like.
 `r qend()`
 
@@ -50,7 +58,7 @@ tibble(
 ```
 :::
 
-`r qbegin(1)`
+`r qbegin(qcounter())`
 Load the required libraries (probably just __tidyverse__ for now), and read in the data.  
 Calculate the overall daytime functioning score, following the criteria outlined above, and make this a new column in your dataset.  
 
@@ -67,7 +75,8 @@ dataframe$sumscore = rowSums(dataframe[, 4:15])
 
 :::
 `r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+`r solbegin(label="Solution Part 1 - Reversing Items", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
 ```{r message=FALSE}
 sleepdtf <- read_csv("https://uoepsy.github.io/data/sleepdtf.csv")
 summary(sleepdtf)
@@ -82,6 +91,9 @@ sleepdtf <-
     item_6=6-item_6
   ) 
 ```
+
+`r solend()`
+`r solbegin(label="Solution Part 2 - Creating a scale score", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
 
 Now we can use `rowSums()`, and subtract the sum scores from from 50 (the max score):  
 ```{r}
@@ -98,10 +110,9 @@ sleepdtf |>
   )
 ```
 
-
 `r solend()`
 
-`r qbegin(2)`
+`r qbegin(qcounter())`
 Calculate the correlation between the total sleep time (`TST`) and the overall daytime functioning score calculated in the previous question.  
 Conduct a test to establish the probability of observing a correlation this strong in a sample of this size assuming the true correlation to be 0.  
 
@@ -123,7 +134,7 @@ There was a strong positive correlation between total sleep time and self-report
 :::
 `r solend()`
 
-`r qbegin("3 (open-ended)")`
+`r qbegin(paste0(qcounter()," (open-ended)"))`
 Think about this relationship in terms of _causation_.  
 <br>
 Claim: _Less sleep causes poorer daytime functioning._  
@@ -168,7 +179,7 @@ tibble(
 
 :::
 
-`r qbegin(4)`
+`r qbegin(qcounter())`
 Conduct a test of whether there is a correlation between school attendance and school attainment in Scotland.  
 
 Present and write up the results.  
@@ -202,7 +213,7 @@ simd |>
     m_attainment = mean(attainment, na.rm = TRUE)
 )
 ```
-Instead, to match with out analysis, we might be inclined to filter our data to complete data:  
+Instead, to match with our analysis, we might be inclined to filter our data to complete data:  
 ```{r}
 simd_comp <- simd |> 
   filter(!is.na(attendance) & !is.na(attainment))
@@ -611,7 +622,7 @@ tibble(
 
 
 
-`r qbegin(5)`  
+`r qbegin(qcounter())`  
 For this week, we're going to be investigating the following research question:  
 
 > Do older monkeys spend more/less time exploring novel objects?  
@@ -682,7 +693,7 @@ of `r round(mean(monkeyexp$exploration_time),1)` years, and a standard deviation
 :::
 `r solend()`
 
-`r qbegin(6)`  
+`r qbegin(qcounter())`  
 After we've looked at the marginal distributions of the variables of interest in the analysis, we typically move on to examining *relationships* between the variables.  
   
 Visualise and describe the relationship between age and exploration-time among the monkeys in the sample.  
@@ -726,7 +737,7 @@ that is, $r_{\text{age, exploration-time}} = `r round(cor(monkeyexp[,c("age","ex
 `r solend()`
 
 
-`r qbegin(7)`
+`r qbegin(qcounter())`
 Using the `lm()` function, fit a linear model to the sample data, in which time that monkeys spend exploring novel objects is explained by age. Assign it to a name to store it in your environment.  
 
 ::: {.callout-tip collapse="true"}
@@ -743,7 +754,7 @@ model1 <- lm(exploration_time ~ 1 + age, data = monkeyexp)
 ```
 `r solend()`
 
-`r qbegin(8)`
+`r qbegin(qcounter())`
 Interpret the estimated intercept and slope in the context of the question of interest.  
 
 ::: {.callout-tip collapse="true"}
@@ -774,18 +785,17 @@ $$
 We can interpret the estimated intercept as:
 
 :::int
-The estimated average time spent exploring novel objects associated with age of zero is `r round(coef(model1)[1],2)` minutes.
+The estimated average time spent exploring novel objects for a monkey of age zero is `r round(coef(model1)[1],2)` minutes.
 :::
 
 For the estimated slope we get:
 
 :::int
-The estimated decrease in average time spent exploring associated with a one year increase in age is `r round(coef(model1)[2],2)` minutes (or `r round(coef(model1)[2]*60)` seconds).
-:::
+A one year increase in age is associated with an estimated decrease of `r round(coef(model1)[2],2)` minutes (or `r round(coef(model1)[2]*60)` seconds) that a monkey will spend exploring a novel object.  
 `r solend()`
 
 
-`r qbegin(9)`
+`r qbegin(qcounter())`
 Test the hypothesis that the population slope is zero --- that is, that there is no linear association between exploration time and age in the population.  
 
 ::: {.callout-tip collapse="true"}
@@ -804,12 +814,12 @@ summary(model1)
 Recall that very small p-values such as the one for the intercept `2e-16` in the `Pr(>|t|)` column simply means $2 \times 10^{-16}$, or `r format(2e-16,scientific=FALSE)`. Conventions such as the APA guidelines give rules on how to report these numbers (see, e.g. [APA's number and stats guide](https://apastyle.apa.org/instructional-aids/numbers-statistics-guide.pdf){target="_blank"}). For the p-values in this summary (the one for the intercept and the one for the slope) we could report them as "<.001" and "0.003" respectively.  
 
 :::int
-A significant association was found between age (in years) and time spent exploring novel objects, with exploration time decreasing by on average `r round(coef(model1)[2],2)` minutes (or `r round(coef(model1)[2]*60)` seconds) for every additional year of age ($b = `r round(coef(model1)[2],2)`$, $SE = `r round(sqrt(diag(vcov(model1)))[2],3)`$, $t(`r model1$df.residual`)=-3.103$, $p=.003$). 
+A significant association was found between age (in years) and time spent exploring novel objects, with exploration time decreasing on average by `r round(coef(model1)[2],2)` minutes (or `r round(coef(model1)[2]*60)` seconds) for every additional year of age ($b = `r round(coef(model1)[2],2)`$, $SE = `r round(sqrt(diag(vcov(model1)))[2],3)`$, $t(`r model1$df.residual`)=-3.103$, $p=.003$). 
 :::
 
 `r solend()`
 
-<!-- `r qbegin(10)` -->
+<!-- `r qbegin(qcounter())` -->
 <!-- What is the proportion of the total variability in exploration-times explained by the linear relationship with monkeys' ages? -->
 
 <!-- ::: {.callout-tip collapse="true"} -->
@@ -833,7 +843,7 @@ A significant association was found between age (in years) and time spent explor
 
 <!-- `r solend()` -->
 
-<!-- `r qbegin(11)` -->
+<!-- `r qbegin(qcounter())` -->
 <!-- Look at the output of `summary()` of your model. Identify the relevant information to conduct an F-test against the null hypothesis that the model is ineffective at predicting exploration time using age.   -->
 
 <!-- ::: {.callout-tip collapse="true"} -->
@@ -860,29 +870,30 @@ A significant association was found between age (in years) and time spent explor
 <!-- `r solend()` -->
 
 
-`r qbegin(10)`
+`r qbegin(qcounter())`
 Create a visualisation of the estimated association between age and exploration time.   
 
 
 ::: {.callout-tip collapse="true"}
 #### Hints
-There are lots of ways to do this. Check [5B #example](05b_slr.html#example){target="_blank"}, which shows an example of using the __sjPlot__ package to create a plot.  
+For our simple regression model, there is a really easy way to do this with `geom_smooth()`.  Check [5B #example](05b_slr.html#example){target="_blank"}, which shows an example.
 :::
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 ```{r}
-#| message: false
-#| warning: false
-library(sjPlot)
-plot_model(model1, type="eff", show.data = TRUE)
+ggplot(data = monkeyexp, aes(x = age, y = exploration_time)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method=lm) +
+  labs(x = "Age (in years)", 
+       y = "Time spent exploring a\n novel object (in minutes)")
 ```
 
 `r solend()`
 
 
-`r qbegin("Optional: Question 11A", qlabel = FALSE)`
+`r qbegin(paste0(qcounter(), " - Optional"))`
 Consider the following:  
 
 1. In fitting a linear regression model, we make the assumption that the errors around the line are normally distributed around zero (this is the $\epsilon \sim N(0, \sigma)$ bit.)  
@@ -904,14 +915,12 @@ The estimated standard deviation of the errors can be obtained by:
 sigma(model1)
 ```
 
-:::int
-For any particular age, the time monkeys spend exploring novel objects should be distributed above and below the regression line with standard deviation estimated to be $\hat \sigma = 4.32$. 
-Since $2 \hat \sigma = 2 (4.32) = 8.64$, we expect most (about 95\%) of the monkeys' exploration times to be within about 8.6 minutes from the regression line.
-:::  
+For any particular age, the time monkeys spend exploring novel objects is estimated as being distributed above and below the regression line with a standard deviation of $\hat \sigma = 4.32$. 
+Since $1.96 \hat \sigma = 1.96 \times 4.32 = \text{approx} 8.6$, we would expect most (about 95\%) of the monkeys' exploration times to be within about 8.6 minutes from the regression line.
 
 `r solend()`
 
-`r qbegin("Optional: Question 11B", qlabel=FALSE)`
+`r qbegin(paste0(qcounter(), " - Optional"))`
 Compute the model-predicted exploration-time for a monkey that is 1 year old.  
 
 ::: {.callout-tip collapse="true"}
@@ -950,7 +959,7 @@ $$
 ### Influential Monkeys
 
 
-`r qbegin(12)`
+`r qbegin(qcounter())`
 Take a look at the assumption plots (see [5B #assumptions](05b_slr.html#assumptions){target="_blank"}) for your model.  
     
 - The trick to looking at assumption plots in linear regression is to look for "things that don't look random". 
@@ -1014,7 +1023,7 @@ Whatever we do, when writing up the analysis we need to mention clearly _if_ and
 
 ### Monkey Exploration in Adulthood
 
-Let's suppose instead of having measured monkeys' ages in years, researchers simply recorded whether each monkey was an adult or a juvenile (both Capuchins and Rhesus Macaques reach adulthood at 8 years old).  
+Let's suppose instead of having measured monkeys' ages in years, researchers simply recorded whether each monkey was an adult or a juvenile (species like Capuchins and Rhesus Macaques reach adulthood at about 8 years old).  
 The code below creates a this new variable for us:  
 ```{r}
 monkeyexp <- monkeyexp |> 
@@ -1023,7 +1032,7 @@ monkeyexp <- monkeyexp |>
   )
 ```
 
-`r qbegin(13)`
+`r qbegin(qcounter())`
 
 Fit the following model, and interpret the coefficients.  
 
@@ -1051,7 +1060,7 @@ ggplot(monkeyexp, aes(x = isAdult, y = exploration_time)) +
 ```
 `r solend()`
 
-`r qbegin(14)`
+`r qbegin(qcounter())`
 We've actually already seen a way to analyse questions of this sort ("is the average exploration-time different between juveniles and adults?")  
 
 Run the following t-test, and consider the statistic, p value etc. How does it compare to the model in the previous question?  
@@ -1085,11 +1094,11 @@ summary(interceptonly_model)$coefficients
 
 # Extra! A team task!   
 
-`r qbegin("EXTRA!")`
+`r qbegin("EXTRA!", qlabel=FALSE)`
 
-The data from this year's survey that you filled out in the first couple of weeks is available at [https://uoepsy.github.io/data/usmr2023.csv](https://uoepsy.github.io/data/usmr2023.csv).  
+The data from this year's survey that you filled out in the first couple of weeks is available at [https://uoepsy.github.io/data/usmr2024.csv](https://uoepsy.github.io/data/usmr2024.csv).  
 
-- **Step 1:** Using the USMR 2023 survey data, make *either* the prettiest plot you can or the ugliest plot you can . 
+- **Step 1:** Using the USMR 2024 survey data, make *either* the prettiest plot you can or the ugliest plot you can . 
 - **Step 2:** Submit your plot! Go to [https://forms.office.com/e/KiGevk6xH3](https://forms.office.com/e/KiGevk6xH3){target="_blank"} and upload your plot and the code used to create it (save the plot via the plot window in R/take a screenshot/put it in a .Rmd and knit/whatever gets the picture uploaded!)   
 
 All plots submitted by end-of-day on 25th October will be rated by a number of non-USMR staff, and prizes made of chocolate will be awarded to the team with the prettiest plot and to the team with the ugliest plot. 

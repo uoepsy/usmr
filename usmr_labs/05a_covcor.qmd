@@ -83,10 +83,9 @@ Ideally, we would have some means of quantifying the strength and direction of t
 Covariance is the measure of how two variables vary together. 
 It is the change in one variable associated with the change in another variable.   
 
-For samples, covariance is calculated using the following formula:
+Covariance is calculated using the following formula:
 
-$$\mathrm{cov}(x,y)=\frac{1}{n-1}\sum_{i=1}^n (x_{i}-\bar{x})(y_{i}-\bar{y})$$
-
+$$\mathrm{cov}(x,y)=\frac{\sum_{i=1}^n (x_{i}-\bar{x})(y_{i}-\bar{y})}{n-1}$$
 where:
 
 - $x$ and $y$ are two variables; e.g., `age` and `recall_accuracy`;
@@ -94,22 +93,10 @@ where:
 - $n$ is the sample size.
 
 
-:::rtip
-**Covariance in R**  
+This can initially look like quite a big equation, so let's break it down.  
 
-We can calculate covariance in R using the `cov()` function.  
-`cov()` can take two variables `cov(x = , y = )`.  
-
-```{r}
-cov(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
-```
-  
-If necessary, we can choose to remove NAs using `na.rm = TRUE` inside the `cov()` function.  
-:::
-
-
-::: {.callout-note collapse="true"}
-### Covariance explained visually  
+:::frame
+__Covariance explained visually__  
 
 ```{r}
 #| echo: false
@@ -199,26 +186,24 @@ p2
 ```
 <br>
 Now let's pick one of the points, call it $x_i$, and show $(x_{i}-\bar{x})$ and $(y_{i}-\bar{y})$.  
-<br>
 Notice that this makes a rectangle.  
-<br>
-As $(x_{i}-\bar{x})$ and $(y_{i}-\bar{y})$ are both positive values, their product -  $(x_{i}-\bar{x})(y_{i}-\bar{y})$ - is positive. 
 ```{r}
 #| echo: false
 #| message: false
 #| warning: false
 p3
 ```
-<br>
-In fact, for all these points in red, the product $(x_{i}-\bar{x})(y_{i}-\bar{y})$ is positive (remember that a negative multiplied by a negative gives a positive): 
+As $(x_{i}-\bar{x})$ and $(y_{i}-\bar{y})$ are both positive values, their product --- $(x_{i}-\bar{x})(y_{i}-\bar{y})$ --- is positive. 
+
+In fact, for any pair of values $x_i$ and $y_i$ where both values are above their respective means, or both are below, then product $(x_{i}-\bar{x})(y_{i}-\bar{y})$ will be positive (remember that a negative multiplied by a negative gives a positive):  
 ```{r}
 #| echo: false
 #| message: false
 #| warning: false
 p4
 ```
-<br>
-And for these points in blue, the product $(x_{i}-\bar{x})(y_{i}-\bar{y})$ is negative:  
+
+And for all those other points (in blue) the product $(x_{i}-\bar{x})(y_{i}-\bar{y})$ is negative:  
 ```{r}
 #| echo: false
 #| message: false
@@ -226,16 +211,125 @@ And for these points in blue, the product $(x_{i}-\bar{x})(y_{i}-\bar{y})$ is ne
 p5
 ```
 <br>
-Now take another look at the formula for covariance:  
+Now let's take another look at the formula for covariance:  
 
 $$\mathrm{cov}(x,y)=\frac{\sum_{i=1}^n (x_{i}-\bar{x})(y_{i}-\bar{y})}{n-1}$$
   
-It is the sum of all these products divided by $n-1$. It is the average of the products! Sort of like the average area of the rectangles!  
+It is the sum of all these products divided by $n-1$. It is the average of the products! You can almost think of this as the average area of all the rectangles!  
+So for plots like this where we have been colouring them in blue or red, the measure of covariance moves up and down depending upon how much blue vs how much red there is! It will be zero when there is the same amount of blue as there is red. 
+
+```{r}
+#| echo: false
+knitr::include_graphics("images/cov.gif")
+```
+
+```{r}
+#| eval: false
+#| include: false
+set.seed(899)
+mkd <- function(cv){
+  MASS::mvrnorm(n=40,mu=c(0,0),Sigma=Matrix::nearPD(matrix(c(40,cv,cv,70),nrow=2))$mat) |>
+    as.data.frame() |> 
+    mutate(V1=V1+15,V2=V2+25)
+}
+
+init = tibble(
+  frm = 0,
+  data = mkd(-50)
+) |> unnest()
+ss = init |> transmute(
+  V1,
+  V2,
+  V2e = V2 - 2*coef(lm(V2~V1,init))[2]*V1,
+  frm = list(seq(1,100)),
+  V2l = map2(V2,V2e,~seq(..1,..2,length.out=100)),
+) |> unnest() |>
+  group_by(frm) |> 
+  mutate(V2l = V2l - (mean(V2l)-25),
+         v1m=mean(V1),
+         v2m=mean(V2l),
+         cov = round(cov(V1,V2l),2),
+         cor = round(cor(V1,V2l),2),
+         col=case_when(
+           V1>v1m & V2l>v2m ~ "p",
+           V1<v1m & V2l<v2m ~ "p",
+           TRUE ~ "n"
+         )) |> ungroup()
+
+
+library(gganimate)
+animp <- ggplot(ss, aes(x=V1,y=V2l))+
+  geom_point(size=3)+
+  geom_hline(aes(yintercept=v2m),lty="dotted")+
+  geom_vline(aes(xintercept=v1m),lty="dotted")+
+  geom_segment(aes(x=V1,xend=V1,y=V2l,yend=v2m,col=col),alpha=.4)+
+  geom_segment(aes(x=V1,xend=v1m,y=V2l,yend=V2l,col=col),alpha=.4)+
+  geom_rect(aes(xmin=V1,xmax=v1m,ymin=V2l,ymax=v2m,fill=col),alpha=.2)+
+  scale_color_manual(values=c("skyblue3","tomato1"))+
+  scale_fill_manual(values=c("skyblue3","tomato1"))+
+  guides(col="none",fill="none")+
+  labs(x="X",y="Y", title=paste0("cov = ","{closest_state}"))+
+  #facet_wrap(~frm)
+  transition_states(cov)+ease_aes('sine-in-out')
+
+
+ss = init |> transmute(
+  V1,
+  V2,
+  V2e = V2 - 2*coef(lm(V2~V1,init))[2]*V1,
+  frm = list(seq(1,100)),
+  V2l = map2(V2,V2e,~seq(..1,..2,length.out=100)),
+) |> unnest() |>
+  group_by(frm) |> 
+  mutate(
+    V1 = scale(V1)[,1],
+    V2l = scale(V2l)[,1],
+    v1m=mean(V1),
+         v2m=mean(V2l),
+         cov = round(cov(V1,V2l),2),
+         cor = round(cor(V1,V2l),2),
+         col=case_when(
+           V1>v1m & V2l>v2m ~ "p",
+           V1<v1m & V2l<v2m ~ "p",
+           TRUE ~ "n"
+         )) |> ungroup()
+
+animp2 <- ggplot(ss, aes(x=V1,y=V2l))+
+  geom_point(size=3)+
+  geom_hline(aes(yintercept=v2m),lty="dotted")+
+  geom_vline(aes(xintercept=v1m),lty="dotted")+
+  geom_segment(aes(x=V1,xend=V1,y=V2l,yend=v2m,col=col),alpha=.4)+
+  geom_segment(aes(x=V1,xend=v1m,y=V2l,yend=V2l,col=col),alpha=.4)+
+  geom_rect(aes(xmin=V1,xmax=v1m,ymin=V2l,ymax=v2m,fill=col),alpha=.2)+
+  scale_color_manual(values=c("skyblue3","tomato1"))+
+  scale_fill_manual(values=c("skyblue3","tomato1"))+
+  guides(col="none",fill="none")+
+  labs(x="X",y="Y", title=paste0("cor = ","{closest_state}"))+
+  #facet_wrap(~frm)
+  transition_states(cor)+ease_aes('sine-in-out')
+
+anim_save("images/cov.gif",animp)
+anim_save("images/cor.gif",animp2)
+```
 
 :::
 
-::: {.callout-note collapse="true"}
-### Step-by-step calculations
+:::rtip
+**Covariance in R**  
+
+We can calculate covariance in R using the `cov()` function.  
+`cov()` can take two variables `cov(x = , y = )`.  
+
+```{r}
+cov(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
+```
+  
+If necessary, we can choose to remove NAs using `na.rm = TRUE` inside the `cov()` function.  
+:::
+
+
+::: {.callout-caution collapse="true"}
+### Step-by-step calculations of covariance
 
 1. Create 2 new columns in the memory recall data, one of which is the mean recall accuracy, and one which is the mean recall confidence. 
 ```{r}
@@ -284,8 +378,10 @@ cov(x = recalldata$recall_accuracy, y = recalldata$recall_confidence)
 :::
 
 # Correlation
-  
-You can think of correlation as a standardised covariance. It has a scale from negative one to one, on which the distance from zero indicates the strength of the relationship.  
+
+One thing to note with covariance is that it is sensitive to the units of measurement. The covariance between height-in-centimeters and weight-in-grams will be a much bigger number than the covariance between height-in-meters and weight-in-kilograms.  
+
+Correlation solves this issue, and you can think of correlation as a standardised covariance. It has a scale from negative one to one, on which the distance from zero indicates the strength of the relationship.  
 Just like covariance, positive/negative values reflect the nature of the relationship.  
 
 The __correlation coefficient__ is a standardised number which quantifies the strength and direction of the **linear** relationship between two variables. In a population it is denoted by $\rho$, and in a sample it is denoted by $r$.  
@@ -301,6 +397,12 @@ r_{(x,y)}=\frac{1}{n-1} \sum_{i=1}^n \left( \frac{x_{i}-\bar{x}}{s_x} \right) \l
 $$
 <br>
 The correlation is the simply the covariance of **standardised** variables (variables expressed as the distance _in standard deviations_ from the mean).    
+
+```{r}
+#| echo: false
+knitr::include_graphics("images/cor.gif")
+```
+
 
 :::sticky
 **Properties of correlation coefficients**
@@ -533,8 +635,8 @@ The correlation coefficient in @fig-joface below is negligible, suggesting no _l
 ```{r}
 #| label: fig-joface
 #| fig.cap: "Unrelated data?"
-#| out-height: "200px"
-#| out-width: "200px"
+#| fig-height: 3
+#| fig-width: 3
 #| echo: false
 #| message: false
 #| warning: false
