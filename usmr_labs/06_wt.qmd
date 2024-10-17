@@ -12,6 +12,15 @@ params:
 source('assets/setup.R')
 library(xaringanExtra)
 xaringanExtra::use_panelset()
+qcounter <- function(){
+  if(!exists("qcounter_i")){
+    qcounter_i <<- 1
+  }else{
+    qcounter_i <<- qcounter_i + 1
+  }
+  qcounter_i
+}
+set.seed(017)
 ```
 
 In many projects (both in academic research & in other sectors), more time will be spent cleaning and organising data than will actually be spent conducting statistical analyses (a well designed study with a well-thought through data collection process can go a long way to remedy this!).
@@ -96,14 +105,15 @@ The package **haven** provides functions for files which have been saved from ot
 The **googlesheets4** package can read in data directly from a spreadsheet stored on google drive. You simply find the *id* of the sheet (it's the big long string of numbers & letters in the url of your google sheet), and pass it to `read_sheet()`.  
 It will prompt you to authenticate your account via your browser, but it's really easy!  
 
-`r qbegin(qlabel=FALSE)`
+`r qbegin(qcounter())`
 Read in the two data-sets. Take care to look at the file extension (e.g., **.csv**, **.tsv**, **.xlsx**) as indicators of what function to try.  
 Make sure you assign them identifiable names.  
 Once you've loaded the data-set, take a look at them using functions like `summary()`, `str()`, `dim()`/`nrow()`, or viewing them by clicking on them in the environment. 
   
-:::hints  
-**Hints:**
- 
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
 - Some functions like `read_excel()` don't allow you to download directly from a url, like we have been doing with __.csv__ files.  
   - Solution 1:
     - Download the data to your computer
@@ -120,8 +130,8 @@ Once you've loaded the data-set, take a look at them using functions like `summa
 library(tidyverse)
 library(readxl)
 
-download.file('https://uoepsy.github.io/data/blink_eyegaze.xlsx', 'data/blink_eyegaze.xlsx', mode="wb")
-eyedata <- read_excel(path = 'data/blink_eyegaze.xlsx')
+download.file('https://uoepsy.github.io/data/blink_eyegaze.xlsx', 'blink_eyegaze.xlsx', mode="wb")
+eyedata <- read_excel(path = 'blink_eyegaze.xlsx')
 
 setupdata <- read_csv("https://uoepsy.github.io/data/blink_setup.csv", col_names = FALSE)
 ```
@@ -147,7 +157,7 @@ data |>
   rename(newname = currentname)
 ```
 
-`r qbegin(qlabel=FALSE)`
+`r qbegin(qcounter())`
 **Problem**  
 
 The *blink_setup.csv* file doesn't have any column names!  
@@ -168,8 +178,9 @@ head(setupdata)[,1:3] |>
 1. Remove the first column
 2. Rename columns 2 to 22 with sensible names. 
 
-:::hints
-**Hints:** 
+
+::: {.callout-tip collapse="true"}
+#### Hints
 
 ```{r eval=FALSE}
 names(setupdata) # what are the names
@@ -224,7 +235,7 @@ When the data is wide, we can make it long using `pivot_longer()`. When we make 
 
 The animation takes a shortcut in the code it displays above, but you could also use `pivot_longer(c(x,y,z), names_to = "name", values_to = "val")`. To reverse this, and put it back to being wide, we tell R which columns to take the names and values *from*: `pivot_wider(names_from = name, values_from = val)`.  
 
-`r qbegin(qlabel=FALSE)`
+`r qbegin(qcounter())`
 **Problem**  
 The *blink_setup.csv* file has the data in a different shape to the *blink_eyegaze.xlsx* file.  
   
@@ -235,8 +246,9 @@ The *blink_setup.csv* file has the data in a different shape to the *blink_eyega
 
 Reshape the data to make it so that there is one row per trial.  
 
-:::hints
-**Hint**
+::: {.callout-tip collapse="true"}
+#### Hints
+
 
 - in the tidyverse functions, you can specify all columns between column **x** and column **z** by using the colon, `x:z`.  
 
@@ -264,17 +276,17 @@ Here are a few examples:
 
 
 ::: {.callout-note collapse="true"}
-#### gsub()
+#### gsub() - substitute a string of characters for another string
 
-substitute a string of characters for another string:
+
 ```{r}
 gsub("don't like","love", "i really really really don't like statistics!")
 ```
 :::
 
 ::: {.callout-note collapse="true"}
-#### separate()
-separate a column into multiple columns by splitting at a set of characters
+#### separate() - separate a column into multiple columns by splitting at a set of characters
+
 ```{r}
 mupsimp <- read_csv("https://uoepsy.github.io/data/muppet_simp.csv")
 mupsimp
@@ -285,9 +297,8 @@ mupsimp |>
 :::
 
 ::: {.callout-note collapse="true"}
-#### substr()  
+#### substr() - extract or replace substrings in a character vector
 
-Extract or replace substrings in a character vector.
 ```{r}
 # get the first 3 letters
 substr(mupsimp$show_name, 1, 3)
@@ -304,8 +315,8 @@ mupsimp |>
 :::
 
 ::: {.callout-note collapse="true"}
-#### paste()  
-`paste()` can quickly combine two character vectors:
+#### paste() - quickly combine two character vectors
+
 ```{r}
 paste("hello","everyone",sep=" ")
 ```
@@ -320,7 +331,7 @@ paste0("hello","everyone")
 
 :::
 
-`r qbegin(qlabel=FALSE)`
+`r qbegin(qcounter())`
 **Problem**   
 If you look at what data was captured by the software to indicate which video was used in each trial, there is a lot of unnecessary data there. The number of the filename indicates how many blinks are in the video. This is the only bit of information we want.   
 ```{r}
@@ -330,8 +341,9 @@ head(setuplong$video)
 
 - In your (now reshaped to long) **blink_setup.csv** data, make a new, or edit an existing column, which is a *numeric* variable containing the number of blinks presented in the video in each trial  
 
-:::hints
-**Hints:**  
+::: {.callout-tip collapse="true"}
+#### Hints
+  
 
 - there are lots of different ways you could do this.  
 - you can substitute out multiple different strings by separating them with the `|` symbol:
@@ -371,7 +383,7 @@ There are lots of different ways to join data-sets, depending on whether we want
 knitr::include_graphics("images/messy/joins.png")
 ```
 
-`r qbegin(qlabel=FALSE)`
+`r qbegin(qcounter())`
 **Problem**  
 Variables are in different data-sets.  
 
@@ -379,8 +391,9 @@ Variables are in different data-sets.
 
 1. Join the two data-sets (the reshaped-to-long **blink_setup.csv** data, and the **blink_eyegaze.xlsx** data) together, and store the joined data in a new object (you can use your own name, but the solutions will use the name `blinks_full`).  
 
-:::hints
-**Hints:**  
+::: {.callout-tip collapse="true"}
+#### Hints
+
 
 We want to match the observations based on two columns which are present in each data-set, indicating which participant, and which trial.  
   
@@ -434,9 +447,13 @@ setuplong |>
   rename(trial_no = trial_number) |>
   full_join(x = _, y = eyedata)
 ```
-  **NOTE** the solution has `x = ., y = eyedata` to make it clear that we are 'piping in' (using `|>`) the thing coming out of the previous lines of code, and putting it where the `_` is. `.... |> full_join(eyedata)` would do the same.  
-  We use `full_join` here because we want to keep all the data, but `left_join` would do the same. `right_join` would be slightly different, because there are 3 observations in the setup data (when reshaped to long, n = 460) which aren't in the eye gaze data (n = 457). You can see which ones they are by using `anti_join`.  
+  **NOTE** the solution has `x = _, y = eyedata` to make it clear that we are 'piping in' (using `|>`) the thing coming out of the previous lines of code, and putting it where the `_` is. `.... |> full_join(eyedata)` would do the same.   
+  
+We use `full_join` here because we want to keep all the data, but `left_join` would do the same. `right_join` would be slightly different, because there are 3 observations in the setup data (when reshaped to long, n = 460) which aren't in the eye gaze data (n = 457). You can see which ones they are by using `anti_join`.  
+  
+  
 6. Finally - we need to give the whole output a name to store it in our environment! 
+
 ```{r}
 blinks_full <- 
   setuplong |>
@@ -469,7 +486,7 @@ We have a couple of options as to how to deal with them.
 
 Some of the tools we learned in the [Reading 1B](01b_data.html) will come in handy here. 
 
-`r qbegin(qlabel=FALSE)`
+`r qbegin(qcounter())`
 **Problem**  
 Some impossible values in the `distractor_fix` variable.  
 
@@ -477,8 +494,9 @@ Some impossible values in the `distractor_fix` variable.
 - Assign the entries of the `distractor_fix` variable which are < 0 to be `NA`.  
 - Are there any other impossible values (or combinations of values) in the data?
 
-:::hints
-**Hints:**
+::: {.callout-tip collapse="true"}
+#### Hints
+
 
 - While you're there, why not convert any variables to the right type (numeric, factor, etc).  
 - We might not have come across this before, but there is a really useful function called `ifelse()`.  
@@ -559,7 +577,7 @@ Some common approaches to handling outliers:
 :::
 
 
-`r qbegin(qlabel=FALSE)`
+`r qbegin(qcounter())`
 Make a bloxplot of the `distractor_fix` variable. Does it look like there might be any outliers? 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -578,7 +596,7 @@ It looks like there are possibly some outliers at the upper end of the distribut
 
 # Custom Functions
 
-`r qbegin(qlabel=FALSE)`
+`r qbegin(qcounter())`
 **Writing your own function**    
   
 We already saw some custom functions in the first week, where we made some called `dice()` and `wdice()`.   
@@ -593,10 +611,9 @@ outliers <- function(obs){
 ```
 
 `r qend()`
-`r solbegin(show=TRUE, toggle=params$TOGGLE)`
 
-::: {.callout-note collapse="true"}
-#### Working out the internal code  
+`r solbegin(label="Solution Part 1 - Working out the internal code",slabel=FALSE,show=params$TOGGLE, toggle=params$TOGGLE)`
+
 Let's do the calculation on a little vector, keeping it all outside of a function first:  
 ```{r}
 # a random vector (length = 20)
@@ -616,9 +633,11 @@ vec - mean(vec)
 # instead we want the ABSOLUTE value 
 abs(vec - mean(vec)) > (3 * sd(vec))
 ```
-:::
-::: {.callout-note collapse="true"}
-#### Writing it as a function
+
+`r solend()`  
+
+`r solbegin(label="Solution Part 2 - Writing it as a function",slabel=FALSE,show=params$TOGGLE, toggle=params$TOGGLE)`
+
 Okay, now that we've worked out the code, we want to make this a function. The template function in the question had an input called `obs`:
 ```{r eval=FALSE}
 outliers <- function(obs){
@@ -631,9 +650,12 @@ outliers <- function(obs){
   abs(obs - mean(obs)) > (3 * sd(obs))
 }
 ```
-:::
-::: {.callout-note collapse="true"}
-#### Testing the function  
+
+
+`r solend()`  
+
+`r solbegin(label="Solution Part 3 - Testing the function",slabel=FALSE,show=params$TOGGLE, toggle=params$TOGGLE)`
+
 we can test it on the `vec` object we created earlier. 
 ```{r}
 outliers(obs = vec)
@@ -644,9 +666,11 @@ We can use it to access and edit those entries:
 vec[outliers(vec)]
 vec[outliers(vec)] <- NA
 ```
-:::
-::: {.callout-note collapse="true"}
-#### Extra - adding more arguments  
+
+`r solend()`  
+
+`r solbegin(label="Extra - Adding more arguments",slabel=FALSE,show=params$TOGGLE, toggle=params$TOGGLE)`
+
 We could edit the function so that we can also vary how many standard deviations away we are wanting to identify!
 ```{r}
 outliers <- function(obs, x = 3){
@@ -658,8 +682,8 @@ the `x = 3` means that the function will default to looking 3 standard deviation
 
 `r solend()`
 
-`r qbegin(qlabel=FALSE)`
-Look through the solutions to question **B8** above, and make sure that you are comfortable with how writing a function works.  
+`r qbegin(qcounter())`
+Look through the solutions to the question above, and make sure that you are comfortable with how writing a function works.  
 
 Can you edit the `outliers()` function you wrote to make it work with vectors which include `NA`s?  
 
@@ -672,7 +696,7 @@ outliers <- function(obs, x = 3){
 ```
 `r solend()`
 
-`r qbegin(qlabel=FALSE)`
+`r qbegin(qcounter())`
 
 **Problem**  
 Possible outliers in the `distractor_fix` variable. 
@@ -683,8 +707,10 @@ Possible outliers in the `distractor_fix` variable.
 2. Make a new boxplot of the variable
 
 ::: {.callout-note collapse="true"}
-#### If you skipped questions A8 and A9  
-If you skipped questions **B8** and **B9**, then copy and run this code into your document. 
+#### If you skipped questions `r qcounter_i-2` and `r qcounter_i-1`  
+
+If you skipped the last couple of questions, then copy and run this code into your document.  
+
 It will give you a function which takes a vector and returns TRUEs and FALSEs based on whether each entry is greater than 3 standard deviations from the mean. 
 ```{r}
 outliers <- function(obs, x = 3){
@@ -717,11 +743,13 @@ head(blinks_full)
 ```
 Thinking _way back_ to the top of this page, we recall that our research question is concerned with whether perceived lying (as implied by more looking at the distractor) increases with the number of blinks seen.  
 
-You might notice that we the observations in our dataset aren't _independent_ from one another - we have 20 datapoints for each subject. And if we split it by "number of blinks", then we have roughly 45 datapoints for each value. __Independence of observations__ is actually an assumption that is relied upon by all the tests that we cover in this course. So we can't actually perform an analysis on this data as it is (we'll learn how to deal with this sort of data structure next semester in the Multivariate Statistics course). 
+So we might start by plotting those two variables:
+```{r}
+ggplot(blinks_full, aes(x=nr_blinks, y = distractor_fix))+
+  geom_point()
+```
 
-However, it provides a useful example for us to try some plotting:   
-
-the `stat_summary()` function allows us to plot _summarised data_, rather than the data itself. If we choose to plot it as a "pointrange", it gives us the mean and standard error for $y$ across each level of $x$:    
+It's hard to see a pattern clearly here, so we're going to introduce a handy part of **ggplot**.  The `stat_summary()` function allows us to plot _summarised data_ (i.e. the mean of the y-variable), rather than the data itself. If we choose to plot it as a "pointrange", it gives us the mean and standard error for $y$ across each level of $x$:    
 ```{r}
 #| fig-height: 2.5
 ggplot(blinks_full, aes(x = nr_blinks, y = distractor_fix)) +
@@ -742,27 +770,13 @@ blinks_full |>
   geom_pointrange()
 ```
 
-
-
-
-## Build a model!
+# Build a model!
 
 We're now finally getting to the analysis. As we said earlier, this can sometimes be very straightforward in comparison to the amount of effort involved in cleaning data.
 
-Recall that we're interested in whether the perception of whether or not a speaker is lying about the location of some hidden treasure (as measured by the pattern of eye fixations towards the object *not* referred to by the speaker) is influenced by the number of times the speaker is seen to blink while producing the utterance.
+Recall that we're interested in whether the perception of whether or not a speaker is lying about the location of some hidden treasure (as measured by the pattern of eye fixations towards the object *not* referred to by the speaker) is influenced by the number of times the speaker is seen to blink while producing the utterance.  
 
-`r qbegin(qlabel=FALSE)`
-
-Plot the relationship between the two variables you think will be best used to answer this question.
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-```{r}
-ggplot(blinks_full, aes(x=nr_blinks, y = distractor_fix))+
-  geom_point()
-```
-`r solend()`
-
-`r qbegin("B12")`
+`r qbegin(qcounter())`
 Fit the linear model specified below to the data using the `lm()` function and store the output in the environment as an object named `blinks_mdl`.
 
 $$
@@ -783,7 +797,7 @@ summary(blinks_mdl)
 ```
 `r solend()`
 
-`r qbegin("B13")`
+`r qbegin(qcounter())`
 The $\epsilon \sim N(0, \sigma) \text{ independently}$ bit of our model is an assumption we have to make. It concerns the errors (the deviations from observations to our line). Our model assumes that these are normally distributed and centered on 0.
 We can plot the distribution of residuals to check how well our assumption holds:
 ```{r}
@@ -791,7 +805,7 @@ We can plot the distribution of residuals to check how well our assumption holds
 hist(residuals(blinks_mdl))
 ```
 
-However, we also make the statement that the errors are __independent__ - i.e. they are not related to one another.
+However, we also make the assumption that the errors are __independent__ - i.e. they are not related to one another.
 
 For us, this is _not_ the case, and so we should not be using this simple linear regression here.
 
@@ -802,20 +816,13 @@ In what way are we violating the assumption of independence?
 
 The dataset to which we are fitting our model does not contain _independent_ observations. We have multiple observations from each participant. i.e. Subject 1 makes up 20 rows, and subject 2 makes up 20 rows.  
 
-As such, this means that our linear regression model is not appropriate. We will learn about how to deal with this sort of study design next semester, in the _Multivariate Statistics & Methodoligy using R (MSMR)_ course.  
 
-`r solend()`
+__Independence of observations__ is actually an assumption that is relied upon by all the tests that we cover in this course. So we can't actually perform an analysis on this data as it is!! We will learn about how to deal with this sort of study design next semester, in the _Multivariate Statistics & Methodoligy using R (MSMR)_ course.  
 
-`r qbegin("B14")`
 
-One option open to us now is to simply "aggregate up", so that we remove the dependence from our rows in our dataset. However, this means reducing the number of rows. 
-
-This is sub-optimal (and we'll see why next semester!), but we can calculate the average `distractor_fix` for each level of `nr_blinks`, and then use _those_ in our model.  
+One option open to us now is to simply "aggregate up", so that we remove the dependence from our rows in our dataset. However, this means reducing the number of rows. This is sub-optimal (and we'll see why next semester!), but we can calculate the average `distractor_fix` for each level of `nr_blinks`, and then use _those_ in our model.  
 
 We can do this the same way as we saw with our summary plots - with `group_by()` and `summarise()`!  
-
-`r qend()`
-`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 ```{r}
 blinks_agg <- blinks_full |>
@@ -823,15 +830,24 @@ blinks_agg <- blinks_full |>
   summarise(
     meanDF = mean(distractor_fix, na.rm=TRUE)
   )
+head(blinks_agg)
+```
 
+One obvious disadvantage here is that we are going from _loads_ of datapoints to only 10! Furthermore, because of some of the missing data, each of these 10 datapoints is estimated from a slightly different number of trials, and from a slightly different set of participants. Our final model is really just a very simple line fitted to 10 datapoints, but this is pretty far away from modelling how these values actually came to arise in the real world! 
+
+```{r}
+ggplot(blinks_agg, aes(x = nr_blinks, y = meanDF)) +
+  geom_point() +
+  geom_smooth(method=lm)
+```
+
+But we can still get some useful linear approximation of the pattern - avg look at the distractor increase by 64ms for every additional blink in the video!  
+
+```{r}
 mod <- lm(meanDF ~ nr_blinks, data = blinks_agg)
 
 summary(mod)
 ```
-
-Looking at the distractor increases by 64ms for every additional blink in the video!  
-
-
 
 `r solend()`
 
