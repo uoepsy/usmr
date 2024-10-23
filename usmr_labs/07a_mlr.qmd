@@ -86,7 +86,7 @@ Each of these terms can be quantified as a 'sum of squares' (i.e. summing the sq
 
 $$
 \begin{aligned}
-SS_{Total} &= SS_{Model} + SS_{Residual} \\
+SS_{Total} &= SS_{Model} \quad\quad + \quad SS_{Residual} \\
 \sum_{i=1}^n (y_i - \bar y)^2 &= \sum_{i=1}^n (\hat y_i - \bar y)^2 + \sum_{i=1}^n (y_i - \hat y_i)^2 \\
 \quad \\
 \text{Where:} \\
@@ -98,7 +98,7 @@ $$
 
 ## $R^2$: proportion of variance explained
 
-A useful statistic is the $R^2$, which shows us the proportion of the total variability in the outcome (`y`) that is explained by the linear relationship with the predictor (`x`).
+A useful statistic is the $R^2$, which tell us the proportion of the total variability in the outcome (`y`) that is explained by the linear relationship with the predictor (`x`).
 
 :::sticky
 The $R^2$ coefficient is defined as the proportion of the total variability in the outcome variable which is explained by our model:  
@@ -110,8 +110,17 @@ $$
 We can find the $R^2$ easily in the `summary()` of the model! 
 
 The output of `summary()` displays the R-squared value in the following line:
+```{r}
+#| eval: false
+summary(simplemod)
 ```
-Multiple R-squared:  0.3847
+
+```
+...
+...
+Multiple R-squared:  0.3847,  Adjusted R-squared:  0.3784
+...
+
 ```
 
 :::column-margin
@@ -163,7 +172,11 @@ H_1 &: \text{the model is effective, } b_1 \neq 0
 $$
 The relevant test-statistic is the F-statistic, which uses "Mean Squares" (these are Sums of Squares divided by the relevant degrees of freedom). We then compare that against (you guessed it) an F-distribution! F-distributions vary according to two parameters, which are both degrees of freedom.  
 
-We won't go into details of why we use $F$, but the logic of the significance test is just the same as it was for $t$ - we have a statistic, and we have a distribution of what we would expect that statistic to be if the null hypothesis is true. We can then ask how unlikely it is that we would observe the statistic (or more extreme) if the null hypothesis were true.  
+We won't go into details of why we use $F$, but the logic of the significance test is just the same as it was for $z$, $t$ and $\chi^2$:  
+
+- we calculate a test statistic
+- we have a distribution of what we would expect test statistics from a sample of this size to be, if the null hypothesis is true (the "null distribution"). 
+- we can then ask how unlikely it is that we would observe our statistic (or more extreme) if the null hypothesis were true.  
 
 
 :::sticky
@@ -178,9 +191,9 @@ $$
 This is a comparison between amount of variation in the outcome explained by the model and the amount of variation 'explained by' (or leftover in) the residuals.
 
 The sample F-statistic is compared to an F-distribution with $df_{1} = 1$ and $df_{2} = n - 2$ degrees of freedom.^[
-$SS_{Total}$ has $n - 1$ degrees of freedom as one degree of freedom is lost in estimating the population mean with the sample mean $\bar{y}$.
-$SS_{Residual}$ has $n - 2$ degrees of freedom. There are $n$ residuals, but two degrees of freedom are lost in estimating the intercept and slope of the line used to obtain the $\hat y_i$s.
-Hence, by difference, $SS_{Model}$ has $n - 1 - (n - 2) = 1$ degree of freedom.
+- $SS_{Total}$ has $n - 1$ degrees of freedom as one degree of freedom is used up by estimating the mean $\bar{y}$.  
+- $SS_{Residual}$ has $n - 2$ degrees of freedom. There are $n$ datapoints in total, and once we define the regression line, $n-2$ of these could be _anywhere at all_ (they are 'free to vary'). The remaining 2 are determined by the other $n-2$ in order to get that line.
+- By difference, $SS_{Model}$ has $(n - 1) - (n - 2) = 1$ degree of freedom. In other words, the model here is really just one thing - a line!  
 ]
 
 :::
@@ -206,7 +219,7 @@ F-statistic: 61.26 on 1 and 98 DF,  p-value: 5.918e-12
 The F-test of model utility was significant ($R^2=0.38, F(1,98) = 61.26,\ p <.001$), suggesting that predictor $x$ is effective in explaining variance in the outcome.  
 :::
 
-Note that the p-value here is exactly the same as the one for the coefficient. This is because in testing "the model is (in)effective", the "model" is really _only_ the relationship between the outcome and our **one** predictor. We're about to start adding more explanatory variables into our model, which means that our hypotheses for the $F$-test will be about a *set* of $b$'s, and so the $p$'s won't be the same. .   
+Note that the p-value here is exactly the same as the one for the coefficient. This is because in testing "the model is (in)effective", the "model" is really _only_ the relationship between the outcome and our **one** predictor. We're about to start adding more explanatory variables into our model, which means that our hypotheses for the $F$-test will be about a *set* of $b$'s, and so the tests will be of different things.  
 
 ::: {.callout-caution collapse="true"}
 #### optional: with only one predictor variable, the F-test is equivalent to the t-test of the slope  
@@ -288,10 +301,7 @@ The real power of regression models comes into effect when we start to concern o
   
 Enter... $x_2$!  
 
-We're going to start with looking at the case of "one outcome, two predictors", but the beauty of this is that the logic scales up to however many predictor variables we want to include in our model. 
-
-::: {.callout-note}
-#### More predictors = More Dimensions  
+We're going to start with looking at the case of "one outcome, two predictors", but the beauty of this is that the logic scales up to however many predictor variables we want to include in our model.  
 
 When we fitted the simple regression model with __one__ predictor: 
 $$
@@ -314,32 +324,62 @@ we are fitting a __surface__ (or "plane") to a 3-dimensional cloud of datapoints
 mwdata = read_csv(file = "https://uoepsy.github.io/data/wellbeing.csv")
 mwdata |> rename(y=wellbeing,x1=outdoor_time,x2=social_int) -> mwdata
 fit<-lm(y~x1+x2, data=mwdata)
-steps=50
+steps=20
 x1 <- with(mwdata, seq(min(x1),max(x1),length=steps))
 x2 <- with(mwdata, seq(min(x2),max(x2),length=steps))
 newdat <- expand.grid(x1=x1, x2=x2)
 y <- matrix(predict(fit, newdat), steps, steps)
 
+
+
+
 par(mfrow=c(1,2))
 
 p <- persp(x1,x2,y, theta = 35,phi=10, col = NA)
+for(i in seq(min(x1),max(x1),length=20)){
+  xx2 = expand.grid(x1=i,
+           x2=seq(min(x2),max(x2),length=20))
+  yx2 = predict(fit,xx2)
+  lines(trans3d(xx2$x1,xx2$x2,yx2,p),col="darkorange",lwd=1)
+}
+for(i in seq(min(x2),max(x2),length=20)){
+  xx1 = expand.grid(x2=i,
+           x1=seq(min(x1),max(x1),length=20))
+  yx1 = predict(fit,xx1)
+  lines(trans3d(xx1$x1,xx1$x2,yx1,p),col="blue",lwd=1)
+}
 obs <- with(mwdata, trans3d(x1,x2, y, p))
 pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
 points(obs, col = "red", pch = 16)
 segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
 
+
+
 p <- persp(x1,x2,y, theta = -35,phi=10, col = NA)
+for(i in seq(min(x1),max(x1),length=20)){
+  xx2 = expand.grid(x1=i,
+           x2=seq(min(x2),max(x2),length=20))
+  yx2 = predict(fit,xx2)
+  lines(trans3d(xx2$x1,xx2$x2,yx2,p),col="darkorange",lwd=1)
+}
+for(i in seq(min(x2),max(x2),length=20)){
+  xx1 = expand.grid(x2=i,
+           x1=seq(min(x1),max(x1),length=20))
+  yx1 = predict(fit,xx1)
+  lines(trans3d(xx1$x1,xx1$x2,yx1,p),col="blue",lwd=1)
+}
 obs <- with(mwdata, trans3d(x1,x2, y, p))
 pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
 points(obs, col = "red", pch = 16)
 segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
+
 
 par(mfrow=c(1,1))
 ```
 
-Don't worry about trying to figure out how to visualise it if we had more predictors! We can only conceive of 3 spatial dimensions.^[One could imagine this surface changing over time, which would bring in a 4th dimension, but beyond that, it's not worth trying!] However, the logic stays the same when we increase this to having $p$ predictors, but we have a model that is a $p$-dimensional surface, and each coefficient is the angle of that surface with respect to each predictor.  
+Don't worry about trying to figure out how to visualise it if we had more predictors! We can only conceive of 3 spatial dimensions.^[One could imagine this surface changing over time, which would bring in a 4th dimension, but beyond that, it's not worth trying!] However, the logic stays the same when we increase this to having $k$ predictors, but we have a model that is a $k$-dimensional surface, and each coefficient is the angle of that surface with respect to each predictor.  
 
-When we have two predictors, our model is now determined by three numbers:  
+When we have two predictors, such as in the visualisation of @fig-regsurf, our model is now determined by three numbers:  
 
 - the __intercept__, denoted $b_0$.  
 This is the point at which the plane hits the y-axis (i.e. where $x_1=0$ __and__ $x_2=0$)
@@ -348,15 +388,13 @@ This is the angle of the regression plane with respect to the axis of $x_1$. It 
 - the __slope of x2__, in this case denoted $b_2$.  
 This is the angle of the regression plane with respect to the axis of $x_2$. It is the amount which the plane increases for every 1 increase in $x_2$.  
 
-:::
-
 
 ## Fitting Multiple Regression Models in R  
 
 As we did for simple linear regression, we can fit our multiple regression model using the `lm()` function. We can add as many explanatory variables as we like, separating them with a `+`.  
 
 ```
-model_name <- lm(y ~ 1 + x1 + x2 + ... + xp, data = dataframe)
+model_name <- lm(y ~ 1 + x1 + x2 + ... + xk, data = dataframe)
 ```
 
 And we can use all the same functions that we have already seen such as `summary()`, `predict()`, `fitted()`, `coef()` etc.  
@@ -418,7 +456,7 @@ $$
 :::
   
 
-**In R,** we can view both the mutiple and adjusted $R^2$ at the bottom of the output of `summary(<modelname>)`:
+**In R,** we can view both the mutiple and adjusted $R^2$ at the bottom of the output of `summary()`:
 
 ```{r}
 #| eval: false
@@ -463,7 +501,7 @@ $$
 :::
 
 
-**In R,** at the bottom of the output of `summary(<modelname>)`, you can view the F statistic, along with the hypothesis test against the null hypothesis that all the coefficients are 0:^[under the null hypothesis that all coefficients = 0, the ratio of explained:unexplained variance should be approximately 1]
+**In R,** at the bottom of the output of `summary()`, you can view the F statistic, along with the hypothesis test against the null hypothesis that all the coefficients are 0:^[under the null hypothesis that all coefficients = 0, the ratio of explained:unexplained variance should be approximately 1]
 
 ```{r}
 #| eval: false
@@ -507,19 +545,23 @@ But this comparison is _descriptive_, in that we are not performing any _test_ o
 As it happens, the $F$-statistic we see at the bottom of `summary(model)` is actually a comparison between two models: our model (with some explanatory variables in predicting $y$) and __the null model.__ 
 
 :::sticky
-**the null model** can be thought of as the model in which all explanatory variables have zero regression coefficients. It is also referred to as the __intercept-only model__, because if all predictor variable coefficients are zero, then the only we are only estimating $y$ via an intercept (which will be the mean: $\bar y$).  
+**the null model / "intercept-only model"**   
+
+The null model can be thought of as the model in which all explanatory variables have zero regression coefficients. Put another way, when all predictor variable coefficients are zero, then we are only estimating $y$ via an intercept (which will be the mean: $\bar y$).  
+
+```{r}
+#| eval: false
+nullmod <- lm(y ~ 1, data = mlrdata)
+```
+
 :::
 
-We aren't limited to comparing our model to the null model. We can compare any the intermediate models which vary in the complexity, from the null model to our full model. 
-
+We aren't limited to comparing our model to the null model. We can compare any the intermediate models which vary in the complexity, from the null model to our full model.  
+ 
+If (*and only if*) two models are __nested__ (one model contains all the predictors of the other and is fitted to the same data), we can compare them using an _incremental F-test._ This is a formal test of whether the __additional predictors__ provide a better fitting model. "Better fitting" here refers to a reduction in the residual sums of squares, hence why this is just another form of the $F$-ratio we've seen above.    
 
 :::sticky
 __Incremental F-test__  
-
-If (*and only if*) two models are __nested__ (one model contains all the predictors of the other and is fitted to the same data), we can compare them using an _incremental F-test._  
-
-This is a formal test of whether the __additional predictors__ provide a better fitting model.  
-Formally this is the test of:  
 
 + $H_0:$ coefficients for the added/ommitted variables are all zero.
 + $H_1:$ at least one of the added/ommitted variables has a coefficient that is not zero. 
@@ -545,9 +587,6 @@ $$
 :::
 
 
-
-:::rtip
-
 **In R,** we can conduct an incremental F-test to compare two models by fitting both models using `lm()`, and passing them to the `anova()` function: 
 ```{r}
 #| eval: false
@@ -565,10 +604,8 @@ anova(model1, model2)
 
 <!-- ::: -->
 
-:::
 
-
-If we wanted to, for example, compare a model with just one predictor, $x_1$, to a model with 3 predictors: $x_1,\ x_2,\ x_3$, we can assess the extent to which the variables $x_2$ and $x_3$ *jointly* improve model fit:  
+If we wanted to, for example, compare a model with just one predictor, $x_1$, to a model with 3 predictors: $x_1,\ x_2,\ x_3$, we can assess the extent to which the variables $x_2$ and $x_3$ *jointly* improve model fit by explaining more variance (i.e. by reducing the residual sums of squares):    
 
 ```{r}
 model1 <- lm(y ~ x1, data = mlr_data)
@@ -605,7 +642,7 @@ As with all areas of statistics, people seem to use lots of different terms here
 - **predictor:** any variable on the right hand side of the model equation 
 *(things that we thing explain differences in the outcome)*
 - **focal predictor/independent variable:** the predictor of interest
-- **covariates/confounders/control variables:** other variables that we are less interested in but believe to relevant to how the data comes about, and that may influence both the outcome and the focal predictor.  
+- **covariates/confounders/control variables:** other variables that we are less interested in but believe to be relevant to how the data comes about, and that may influence both the outcome and the focal predictor.  
 :::
 
 One way to build this intuition is to consider a Venn diagram with a circle showing the variance in each variable. @fig-vennslr shows a simple linear regression with one predictor (i.e. `lm(y ~ x1)`). The circle for $y$ shows the total variance in $y$ (the same for the $x_1$ circle). The overlap between circles (labelled "A") shows the variance in $y$ that is explained by $x_1$ (i.e. the covariance).  
@@ -724,6 +761,7 @@ lm(jobsat ~ commute, data = happycommute) |> summary()
 :::
 ::::
 
+<br>
 But... what if the reason that we are seeing "more commuting >> more job satisfaction" is _not_ because long commutes are enjoyable, but because the people who have longer commutes are those who tend to be in more flexible working patterns (and so are more satisfied in their work for a myriad of other reasons)?    
 
 When we compare two models, one with job satisfaction predicted by work flexibility, and one with job satisfaction predicted by both work flexibility _and_ commuting time, we now conclude that commuting time is **not** a useful predictor.. 
@@ -767,119 +805,11 @@ We could do this by __randomisation__, where we randomly allocate people to diff
 
 Alternatively, we could do achieve it by __"case-matching"__. This involves finding people at different levels of the focal predictor who match on possible confounders. For example, for every 60 year who takes drug X, we also collect data from a 60 year old who does not.  
 
+There are lots of different types of study design, and it is not something to be rushed through. Careful design can make for great science, and clever statistics cannot save a poorly designed study!  
+
 :::
 
 <div class="divider div-transparent div-dot"></div>
-
-# Interpreting Multiple Regression Coefficients  
-
-Thus far in this chapter we have mainly been looking at our models in terms of their overall fit - i.e. assessing and comparing them in terms of 'variance explained'. But the estimated coefficients also provide us with a wealth of information. They tell us _how_ things are associated with $y$ (i.e. they quantify the effect), not just _whether_ there are associations. 
-
-:::sticky
-
-- F tests and Model Comparisons: __does/do__ [predictor(s)] explain variance in [outcome]?  
-- Coefficients: *__how__* __is__ [predictor] associated with [outcome]?  
-
-:::
-
-The intercept in multiple regression model is very similar to the simple regression model - it is the estimated value of $y$ _when all predictors are zero_.  
-The coefficients from our multiple regression model are similar to previously in that they still represent the "change in $y$ (outcome) for a 1 unit change in $x$ (predictor). However, these are now the estimated associations while _holding all other predictors constant_. 
-
-Sometimes, this gets phrased as "the increase in [outcome] for a one unit increase in [predictor] when..."
-
-- "holding [other predictors] constant."
-- "accounting for [other predictors]."
-- "controlling for differences in [other predictors]."
-- "partialling out the effects of [other predictors]."
-- "holding [other predictors] equal." 
-- "accounting for effects of [other predictors]."
-
-What exactly do all these mean? If we return to our regression surface, our coefficients are the angles of this surface. We can see that as $x_2$ increases, the surface goes down. This decrease is the same no matter where on $x_1$ we are (i.e. the angle doesn't change as we move up $x_1$). The coefficient for $x_2$ is the amount the surface changes on $y$, provided we stay at the same value for $x_1$.^[and vice versa for the coefficient of $x_1$.]  
-
-```{r}
-#| echo: false
-#| message: false
-#| warning: false
-mwdata = read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
-fit<-lm(y~x1+x2, data=mwdata)
-steps=50
-x1 <- with(mwdata, seq(min(x1),max(x1),length=steps))
-x2 <- with(mwdata, seq(min(x2),max(x2),length=steps))
-newdat <- expand.grid(x1=x1, x2=x2)
-y <- matrix(predict(fit, newdat), steps, steps)
-p <- persp(x1,x2,y, theta = -140,phi=10, col = NA,zlim=c(min(mwdata$y),max(mwdata$y)))
-obs <- with(mwdata, trans3d(x1,x2, y, p))
-pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
-points(obs, col = "red", pch = 16)
-#points(pred, col = "blue", pch = 16)
-segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
-```
-
-```{r}
-#| eval: false
-model2 <- lm(y ~ x1 + x2, data = mlr_data)
-summary(model2)
-```
-```{r}
-#| echo: false
-.pp(summary(lm(y ~ x1 + x2, data = mlr_data)),l=list(9:13))
-```
-
-Imagine a person who scores 3 on $x_2$. What is the estimated difference between in $y$ between them and someone who scored 4 instead? The coefficient for $x_2$ tells us their scores on $y$ would differ by -0.65 _provided they don't also differ on $x_1$._ So we are moving along the regression surface in the $x_2$ direction. This makes sense, because if they _also_ differed on $x_1$, then we would expect their score on $y$ to change because of this too (i.e. we would be moving diagonally on the surface).  
-
-
-::: {.callout-caution collapse="true"}
-#### optional: F and t
-
-Back to our Venn diagrams, the coefficients from our multiple regression model reflect the areas in each variable that overlap with $y$ and _not_ with other variables, but they are scaled to be in terms of "change in $y$ associated with a one unit change in [predictor], holding [other predictors] constant".   
-
-This means that our interpretation of multiple regression _coefficients_ is analogous to the idea of a model comparison with and without that predictor. 
-
-| model comparison                                                            | coefficient for x2                               |
-| --------------------------------------------------------------------------- | ------------------------------------------------ |
-| `model1 <- lm(y~x1,mlr_data)`<br>`model2 <- lm(y~x1+x2,mlr_data)`<br>`anova(model1, model2)` | `model2 <- lm(y~x1+x2,mlr_data)`<br>`coef(model2)['x2']` |
-| "_does X2_ explain additional variance after accounting for x1?"            | "what is the association between x2 and y, after accounting for x1?"                                                 |
-
-In fact, the $p-values$ from the model comparison will even match those from the coefficient tests: 
-
-::::panelset
-:::panel
-#### Model comparison
-
-With and without x2.  
-$$
-F(1,47)=10.527,\, p = .00217
-$$
-
-```{r}
-model1 <- lm(y ~ x1, data = mlr_data)
-model2 <- lm(y ~ x1 + x2, data = mlr_data)
-anova(model1, model2)
-```
-:::
-:::panel
-#### Coefficient
-
-coefficient for x2.  
-
-$$
-t(47)=-3.244,\, p = .00217
-$$
-
-```{r}
-model2 <- lm(y ~ x1 + x2, data = mlr_data)
-summary(model2)
-```
-:::
-::::
-
-These are equivalent in this specific case, but when we more to more general forms of the model, it does not hold. The key reason being is that the model comparison in the linear regression world is assessing the reduction in residual sums of squares, which is directly linked to the slope of a regression line (see back to @fig-sstssrssm above). When we move to more general models, the way we assess "improvements in fit" is not always about reduction in residual sums of squares, and so this equivalence can break.  
-
-:::
-
-
-<div class="divider div-transparent div-dot"></div>
-
 
 
 # Shortcuts for model comparisons  
@@ -987,6 +917,130 @@ The coefficients from a multiple regression model are more closely tied to the T
 
 <div class="divider div-transparent div-dot"></div>
 
+# Interpreting Multiple Regression Coefficients  
+
+Thus far in this chapter we have mainly been looking at our models in terms of their overall fit - i.e. assessing and comparing them in terms of 'variance explained'. But the estimated coefficients also provide us with a wealth of information. They tell us _how_ things are associated with $y$ (i.e. they quantify the effect), not just _whether_ there are associations. 
+
+:::sticky
+
+- F tests and Model Comparisons: __does/do__ [predictor(s)] explain variance in [outcome]?  
+- Coefficients: *__how__* __is__ [predictor] associated with [outcome]?  
+
+:::
+
+We've seen that when we include multiple predictors, we get out multiple coefficients. The intercept in multiple regression model is very similar to the simple regression model - it is the estimated value of $y$ _when all predictors are zero_. The coefficients for each predictor are similar to previously in that they still represent the "change in $y$ (outcome) for a 1 unit change in $x$ (predictor). However, these are now the estimated associations while _holding all other predictors constant_. 
+
+Sometimes, this gets phrased as "the increase in [outcome] for a one unit increase in [predictor] when..."
+
+- "holding [other predictors] constant."
+- "holding [other predictors] fixed."
+- "accounting for [other predictors]."
+- "adjusting for [other predictors]."
+- "controlling for differences in [other predictors]."
+- "partialling out the effects of [other predictors]."
+- "holding [other predictors] equal." 
+- "accounting for effects of [other predictors]."
+
+What exactly do all these mean? If we return to our regression surface, our coefficients are the angles of this surface. We can see that as $x_2$ increases, the surface goes down (the angle of the orange lines in the grid). This decrease is the same no matter where on $x_1$ we are (i.e. the angle doesn't change as we move up $x_1$). The coefficient for $x_2$ is the amount the surface changes on $y$, provided we stay at the same value for $x_1$.^[and vice versa for the coefficient of $x_1$.]  
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+mwdata = read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+fit<-lm(y~x1+x2, data=mwdata)
+steps=20
+x1 <- with(mwdata, seq(min(x1),max(x1),length=steps))
+x2 <- with(mwdata, seq(min(x2),max(x2),length=steps))
+newdat <- expand.grid(x1=x1, x2=x2)
+y <- matrix(predict(fit, newdat), steps, steps)
+p <- persp(x1,x2,y, theta = -140,phi=10, col = NA,zlim=c(min(mwdata$y),max(mwdata$y)))
+
+for(i in seq(min(x1),max(x1),length=20)){
+  xx2 = expand.grid(x1=i,
+           x2=seq(min(x2),max(x2),length=20))
+  yx2 = predict(fit,xx2)
+  lines(trans3d(xx2$x1,xx2$x2,yx2,p),col="darkorange",lwd=2)
+}
+for(i in seq(min(x2),max(x2),length=20)){
+  xx1 = expand.grid(x2=i,
+           x1=seq(min(x1),max(x1),length=20))
+  yx1 = predict(fit,xx1)
+  lines(trans3d(xx1$x1,xx1$x2,yx1,p),col="blue",lwd=2)
+}
+
+
+obs <- with(mwdata, trans3d(x1,x2, y, p))
+pred <- with(mwdata, trans3d(x1, x2, fitted(fit), p))
+points(obs, col = "red", pch = 16)
+#points(pred, col = "blue", pch = 16)
+segments(obs$x, obs$y, pred$x, pred$y,lty = "dashed")
+```
+
+```{r}
+#| eval: false
+model2 <- lm(y ~ x1 + x2, data = mlr_data)
+summary(model2)
+```
+```{r}
+#| echo: false
+.pp(summary(lm(y ~ x1 + x2, data = mlr_data)),l=list(9:13))
+```
+
+Another way to think of this is to imagine a person who scores 3 on $x_2$. What is the estimated difference between in $y$ between them and someone who scored 4 instead? The coefficient for $x_2$ tells us their scores on $y$ would differ by -0.65 _provided they don't also differ on $x_1$._ So we are moving along the regression surface in the $x_2$ direction. This makes sense, because if they _also_ differed on $x_1$, then we would expect their score on $y$ to change because of this too (i.e. we would be moving diagonally on the surface).  
+
+
+::: {.callout-caution collapse="true"}
+#### optional: F and t
+
+Back to our Venn diagrams, the coefficients from our multiple regression model reflect the areas in each variable that overlap with $y$ and _not_ with other variables, but they are scaled to be in terms of "change in $y$ associated with a one unit change in [predictor], holding [other predictors] constant".   
+
+This means that our interpretation of multiple regression _coefficients_ is analogous to the idea of a model comparison with and without that predictor. 
+
+| model comparison                                                            | coefficient for x2                               |
+| --------------------------------------------------------------------------- | ------------------------------------------------ |
+| `model1 <- lm(y~x1,mlr_data)`<br>`model2 <- lm(y~x1+x2,mlr_data)`<br>`anova(model1, model2)` | `model2 <- lm(y~x1+x2,mlr_data)`<br>`coef(model2)['x2']` |
+| "_does X2_ explain additional variance after accounting for x1?"            | "what is the association between x2 and y, after accounting for x1?"                                                 |
+
+In fact, the $p-values$ from the model comparison will even match those from the coefficient tests (see below). These are equivalent in this specific case, but when we more to more general forms of the model, it does not hold. The key reason being is that the model comparison in the linear regression world is assessing the reduction in residual sums of squares, which is directly linked to the slope of a regression line (see back to @fig-sstssrssm above). When we move to more general models, the way we assess "improvements in fit" is not always about reduction in residual sums of squares, and so this equivalence can break.  
+
+::::panelset
+:::panel
+#### Model comparison
+
+With and without x2.  
+$$
+F(1,47)=10.527,\, p = .00217
+$$
+
+```{r}
+model1 <- lm(y ~ x1, data = mlr_data)
+model2 <- lm(y ~ x1 + x2, data = mlr_data)
+anova(model1, model2)
+```
+:::
+:::panel
+#### Coefficient
+
+coefficient for x2.  
+
+$$
+t(47)=-3.244,\, p = .00217
+$$
+
+```{r}
+model2 <- lm(y ~ x1 + x2, data = mlr_data)
+summary(model2)
+```
+:::
+::::
+
+
+:::
+
+
+<div class="divider div-transparent div-dot"></div>
+
 
 # Model Visualisations
 
@@ -1027,11 +1081,9 @@ p1 + p2
 ```
 
 So how do we create plots like the on one the right? 
-There are various helpful packages (`plot_model()` from the **sjPlot** package, `effect()` from the **effects** package, `effect_plot()` from **jtools**, etc) that are designed to make this easy, but sometimes it is useful to do it _a little_ more manually.  
+There are various helpful packages that are designed to make this easy (which we will come to a little later on in the course), but right now it will be very useful to go through the process of making these plots manually.  
 
-Using the **broom** package is a nice way to get confidence intervals across a range of values that we want to plot.  
-
-First we create a dataset of the values of the predictors that we wish to predict across. We'll go across all values of `commute` from 3 to 58 (the range of commuting times in our data), and we'll keep `work_flex` as 20.75 (which is the mean of `work_flex` in our data):
+We will need to create a little dataset of the values of the predictors that we wish to predict across. We'll go across all values of `commute` from 3 to 58 (the range of commuting times in our data), and we'll keep `work_flex` as 20.75 (which is the mean of `work_flex` in our data):
 
 ```{r}
 plotdata <- data.frame(
@@ -1039,7 +1091,8 @@ plotdata <- data.frame(
   work_flex = 20.75 # every value will be 20.75
 )
 ```
-Then we use `augment()` from the **broom** package to give predictions and intervals^[these intervals are using the standard errors multiplied by the appropriate value of $t$. We did this more explicitly in previous weeks, but the `augment()` function will do it for us here] to that data:  
+
+Using this little dataset we can now form predictions from our model, which we can then plot. Using the **broom** package is a nice way to get the confidence intervals^[these intervals are using the standard errors multiplied by the appropriate value of $t$. We did this more explicitly in Week 5, but the `augment()` function will do it for us here] as well as the predictions, and it returns it all attached to the dataframe:  
 ```{r}
 library(broom)
 augment(model2, newdata = plotdata, interval="confidence")
@@ -1049,7 +1102,7 @@ And this looks like something we can put into ggplot!!
 ```{r}
 augment(model2, newdata = plotdata, interval="confidence") |>
   ggplot(aes(x = commute, y = .fitted,
-                     ymin = .lower, ymax = .upper)) +
+             ymin = .lower, ymax = .upper)) +
   geom_line() +
   geom_ribbon(alpha = .3) # alpha sets the transparency
 ```

@@ -216,7 +216,8 @@ This process can then go into our write-up!
 To refit a model without the $n^{th}$ rows, we can simply remove those from the data that we give the `lm()` function.  
 For instance, if I want to fit my model to all the data _except_ the 10th and 32nd rows:  
 ```{r}
-mymodel_subset <- lm(y ~ x1 + x2, mydata[-c(10,32), ])
+mydata_sub <- mydata[-c(10,32), ]
+mymodel_subset <- lm(y ~ x1 + x2, mydata_sub)
 ```
 
 We can then compare `summary(mymodel)` and `summary(mymodel_subset)` to examine whether our conclusions about the relevant association changes when we exclude these people. If it doesn't change our conclusions, then our eventual findings are robust to the  influence of these people. If it does, then we have something we can discuss!  
@@ -286,11 +287,10 @@ It's best to only transform your outcome variable if you have theoretical justif
 
 ## Back to the Bootstrap?
 
-Bootstrapping provides a different technique for drawing inferences. We actually learned the logic of bootstrapping back in [2B#standard-error-in-practice](02b_sampling.html#standard-error-in-practice){target="_blank"}. It all comes down to the construction of the standard error. In the output of `summary(model)`, we are given, alongside each coefficient $b$, a standard error, a $t$-value and a $p$-value. These all rely on using a formula to calculate the standard error, and it is this which requires making assumptions about the distribution of residuals.  
+Conducting significance tests requires thinking about the variability that we would expect with "repeated sampling". To do this, the majority of our tests have been using the _standard error_ of a statistic (the standard deviation of the distribution of statistics that we would get if we did the study lots of times).  
+We actually learned the logic of bootstrapping back in [2B#standard-error-in-practice](02b_sampling.html#standard-error-in-practice){target="_blank"}. It all comes down to the construction of the standard error. In the output of `summary(model)`, we are given, alongside each coefficient $b$, a standard error, a $t$-value and a $p$-value. These all rely on using a formula to calculate the standard error, and it is this which requires making assumptions about the distribution of residuals.  
 
-Bootstrapping is an approach that constructs a distribution of possible values for coefficient estimates $b$, from which we can calculate a confidence interval. It does so by repeatedly **re**sampling _with replacement_ from the original sample (do check back to [2B#standard-error-in-practice](02b_sampling.html#standard-error-in-practice){target="_blank"} for an example).  
-
-Remember that conducting significance tests requires thinking about the variability that we would expect with repeated sampling. To do this, we use the _standard error_ of a statistic (the standard deviation of doing this lots of times). Bootstrapping is a way to estimate the standard error without having to rely on a formula - bootstrapping _acts_ out the process of repeated sampling, which give us a distribution of statistics we can compute the standard error from. Bootstrapping means we don't have to rely on assumptions of normality and constant variance of the residuals. Because bootstrapping involves fitting 1000s of models to 1000s of resampled datasets, our residuals are different for each one. 
+Bootstrapping is a way to estimate the standard error without having to rely on a formula - it _acts_ out the process of repeatedly sampling from a population, by repeatedly **re**sampling from our original sample (do check back to [2B#standard-error-in-practice](02b_sampling.html#standard-error-in-practice){target="_blank"} for an example). By doing this lots and lots of times, we actually *construct* a distribution of possible values for coefficient estimates $b$, from which we can calculate a confidence interval. In doing so, we don't have to make as many assumptions - we don't have to assume normality and constant variance of the residuals, because bootstrapping involves fitting 1000s of models to 1000s of resampled datasets, and our residuals are different for each one. 
 
 In practice, this can all be done very easily in R by using the `Boot()` function from the __car__ package. We can ask it to resample 1000 times (getting a distribution of 1000 values for the coefficients): 
 
@@ -310,8 +310,15 @@ Confint(bootmymodel)
 
 :::imp
 **Bootstrapping is not a panacea!!**  
-The bootstrap may provide us with an alternative way of conducting inference, but our model may still be misspecified. Furthermore, studies show that bootstrap doesn't perform well in small samples, and actually results increased Type 1 errors([3A#making-mistakes](03a_inference.html#making-mistakes){target="_blank"}).  
 
-It's very important to remember that we can't get something from nothing. Bootstrapping is entirely reliant on utilising our original sample to pretend that it is a population (and mimick sampling from that population). If our original sample is not representative of the population that we're interested in, bootstrapping doesn't help us at all. 
+The bootstrap may provide us with an alternative way of conducting inference, but our model may still be misspecified. Furthermore, studies show that bootstrap doesn't perform well in small samples, and actually results increased Type 1 errors ([3A#making-mistakes](03a_inference.html#making-mistakes){target="_blank"}).  
+
+It's very important to remember that we can't get something from nothing. Bootstrapping is entirely reliant on utilising our original sample to pretend that it is a population (and mimick sampling from that population). If our original sample is not representative of the population that we're interested in, bootstrapping doesn't help us at all.  
+
+As with most things in statistics, the garbage-in-garbage-out principle applies here.  
+
+bootstrapped(&#128169;) = &#128169;&#128169;&#128169;...
+
+
 
 :::
