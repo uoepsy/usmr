@@ -57,8 +57,12 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   bbs <- c(0,2,2,0,0,-6,-1,-2)
   
   df$enjoyed = rbinom(400, 1, plogis( xmatb %*% bbs))
-  df <- df |> mutate(across(c(family,listenermusician,enjoyed), factor))
-  orchestra <<- df
+  #df <- df |> mutate(across(c(family,listenermusician,enjoyed), factor))
+  df$pptname = sample(pptnames,size=nrow(df))
+  orchestra <<- df |> 
+    transmute(
+      pptname, age=listenerage, musician=listenermusician, instrument,
+      bpm, EVS,enjoyed)
 }
 
 
