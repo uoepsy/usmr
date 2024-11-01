@@ -52,7 +52,7 @@ braindata = mm |> select(-mass_body) |> sample_n(n())
 
 Since we've started working with linear regression, we've seen a few examples of categorical variables as predictors in linear models, and most (if not all) of these have been binary predictors - i.e. having just *two* categories (yes/no, dog/cat, phonics/word). We talked initially ([5B#binary-predictors](05b_slr.html#binary-predictors){target="_blank"}) about how these get entered in the model as 0s and 1s.  
 
-Let's consider a dataset which includes the brain mass and body mass of different primates. Below, we can see the species variable has 3 levels indicating whether the observation is a Human, a Rhesus monkey, or a Potar monkey. We can easily create a binary variable such as the `isMonkey` variable (created below), which will allow us to compare monkeys (of _any_ type) vs not-monkeys (or "Humans", as we are better known!).  
+Let's consider a dataset which includes the brain mass and body mass of different primates. Below, we can see the `species` variable has 3 levels indicating whether the observation is a "Human", a "Rhesus monkey", or a "Potar monkey". We can easily create a binary variable such as the `isMonkey` variable (created below), which will allow us to compare monkeys (of _any_ type) vs not-monkeys (or "Humans", as we are better known!).  
 
 ```{r}
 library(tidyverse)
@@ -64,7 +64,7 @@ braindata <- braindata %>% mutate(
 head(braindata)
 ```
 
-To recap what we've seen already - when we use a binary variable like `isMonkey` in a model as a predictor, it gets inputted into the model as a series of 0s and 1s. Because the coefficients of regression models are always interpreted as "the change in $y$ associated with a 1 unit change in $x$", the use of 0s and 1s for different levels of a categorical variable allows us to make "a 1 unit change in $x$" represent moving from one level to another. Internally, our model is relying on a variable like the `isMonkeyYES` variable below:   
+To recap what we've seen already - when we use a binary variable like `isMonkey` in a model as a predictor, it gets inputted into the model as a column of 0s and 1s. Because the coefficients of regression models are always interpreted as "the change in $y$ associated with a 1 unit change in $x$", the use of 0s and 1s for different levels of a categorical variable allows us to make "a 1 unit change in $x$" represent moving from one level to another. Internally, our model is relying on a variable like the `isMonkeyYES` variable below:   
 
 ```{r}
 #| echo: false
@@ -76,7 +76,7 @@ braindata %>% mutate(
 ```
 
 
-This means that we can get out the model below an estimate of the difference in brain mass from the group `isMonkey == "NO"` to the group `isMonkey == "YES"`, because this is moving from 0 to 1. We can see this in the model and visualisation below.  
+This means that from the model below we can get out an estimate of the difference in brain mass from the group `isMonkey == "NO"` to the group `isMonkey == "YES"`, because this is moving from 0 to 1. We can see this in the model and visualisation @fig-binpredplot.  
 
 
 ::::panelset
@@ -121,7 +121,8 @@ ggplot(braindata, aes(x=isMonkey,y=mass_brain))+
 :::
 ::::
   
-When used as predictors in multiple regression models, binary variables behave much the same way. The coefficient will give us the estimated change in $y$ when moving from one level to the other^[and the intercept will be the estimated $y$ when **all** predictors are zero], _while holding other predictors constant._  
+<br>
+When used as predictors in **multiple** regression models (i.e. when there are other predictors involved), binary variables behave much the same way. The coefficient will give us the estimated change in $y$ when moving from one level to the other^[and the intercept will be the estimated $y$ when **all** predictors are zero], _while holding other predictors constant_ (see [7A#interpreting-coefficients](07a_mlr.html#interpreting-multiple-regression-coefficients)).  
 
 ```{r}
 #| eval: false
@@ -234,9 +235,8 @@ R will default to using alphabetical ordering, hence the reference level being s
 :::
 
 
-Note that while we have 3 species in our data, we only have 2 coefficients from our model. This scales up - when we have categorical predictors with multiple levels, we end up having $\text{number-of-levels}-1$ coefficients in our model.  
-
-This is because to determine which of the $k$ categories an observation is in, we only need to have $k-1$ binary variables.  
+Note that while we have **3** species in our variable, we only have **2** coefficients in our model.  
+This logic scales up - when we have categorical predictors with multiple levels, we will have $\text{number-of-levels}-1$ coefficients in our model. This is because to determine which of the $k$ categories an observation is in, we actually only need to have $k-1$ binary variables.  
 
 For instance, we can re-express all the the information contained in the `species` variable (with 3 levels) with just two binary variables:   
 ```{r}
@@ -311,17 +311,18 @@ We could try (we maybe shouldn't) to re-express @fig-kpredplot as a 3D plot. It 
 
 ```{r}
 #| echo: false
+#| out-width: "70%"
 fit<-lm(mass_brain ~ species,braindata)
 braindata2 <- as.data.frame(model.matrix(fit)[,2:3]) 
 braindata2$mass_brain = braindata$mass_brain
 
 
 library(scatterplot3d)
-plt <- with(braindata2,scatterplot3d(`speciesRhesus monkey`,`speciesPotar monkey`,mass_brain, scale.y=1,angle=45,ylab="",
+plt <- with(braindata2,scatterplot3d(`speciesRhesus monkey`,`speciesPotar monkey`,mass_brain, scale.y=1,angle=30,ylab="",
                                      y.ticklabs = c(0,NA,NA,NA,NA,1),
                                      x.ticklabs = c(0,NA,NA,NA,NA,1),
                                      main = "mass_brain ~ species(human/potar monkey/rhesus monkey)"))
-text(x = 6.75, y = 0.85, "speciesPotar monkey", srt =35)
+text(x = 6.75, y = 0.45, "speciesPotar monkey", srt =15)
 
 
 pp1 <- tibble(
@@ -358,7 +359,7 @@ If a variable is categorical, it is good practice to make it a factor when you r
 We have just seen how entering a categorical predictor with $k$ levels in as a predictor to a regression model is essentially equivalent to adding in $k-1$ different binary variables. We get out $k-1$ coefficients relating to each of those variables.  
 
 In our primate-brains example, our model `lm(mass_brain ~ species)` might look like it only has one predictor (`species`), but because it has 3 levels, we end up with 2 coefficients - we are essentially making a _multiple_ regression model. 
-So what can we test when it comes to `species`? We can test comparisons between specific levels, but we can also ask an overall question of "do species differ?" 
+So what can we *test* when it comes to `species`? The coefficients can let us test comparisons between specific levels, but we can also ask an overall question of "do species differ?" 
 
 #### Testing differences between specific groups
 
@@ -372,14 +373,14 @@ res$p.value = ifelse(!grepl("<",res$p.value), paste0("=",res$p.value),res$p.valu
 res$p.value = gsub("0\\.","\\.",res$p.value)
 ```
 
-Tthe coefficients from our regression model represent specific comparisons between levels of a categorical predictor. The default behaviour in R is (as we have seen) to compare each level to the reference level.  
+The coefficients from our regression model represent specific comparisons between levels of a categorical predictor. The default behaviour in R is (as we have seen) to compare each level to the reference level.  
 
-The tests (Std. Error, t value, df, p value) associated of these coefficient estimates therefore provide us with a means of testing whether the difference in $y$ between two levels is significantly different from zero.  
+The tests (Std. Error, t value, df, p value) associated with these coefficient estimates therefore provide us with a means of testing whether the difference in $y$ between two levels is significantly different from zero.  
 
 For example, from our model output below, we can say that..  
 
 :::int
-... both Potar monkeys and Rhesus monkeys had significantly lower brain mass than Humans ($\beta=`r res[[2,2]]`,t(`r mod[["df.residual"]]`)=`r res[[2,4]]`, p`r res[[2,5]]`$ and $\beta=`r res[[3,2]]`,t(`r mod[["df.residual"]]`)=`r res[[3,4]]`, p`r res[[3,5]]`$ respectively).  
+... both Potar monkeys and Rhesus monkeys had significantly lower brain mass than Humans ($b=`r res[[2,2]]`,t(`r mod[["df.residual"]]`)=`r res[[2,4]]`, p`r res[[2,5]]`$ and $b=`r res[[3,2]]`,t(`r mod[["df.residual"]]`)=`r res[[3,4]]`, p`r res[[3,5]]`$ respectively).  
 :::
 
 ```{r}
@@ -454,8 +455,7 @@ contrasts(braindata$species)
 knitr::include_graphics("images/contrasts.png")
 ```
 
-We can easily "relevel" factor, thereby changing which one is the 'reference level' (the level against which all other levels are compared), by using handy functions like `fct_relevel()`.  
-For instance, if we wanted to see how each species compared to Rhesus monkeys, re-levelling the factor changes the contrasts accordingly:  
+We can easily "relevel" factor, thereby changing which one is the 'reference level' (the level against which all other levels are compared), by using handy functions like `fct_relevel()`. For instance, if we wanted to see how each species compared to Rhesus monkeys, re-levelling the factor changes the contrasts accordingly:  
 ```{r}
 braindata <- braindata %>% 
   mutate(
@@ -553,7 +553,7 @@ ggplot(., aes(x=n,y=mass_brain))+
 
 For sum contrasts, sometimes people prefer to use -.5 and .5 instead of -1 and 1. This is because it keeps the intercept as the "grand mean", but makes the coefficient represent the difference between the two groups (which might be more useful as a number to talk about).  
 
-This works because with just these two groups, the distance from isMonkey==YES to isMonkey==NO is _twice as far_ as the distance from the grand mean to the isMonkey==NO group (because the grand mean is the mid-point).  
+This works because with just these two groups, the distance from `isMonkey==YES` to `isMonkey==NO` is _twice as far_ as the distance from the grand mean to the `isMonkey==NO` group (because the grand mean is the mid-point).  
 By halving the contrast, it doubles our coefficient (because 'a change in 1' is now twice as far).  
 
 ```{r}
@@ -644,15 +644,17 @@ $$
 \text{species2} &: \bar{P} - 0.43 = -0.19 \\
 \end{align}
 $$
+
 We can rewrite these to find those means for Humans and Potars as:  
+
 $$
 \begin{align}
-\bar{H} &= \underbrace{0.43}_{\text{intercept}} &+ \underbrace{0.17}_{\text{species1 coefficient}}  &= &0.6\\
-\, \\
-\bar{P} &= \underbrace{0.43}_{\text{intercept}} &+ \underbrace{-0.19}_{\text{species2 coefficient}}  &= &0.24\\
-
+\bar{H} &= \underbrace{0.43}_{\text{intercept}} &+ \underbrace{0.17}_{\text{species1 coefficient}}  &= &0.6 \\
+\quad & & \\
+\bar{P} &= \underbrace{0.43}_{\text{intercept}} &+ \underbrace{-0.19}_{\text{species2 coefficient}}  &= &0.24 \\
 \end{align}
 $$
+
 Our Rhesus monkeys are actually still there in our intercept! They're just only represented as a third of the intercept (the other two thirds being the humans and potar monkeys). 
 If we substitute in our $\bar H$ and $\bar P$ values to our intercept:  
 
