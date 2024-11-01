@@ -38,8 +38,7 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   }
   
   init <- tibble(
-    instrument = rep(c(letters,paste0(letters,letters))[1:40],e=10),
-    family = rep(c("percussion","woodwind","brass","strings"), e=100),
+    family = sample(c("percussion","woodwind","brass","strings"),400,T,prob=c(.1,.3,.3,.3)),
     bpm = unlist(lapply(c(130,95,120,80), \(x) round(rnorm(100,x,20)/5)*5)),
     listenerage = round(runif(400,18,80)),
     listenermusician = rbinom(400,1,prob=plogis( -1*(family=="percussion") ))
@@ -59,6 +58,24 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   df$enjoyed = rbinom(400, 1, plogis( xmatb %*% bbs))
   #df <- df |> mutate(across(c(family,listenermusician,enjoyed), factor))
   df$pptname = sample(pptnames,size=nrow(df))
+  
+  df$instrument <- NA
+  df$instrument[df$family=="woodwind"] <-
+    sample(c("Flute","Oboe","Clarinet","Bassoon","Piccolo"), 
+           table(df$family)['woodwind'], T)
+  df$instrument[df$family=="strings"] <-
+    sample(c("Violin","Viola","Cello","Double Bass"), 
+           table(df$family)['strings'], T)
+  df$instrument[df$family=="percussion"] <-
+    sample(c("Timpani","Snare Drum","Bass Drum","Cymbals"), 
+           table(df$family)['percussion'], T, prob=c(.3,.3,.3,.1))
+  df$instrument[df$family=="brass"] <-
+    sample(c("Trumpet","French Horn","Trombone","Tuba","Euphonium"), 
+           table(df$family)['brass'], T)
+  
+  df$instrument[sample(1:400,1)] <- "Theramin"
+  
+  
   orchestra <<- df |> 
     transmute(
       pptname, age=listenerage, musician=listenermusician, instrument,
