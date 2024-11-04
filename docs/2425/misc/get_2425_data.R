@@ -49,7 +49,7 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   xmat <- model.matrix(rnorm(400) ~ listenermusician + listenerage + scale(bpm) * family,
                        data = init)
   dimnames(xmat)[[2]]
-  bs <- c(3, 2, 0, -.7, -6, 3, 3, -.5, .6, 0)
+  bs <- c(3, 2, 0, -.7, -6, 3, 3, -.8, .7, 0)
   
   df <- data.frame(
     init, ERS = xmat %*% bs + rnorm(400,0,2)
@@ -92,13 +92,15 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
     listenermusician = c("0","1","0"),
     instrument = c("Cello","Timpani","Clarinet"),
     bpm = c(40,185,50),
-    ERS = c(18.455, 14.341, 15.903),
+    ERS = c(18.455, 15.341, -1.903),
     enjoyed = c(0,1,1)
   )
   
   df <- bind_rows(df,inf2)
+  df <- sample_n(df, nrow(df))
+  rownames(df) <- 1:nrow(df)
   
-  orchestra <<- sample_n(df, nrow(df)) |> 
+  orchestra <<- df |> 
     transmute(
       pptname, age=listenerage, 
       musician=ifelse(listenermusician=="0","non-musician",
@@ -107,6 +109,9 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
       bpm, ERS = round(ERS,2), 
       enjoyed = ifelse(enjoyed==1,"enjoyed","not_enjoyed"))
 }
+
+
+
 
 
  
