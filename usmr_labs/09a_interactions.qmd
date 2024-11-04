@@ -261,18 +261,17 @@ In each of the above examples, we can no longer think about "the relationship be
 :::: {.columns}
 ::: {.column width="55%"}
 Using Example 1 above, let's return to thinking about this in terms of two different observations (i.e. two different people in @fig-pplint).  
+How do we think people's wellbeing will differ between someone who spends 1 hour with their partner and someone who spends 2 hours with their partner?  
 
-How do we think each person's wellbeing will change if they spend an extra hour with their partner?  
+If these are people from group A (these are people who have a really great relationship), then that extra hour will probably make a big impact on wellbeing!  
 
-Person A (who has a really great relationship), will probably increase in wellbeing if they were to spend more timewith their partner.  
-
-Will it be the same for Person B? Person B doesn't have a great relationship. If they spend an extra hour with their partner, we probably wouldn't expect their wellbeing to increase _to the same extent as Person A_. It might even go down for Person B! 
+Will it be the same for people from group B? People in group B are those people who don't have great relationships. For these people, whether you spend 1 hour or 2 hours with your partner doesn't pattern with a difference in wellbeing to the same extent as it does for the people in group A. It might even have a negative impact!  
 
 :::
 ::: {.column width="45%"}
 ```{r}
 #| label: fig-pplint
-#| fig-cap: "Two theoretical people"  
+#| fig-cap: "Comparisons between two theoretical observations who differ on only one predictor now depends on some other predictor"  
 #| echo: false
 #| out-height: "400px"
 knitr::include_graphics("images/ints/ints.png")
@@ -333,7 +332,7 @@ $$
 :::panel
 #### Example 1
 
-> The amount to which spending time with my partner influences my wellbeing _depends on_ the quality of our relationship.^[This example comes from our lovely tutor Ian!]  
+> The amount to which spending time with my partner influences my wellbeing _depends on_ the quality of our relationship.^[This example comes from Ian Hajnosz, who previously tutored on USMR]  
 
 ```{r}
 #| echo: false
@@ -380,7 +379,7 @@ The interaction coefficient $b_3$ is the adjustment we make to the slope of well
 :::panel
 #### Example 2
 
-> The influence of air-pollution on cognitive functioning _depends on_ your genetic status.^[and this example comes from Otto!]  
+> The influence of air-pollution on cognitive functioning _depends on_ your genetic status.^[This example comes from Otto Jutila, who previously tutored on USMR]  
 
 ```{r}
 #| echo: false
@@ -409,7 +408,7 @@ The interaction term $b_3$ is the estimated adjustment made to the slope of cogi
 :::panel
 #### Example 3
 
-> The influence of being anonymous on childrens' greedy behaviours _depends on_ if they are alone or part of a group.^[This example was suggested by Tia]  
+> The influence of being anonymous on childrens' greedy behaviours _depends on_ if they are alone or part of a group.^[This example comes from Tia Gong, who previously tutored on USMR]  
 
 ```{r}
 #| echo: false
@@ -693,34 +692,37 @@ plotdat <- expand_grid(
 )
 # plot
 broom::augment(eg1mod, newdata = plotdat, interval="confidence") |>
-  ggplot(aes(x=partner_time, y=.fitted, group=relationship_qual))+
-  geom_line(aes(col=relationship_qual))+
+  ggplot(aes(x=partner_time, y=.fitted, 
+             col=relationship_qual,
+             group=relationship_qual))+
+  geom_point(data = ptdat,aes(y=wellbeing))+
+  geom_line()+
   geom_ribbon(aes(ymin=.lower,ymax=.upper,fill=relationship_qual),
               alpha=.2)
 
 ```
 
-::: {.callout-tip collapse="true"}
-#### optional helper packages
+<!-- ::: {.callout-tip collapse="true"} -->
+<!-- #### optional helper packages -->
 
-The interactions package defaults to showing the y~x1 relationship when x2 is at -1 SD below the mean, at the mean, and +1 SD above the mean.  
-```{r}
-library(interactions)
-interact_plot(eg1mod, pred = "partner_time", modx = "relationship_qual", interval = TRUE)
-```
+<!-- The interactions package defaults to showing the y~x1 relationship when x2 is at -1 SD below the mean, at the mean, and +1 SD above the mean.   -->
+<!-- ```{r} -->
+<!-- library(interactions) -->
+<!-- interact_plot(eg1mod, pred = "partner_time", modx = "relationship_qual", interval = TRUE) -->
+<!-- ``` -->
 
-The __sjPlot__ package can do this too, but wil default to showing it at the min and max of the other predictor.  
-```{r}
-library(sjPlot)
-plot_model(eg1mod, type="int")
-```
-We can change these manually. For instance, to make `plot_model` show the association when relationship quality is zero, when it is 50, and when it is 100, we could use: 
-```{r}
-#| eval: false
-plot_model(eg1mod, type = "eff", terms=c("partner_time","relationship_qual [0, 50, 100]"))
-```
+<!-- The __sjPlot__ package can do this too, but wil default to showing it at the min and max of the other predictor.   -->
+<!-- ```{r} -->
+<!-- library(sjPlot) -->
+<!-- plot_model(eg1mod, type="int") -->
+<!-- ``` -->
+<!-- We can change these manually. For instance, to make `plot_model` show the association when relationship quality is zero, when it is 50, and when it is 100, we could use:  -->
+<!-- ```{r} -->
+<!-- #| eval: false -->
+<!-- plot_model(eg1mod, type = "eff", terms=c("partner_time","relationship_qual [0, 50, 100]")) -->
+<!-- ``` -->
 
-:::
+<!-- ::: -->
 
 
 :::
@@ -747,21 +749,22 @@ plotdat <- expand_grid(
 broom::augment(eg2mod, newdata = plotdat, interval="confidence") |>
   ggplot(aes(x=aqpi, y = .fitted, 
              col = apoe4, fill = apoe4)) + 
+  geom_point(data = airpol, aes(y = mmse), alpha=.3, size=3) +
   geom_line() +
   geom_ribbon(aes(ymin=.lower,ymax=.upper), alpha=.3)
 
 ```
 
 
-::: {.callout-tip collapse="true"}
-#### optional helper packages
+<!-- ::: {.callout-tip collapse="true"} -->
+<!-- #### optional helper packages -->
 
-```{r}
-p1 <- sjPlot::plot_model(eg2mod, type = "int")
-p2 <- interactions::interact_plot(eg2mod, pred = "aqpi", modx = "apoe4", interval = TRUE)
-p1 / p2
-```
-:::
+<!-- ```{r} -->
+<!-- p1 <- sjPlot::plot_model(eg2mod, type = "int") -->
+<!-- p2 <- interactions::interact_plot(eg2mod, pred = "aqpi", modx = "apoe4", interval = TRUE) -->
+<!-- p1 / p2 -->
+<!-- ``` -->
+<!-- ::: -->
 
 
 :::
@@ -787,23 +790,26 @@ plotdat <- expand_grid(
 # plot
 broom::augment(eg3mod, newdata=plotdat, interval="confidence") |>
   ggplot(aes(x = anonymity, col = asgroup)) + 
+  geom_jitter(data = candy, aes(y = candybars),
+              alpha = .3, size = 3,
+              height = 0, width = .2) +
   geom_pointrange(aes(y=.fitted, ymin=.lower, ymax=.upper),
                   position = position_dodge(width=.2))
 ```
 
 
-::: {.callout-tip collapse="true"}
-#### optional helper packages
+<!-- ::: {.callout-tip collapse="true"} -->
+<!-- #### optional helper packages -->
 
-```{r}
-p1 <- sjPlot::plot_model(eg3mod, type = "int") 
-p2 <- interactions::cat_plot(eg3mod, pred = "anonymity", modx = "asgroup", interval = TRUE)
+<!-- ```{r} -->
+<!-- p1 <- sjPlot::plot_model(eg3mod, type = "int")  -->
+<!-- p2 <- interactions::cat_plot(eg3mod, pred = "anonymity", modx = "asgroup", interval = TRUE) -->
 
-p1 / p2
-```
+<!-- p1 / p2 -->
+<!-- ``` -->
 
 
-:::
+<!-- ::: -->
 
 
 
@@ -875,12 +881,12 @@ airpol <- airpol %>%
   )
 eg2mod <- lm(mmse ~ aqpi * apoe4, data = airpol)
 eg2mod_cent <- lm(mmse ~ aqpiC * apoe4, data = airpol)
-plot_model(eg2mod, type="int") +
+sjPlot::plot_model(eg2mod, type="int") +
   geom_point(x=0,y=coef(eg2mod)[1], size=4, col="blue")+
   geom_point(x=0,y=sum(coef(eg2mod)[c(1,3)]), size=4, col="red")+
   geom_segment(x=0,xend=0,y=coef(eg2mod)[1], yend=sum(coef(eg2mod)[c(1,3)]), lty="dotted", lwd=1,col="black") + labs(title="Raw AQPI") +
   
-plot_model(eg2mod_cent, type="int") +
+sjPlot::plot_model(eg2mod_cent, type="int") +
   geom_point(x=0,y=coef(eg2mod_cent)[1], size=4, col="blue")+
   geom_point(x=0,y=sum(coef(eg2mod_cent)[c(1,3)]), size=4, col="red")+
   geom_segment(x=0,xend=0,y=coef(eg2mod_cent)[1], yend=sum(coef(eg2mod_cent)[c(1,3)]), lty="dotted", lwd=1,col="black") + labs(title="Mean Centered AQPI") +
@@ -959,7 +965,7 @@ Again, the model doesn't change, we are simply extracting different bits from it
 ```{r}
 #| echo: false
 #| out-width: "100%"
-p1 <- plot_model(eg3mod, type = "int") +
+p1 <- sjPlot::plot_model(eg3mod, type = "int") +
   labs(title="with 'anonymous' and 'alone' as reference levels") + 
   
   
@@ -992,7 +998,7 @@ p1 + theme_bw(base_size = 12)
 ```{r}
 #| echo: false
 #| out-width: "100%"
-p2 <- plot_model(eg3mod, type = "int") +
+p2 <- sjPlot::plot_model(eg3mod, type = "int") +
   labs(title="with 'identifiable' and 'alone' as reference levels") + 
   
   geom_segment(x = 1.95, xend = 1.95, y = coef(eg3mod_rel)[1], yend=sum(coef(eg3mod_rel)[c(1,3)]), 
