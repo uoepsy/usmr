@@ -1,7 +1,7 @@
 get_my_data <- function(group_name = NULL, individual = FALSE){
   
-  # load(url("https://uoepsy.github.io/usmr/2324/misc/pptnames.rdata"))
-  load("~/Desktop/uoepsy/usmr/docs/2324/misc/pptnames.rdata")
+  load(url("https://uoepsy.github.io/usmr/2324/misc/pptnames.rdata"))
+  #load("~/Desktop/uoepsy/usmr/docs/2324/misc/pptnames.rdata")
   infl = c("Sigmund Freud","Beatrix Potter","Stephen Jay Gould")
   pptnames = pptnames[!pptnames %in% intersect(pptnames, infl)]
   
