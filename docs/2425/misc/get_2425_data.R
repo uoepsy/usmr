@@ -50,7 +50,7 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   xmat <- model.matrix(rnorm(400) ~ listenermusician + listenerage + scale(bpm) * family,
                        data = init)
   dimnames(xmat)[[2]]
-  bs <- c(3, 2, 0, -.7, -6, 3, 3, -.8, .7, 0)
+  bs <- c(3, 2, 0, -.7, -6, 3, 3, -2, .9, .2)
   
   df <- data.frame(
     init, ERS = xmat %*% bs + rnorm(400,0,2)
@@ -89,7 +89,7 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
 
   inf2 <- tibble(
     pptname = infl,
-    listenerage = c(65,79,77),
+    listenerage = c(85,79,77),
     listenermusician = c("0","1","0"),
     instrument = c("Cello","Timpani","Clarinet"),
     bpm = c(190,205,200),
@@ -103,7 +103,7 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   
   orchestra <<- df |> 
     transmute(
-      pptname, age=pmax(18,pmin(100,listenerage)), 
+      pptname, age=pmin(100,listenerage), 
       musician=ifelse(listenermusician=="0","non-musician",
                       ifelse(listenermusician=="1","musician",listenermusician)), 
       instrument,
