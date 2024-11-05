@@ -42,9 +42,10 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
   
   init <- tibble(
     family = sample(c("percussion","woodwind","brass","strings"),400,T,prob=c(.1,.3,.3,.3)),
-    bpm = unlist(lapply(c(130,95,120,80), \(x) round(rnorm(100,x,20)/5)*5)),
-    listenerage = round(runif(400,18,80)),
-    listenermusician = rbinom(400,1,prob=plogis( -1*(family=="percussion") ))
+    bpm = unlist(lapply(c(135,95,120,80), \(x) round(rnorm(100,x,20)/5)*5)),
+    #listenerage = round(runif(400,18,80)),
+    listenerage = round(rnorm(400,50+bpm*-.05,7.5)),
+    listenermusician = rbinom(400,1,prob=plogis( -1.8*(family=="percussion") ))
   )
   xmat <- model.matrix(rnorm(400) ~ listenermusician + listenerage + scale(bpm) * family,
                        data = init)
@@ -88,21 +89,21 @@ get_my_data <- function(group_name = NULL, individual = FALSE){
 
   inf2 <- tibble(
     pptname = infl,
-    listenerage = round(runif(3,40,90)),
+    listenerage = c(65,79,77),
     listenermusician = c("0","1","0"),
     instrument = c("Cello","Timpani","Clarinet"),
-    bpm = c(40,185,50),
-    ERS = c(18.455, 15.341, -1.903),
+    bpm = c(190,205,200),
+    ERS = c(10.455, 15.341, 18.03),
     enjoyed = c(0,1,1)
   )
-  
+
   df <- bind_rows(df,inf2)
   df <- sample_n(df, nrow(df))
   rownames(df) <- 1:nrow(df)
   
   orchestra <<- df |> 
     transmute(
-      pptname, age=listenerage, 
+      pptname, age=pmax(18,pmin(100,listenerage)), 
       musician=ifelse(listenermusician=="0","non-musician",
                       ifelse(listenermusician=="1","musician",listenermusician)), 
       instrument,
