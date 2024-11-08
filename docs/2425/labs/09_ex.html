@@ -2869,7 +2869,7 @@ Think about what we already know from previous studies - we’ll likely want to 
 Question 10
 </div>
 <div class="question-body">
-<p><strong>Do</strong> species differ in their preference for different types of object?</p>
+<p>Now that you’ve fitted your model, test the interaction to get an overall answer to “Do species differ in their preference for different types of object?”</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-8-contents" aria-controls="callout-8" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
@@ -2908,6 +2908,25 @@ Model 2: exptime ~ age + obj_size + obj_colour + obj_type * species
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 </div>
 </div>
+<p>Alternatively, we could use the shortcut and just give one model to <code>anova()</code> and take a look at the last line. They should be the same:</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(modelmonkey)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Variance Table
+
+Response: exptime
+                  Df  Sum Sq Mean Sq F value    Pr(&gt;F)    
+age                1  293.67  293.67 26.8034 5.340e-07 ***
+obj_size           1    0.42    0.42  0.0381   0.84546    
+obj_colour         2    8.91    4.46  0.4067   0.66636    
+obj_type           1  177.27  177.27 16.1798 8.085e-05 ***
+species            2  892.98  446.49 40.7517 1.225e-15 ***
+obj_type:species   2   82.14   41.07  3.7483   0.02518 *  
+Residuals        206 2257.02   10.96                      
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
 <div class="int">
 <p>Species significantly differed in the extent to which exploration time varied between different types of object (<span class="math inline">\(F(2, 206)=3.75, p=0.0252\)</span>).</p>
 </div>
@@ -2918,8 +2937,9 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 Question 11
 </div>
 <div class="question-body">
-<p>Now, we want to know <strong>how</strong> species differ in their preferences for different types of object?</p>
-<p>Take a look at the model coefficients.</p>
+<p>We’re almost always going to want to know <strong>how</strong> species differ in their preferences for different types of object (if they do differ).</p>
+<p>To get this information, we can just look at the model coefficients.<br>
+Take a look at the interaction coefficients - notice anything that <em>appears to</em> contradict the previous question?</p>
 </div>
 <p class="question-end">
 </p>
@@ -2930,7 +2950,7 @@ Solution
 </div>
 <div id="sol-body-4" class="solution-body" style="display: none;">
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(modelmonkey)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(modelmonkey)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
 Call:
@@ -2991,16 +3011,16 @@ Solution
 <p>We always get to choose which level we want as a reference. Sometimes, this will be easy because on level represents the norm/status quo. In this context, Macaques is possibly a more useful reference, given that the study description earlier mentioned the previous studies were conducted on Macaques.</p>
 <p>Re-levelling <code>obj_type</code> to have “soft” as the reference won’t make much difference - it will just swap the signs of the coefficients (comparing mechanical to soft, as opposed to comparing soft to mechanical).</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>ctmtoys <span class="ot">&lt;-</span> </span>
-<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>  ctmtoys <span class="sc">|&gt;</span></span>
-<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">species =</span> <span class="fu">fct_relevel</span>(species, <span class="st">"macaque"</span>),</span>
-<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">obj_type =</span> <span class="fu">fct_relevel</span>(obj_type, <span class="st">"soft"</span>)</span>
-<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(exptime <span class="sc">~</span> age <span class="sc">+</span> obj_size <span class="sc">+</span> obj_colour <span class="sc">+</span></span>
-<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>                obj_type <span class="sc">*</span> species, <span class="at">data =</span> ctmtoys) <span class="sc">|&gt;</span></span>
-<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summary</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>ctmtoys <span class="ot">&lt;-</span> </span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>  ctmtoys <span class="sc">|&gt;</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">species =</span> <span class="fu">fct_relevel</span>(species, <span class="st">"macaque"</span>),</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">obj_type =</span> <span class="fu">fct_relevel</span>(obj_type, <span class="st">"soft"</span>)</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a><span class="fu">lm</span>(exptime <span class="sc">~</span> age <span class="sc">+</span> obj_size <span class="sc">+</span> obj_colour <span class="sc">+</span></span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true" tabindex="-1"></a>                obj_type <span class="sc">*</span> species, <span class="at">data =</span> ctmtoys) <span class="sc">|&gt;</span></span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summary</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
 Call:
@@ -3053,7 +3073,7 @@ Start with the plot below:</p>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="09_ex_files/figure-html/unnamed-chunk-29-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="09_ex_files/figure-html/unnamed-chunk-30-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
@@ -3073,7 +3093,7 @@ Solution Part 1 - coefficient: obj_typemechanical
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="09_ex_files/figure-html/unnamed-chunk-30-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="09_ex_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
@@ -3093,7 +3113,7 @@ Solution Part 2 - coefficient: speciescapuchin
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="09_ex_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="09_ex_files/figure-html/unnamed-chunk-32-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
@@ -3113,7 +3133,7 @@ Solution Part 3 - coefficient: speciestamarin
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="09_ex_files/figure-html/unnamed-chunk-32-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="09_ex_files/figure-html/unnamed-chunk-33-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
@@ -3136,7 +3156,7 @@ So rather than going up 3.5, we go up <span class="math inline">\(3.5-1.5=2\)</s
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="09_ex_files/figure-html/unnamed-chunk-33-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="09_ex_files/figure-html/unnamed-chunk-34-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
@@ -3158,7 +3178,7 @@ So rather than going up 3.5, we go up <span class="math inline">\(3.5-3.05=0.45\
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="09_ex_files/figure-html/unnamed-chunk-34-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="09_ex_files/figure-html/unnamed-chunk-35-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
@@ -3174,14 +3194,14 @@ Question 14
 <p>Try running this code in pieces to see what each bit does, and then running it all at once to get the plot.</p>
 <p>Does it match with what you sketched in the previous question?</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(effects)</span>
-<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="fu">effect</span>(<span class="st">"obj_type*species"</span>,modelmonkey) <span class="sc">|&gt;</span></span>
-<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span></span>
-<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">obj_type =</span> <span class="fu">fct_relevel</span>(<span class="fu">factor</span>(obj_type), <span class="st">"soft"</span>)</span>
-<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x=</span>obj_type, <span class="at">y=</span>fit, <span class="at">col=</span>species)) <span class="sc">+</span></span>
-<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_pointrange</span>(<span class="fu">aes</span>(<span class="at">ymin=</span>lower,<span class="at">ymax=</span>upper))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(effects)</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="fu">effect</span>(<span class="st">"obj_type*species"</span>,modelmonkey) <span class="sc">|&gt;</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">obj_type =</span> <span class="fu">fct_relevel</span>(<span class="fu">factor</span>(obj_type), <span class="st">"soft"</span>)</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x=</span>obj_type, <span class="at">y=</span>fit, <span class="at">col=</span>species)) <span class="sc">+</span></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_pointrange</span>(<span class="fu">aes</span>(<span class="at">ymin=</span>lower,<span class="at">ymax=</span>upper))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-9-contents" aria-controls="callout-9" aria-expanded="false" aria-label="Toggle callout">
@@ -3198,13 +3218,13 @@ Why use the effects package?
 <p>Up to now, when we’ve been plotting our associations of interest we’ve been choosing to construct our plots at the mean of our other predictors.</p>
 <p>However, in our current monkey model, we’ve also got a categorical covariate (<code>obj_colour</code>) in our model. What should we do with that?</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>plotdat <span class="ot">&lt;-</span> <span class="fu">expand_grid</span>(</span>
-<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">age =</span> <span class="fu">mean</span>(ctmtoys<span class="sc">$</span>age),</span>
-<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">obj_size =</span> <span class="fu">mean</span>(ctmtoys<span class="sc">$</span>obj_size),</span>
-<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">obj_colour =</span> ???</span>
-<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">obj_type =</span> <span class="fu">c</span>(<span class="st">"soft"</span>,<span class="st">"mechanical"</span>), <span class="co"># of interest</span></span>
-<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">species =</span> <span class="fu">c</span>(<span class="st">"macaque"</span>,<span class="st">"capuchin"</span>,<span class="st">"tamarin"</span>) <span class="co"># of interest</span></span>
-<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>plotdat <span class="ot">&lt;-</span> <span class="fu">expand_grid</span>(</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">age =</span> <span class="fu">mean</span>(ctmtoys<span class="sc">$</span>age),</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">obj_size =</span> <span class="fu">mean</span>(ctmtoys<span class="sc">$</span>obj_size),</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">obj_colour =</span> ???</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">obj_type =</span> <span class="fu">c</span>(<span class="st">"soft"</span>,<span class="st">"mechanical"</span>), <span class="co"># of interest</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">species =</span> <span class="fu">c</span>(<span class="st">"macaque"</span>,<span class="st">"capuchin"</span>,<span class="st">"tamarin"</span>) <span class="co"># of interest</span></span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>We could:</p>
 <ol type="a">
@@ -3222,18 +3242,18 @@ Why use the effects package?
 </p>
 <div style="display:none;">
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(effects)</span>
-<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="fu">effect</span>(<span class="st">"obj_type*species"</span>,modelmonkey) <span class="sc">|&gt;</span></span>
-<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span></span>
-<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">obj_type =</span> <span class="fu">fct_relevel</span>(<span class="fu">factor</span>(obj_type), <span class="st">"soft"</span>)</span>
-<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x=</span>obj_type, <span class="at">y=</span>fit, <span class="at">col=</span>species)) <span class="sc">+</span></span>
-<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_pointrange</span>(<span class="fu">aes</span>(<span class="at">ymin=</span>lower,<span class="at">ymax=</span>upper))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(effects)</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="fu">effect</span>(<span class="st">"obj_type*species"</span>,modelmonkey) <span class="sc">|&gt;</span></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span></span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">obj_type =</span> <span class="fu">fct_relevel</span>(<span class="fu">factor</span>(obj_type), <span class="st">"soft"</span>)</span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x=</span>obj_type, <span class="at">y=</span>fit, <span class="at">col=</span>species)) <span class="sc">+</span></span>
+<span id="cb38-8"><a href="#cb38-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_pointrange</span>(<span class="fu">aes</span>(<span class="at">ymin=</span>lower,<span class="at">ymax=</span>upper))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="09_ex_files/figure-html/unnamed-chunk-37-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="09_ex_files/figure-html/unnamed-chunk-38-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
@@ -3811,7 +3831,7 @@ Feel free to read in the data yourself to play around.</p>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="09_ex_files/figure-html/unnamed-chunk-40-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
+<p><img src="09_ex_files/figure-html/unnamed-chunk-41-1.png" class="img-fluid figure-img" style="width:80.0%"></p>
 </figure>
 </div>
 </div>
