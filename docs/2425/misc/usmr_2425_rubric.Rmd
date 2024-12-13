@@ -1,0 +1,288 @@
+---
+title: "USMR 2425 marking"
+output:
+  rmdformats::material:
+    # theme: cosmo
+    # toc: true
+    # toc_depth: 2
+---
+
+
+# Overview
+
+## general things to remember
+
+- every group gets their own data (it's all from the same data generating process, so will all be similar to one another)
+
+## what to do
+
+- c30 mins per report
+
+1. leave in-text comments (rough guide: aim for >3 a page)
+
+2. leave summary box notes
+    - ultimately this will typically end up being 2 or 3 paragraphs giving an overview of the whole thing  
+    - if you are struggling for time, please just leave this as bullet points of the main "good things/needs improvement things" and i will go through them all and write them up.  
+
+3. decide on a grade for each section and enter it in the spreadsheet  
+    - see rubric for each Q
+    - if someone misses out some stuff but does other cool stuff, then their mark might go up again...
+    - In general, we are looking for students to be aware of choices they might have and to write about those choice points -- you might not agree with their choices, but if they're explicitly made and somewhat defensible, try and find marks for them
+
+
+
+Reasons to look at the code:  
+
+1. a quick glance to see if it's neat, commented, etc. (could find marks for very clear code);
+2. a more detailed look if you can't work out what is being reported;
+3. as a check that numbers / graphs come from the code if the report seems weird to you.
+ 
+We'd expect you to do 1. if poss, but only resort to 2. and 3. if there are issues you want to explore.  If something looks really weird, flag it and we'll take a look
+
+
+## commenting style
+
+- think of comments as something the students can learn from  
+- avoid negativity, be constructive
+- generally try to avoid categorical statements of "wrong/right", "correct/incorrect", "should/shouldn't"
+    - imagine that a student complains, and comes to you to ask for an explanation of your comment. can you defend it? 
+    - e.g., instead of "this is wrong, you should have done X", go for "this sounds like you have done Y, which doesn't quite do what you want because [insert explanation]. An alternative would be to do X which would [insert explanation]"  
+
+
+## things to remember
+
+- we don't care about specifically APA formatting etc. it's about "clarity and consistency"
+    - *do* cast an eye over their reporting of stats though, remember that things like t would ideally be accompanied by df etc.
+- 
+
+# Cleaning
+
+- there are some typos in the instruments, but the main thing they will need to do is categorise instruments in to families/categories (woodwind, brass, percussion, strings)
+- there is a Theramin. they would ideally comment on that as it doesn't fall into any family. if they add it to a family [with an explanation] that's fine. 
+- there are some ages at -99
+- there is an "i don't know" in the `musician` variable
+
+- there are some people that will end up being influential in the analyses later on. some people will possibly remove these at the start. it might be a bit messy for them to explain this.. 
+
+
+**They don't have to use code like this. Any code that works is fine!**
+```{r}
+#| message: false
+#| warning: false
+
+library(tidyverse)
+source("https://edin.ac/4eYWn7P")
+get_my_data(group_name = "asymptotic_arias")
+orchestra <- 
+  orchestra |> mutate(
+    family = case_when(
+      instrument %in%  c("Flute","Oboe","Clarinet","Bassoon","Piccolo","Piccollo") ~ "woodwind",
+      instrument %in% c("Timpani","Snare Drum","Bass Drum","Cymbals") ~ "percussion",
+      instrument %in% c("Trumpet","French Horn","French Hron","Trombone","Tuba","Euphonium") ~ "brass",
+      instrument %in% c("Violin","Viola","Cello","Double Bass") ~ "string",
+      TRUE ~ NA
+    ),
+    age = ifelse(age<0,NA,age),
+    musician = factor(musician, levels=c("non-musician","musician")),
+    isinf = pptname %in% c("Sigmund Freud","Beatrix Potter","Stephen Jay Gould")
+  ) |> na.omit() |> filter(!isinf)
+```
+
+# Question 1 {.tabset .tabset-fade .tabset-pills #q1}
+
+## Questions 
+
+### 1. What do we know about the sample? (Describe and Explore)  
+_Suggestion: 2 pages_  
+
+
+Prior to conducting the main analyses, the researchers would like some descriptive statistics on the participants in the study. In addition, they would like you to test that giving the participants the choice of instrument to listen to has not led to different sorts of participants listening to different types of solos. They would like you to test and report on:
+
+a)  Whether there's any difference in tempos of pieces listened to between those who are musicians vs those who aren't.  
+b)  Whether there is an association between age and the tempo of piece played to them, and, if so, in what direction (e.g., the orchestra might have unintentionally played slower pieces for older people!).  
+c)  Whether there is a balance such that musicians and non-musicians were equally likely to choose to listen to instruments from the different orchestral groups.  
+
+Provide a suitable brief description of the dataset, and then answer each of the questions above using an appropriate statistical test.
+
+**Hint:**   
+_When providing a description of your sample, think about the tradeoff between space used (by, for example, a figure or table) and detail (in writing). There's no *right* way to describe the sample, but readers will want to understand the basic "shape" of the data._
+
+
+## Expected analysis
+
+
+#### descriptives
+
+
+- mean and sd age
+- count (and %) musicians vs non-musicians
+- instrument to family mapping?
+- counts (and %) family chosen
+
+- mean bpm (possibly split by family)
+- count and % enjoyed
+
+```{r}
+summary(orchestra)
+table(orchestra$musician) |> print() |> prop.table()
+```
+
+#### 1a 
+
+- t.test. 
+- if they just use welch (default) then fine. If they assume equal variances, then would be nice to be also shown a var.test. 
+- i'm pretty sure almost all groups will have this as non-significant
+    
+```{r}
+with(orchestra, t.test(bpm ~ musician))
+with(orchestra, boxplot(bpm ~ musician))
+```
+    
+    
+#### 1b
+
+- a correlation, but ideally with a plot as it will highlight some weird people that don't fit. 
+- if they frame as `lm()` then they might justify removing these people based on influence, which is fine. could also just do it from plot though. 
+- some might have already discussed removing these at the outset
+- if they don't remove them it will *probably* be non-signif
+- if they do remove them, it will *probably* be signif
+
+```{r}
+with(orchestra, cor.test(age, bpm))
+with(orchestra, plot(age, bpm))
+```
+    
+    
+#### 1c
+
+- chisquare test of independence
+- probably signif for every group
+- ideally a table too, or discussion of relative counts.
+    - something that highlights that it's percussion that has biggest impact here (musicians much less likely to choose to listen to percussion solos)
+
+```{r}
+with(orchestra, table(family,musician)) |> 
+  print() |>
+  chisq.test()
+```
+
+## Rubric
+
+```{r}
+#| echo: false
+df <- readxl::read_xlsx("usmr rubric.xlsx",sheet="1")
+gt::gt(df |> mutate(across(everything(), ~ifelse(is.na(.),"",.)))) |>
+  gt::fmt_markdown(columns = everything())
+```
+
+# Question 2 {.tabset .tabset-fade .tabset-pills #q2}
+
+## Questions 
+
+### 2. Sound & Sentiment
+_Suggestion: 2 pages_  
+
+The **first major research aim** is to investigate the question about *emotional response*. Recall that the researchers are interested in whether the tempo of a musical piece is associated with eliciting more or less emotional response, and whether this might differ between the broad categories of instruments (strings/woodwind/brass/percussion).  
+Conduct and write up appropriate analysis/analyses to address this question.  
+
+**Hint:**
+_Neither this analysis nor the one below need be very complex.  Think about the background-&-study-aims, and what the researchers already "know" to be true; what they suspect might affect things (but aren't necessarily interested in); and what the focus of their research is._
+
+
+## Expected analysis
+
+- linear model with an interaction term betw tempo & instrument-category
+- probably control for age (older people seem to have been presented with slower music) and musician (musicians tended to less frequently choose to listen to percussion). both of these may well also influence ERS, and so could be confounders
+
+- it would be nice to get an omnibus test of the interaction, so compare the full model to an additive model
+- sensible plot would probably be 4 non-parallel lines
+
+
+```{r}
+mod.f = lm(ERS ~ age + musician + family * bpm, 
+           data = orchestra)
+summary(mod.f)
+
+mod.res = lm(ERS ~ age + musician + family + bpm, 
+           data = orchestra)
+anova(mod.res,mod.f)
+
+expand_grid(
+  age = mean(orchestra$age),
+  musician = unique(orchestra$musician),
+  family = unique(orchestra$family),
+  bpm = seq(min(orchestra$bpm),max(orchestra$bpm),length.out=30)
+) |>
+  broom::augment(mod.f, newdata = _, interval = "confidence") |>
+  ggplot(aes(x=bpm,col=family,fill=family))+
+  geom_point(data = orchestra, aes(y = ERS), alpha=.4) +
+  geom_line(aes(y=.fitted)) +
+  geom_ribbon(aes(y=.fitted,ymin=.lower,ymax=.upper), alpha=.3)+
+  facet_wrap(~musician)
+
+```
+
+## Rubric
+
+
+```{r}
+#| echo: false
+df <- readxl::read_xlsx("usmr rubric.xlsx",sheet="2")
+gt::gt(df |> mutate(across(everything(), ~ifelse(is.na(.),"",.)))) |>
+  gt::fmt_markdown(columns = everything())
+```
+
+
+
+# Question 3 {.tabset .tabset-fade .tabset-pills #q3}
+
+## Questions 
+
+### 3. Enjoyment in every note
+_Suggestion: 2 pages_  
+
+The **second research aim** is to explore what factors led to being more likely to report enjoyment of the solo piece.  
+**from background:** "but the experimenters were also interested in what types of music people find enjoyable."  
+
+_**Note:** The researchers are pretty sure that nobody enjoys percussion solos, so for this question specifically they are happy if you want to exclude all percussion solos in order to make the analysis more straightforward. (This doesn't mean you **have** to, but it may make things easier)._  
+
+
+## Expected analysis
+
+- logistic regression
+- probably "enjoyed" as 'success', as opposed to 'not enjoyed'
+- question here of whether we want to include ERS as a predictor. 
+    - could defend either option, but will make major change to interpretation
+- plots may/may not be present, but ideally would be predicted probabilities on the y
+
+
+- Q3 is not a well defined research question, which means we're probably going to have lots of much more exploratory approaches here, and they will often end up doing endless model comparisons
+    - there's not much guidance here other than the "types of music" is the focus. but this could include: faster/slower (bpm), instrument family, more emotional (ERS) etc. 
+
+
+```{r}
+orchestra3 <- 
+  orchestra |> mutate(
+    enj = enjoyed=="enjoyed"
+  ) |> filter(family != "percussion")
+
+
+mod3 <- glm(enj ~ age+musician+family+bpm,
+            data = orchestra3,
+            family=binomial)
+
+mod3a <- glm(enj ~ ERS+age+musician+family+bpm,
+            data = orchestra3,
+            family=binomial)
+
+
+```
+
+## Rubric
+
+```{r}
+#| echo: false
+df <- readxl::read_xlsx("usmr rubric.xlsx",sheet="3")
+gt::gt(df |> mutate(across(everything(), ~ifelse(is.na(.),"",.)))) |>
+  gt::fmt_markdown(columns = everything())
+```
