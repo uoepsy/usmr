@@ -1,0 +1,837 @@
+---
+title: "6: Practical Inference"
+link-citations: true
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+---
+
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(xaringanExtra)
+library(tidyverse)
+library(patchwork)
+xaringanExtra::use_panelset()
+```
+
+:::lo
+This reading:  
+
+- How does hypothesis testing work in practice?  
+- How do we do all this in R? 
+    - *spoiler: it's easier than you think*
+- What are some basic hypothesis tests that we can conduct?  
+  - Tests of a single continuous variable
+  - Tests of the relationship between a continuous variable and a binary categorical variable  
+
+:::
+
+In [3A](03a_inference.html){target="_blank"} we learned about the logic of _Null Hypothesis Significance Testing_ (NHST), allowing us to draw perform inferentials tests about parameters in the __population__, based on statistics computed on the __sample__ that we have collected.  
+
+:::statbox
+__NHST Recap__ 
+
+We have a sample ($n=10$):
+```{r}
+mysample <- c(1, -4, 6, 4, -2, 3, 2, -5, 6, 8)
+```
+And a sample mean:
+```{r}
+mean(mysample)
+```
+
+We're interested in whether - in the _population_ - the mean of this variable is different from 0. So we are testing between two hypotheses:
+
+- Null Hypothesis $H_0: \mu = 0$.  
+- Alternative Hypothesis $H_1: \mu \neq 0$. 
+
+Remember, there are lots of samples of size $n=10$ that we _could_ take, and they all have different means. To quantify the spread of these different means we can use the __standard error__, calculated using $SE = \frac{\sigma}{\sqrt{n}}$:  
+```{r}
+sd(mysample) / sqrt(length(mysample))
+```
+
+We can use this information to express how far away from the null hypothesis (mean = 0) our observed sample is, in terms of standard errors: 
+
+$$
+Z \ = \ \frac{\text{estimate}-\text{null}}{SE} \ = \ \frac{1.9 - 0}{1.39} \ = \ 1.36
+$$
+We can then calculate, __if__ the mean in the population _is_ 0, what is the probability of obtaining a $Z$-statistic from a sample of this size at least as extreme as the one we _have_ observed?  
+
+The resulting probability is our __p-value:__  
+```{r}
+2*pnorm(1.36, mean = 0, sd = 1, lower.tail = FALSE)
+```
+
+```{r}
+#| label: fig-pnorm23
+#| echo: false
+#| fig-cap: "2*pnorm gives the two tails"
+#| fig-height: 2.5
+new_theme_empty <- theme_bw()
+new_theme_empty$line <- element_blank()
+new_theme_empty$rect <- element_blank()
+new_theme_empty$axis.text.y <- element_blank()
+new_theme_empty$plot.title <- element_blank()
+new_theme_empty$axis.title.y <- element_blank()
+
+zscore = 1.36
+df <- tibble(x=c(-5,5))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=0,sd=1),size=1) +
+  labs(x = "Z-statistic")
+ld <- layer_data(g) %>% filter(x>= zscore)
+ld2 <- layer_data(g) %>% filter(x<= -zscore)
+g = g + geom_area(data=ld,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,args=list(mean=0,sd=1),size=1)
+g + geom_area(data=ld2,aes(x=x,y=y),fill="red") +
+  stat_function(fun=dnorm,args=list(mean=0,sd=1),size=1)+
+  scale_x_continuous(breaks=-3:3)+
+  new_theme_empty
+```
+
+As our $p$-value is above our threshold of $\alpha=.05$, we fail to reject the null hypothesis that the mean in the population is zero.  
+
+We can get to the same conclusion by constructing a 95% confidence interval: 
+```{r}
+xbar = mean(mysample)
+se = sd(mysample) / sqrt(length(mysample))
+c(xbar - (1.96 * se), xbar + (1.96 * se))
+```
+As this interval includes zero, then at the 5% level we fail to reject the null hypothesis that the population mean is zero.^[Remember that confidence intervals provide a range of plausible values for the population mean. In this case, zero is a plausible value.]
+
+
+:::
+
+While in practice NHST follows the logic described above, there is something important that we have been sweeping under the carpet.  
+
+In our estimation of the __standard error__ we have used the formula that includes $\sigma$, which refers to the __population__ standard deviation. However, we never know this value (because we don't have data for the population), so we have been using the __sample__ standard deviation $s$ instead. This is an _approximation_, and might be okay when we have a very large $n$ (meaning $s$ provides an accurate estimate of $\sigma$), but in practice this is not always feasible.
+$$
+SE = \frac{\sigma}{\sqrt{n}} \approx \frac{s}{\sqrt{n}}
+$$
+
+<div class="divider div-transparent div-dot"></div>
+
+# $t$ - distributions  
+
+To resolve the issues with the approximation of using $s$ in place of $\sigma$ to compute the standard error, we can move from using the normal distribution to referring to the $t$-distribution.  
+The $t$ distribution is very similar to the normal distribution, but it has slightly _heavier_ tails (see @fig-tnorm). $t$-distributions are always centered on zero, and the precise shape (how heavy the tails are) depends upon a parameter known as the __degrees of freedom.__  
+  
+```{r}
+#| label: fig-tnorm
+#| fig-cap: "Normal distribution (black) vs t-distribution with 3 degrees of freedom (red)"
+#| echo: false
+#| fig-height: 3
+df <- tibble(x=c(-4,4))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=0,sd=1),size=1,aes(col="normal")) +
+  stat_function(fun=dt,args=list(df=3),size=1,aes(col="t(3)"),lty="dashed")+
+  scale_x_continuous(NULL,breaks=NULL)+
+  scale_color_manual("Distribution",values=c("normal"="black","t(3)"="blue"))+
+  new_theme_empty
+g
+```
+
+:::sticky
+__Degrees of Freedom - $df$__ 
+
+'Degrees of freedom' is a tricky concept. One of the most intuitive ways to understand it is to think of it as the number of independent bits of information that go into calculating an estimate. Put another way, it is the number of datapoints that are _free to vary_.  
+
+::: {.callout-note collapse="true"}
+### Degrees of freedom (df)
+
+Suppose we have four unknown numbers ($a$, $b$, $c$ and $d$) which *must* have a mean of 5.  
+
+Do the following, *in order:*  
+
+1. Choose a value for $a$.
+1. Choose a value for $b$.
+1. Choose a value for $c$.
+1. Can you choose a value for $d$ while ensuring the mean of the four numbers you have chosen is 5?
+
+You are free to choose anything you like for $a$, $b$ and $c$.  
+But once those are fixed, you have no freedom to choose $d$.  
+
+Example:  
+
++ $a$ = 1  
++ $b$ = 2  
++ $c$ = 3  
+
+We know that $\frac{1+2+3+d}{4} = 5$
+So there is only one possible value for $d$:  
+$\frac{1+2+3+d}{4} = 5$  
+$1+2+3+d = 5*4$  
+$1+2+3+d = 20$  
+$d = 20-3-2-1$   
+$d = 14$  
+
+:::
+
+:::
+
+
+When we estimate the mean from a sample, we use up one of our degrees of freedom, and so our test of a single mean will require us to use a $t$-distribution with $n-1$ degrees of freedom. For $t$-distributions, as the $df$ increases the distribution becomes closer and closer to a normal distribution (see @fig-tdf) - the use of these $t$-distributions is exactly what we need in order to account for using $s$ in our calculation of the standard error.^[This is because with smaller samples we have less certainty in the estimate of the population standard deviation, and our estimates of mean and standard deviation are more dependent on one another. The bottom part of $\frac{\bar x - \mu}{SE}$ has a greater chance of being smaller than the top part, meaning that our resulting our test statistics will tend to be slightly bigger. To better represent this greater chance of seeing bigger test statistics from small samples, our $t$-distributions have heavier tails.]  
+
+```{r}
+#| label: fig-tdf
+#| fig-cap: "t distributions with various degrees of freedom." 
+#| echo: false
+#| fig-height: 3
+df <- tibble(x=c(-4,4))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=0,sd=1),size=1,aes(col="normal")) +
+  stat_function(fun=dt,args=list(df=3),size=.5,aes(col="t (df=3)"))+
+  stat_function(fun=dt,args=list(df=5),size=.5,aes(col="t (df=5)"))+
+  stat_function(fun=dt,args=list(df=10),size=.5,aes(col="t (df=10)"))+
+  stat_function(fun=dt,args=list(df=20),size=.5,aes(col="t (df=20)"))+
+  stat_function(fun=dt,args=list(df=30),size=.5,aes(col="t (df=30)"))+
+  scale_x_continuous(NULL,breaks=NULL)+
+  scale_color_manual("Distribution",values=c("normal"="black",
+                                             "t (df=3)" = "blue",
+                                             "t (df=5)" = "green",
+                                             "t (df=10)" ="orange",
+                                             "t (df=20)" ="red",
+                                             "t (df=30)" ="pink"
+                                             )
+                     )+
+  new_theme_empty
+g
+```
+
+To make use of the $t$-distribution in hypothesis testing, we need to move to performing $t$-tests! 
+
+The logic remains the same as before, but where we previously were relying on the normal distribution: 
+
+- `pnorm()` for our $p$-values
+- `qnorm()` in order to calculate our confidence intervals (`qnorm(0.975)` gives the 1.96 we have been using)
+
+We can use `pt()` and `qt()` to conduct the same process but in reference to the appropriate $t$-distribution.  
+
+<div class="divider div-transparent div-dot"></div>
+
+# $t$ -test demonstration
+
+```{r}
+mysample <- c(1, -4, 6, 4, -2, 3, 2, -5, 6, 8)
+```
+
+Let us then perform a more appropriate test against the null hypothesis that the mean in the population is zero. It is going to look pretty much the same as it did previously, but things like "Z" and "norm" are going to be replaced with "t".  
+
+For example, our test-statistic is now going to be a $t$-statistic:  
+
+$$
+\begin{align}
+& t =  \frac{\bar x - \mu_0}{\frac{s}{\sqrt{n}}}\\
+\ \\
+& \text{where:} \\ 
+& \bar x : \text{sample mean} \\
+& \mu_0 : \text{hypothesised population mean} \\
+& s : \text{sample standard deviation} \\
+& n : \text{sample size} \\
+\end{align}
+$$
+Which can be calculated as: 
+```{r}
+xbar <- mean(mysample)
+se <- sd(mysample) / sqrt(length(mysample))
+tstat <- (xbar - 0) / se
+tstat
+```
+
+While the calculation is just the same as it was previously, we're calling it a $t$-statistic because we are going to compare it to a reference $t$-distribution. 
+As our sample has $n=10$, and as part of the statistic we are estimating a mean, the relevant $t$-distribution for us has 9 ($10-1$) degrees of freedom (we lose one by calculating the mean). 
+  
+Our p-value can be found with the `pt()` function:  
+```{r}
+2*pt(tstat, df = 9, lower.tail = FALSE)
+```
+
+And our confidence interval can be constructed using: 
+$$
+\text{CI} = \bar{x} \pm t^* \times SE \\
+$$
+Note that $t^*$ has replaced the 1.96 we saw in previous chapters, because we obtained that using the normal distribution. The code `qnorm(c(0.025, 0.975))` showed us that 95% of __normal distribution__ is beyond 1.96 from the mean. But what we actually want to know is where 95% of the __$t$-distribution__ with $df=9$ lies:  
+So instead we can use:
+```{r}
+qt(c(0.025, 0.975), df = 9)
+```
+And our confidence interval is:  
+```{r}
+#| eval: false
+xbar <- mean(mysample)
+se <- sd(mysample) / sqrt(length(mysample))
+xbar - (2.262157 * se)
+xbar + (2.262157 * se)
+```
+```{r}
+#| echo: false
+xbar <- mean(mysample)
+se <- sd(mysample) / sqrt(length(mysample))
+xbar - (2.262157 * se)
+xbar + (2.262157 * se)
+```
+
+<div class="divider div-transparent div-dot"></div>
+
+# Make life easier with R
+
+All of the above is crucial for understanding how this all works, but in practice we can avoid all of the rigmarole of ever calculating the standard error or using functions like `pt()`, `qt()`. This is where R starts to become far more powerful - there are functions that do all this sort of stuff for us - in just _one single line of code!_ 
+
+Take a look at the output of the function below. I have given it the sample, and specified that we want it to test against the null hypothesis that $\mu=0$.  
+
+```{r}
+t.test(mysample, mu = 0)
+```
+
+The `t.test()` function here gives us the $t$-statistic, the $df$, the $p$-value, the 95% CI, the mean $\bar x$, and it even tells us the alternative hypothesis (that the true mean is $\neq 0$).  
+  
+All of these numbers will match those that we calculated above (there may be a small bit of rounding error).  
+
+It's __that__ easy!  
+
+<div class="divider div-transparent div-dot"></div>
+
+# Assumptions  
+
+Statistical tests often require us to meet a set of conditions in order for our inferences to be valid. When we perform tests like these that involve estimating a mean, a common requirement is that the deviations from that mean are close to normally distributed. For t-tests, this assumption can be relaxed somewhat in cases where our sample size is larger and there is not too much skew.^[This is because, practically speaking, what we really _need_ in order to make useful, defensible conclusions, is not that the _population_ itself is normally distributed, but that the _sampling distribution of the statistic_ is close enough to the $t$-distribution. This can often be the case when we have a large sample without much skew.]  
+
+:::frame
+__Assumption Plots__  
+
+We can evaluate how close to normal a distribution is by visualising it via histograms and density plots and making a judgment call, but this can sometimes be hard:  
+```{r}
+#| label: fig-normalquestion
+#| fig-cap: "Am I normal?"
+#| fig-height: 2.5
+#| out-width: '100%'
+#| code-fold: true
+data <- tibble(mysample = mysample)
+ggplot(data,aes(x=mysample))+geom_histogram(bins=14) +
+ggplot(data,aes(x=mysample))+geom_density()
+```
+Another useful visualisation tool is the __QQplot__. The closer to the diagonal line, the closer our data is to being normally distributed: 
+
+```{r}
+#| label: fig-normalqq
+#| fig-cap: "A QQplot"
+#| fig-height: 3.5
+qqnorm(data$mysample) # make the plot
+qqline(data$mysample) # add the line
+```
+
+::: {.callout-caution collapse="true"}
+### optional: what are the 'theoretical quantiles?
+
+The theoretical quantiles are the equivalent quantiles of the _standard normal distribution_ (see [#2B standard-normal-distribution](02b_sampling.html#the-standard-normal-distribution){target="_blank"}).  
+In the `data$mysample` example above, we have 10 datapoints. If we cut the standard normal distribution into 10 sections of equal area (see @fig-qqnormcurve), it is the points on the x-axis at the center of each area that we are plotting our data against.  
+
+```{r}
+#| echo: false
+#| fig.cap: "10 quantiles of the normal distribution"  
+#| label: fig-qqnormcurve
+#| fig-height: 3.5
+
+df <- tibble(x=seq(-3,3,.0001))
+g <- df %>% ggplot(aes(x=x)) +
+  stat_function(fun=dnorm,args=list(mean=0,sd=1),size=1) +
+  xlab("Standard Normal Distribution") + ylab("density")
+
+ld1 <- layer_data(g) %>% filter((x >= qnorm(0)  & x < qnorm(.11)))
+ld2 <- layer_data(g) %>% filter((x >= qnorm(.1) & x < qnorm(.21)))
+ld3 <- layer_data(g) %>% filter((x >= qnorm(.2) & x < qnorm(.32)))
+ld4 <- layer_data(g) %>% filter((x >= qnorm(.3) & x < qnorm(.41)))
+ld5 <- layer_data(g) %>% filter((x >= qnorm(.4) & x < qnorm(.51)))
+ld6 <- layer_data(g) %>% filter((x >= qnorm(.5) & x < qnorm(.61)))
+ld7 <- layer_data(g) %>% filter((x >= qnorm(.58) & x < qnorm(.71)))
+ld8 <- layer_data(g) %>% filter((x >= qnorm(.68) & x < qnorm(.81)))
+ld9 <- layer_data(g) %>% filter((x >= qnorm(.79) & x < qnorm(.91)))
+ld10 <- layer_data(g) %>% filter((x >= qnorm(.9) & x < qnorm(1)))
+
+g + 
+  geom_area(data=ld1,aes(x=x,y=y,fill="1st")) +
+  geom_area(data=ld2,aes(x=x,y=y,fill="2nd")) +
+  geom_area(data=ld3,aes(x=x,y=y,fill="3rd")) +
+  geom_area(data=ld4,aes(x=x,y=y,fill="4th")) +
+  geom_area(data=ld5,aes(x=x,y=y,fill="5th")) +
+  geom_area(data=ld6,aes(x=x,y=y,fill="6th")) +
+  geom_area(data=ld7,aes(x=x,y=y,fill="7th")) +
+  geom_area(data=ld8,aes(x=x,y=y,fill="8th")) +
+  geom_area(data=ld9,aes(x=x,y=y,fill="9th")) +
+  geom_area(data=ld10,aes(x=x,y=y,fill="10th")) +
+  guides(fill="none")+
+  scale_x_continuous(breaks=round(map_dbl((seq(.1,1,.1)-.05), ~qnorm(.)),1))
+```
+
+:::
+
+:::
+
+:::frame
+__Assumption Tests__  
+
+There are also, if we wish to make use of them, specific hypothesis tests that assess normality, such as the 'Shapiro-Wilks' Test. The null hypothesis for this test is that the data we give it are drawn from a normal distribution. This means that __we want a p-value *greater* than .05__. So in the example below, we have no reason to reject the hypothesis that our data are drawn from a normal distribution. This means we can continue to conduct a t-test.  
+
+```{r}
+shapiro.test(mysample)
+```
+:::
+
+<div class="divider div-transparent div-dot"></div>
+
+# Basic Tests  
+
+Now that we've gone through all the nitty-gritty bits of how hypothesis testing works, the heavy lifting is done.  
+we're going to start to look at some of the different basic hypothesis tests that we can perform.  
+
+For each test below we show an example conducted the quick way (e.g. `t.test()` function), and also the manually computations (for those of you who are interested!). We've already seen the one sample $t$-test in the example above, so you might want to skim over that section.
+
+:::imp
+__something to bear in mind__  
+
+These tests are the simple hypothesis tests that were developed in the 19th and 20th centuries, and provide a good basis of understanding the _null hypothesis significance testing_ framework.  
+
+In the latter half of this course, we move to focus on a modelling based approach for analysing data. We will start to see how many of these simple tests that we are learning now are actually special cases of a more general statistical model. 
+
+:::
+
+<!-- For each test, we'll detail:   -->
+
+<!-- - Purpose -->
+<!-- - Hypotheses -->
+<!-- - Test statistic -->
+<!-- - P-value -->
+<!-- - Assumptions -->
+
+<!-- And then we will show an example conducted the quick way (e.g. `t.test()` function), and also the manually computations (for those of you who are interested!).   -->
+<!-- We've already seen the one sample $t$-test in the example above, so you might want to skim over that section.   -->
+
+
+## One sample t-test  
+
+:::statbox
+__Purpose__  
+
+The one sample t-test is what we have already seen above. We use it to test whether the mean is different from/greater than/less than some hypothesised value.  
+
+- __Examples:__
+  - Is the mean age of USMR students different from 20? 
+  - Is the mean IQ different from 100?  
+  - Do people read more than 250 words per minute?  
+  
+__Assumptions:__
+
+- The data are continuous (not discrete)
+- The data are independent (i.e. the value of a datapoint does not depend on the value of another datapoint in any way)
+- The data are normally distributed (can be relaxed somewhat if the sample size is "large enough" (rule-of-thumb n = 30) and the data are not strongly skewed)
+  
+:::
+
+<!-- :::statbox -->
+<!-- __Hypotheses__  -->
+
+<!-- Our hypotheses will take one of the combinations below, depending on if we want to perform the test of whether the mean $\mu$ is less than/different from/greater than some hypothesised value $\mu_0$.   -->
+
+<!-- | Null Hypothesis   | Alternative Hypothesis | -->
+<!-- | ----------- | ----------- | -->
+<!-- | $H_0: \mu = \ \mu_0$  | $H_1: \mu \neq \ \mu_0$ | -->
+<!-- | $H_0: \mu \leq \ \mu_0$  | $H_1: \mu > \ \mu_0$ | -->
+<!-- | $H_0: \mu \geq \ \mu_0$  | $H_1: \mu < \ \mu_0$ | -->
+
+
+<!-- ::: -->
+
+<!-- :::statbox -->
+<!-- __Test-statistic__  -->
+
+<!-- $$ -->
+<!-- \begin{align} -->
+<!-- & t =  \frac{\bar x - \mu_0}{\frac{s}{\sqrt{n}}}\\ -->
+<!-- \ \\ -->
+<!-- & \text{where:} \\  -->
+<!-- & \bar x : \text{sample mean} \\ -->
+<!-- & \mu_0 : \text{hypothesised population mean} \\ -->
+<!-- & s : \text{sample standard deviation} \\ -->
+<!-- & n : \text{sample size} \\ -->
+<!-- \end{align} -->
+<!-- $$ -->
+
+<!-- ::: -->
+
+<!-- :::statbox -->
+<!-- __P-value:__  -->
+
+<!-- Our $p$-value will be computed from the $t$-distribution with $n-1$ degrees of freedom.   -->
+
+<!-- If the alternative hypothesis is $H_1: \mu \neq \mu_0$, then we are asking about the probability of a test statistic at least as extreme _in either direction._   -->
+<!-- So we would use:   -->
+<!-- ```{r} -->
+<!-- #| eval: false -->
+<!-- # abs() takes the absolute value, ensuring we get the smaller tail -->
+<!-- 2 * pt(abs(tstatistic), df = n-1, lower.tail = FALSE) -->
+<!-- ``` -->
+
+<!-- If $H_1: \mu > \mu_0$, then this would be  -->
+<!-- ```{r} -->
+<!-- #| eval: false -->
+<!-- pt(tstatistic, df = n-1, lower.tail = FALSE) -->
+<!-- ``` -->
+<!-- And if $H_1: \mu < \mu_0$:   -->
+<!-- ```{r} -->
+<!-- #| eval: false -->
+<!-- pt(tstatistic, df = n-1, lower.tail = TRUE) -->
+<!-- ``` -->
+
+<!-- ::: -->
+
+<!-- :::statbox -->
+<!-- __Assumptions:__  -->
+
+<!-- - The data are continuous (not discrete) -->
+<!-- - The data are independent (i.e. the value of a datapoint does not depend on the value of another datapoint in any way) -->
+<!-- - The data are normally distributed _OR_ the sample size is large enough (rule-of-thumb n = 30) and the data are not strongly skewed -->
+
+<!-- ::: -->
+
+```{r}
+#| eval: false
+#| echo: false
+set.seed(993)
+wpmtime<-tibble(
+  id = paste0("ppt_",1:50),
+  wpm = round(rnorm(50, 259, 30))
+)
+# write_csv(wpmtime, "../../data/usmr_tread.csv")
+```
+
+::: {.callout-note collapse="true"}
+### Research Question & Data
+
+> **Research Question:**  Do people read more than 250 words per minute? 
+
+Fifty participants were recruited and tasked with reading a passage of text that was 2000 words long. Their reading times (in words per minute) was recorded, and these are accessible at [https://uoepsy.github.io/data/usmr_tread.csv](https://uoepsy.github.io/data/usmr_tread.csv).  
+
+```{r}
+wpmtime <- read_csv("https://uoepsy.github.io/data/usmr_tread.csv")
+head(wpmtime)
+```
+:::
+
+::: {.callout-note collapse="true"}
+### Descriptives and Assumptions
+
+Below are some quick descriptives.  
+```{r}
+mean(wpmtime$wpm)
+sd(wpmtime$wpm)
+hist(wpmtime$wpm)
+```
+
+Our histogram looks roughly normally distributed. We can (if we like), test this using the Shapiro-Wilk test.  
+```{r}
+shapiro.test(wpmtime$wpm)
+```
+
+The $p$-value of `r round(shapiro.test(wpmtime$wpm)$p.value,3)` is $>.05$, so we fail to reject the null hypothesis that the data come from a normal distribution. In other words, we have no reason to consider our assumption to be violated.  
+
+:::
+
+::: {.callout-note collapse="true"}
+### Quick and easy `t.test()`
+
+Paying careful attention to the research question ("Do people read more than 250 words per minute?"), our null hypothesis here is that reading time is $\leq 250$ words per minute (wpm), and our alternative hypothesis is that it is $>250$ wpm.  
+
+This means that we will reject our null hypothesis if we get a test statistic indicating the mean is $>250$. We won't reject it if the mean is $<250$.  
+
+We specify the direction of the alternative in the `t.test()` function:  
+
+```{r}
+t.test(wpmtime$wpm, mu = 250, alternative = "greater")
+```
+
+:::
+::: {.callout-note collapse="true"}
+### Step-by-step calculations
+
+Our test-statistic is calculated as 
+$$
+t =  \frac{\bar x - \mu_0}{\frac{s}{\sqrt{n}}}
+$$
+
+There's a lot of brackets in the code below, so go through it piece by piece if you are unsure of how it matches to the formula above  
+```{r}
+(mean(wpmtime$wpm) - 250 ) / (sd(wpmtime$wpm) / sqrt(nrow(wpmtime)))
+```
+
+The test we are performing is against the null hypothesis that $\mu_0 \leq 250$. So we will only reject the null hypothesis if we get a test statistic indicating the mean is $>250$. This means that our p-value will be just the one tail of the $t$-distribution:  
+
+```{r}
+pt(1.842338, df = 49, lower.tail = FALSE)
+```
+
+:::
+
+::: {.callout-note collapse="true"}
+### Write-up
+
+:::int
+A one-sample t-test was conducted in order to determine if the average reading time was significantly ($\alpha=.05$) higher than 250 words per minute (wpm).  
+The sample of 50 participants read on average at 258 words per minute (Mean=`r round(mean(wpmtime$wpm))`, SD=`r round(sd(wpmtime$wpm))`). This was significantly above 250 ($t(49)=1.84, p = .036$, one-tailed).
+:::
+
+:::
+
+## Two sample t-test  
+
+:::statbox
+__Purpose__  
+The two sample t-test is used to test whether the mean of one group is different from/greater than/less than the mean of another.  
+
+
+- __Examples:__
+  - Is the mean age of cat people different from the mean age of dog people? 
+  - Do people who identify as "morning people" have a higher average rating of sleep quality than those who identify as "evening people"?
+  - Is the average reaction time different between people who do and don't drink caffeinated drinks?  
+
+__Assumptions:__  
+
+- The data are continuous (not discrete)
+- The data are independent (i.e. the value of a datapoint does not depend on the value of another datapoint in any way)
+- The data are normally distributed _for each group_ (can be relaxed somewhat if the sample size is "large enough" (rule-of-thumb n = 30) and the data are not strongly skewed)
+- The variance is equal across groups*. 
+
+*We can relax this assumption by using an adjusted test called the "Welch $t$-test", which calculates the standard error slightly differently, and estimates the degrees of freedom differently too. This is actually the default in R, and we change this easily in R using `t.test(...., var.equal = FALSE/TRUE)`  
+
+:::
+
+<!-- :::statbox -->
+<!-- __Hypotheses:__    -->
+
+<!-- Our hypotheses can be stated in terms of 2 population means, $\mu_1$ and $\mu_2$, representing the mean of each group.  -->
+<!-- The null hypothesis is typically that the difference between the two means is zero:   -->
+
+<!-- $H_0: \mu_1 - \mu_2 = 0$  -->
+
+<!-- And our alternative hypothesis again can take on the following forms:     -->
+
+<!-- $H_1: \mu_1 - \mu_2 \neq 0$   -->
+<!-- $H_1: \mu_1 - \mu_2 > 0$   -->
+<!-- $H_1: \mu_1 - \mu_2 < 0$   -->
+
+
+<!-- ::: -->
+
+```{r}
+#| eval: false
+#| echo: false
+set.seed(243)
+tcaff <- tibble(
+  rt = c(rnorm(60, 447, 100), rnorm(40, 420, 100)),
+  caff = c(rep("yes",60),rep("no",40))
+)
+tcaff <- sample_n(tcaff, size = n())
+#var.test(rt~caff,data=tcaff)
+#t.test(rt~caff,data=tcaff)
+#write_csv(tcaff, "../../data/usmr_tcaff.csv")
+```
+
+
+::: {.callout-note collapse="true"}
+### Research Question & Data
+
+> **Research Question:**  Is the average reaction time different between people who do and don't drink caffeinated drinks? 
+
+One hundred participants were recruited and completed a simple reaction time task. They were also surveyed on whether they regularly drank caffeine in any form. The data are accessible at [https://uoepsy.github.io/data/usmr_tcaff.csv](https://uoepsy.github.io/data/usmr_tcaff.csv).  
+
+```{r}
+tcaff <- read_csv("https://uoepsy.github.io/data/usmr_tcaff.csv")
+head(tcaff)
+```
+:::
+
+::: {.callout-note collapse="true"}
+### Descriptives and Assumptions
+
+First some quick descriptive stats. We'll calculate the mean and standard deviation of reaction times for each group:  
+```{r}
+tcaff |> 
+  group_by(caff) |>
+  summarise(
+    m = mean(rt),
+    s = sd(rt)
+  )
+```
+And we can make a plot here:  
+```{r}
+#| fig-height: 3
+ggplot(tcaff, aes(x = rt)) +
+  geom_histogram() + 
+  facet_wrap(~caff)
+```
+The data look fairly close to normally distributed for each group here. One thing to note is that the variances look like they may be different between the two groups. The caffeine drinkers' reaction time's have a standard deviation of 109ms, and the non-caffeine drinkers have an sd of only 89ms. 
+
+As before, we can (if we are so inclined) rely on specific tests of these assumptions, such as using `shapiro.test()` for the distribution _in each group separately_.  
+
+Similarly, the `var.test()` function performs a test to compare two variances (the null hypothesis of this test being that they are equal). However, it is more common to simply perform the Welch test straight away, and thus not have to worry about this assumption.  
+
+:::
+
+::: {.callout-note collapse="true"}
+### Quick and easy `t.test()`
+
+We can give R the two sets of data in two ways. 
+Either by extracting the relevant entries:  
+```{r}
+#| eval: false
+t.test(x = tcaff$rt[tcaff$caff=="no"], 
+       y = tcaff$rt[tcaff$caff=="yes"])
+```
+Or using the **formula** notation, with the `~` ("tilde") symbol. In R, you can interpret `y ~ x` as "y is modeled as a function of x". By splitting the numeric values (`rt` variable) by the categories of the `caff` variable, we can conduct a $t$-test using:  
+```{r}
+t.test(rt ~ caff, data = tcaff)
+```
+
+Note that the default behaviour of `t.test()` is to perform the Welch test - so we don't have to assume equal variances. If we want to override this, we can use `t.test(rt ~ caff, data = tcaff, var.equal = TRUE)`.  
+
+:::
+
+::: {.callout-note collapse="true"}
+### Step-by-step calculations
+
+Our test statistic here is:^[The formula here is for the Welch test.  
+For a standard two sample t-test that assumes equal variances, we first calculate the "pooled standard deviation" - $s_p = \sqrt\frac{(n_1 - 1)s_1^2 + (n_2 - 1)s_2^2}{n_1 + n_2 - 2}$.  
+We then use this to calculate the standard error - $SE_{(\bar{x}_1 - \bar{x}_2)} = s_p \sqrt{\frac{1}{n_1} + \frac{1}{n_2}}$]  
+$$
+\begin{align}
+& t =  \frac{\bar x_1 - \bar x_2}{SE}\\
+\ \\
+& \text{where:} \\
+& \bar x_1 : \text{sample mean group 1} \\
+& \bar x_2 : \text{sample mean group 2} \\
+& SE : \sqrt{\frac{s^2_1}{n_1} + \frac{s^2_2}{n_2}} \\
+& s_1 : \text{sample standard deviation of group 1} \\
+& s_2 : \text{sample standard deviation of group 2} \\
+& n_1 : \text{sample size group 1} \\
+& n_2 : \text{sample size group 2} \\
+\end{align}
+$$
+
+
+We can calculate each part:
+```{r}
+tcaff |>
+  group_by(caff) |>
+  summarise(
+    xbar = mean(rt),
+    s = sd(rt),
+    s2 = var(rt),
+    n = n()
+  )
+```
+plugging these bits in gives us: 
+$$
+\begin{align}
+SE & = \sqrt{\frac{s^2_1}{n_1} + \frac{s^2_2}{n_2}} = \sqrt{\frac{7906}{40} + \frac{11892}{60}} = \sqrt{395.85} \\
+\qquad \\
+& = 19.9
+\end{align}
+$$
+and
+$$
+\begin{align}
+t & =  \frac{\bar x_1 - \bar x_2}{SE} = \frac{408.1 - 464.8}{19.9} \\
+\qquad \\
+& = -2.849 \\
+\end{align}
+$$
+
+Our $p$-value is determined against a $t$-distribution with a specific number of degrees of freedom. We are estimating two means here, the standard two-sample t-test uses $df = n-2$. However, the Welch t-test, which we performed quickly with `t.test()`, where we don't assume equal variances, makes the calculation of the degrees of freedom much more complicated.^[If you _really_ want it, the formula is: $\text{df}=\frac{\left(\dfrac{s_1^2}{n_1}+\dfrac{s_2^2}{n_2}\right)^2}{\dfrac{\left(\dfrac{s_1^2}{n_1}\right)^2}{n_1-1}+\dfrac{\left(\dfrac{s_2^2}{n_2}\right)^2}{n_2-1}}$
+] 
+
+Using the same degrees of freedom as was used in the quick use of `t.test()` above, we get out our same p-value (or thereabouts - we have some rounding error):  
+```{r}
+2*pt(abs(-2.849), df = 93.971, lower.tail = FALSE)
+```
+
+:::
+
+::: {.callout-note collapse="true"}
+### Write-up  
+
+```{r}
+#| include: false
+res = t.test(rt ~ caff, data = tcaff)
+```
+
+:::int
+
+A Welch two sample t-test was used to assess whether the mean reaction time of people who regularly drink caffeine ($n = 60$) was different to that of people who do not ($n=40$). There was a significant difference in average reaction time between the caffeine (Mean=`r round(mean(tcaff$rt[tcaff$caff=="yes"]))`; SD=`r round(sd(tcaff$rt[tcaff$caff=="yes"]))`) and
+non-caffeine (Mean=`r round(mean(tcaff$rt[tcaff$caff=="no"]))`; SD=`r round(sd(tcaff$rt[tcaff$caff=="no"]))`) groups ($t(`r round(res$parameter,2)`)=`r round(res$statistic,2)`, p = `r round(res$p.value,3)`$, two-tailed). Therefore, we reject the null hypothesis that there is no difference in reaction times between caffeine drinkers and non-caffeine drinkers.   
+
+```{r}
+#| fig-height: 3
+#| code-fold: true
+ggplot(tcaff, aes(x = caff, y = rt)) +
+  geom_boxplot()+
+  labs(x="drinks caffeine",y="reaction time (ms)")
+```
+:::
+
+:::
+
+
+## Paired sample t-test  
+
+:::statbox
+__Purpose__  
+
+The paired sample t-test is used to test whether the mean difference between two sets of _paired_ observations is different from 0. 
+
+- __Examples:__
+  - Is the mean cognitive score of participants at age 60 different from when they are re-tested at age 70?  
+  - Are scores on test 1 different on average from scores on test 2 (with participants completing both tests).
+  
+__Assumptions:__
+
+- The data are continuous (not discrete)
+- The _differences_ are independent (i.e. the value of a the difference for one pair does not depend on the values of another pair in any way)
+- The _differences_ are normally distributed _OR_ the sample size is large enough (rule-of-thumb n = 30) and the data are not strongly skewed
+  
+:::
+
+::: {.callout-note collapse="true"}
+### Research Question & Data
+
+> **Research Question:** Is the mean cognitive score of participants at age 60 different from when they are re-tested at age 70?  
+
+Addenbrooke’s Cognitive Examination-III (ACE-III) is a brief cognitive test that assesses five cognitive domains: attention, memory, verbal fluency, language and visuospatial abilities. The total score is 100 with higher scores indicating better cognitive functioning. A research project is examining changes in cognitive functioning with age, and administers the ACE-III to a set of participants at age 60, then again at age 70. The data is accessible at [https://uoepsy.github.io/data/usmr_tcaff.csv](https://uoepsy.github.io/data/usmr_tcaff.csv).  
+
+```{r}
+acedata <- read_csv("https://uoepsy.github.io/data/acedata.csv")
+head(acedata)
+```
+
+:::
+::: {.callout-note collapse="true"}
+### The paired t test is the one sample t test in disguise
+
+We can either perform this with the data exactly as it is: 
+
+```{r}
+t.test(x = acedata$ace_60, y = acedata$ace_70, 
+       paired = TRUE)
+```
+
+Or we can compute the differences, and perform a one sample test on the mean of those differences being different from 0.  
+It's just the same result:  
+```{r}
+acedata <- acedata |>
+  mutate(diff_score = ace_60 - ace_70)
+
+t.test(acedata$diff_score, mu = 0)
+```
+
+:::
+
