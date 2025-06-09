@@ -24,13 +24,34 @@ we have content.
 read this. 
 ```{webr}
 #| include: false
-library(tidyverse)
-library(googlesheets4)
-df1 <- tibble(
-  x = rnorm(100),
-  y = rnorm(100, 1*x, 1)
-)
+x = rnorm(100)
+y = rnorm(100, 1*x, 1)
+df1 <- data.frame(x,y)
+
+webr::eval_js('
+  async function submitForm(data) {
+    const formData = new FormData();
+    formData.append("entry.839205657", data.field1);
+    
+    try {
+      const response = await fetch("https://docs.google.com/forms/d/e/1FAIpQLSekV6BBmR3EWhTERZOK-boMsW-lC1HeKN76gWG95q7FeTE3vA/formResponse", {
+        method: "POST",
+        body: formData,
+        mode: "no-cors"
+      });
+      return "Form submitted successfully";
+    } catch (error) {
+      return "Error: " + error.message;
+    }
+  }
+')
+submit <- function(response=0){
+  webr::eval_js(paste0('submitForm({
+  field1: "', response, '"})'))
+  print("Thank you for your feedback!")
+}
 ```
+
 
 above here is a webr chunk with include: false. Because the webr stuff is basically just evaluated in a single env for the page, it might be worth having an initial chunk to pre-populate the page with loading the relevant libraries & data etc.  
 
@@ -39,10 +60,10 @@ here is something you can play with:
 can you guess what the coefficient will be? 
 ```{webr}
 #| caption: Simple regression
-df <- tibble(
-  x = rnorm(100),
-  y = rnorm(100, 1*x, 1)
-)
+x <- rnorm(100)
+y <- rnorm(100, 1*x, 1)
+df <- data.frame(x,y)
+
 lm(y ~ x, data = df) |>
   summary()
 ```
@@ -139,14 +160,21 @@ qm1 <- c(
 # part 3
 
 and here we are.  
-leave now  
 
 
-# end of reading quiz
+## feedback? 
+
+How did you find this reading/resource?  
+
+Use the following numbers to submit quick feedback (i.e., `submit(1)`, or leave a custom message for us `submit("Hello my friends!")`):  
+
+1 - "I got to the end! Woohoo!"
+2 - "This was boring. i knew it all already"
+3 - "This helped. i think i understand things a little better now"
+4 - "This just made things more confusing"
 
 ```{webr}
-# read_sheet("1gsgL9yBAi4Lv-pHrvBJVkyWjR2zMGx_JCe5n_mxGYFI")
-
+submit()
 ```
 
 
