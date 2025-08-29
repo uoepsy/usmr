@@ -1,0 +1,573 @@
+---
+title: "13: Centering and Scaling"
+params: 
+    SHOW_SOLS: TRUE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+#| include: false
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+```
+
+
+:::lo
+This reading:  
+
+- What does it mean to re-center or re-scale a variable?  
+- What happens to the parameters of our linear model when we re-center or re-scale a predictor? Or the outcome? Or both?
+
+:::
+
+
+
+```{r}
+#| include: false
+set.seed(12345)
+df = tibble(
+  name = randomNames::randomNames(70,which.names="first"),
+  age = round(runif(70,18,80)),
+  height = round(rnorm(70,168,12),1),
+  shoe_size = round(rnorm(70,41,3)),
+  hrs_sleep = round(age*-.1 + rnorm(70,14,2),1),
+  ampm = sample(c("am","pm"),70,replace=TRUE,prob=c(.3,.7)),
+  smoke = sample(c("y","n","v"),70,replace=TRUE, prob=c(.1,.7,.2)),
+  HR = round(87 + age*.13 + hrs_sleep*-3 + (smoke=="n")*-4 + rnorm(70,0,6))
+) |> as.data.frame()
+df[3,c(1,2,3,4,7)] <- c("Martin",NA,182,43,"n")
+df[,c(2:5,8)] <- apply(df[,c(2:5,8)], 2, as.numeric)
+
+summary(df)
+hrdat <- as_tibble(df)
+#write_csv(df, file="../../data/usmr_hrsleep.csv")
+```
+
+For this section we're going to play with some random data looking at whether peoples' resting heart rates depend on how much sleep they get.   
+
+Our data contains `r nrow(df)` people, for which we have a variety of measures. The only ones we are going to concern ourselves with are heart rate (`HR`) and hours slept (`hrs_sleep`), but there are plenty of other ones for you to play around with if you like  
+
+```{r}
+hrdat <- read_csv("https://uoepsy.github.io/data/usmr_hrsleep.csv")
+head(hrdat)
+```
+
+
+# Centering/Scaling/Standardising
+
+There are many transformations we can do to a continuous variable, but far and away the most common ones are _centering_ and _scaling._ 
+
+:::sticky
+__Centering__  
+
+Centering simply means moving the entire distribution to be centered on some new value. We achieve this by subtracting our desired center from each value of a variable. 
+
+__Mean-centering__  
+
+A common option is to _mean center_ (i.e. to subtract the mean from each value). This makes our new values all relative to the mean.  
+
+:::
+
+
+In our heart-rates data, the average hours of sleep is `r round(mean(hrdat$hrs_sleep),1)`. If we subtract that from each person's hours of sleep, we get the mean-centered hours slept (the `hrs_sleepC` column below). You can see that the first person in our data (Biancha) sleeps 14 hours a night, which is (according to the `hrs_sleepC` variable) 5.2 hours more than average.  
+
+```{r}
+hrdat |>
+  mutate(
+    hrs_sleepC = hrs_sleep - mean(hrs_sleep), 
+      .after = hrs_sleep # put new column after the hrs_sleep variable
+  ) |> head(5L) # just show the first 5
+```
+
+We can center a variable on other things, such as the minimum or maximum value of the scale we are using, or some judiciously chosen value of interest.  
+
+
+:::sticky
+__Scaling__
+
+Scaling changes the _units_ of the variable, and we do this by dividing the observations by some value. E.g., moving from "36 months" to "3 years" involves multiplying (scaling) the value by 1/12.  
+
+__Standardising__  
+
+Far and away the most common transformation that involves scaling is called 'standardisation'. This involves subtracting the mean and then dividing by the standard deviation. So standardisation centers on the sample mean **and** scales by the sample standard deviation.   
+
+$$
+\text{standardised }x_i = \frac{x_i - \bar x}{s_x}
+$$
+
+:::
+
+The process of standardisation (subtracting the mean and dividing by the standard deviation) will make it so that all our values are expressed in terms of "how many standard deviations above/below the mean". This can be useful because it puts variables on the same conceptual scale (units of standard deviation).   
+
+
+::: {.callout-note collapse="true"}
+#### Martin's height
+
+:::: {.columns}
+::: {.column width="70%"}
+Consider Martin. He goes on a lot about people's heights. He is 182cm tall, and he has size 43 feet (in EU sizes). Is Martin's height more unusual than the size of his feet? If we standardise both variables, we can see that he is 1.2 standard deviations above average height, but only .56 standard deviations above average in shoe size.  
+
+```{r}
+#| eval: false
+hrdat |> 
+  mutate(
+    Zheight = (height-mean(height))/sd(height), 
+    Zshoe = (shoe_size-mean(shoe_size))/sd(shoe_size), 
+      .after = shoe_size
+  ) |> head(5L) # just show the first 5
+```
+:::
+::: {.column width="30%"}
+```{r}
+#| echo: false
+knitr::include_graphics("images/playmo_mc.jpg")
+```
+:::
+::::
+```{r}
+#| echo: false
+hrdat |> 
+  mutate(
+    Zheight = (height-mean(height))/sd(height), 
+    Zshoe = (shoe_size-mean(shoe_size))/sd(shoe_size), 
+      .after = shoe_size
+  ) |> head(5L) # just show the first 5
+```
+
+
+
+
+
+:::
+
+
+
+
+:::rtip
+__handy functions__  
+
+We can easily center and scale in R by just performing those calculations using something like `(var - mean(var)) / sd(var)`, but there is a handy function that can do it quickly for us:  
+
+```{r}
+#| eval: false
+hrdat |> mutate(
+  hrs_sleepC = scale(hrs_sleep, scale = FALSE), # mean centered
+  hrs_sleepZ = scale(hrs_sleep), # standardised
+)
+```
+
+We can actually use these _inside_ the call to the `lm()` function, e.g.  
+```{r}
+#| eval: false
+lm(HR ~ scale(hrs_sleep), data = hrdat)
+```
+
+
+:::
+
+
+# Centering and Scaling Predictors
+
+We know that we can transform our variables in lots of ways, but how does this choice affect the models we are fitting? In short, it doesn't affect our model, but it _does_ change what we get out of it.  
+
+If we re-center a predictor on some new value (such as the mean), then all this does is change what "zero" means in our variable. This means that if we re-center a predictor in our linear model, the only thing that changes is our intercept. This is because the intercept is "when all predictors are zero". And we are changing what "zero" represents!  
+
+When we scale a predictor, this will change the slope. Why? Because it changes what "moving 1" represents. So if we standardise a variable, it changes both the intercept and the slope. However, note that the significance of the slope remains _exactly the same_, we are only changing the *units* that we are using to expressing that slope.
+
+For the remainder of this chapter, we're going to start with the model `lm(HR ~ hrs_sleep)`, and then explore how different transformations to our variables change what we get out of the model. Because we are applying transformations to individual variables, all of the logic we're about to see holds in multiple regression models too (i.e. it doesn't matter how many independent predictors we have, all of the below stays the same).  
+
+In @fig-scalexlm you can see our original model (top left), and then various transformations applied to our predictor. Note how these transformations don't affect the model itself - the large blue point shows how we are changing where our intercept is estimated, but the slope of the line (and our uncertainty in slope) is the same in all four plots. These models are also shown below, along with a comparison to show that they are all identical in terms of model fit.   
+
+```{r}
+#| label: fig-scalexlm
+#| fig-cap: "Centering and scaling predictors in linear regression models"
+#| out-width: "100%"
+#| echo: false
+df = hrdat |> mutate(x=hrs_sleep,y=HR)
+mod = lm(y~x,df)
+p1 = ggplot(df, aes(x=x,y=y))+geom_point(alpha=.3)+
+  geom_smooth(method="lm")+
+  geom_smooth(method="lm",fullrange=T,lty="dashed",se=F)+
+  #ylim(0,max(df$y))+
+  geom_segment(x=0,xend=0,y=0,yend=100)+
+  geom_segment(x=0,xend=max(df$x),y=0,yend=0)+
+  geom_point(data=tibble(x=0,y=coef(mod)[1]),size=3,col="blue")+
+  labs(title="Original", x="Hours Slept",y="HR")+
+  scale_x_continuous(limits=c(0,14),breaks=0:14)
+
+mod = lm(y~scale(x,scale=F),df)
+p2 = ggplot(df, aes(x=x,y=y))+geom_point(alpha=.3)+
+  geom_smooth(method="lm")+
+  geom_smooth(method="lm",fullrange=T,lty="dashed",se=F)+
+  #ylim(0,max(df$y))+
+  geom_segment(x=mean(df$x),xend=mean(df$x),y=0,yend=100)+
+  geom_segment(x=0,xend=max(df$x),y=0,yend=0)+
+  geom_point(data=tibble(x=mean(df$x),y=coef(mod)[1]),size=3,col="blue")+
+  scale_x_continuous(limits=c(0,14),breaks=map_dbl(seq(7,-7), ~mean(df$x)-.),
+                     labels=seq(-7,7))+
+  labs(title="Mean Centered", x="Hours Slept\n(mean centered)",y="HR")
+  
+  
+mod = lm(y~scale(x),df)
+p3 = ggplot(df, aes(x=x,y=y))+geom_point(alpha=.3)+
+  geom_smooth(method="lm")+
+  geom_smooth(method="lm",fullrange=T,lty="dashed",se=F)+
+  #ylim(0,max(df$y))+
+  geom_segment(x=mean(df$x),xend=mean(df$x),y=0,yend=100)+
+  geom_segment(x=0,xend=30,y=0,yend=0)+
+  geom_point(data=tibble(x=mean(df$x),y=coef(mod)[1]),size=3,col="blue")+
+  scale_x_continuous(limits=c(0,14),
+                     breaks=c(mean(df$x)-(2*sd(df$x)), mean(df$x)-sd(df$x), 
+                              mean(df$x), 
+                              mean(df$x)+sd(df$x), mean(df$x)+(2*sd(df$x))),
+                     labels=c(-2,-1,0,1,2))+
+  labs(title="Standardised X", x="Hours Slept\n(standardised)",y="HR")
+
+mod = lm(y~x,df %>% mutate(x=x-8))
+p4 = ggplot(df, aes(x=x,y=y))+geom_point(alpha=.3)+
+  geom_smooth(method="lm")+
+  geom_smooth(method="lm",fullrange=T,lty="dashed",se=F)+
+  #ylim(0,max(df$y))+
+  geom_segment(x=8,xend=8,y=0,yend=100)+
+  geom_segment(x=0,xend=30,y=0,yend=0)+
+  geom_point(data=tibble(x=8,y=coef(mod)[1]),size=3,col="blue")+
+  scale_x_continuous(limits=c(0,14),breaks=0:14, labels=c(0:14)-8)+
+  labs(title="Centered on 8 hours", x="Hours Slept\n(relative to 8 hours)",y="HR")
+p1 + p2 + p3 + p4 
+```
+
+::::panelset
+:::panel
+#### Original
+
+```{r}
+#| eval: false
+mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
+summary(mod_orig)
+```
+```{r}
+#| echo: false
+mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
+.pp(summary(mod_orig),l=list(3,9:12))
+```
+
+- `(Intercept)`: estimated heart rate (HR) for someone who didn't sleep at all
+- `hrs_sleep`: estimated change in HR for every 1 additional hour of sleep.
+
+:::
+:::panel
+#### Mean centered X
+
+```{r}
+#| eval: false
+mod_mc <- lm(HR ~ scale(hrs_sleep, scale=FALSE), data = hrdat)
+summary(mod_mc)
+```
+```{r}
+#| echo: false
+mod_mc <- lm(HR ~ scale(hrs_sleep, scale=FALSE), data = hrdat)
+.pp(summary(mod_mc),l=list(3,9:12))
+```
+
+- `(Intercept)`: estimated heart rate (HR) for someone who **slept an average number of hours**
+- `hrs_sleep`: estimated change in HR for every 1 additional hour of sleep.
+
+:::
+:::panel
+#### Standardised X
+
+```{r}
+#| eval: false
+mod_z <- lm(HR ~ scale(hrs_sleep), data = hrdat)
+summary(mod_z)
+```
+```{r}
+#| echo: false
+mod_z <- lm(HR ~ scale(hrs_sleep), data = hrdat)
+.pp(summary(mod_z),l=list(3,9:12))
+```
+
+- `(Intercept)`: estimated heart rate (HR) for someone who **slept an average number of hours**
+- `hrs_sleep`: estimated change in HR for every 1 additional **standard deviation of sleep time**
+
+:::
+:::panel
+#### X Centered on 8
+
+The function `I()` can be used to isolate a computation. The `+` and `-` symbols in linear models _mean_ something (they are how we add predictors), so we can use `I()` here to just tell R to do the computation of `hrs_sleep-8` on its own. 
+
+```{r}
+#| eval: false
+mod_8 <- lm(HR ~ I(hrs_sleep-8), data = hrdat)
+summary(mod_8)
+```
+```{r}
+#| echo: false
+mod_8 <- lm(HR ~ I(hrs_sleep-8), data = hrdat)
+.pp(summary(mod_8),l=list(3,9:12))
+```
+
+- `(Intercept)`: estimated heart rate (HR) for someone who **slept 8 hours**
+- `hrs_sleep`: estimated change in HR for every 1 additional hour of sleep.
+
+:::
+:::panel
+#### Comparison
+
+Normally, if models have different sets of predictors which are not nested (one model containing all of the predictors of the other model), then we can't compare them with an F test.  
+However, in this case, the `hrs_sleep` variable is in every model (just transformed in some way), so we can do a comparison.  
+
+Note that the residual sums of squares for these models is identical - no model is explaining more variance than the other, because underlyingly they are all just the same model!  
+
+```{r}
+mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
+mod_mc <- lm(HR ~ scale(hrs_sleep, scale=FALSE), data = hrdat)
+mod_z <- lm(HR ~ scale(hrs_sleep), data = hrdat)
+mod_8 <- lm(HR ~ I(hrs_sleep-8), data = hrdat)
+
+anova(mod_orig, mod_mc, mod_z, mod_8)
+```
+
+:::
+::::
+
+## Transformations, pre/post  
+
+When we apply these transformations we can do so either _during_ the process of fitting the model (e.g. by using `scale()` inside the `lm()` function as we have just seen). We can also do this _prior_ to fitting the model, by creating a new variable using code like `hrs_sleepZ = scale(hrs_sleep)`, and then using that variable in the model. 
+
+It is also possible to work out the slope for transformed variables _after_ we've just fitted our original model. This is because when we scale a predictor, all that happens to our coefficient is that it gets scaled accordingly. Consider the example in @fig-hrsmin, where we change from using _hours_ to _minutes_. To do this we can just multiply our `hrs_sleep` variable by 60 (so that, e.g., 1.5 hours becomes 90 minutes).  
+
+The coefficient from the model changes from  
+
+"change in HR for every 1 hour of sleep"  
+to  
+"change in HR for every 1 minute of sleep"  
+
+but we can actually do that calculation ourselves, because 1 minute is 1/60th of an hour. So we already know that $\frac{\text{change in HR for every 1 hour of sleep}}{60}$ is the same thing as "change in HR for every 1 minute of sleep".  
+
+```{r}
+#| echo: false
+#| label: fig-hrsmin
+#| fig-cap: "Changing from hours_slept to minutes_slept will make our coefficient 1/60th of the size"  
+df = hrdat |> mutate(x=hrs_sleep,y=HR)
+mod = lm(y~x,df)
+p1 = ggplot(df, aes(x=x,y=y))+geom_point(alpha=.3)+
+  geom_smooth(method="lm")+
+  geom_smooth(method="lm",fullrange=T,lty="dashed",se=F)+
+  #ylim(0,max(df$y))+
+  geom_segment(x=0,xend=0,y=0,yend=100)+
+  geom_segment(x=0,xend=max(df$x),y=0,yend=0)+
+  geom_point(data=tibble(x=0,y=coef(mod)[1]),size=3,col="blue")+
+  labs(subtitle=paste0("hrs slept coefficient: ",round(coef(mod)[2],2)), x="Hours Slept",y="HR")+
+  scale_x_continuous(limits=c(0,14),breaks=0:14)
+
+mod = lm(y~I(x*60),df)
+p2 = ggplot(df, aes(x=x,y=y))+geom_point(alpha=.3)+
+  geom_smooth(method="lm")+
+  geom_smooth(method="lm",fullrange=T,lty="dashed",se=F)+
+  #ylim(0,max(df$y))+
+  geom_segment(x=0,xend=0,y=0,yend=100)+
+  geom_segment(x=0,xend=max(df$x),y=0,yend=0)+
+  geom_point(data=tibble(x=0,y=coef(mod)[1]),size=3,col="blue")+
+  scale_x_continuous(limits=c(0,14),breaks=0:14,labels=map_dbl(0:14,~.*60))+
+  labs(subtitle=paste0("mins slept coefficient: ",round(coef(mod)[2],2)),x="Minutes Slept",y="HR")+
+  theme(axis.text.x = element_text(angle=60,hjust=1))
+
+p1 / p2
+```
+
+The same applies when we standardise a predictor. Since standardising involves dividing a variable by its standard deviation, the coefficient for the standardised variable will be the original coefficient multiplied by the variable's standard deviation.  
+
+:::: {.columns}
+::: {.column width="45%"}
+Original coefficients  
+`lm(HR ~ hrs_sleep, data = hrdat)`
+```{r}
+coef(mod_orig)
+```
+
+:::
+::: {.column width="2.5%"}
+:::
+::: {.column width="45%"}
+Standardised coefficients  
+`lm(HR ~ scale(hrs_sleep), data = hrdat)`
+```{r}
+coef(mod_z)
+```
+
+:::
+::::
+
+The standard deviation of `hrs_sleep` we can calculate:  
+```{r}
+sd(hrdat$hrs_sleep) 
+```
+
+And we can move from the original coefficient to the standardised one!  
+```{r}
+# original coefficient multiplied by sd of hrs sleep
+coef(mod_orig)[2] * sd(hrdat$hrs_sleep)
+```
+
+# Scaling the outcome  
+
+We've seen what happens when we scale our _predictors_ in a linear regression model, but what happens when we scale our _outcome_ variable? If we tie it to our plots, all that happens is that the numbers on the y-axis will change (see @fig-scaley).  
+
+The model again is unchanged, but our coefficient will no longer be the "estimated change in beats per minute" but will be "the estimated change in standard deviations of heart rates".   
+
+Our original coefficient was interpreted as heart rate decreasing by `r round(coef(mod_orig)[2],1)` beats per minute for every additional hour slept. By standardising the outcome (heart rates), then we just re-express that `r round(coef(mod_orig)[2],1)` in terms of "how many standard deviations?". 
+The standard deviation of heart rates in our data is `r round(sd(hrdat$HR),1)`, so the slope in terms of standard deviations should be $\frac{-3.5}{11} = -0.32$. The interpretation of this number is simply that heart rates decrease by 0.32 **standard deviations** for every additional hour slept.  
+
+```{r}
+#| echo: false
+#| label: fig-scaley
+#| fig-cap: "Scaling the outcome variable"
+df = hrdat |> mutate(x=hrs_sleep,y=HR)
+mod = lm(y~x,df)
+p1 = ggplot(df, aes(x=x,y=y))+geom_point(alpha=.3)+
+  geom_smooth(method="lm")+
+  geom_smooth(method="lm",fullrange=T,lty="dashed",se=F)+
+  #ylim(0,max(df$y))+
+  geom_segment(x=0,xend=0,y=0,yend=100)+
+  geom_segment(x=0,xend=max(df$x),y=0,yend=0)+
+  geom_point(data=tibble(x=0,y=coef(mod)[1]),size=3,col="blue")+
+  labs(x="Hours Slept",y="HR")+
+  scale_x_continuous(limits=c(0,14),breaks=0:14)
+
+df = hrdat |> mutate(x=hrs_sleep,y=scale(HR))
+mod = lm(y~x,df)
+p2 = ggplot(df, aes(x=x,y=y))+geom_point(alpha=.3)+
+  geom_smooth(method="lm")+
+  geom_smooth(method="lm",fullrange=T,lty="dashed",se=F)+
+  #ylim(0,max(df$y))+
+  geom_segment(x=0,xend=0,y=-100,yend=100)+
+  geom_point(data=tibble(x=0,y=coef(mod)[1]),size=3,col="blue")+
+  scale_x_continuous(limits=c(0,14),breaks=0:14)+
+  labs(x="Hours Slept",y="standardised HR")
+
+p1 / p2
+```
+
+::::panelset
+:::panel
+#### Original
+
+```{r}
+#| eval: false
+mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
+summary(mod_orig)
+```
+```{r}
+#| echo: false
+mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
+.pp(summary(mod_orig),l=list(3,9:12))
+```
+
+- `(Intercept)`: estimated heart rate (HR) for someone who didn't sleep at all
+- `hrs_sleep`: estimated change in HR for every 1 additional hour of sleep.
+
+:::
+:::panel
+#### Standardised Y
+
+```{r}
+#| eval: false
+mod_yz <- lm(scale(HR) ~ hrs_sleep, data = hrdat)
+summary(mod_yz)
+```
+```{r}
+#| echo: false
+mod_yz <- lm(scale(HR) ~ hrs_sleep, data = hrdat)
+.pp(summary(mod_yz),l=list(3,9:12))
+```
+
+- `(Intercept)`: estimated **number of standard deviations above average heart rate (HR)** for someone who didn't sleep at all
+- `hrs_sleep`: estimated change in **standard deviations of** HR for every 1 additional hour of sleep.
+
+:::
+::::
+
+
+# Standardised Coefficients
+
+When we standardise variables in a regression model, it means we can talk about all our coefficients in terms of "standard deviation units". To the extent that it is possible to do so, this puts our coefficients on scales of the similar magnitude, making qualititative comparisons between the sizes of effects a *little* more easy.  
+
+We tend to refer to coefficients using standardised variables as (unsurprisingly), "standardised coefficients", and we denote them with a $\beta$^[some people use $\beta$ for a normal coefficient, and $\beta^*$ for a standardised coefficient].  
+
+There are two main ways that people construct standardised coefficients. One of which standardises just the predictor, and the other of which standardises both predictor and outcome.  
+
+| predictor    | outcome      | in lm                     | coefficient                    | interpretation                               |
+| ------------ | ------------ | ------------------------- | --------------------------------- | -------------------------------------------- |
+| standardised | raw          | `y ~ scale(x)`        | $\beta = b \cdot s_x$             | "change in Y for a 1 SD increase in X"       |
+| standardised | standardised | `scale(y) ~ scale(x)` | $\beta = b \cdot \frac{s_x}{s_y}$ | "change in SD of Y for a 1 SD increase in X" |
+
+
+
+## apples and oranges
+
+Very often, people will consider a standardised coefficient to be a unitless measure of "size of effect" that they can go and happily compare with other results (be it from another coefficient from the model, or a coefficient from a different study altogether, perhaps even on a different population!).  
+
+However, a **very** important thing to remember is that standardised coefficients are *dependent upon the sample standard deviations*. 
+
+This means that any comarisons between standardised coefficients comparisons could be due to an actual difference in magnitude of the underlying relationship, but it could just as easily be due to differences in the standard deviations of the variables. 
+
+As a toy example, I have two datasets, each of 100 people. The first has people aged 18 to 40. The second has people aged 18 to 80. Both datasets have been taken from a population where the underlying linear relationship between age and vocabulary is $vocab_i = 10 + 1 \cdot age_i$. So the "association between age and vocabulary" should be more or less the same for both datasets (as seen in @fig-2hyp).    
+
+```{r}
+#| echo: false
+#| label: fig-2hyp
+#| fig-cap: "Two hypothetical studies, with different age ranges of participants"
+
+set.seed(56)
+dfpop <- tibble(
+  age = round(runif(1e5,18,80)),
+  vocabulary = 10 + age*1 + rnorm(1e5,0,3)
+)
+df1 <- slice_sample(dfpop[dfpop$age<40,], n=100)
+df2 <- slice_sample(dfpop, n=100)
+
+
+bind_rows(
+  df1 |> mutate(study="study 1"),
+  df2 |> mutate(study="study 2")
+) |>
+ggplot(aes(x=age,y=vocabulary,col=study))+
+  geom_point(alpha=.3,size=3)+
+  geom_smooth(method=lm) +
+  xlim(18,80)+ylim(0,100)
+
+```
+
+But the standardised coefficients for the second dataset will always be bigger, because the variance in the `age` variable is bigger.  
+
+This is plainly clear from when we remember that the standardised coefficient is simply the original raw `age` coefficient multiplied by the standard deviation of `age` (either $b \cdot s_{age}$ or $b \cdot \frac{s_{age}}{s_{vocab}}$). In the 2nd study, $s_{age}$ is bigger, but (as clearly evident in the plot above) we don't want to be saying that age has a bigger effect on vocabulary in study 2.. 
+
+```{r}
+#| echo: false
+m1_o = lm(vocabulary ~ age, data = df1)
+m1_zx = lm(vocabulary ~ scale(age), data = df1)
+m1_zxy = lm(scale(vocabulary) ~ scale(age), data = df1)
+
+m2_o = lm(vocabulary ~ age, data = df2)
+m2_zx = lm(vocabulary ~ scale(age), data = df2)
+m2_zxy = lm(scale(vocabulary) ~ scale(age), data = df2)
+
+tribble(
+  ~"estimate",~"study 1, ages 18-40",~"study 2, ages 18-80",
+  "sd(age)",sd(df1$age), sd(df2$age),
+  "vocab ~ age",coef(m1_o)[2],coef(m2_o)[2],
+  "vocab ~ scale(age)",coef(m1_zx)[2],coef(m2_zx)[2],
+  "scale(vocab) ~ scale(age)",coef(m1_zxy)[2],coef(m2_zxy)[2],
+) |> mutate(across(2:3,~round(.,2))) |> gt::gt()
+
+```
+
+The take-home of this is that sometimes we just can't compare apples and oranges. And sometimes we can't even compare apples to other apples! Choosing whether or not to standardise coefficients is going to depend on many things, and sometimes the easiest thing is simply to report both raw and standardised coefficients.  
+

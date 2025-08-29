@@ -1,0 +1,906 @@
+---
+title: "Exercises: Interactions!"
+params: 
+    SHOW_SOLS: FALSE
+    TOGGLE: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+qcounter <- function(){
+  if(!exists("qcounter_i")){
+    qcounter_i <<- 1
+  }else{
+    qcounter_i <<- qcounter_i + 1
+  }
+  qcounter_i
+}
+```
+
+
+# Processing a hangover
+
+:::frame
+__Dataset: hangover_speed.csv__  
+
+```{r}
+#| include: false
+set.seed(884)
+df = tibble(
+  hrs_sleep = rnorm(107),
+  alc = sample(0:1,107,TRUE,prob=c(.4,.6)),
+  sdmt = hrs_sleep*.6 + alc + hrs_sleep*alc*.5 + rnorm(107)
+) |>
+  mutate(
+    hrs_sleep = round((scale(hrs_sleep)[,1]*1.2+7.2)*60/15,0)*15/60,
+    alc = ifelse(alc==0,"y","n"),
+    sdmt = round(scale(sdmt)[,1]*12.11 + 54.6)
+  )
+hodat <- df
+#write_csv(hodat, file="../../data/hangover_speed.csv")
+```
+
+How is hours of sleep associated with processing speed? Is this dependent upon whether or not alcohol was consumed the previous night? 
+`r nrow(hodat)` participants completed the Symbol Digit Modalities Task (SDMT), a measure of processing speed. Participants also recorded how many hours they had slept the previous night (to the nearest 15 mins), and whether or not they had consumed alcohol.  
+
+The dataset is available at [https://uoepsy.github.io/data/hangover_speed.csv](https://uoepsy.github.io/data/hangover_speed.csv){target="_blank"}.  
+
+```{r}
+#| echo: false
+tibble(
+  variable = names(hodat),
+  description = c(
+    "hours slept the previous night (to the nearest 15 mins)",
+    "was alcohol consumed the previous evening? ('y'=yes, 'n'=no)",
+    "score on the Symbol Digit Modalities Task (SDMT), a measure of processing speed (range 0 to 100)")
+) |> gt::gt()
+```
+
+
+:::
+
+`r qbegin(qcounter())`
+Read in the data and provide some simple descriptives.  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- What is the mean score on the SDMT, what is the variability in scores?  
+- How many people had alcohol the previous night?  
+- How many hours did people sleep on average? Did this vary between the drinkers and the non-drinkers?  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Here's our data. Everything looks within plausible ranges for our two continuous variables `hrs_sleep` and `sdmt`. 
+```{r}
+hodat <- read_csv("https://uoepsy.github.io/data/hangover_speed.csv")
+```
+
+We can get the means and SDs for hours slept and the SDMT:  
+```{r}
+library(psych)
+describe(hodat |> select(-alc))
+```
+
+We can see that `r round(prop.table(table(hodat$alc))*100)[1]`% of participants didn't drink, and `r round(prop.table(table(hodat$alc))*100)[2]`% of them did:  
+```{r}
+table(hodat$alc)
+```
+
+And it doesn't look like they differed very much in their sleep times:
+```{r}
+hodat |> group_by(alc) |>
+  summarise(
+    slept = mean(hrs_sleep)
+  )
+```
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Make a plot of SDMT predicted by hours slept, and colour the points by whether or not the participants had drank alcohol.  
+
+Can you plot a separate `lm` line on the graph using `geom_smooth` for each group (alcohol v no alcohol)?  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+- to make `geom_smooth()` fit a linear model (`lm`), remember to use `geom_smooth(method=lm)`.  
+- if you have the grouping in the `aes()`, then when you add `geom_smooth()` it should make a different one for each group!  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+ggplot(hodat, aes(x = hrs_sleep, y = sdmt, col = alc)) +
+  geom_point() +
+  geom_smooth(method=lm)
+```
+`r solend()`
+
+`r qbegin(qcounter())`
+Adding a different `geom_smooth(method=lm)` for each group is just fitting a different model to each groups' data - i.e. a slope of `sdmt~hrs_sleep` for the drinkers and a slope for the non-drinkers.  
+
+But we actually want to _test_ if the two slopes are different, and for that we need to create *one* model that includes the appropriate interaction term.  
+
+Fit a model to examine whether the association between `hrs_sleep` and `sdmt` is different depending upon alcohol consumption.  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+This is the same logic as the air-pollution & APOE-4 example in [9A #it-depends](09a_interactions.html#it-depends){target="_blank"}.  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+mod_int <- lm(sdmt ~ hrs_sleep * alc, data = hodat)
+summary(mod_int)
+```
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Interpret each coefficient from your model.  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+Our interaction involves a continuous variable (`hrs_sleep`) and a binary variable (`alc`). An interpretation of a similar example is in [9A #interpretation](09a_interactions.html#interpretation){target="_blank"}.  
+
+:::
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+#| eval: false
+summary(mod_int)
+```
+```
+Coefficients:
+               Estimate Std. Error t value Pr(>|t|)    
+(Intercept)      3.1496     6.9631   0.452   0.6520    
+hrs_sleep        7.6499     0.9643   7.933 2.71e-12 ***
+alcy            17.7151    10.6874   1.658   0.1004    
+hrs_sleep:alcy  -3.5867     1.4593  -2.458   0.0156 *  
+---
+```
+
+```{r}
+#| echo: false
+
+broom::tidy(mod_int) |> select(term,estimate) |>
+transmute(
+  coefficient=term,
+  estimate=round(estimate,2),
+  interpretation = c(
+    paste0("A non-drinker who slept 0 hours is estimated to have an SDMT score of ",round(coef(mod_int)[1],1), " - note this is not significantly different from zero"),
+    paste0("For every additional hour slept, non-drinkers scores on SDMT are estimated to increase by ",round(coef(mod_int)[2],1)),
+    paste0("drinkers who slept zero hours are estimated to have ",round(coef(mod_int)[3],1)," higher scores on SDMT than non-drinkers who slept zero hours - note this is not significantly different from zero"),
+    paste0("For every additional hour's sleep, drinkers scores on SDMT  increase by ",round(abs(coef(mod_int)[4]),1), " *less* than they do for non-drinkers")
+  )
+) |> gt::gt()
+```
+
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Construct a plot of the model estimated associations between hours-slept and SDMT for drinkers and non-drinkers.  
+
+Because we have nothing else in our model, this should end up looking exactly the same as our initial plot in Question 2!    
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+It all follows the same logic as we have used before:  
+
+1. make a dataframe of the values of the predictors that we wish to plot across
+2. using `augment()`, add to that the predicted values of the model, and the associated confidence intervals
+3. shove it all in ggplot!  
+
+Because we are wanting to plot across _multiple_ predictors (i.e. we want to plot across a range of `hrs_slept` __and__ both values of `alc`), try using `expand_grid()`.  
+
+Play around with this to see what it does:  
+```{r}
+#| echo: true
+expand_grid(
+  continuous = 1:5,
+  binary = c("dog","cat","parrot")
+)
+```
+
+If you get stuck, a very similar example is in [9A #visualisation](09a_interactions.html#visualisation){target="_blank"}.  
+
+:::
+
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+# plot data
+plotdat <- expand_grid(
+  hrs_sleep = 0:14,
+  alc = c("n","y")
+)
+# plot
+broom::augment(mod_int, newdata = plotdat, interval="confidence") |>
+  ggplot(aes(x= hrs_sleep, y = .fitted, 
+             col = alc, fill = alc)) + 
+  geom_line() +
+  geom_ribbon(aes(ymin=.lower,ymax=.upper), alpha=.3)
+
+
+```
+
+
+`r solend()`
+
+`r qbegin(qcounter())`
+No one in our dataset has slept zero hours, and i'm probably not interested in differences between drinkers/non-drinkers who never sleep.  
+
+Refit the model to adjust the intercept to a more meaningful value. Everyone always goes on about 8 hours of sleep being the minimum?  
+
+How has the interpretation of your coefficient(s) changed?  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+See [9A #mean-centering](09a_interactions.html#mean-centering){target="_blank"} for an example of mean-centering a predictor in the interaction. Remember that there are multiple ways to do this - you could make a new variable first, or you could do it all _inside_ the model.  
+
+
+:::
+
+`r qend()`
+
+`r solbegin(label="Solution Part 1 - recentering and refitting", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+If we want to recenter our `hrs_sleep` variable on 8 hours, we could either create a new variable which is `hrs_sleep - 8` (which would therefore make everyone who slept 8 hours be given a value of `0` in the variable), or we could do it _in_ the model:  
+  
+:::panelset
+:::panel
+#### re-centering first
+
+```{r}
+#| eval: false
+hodat <- 
+  hodat |>
+    mutate(
+      hrs_8 = hrs_sleep - 8
+    )
+
+mod_int2 <- lm(sdmt ~ hrs_8 * alc, data = hodat)
+```
+:::
+:::panel
+#### doing it all in the model
+
+```{r}
+mod_int2 <- lm(sdmt ~ I(hrs_sleep-8) * alc, data = hodat)
+```
+
+:::
+::::
+
+`r solend()`
+`r solbegin(label="Solution Part 2 - interpreting coefficients", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+```{r}
+#| eval: false
+summary(mod_int2)
+```
+```
+Coefficients:
+                      Estimate Std. Error t value Pr(>|t|)    
+(Intercept)            64.3487     1.4206  45.297  < 2e-16 ***
+I(hrs_sleep - 8)        7.6499     0.9643   7.933 2.71e-12 ***
+alcy                  -10.9786     2.0800  -5.278 7.27e-07 ***
+I(hrs_sleep - 8):alcy  -3.5867     1.4593  -2.458   0.0156 *  
+---
+```
+
+```{r}
+#| echo: false
+
+broom::tidy(mod_int2) |> select(term,estimate) |>
+transmute(
+  coefficient=term,
+  estimate=round(estimate,2),
+  interpretation = c(
+    paste0("A non-drinker who slept 8 hours is estimated to have an SDMT score of ",round(coef(mod_int2)[1],1)),
+    paste0("For every additional hour slept, non-drinkers scores on SDMT are estimated to increase by ",round(coef(mod_int2)[2],1)),
+    paste0("drinkers who slept 8 hours are estimated to have ",round(abs(coef(mod_int2)[3]),1)," lower scores on SDMT than non-drinkers who slept 8 hours"),
+    paste0("For every additional hour's sleep, drinkers scores on SDMT  increase by ",round(abs(coef(mod_int2)[4]),1), " *less* than they do for non-drinkers")
+  )
+) |> gt::gt()
+```
+
+`r solend()`
+
+<div class="divider div-transparent div-dot"></div>
+
+# The monkeys are back!  
+
+```{r}
+#| include: false
+#| eval: false
+ss = runif(1,1e3,1e6)
+set.seed(ss)
+set.seed(695026.8)
+df = 
+  expand_grid(
+    obj_type = 0:1,
+    obj_colour = 0:2,
+    obj_size = 0:2,
+    n = 1:12
+  ) |> select(-n) |>
+  mutate(
+    species = sample(c("macaque","capuchin","tamarin"), n(), T),
+    age = round(runif(n(),1,21) + 4*(species=="tamarin"))
+  )
+xm = model.matrix(lm(rnorm(nrow(df)) ~ age + obj_size + obj_type * species,df |> mutate(species=fct_relevel(factor(species),"macaque"))))
+colnames(xm)
+df$exptime = xm %*% c(14, -.2, -.5, 2, 4, 1.8,1,-2.9) + rnorm(nrow(df),0,3.5)
+
+# df$lostint = rbinom(nrow(df), 1, plogis(scale(xm %*% c(14, -.2, -.5, 2, 4, 1.8,1,-2.5))))
+
+df$exptime = round(df$exptime[,1],1)
+# df |> mutate(adult=ifelse(age>8,1,0)) |> pairs()
+
+df <- df |> select(age,species,obj_type,obj_colour, obj_size,exptime) |>
+  mutate(
+    obj_type = factor(obj_type, labels=c("soft","mechanical")),
+    obj_colour = factor(obj_colour, labels=c("red","green","blue")),
+    obj_size = map_dbl(obj_size, ~30+round(rnorm(1,.*20,11.5))),
+    obj_size = pmax(5,obj_size)
+    #obj_size = factor(obj_size, labels=c("small","medium","large")),
+  )
+
+df$exptime <- pmax(0,df$exptime)
+#df <- slice_sample(df,prop=.95)
+
+somenames = read.table("https://artofmemory.com/files/forum/947/initials.txt",header=F,sep=",")
+df$name = sample(somenames$V2, nrow(df))
+df <- df |> relocate(name)
+
+ctmtoys <- df
+#write_csv(ctmtoys,"../../data/ctmtoys.csv")
+
+# lm(exptime ~  age + obj_colour+ obj_size + obj_type*species, 
+#    data=ctmtoys |> mutate(across(c(obj_type,species),factor))) |> #summary()
+#   sjPlot::plot_model(type="int")
+
+```
+
+
+
+:::frame
+__Data: ctmtoys.csv__  
+
+So far, we have analysed the data for two studies (not real!) of the inquisitive nature of monkeys. Initially ([week 5 exercises](05_ex.html#monkey-exploration){target="_blank"}), Archer, Winther & Gandolfi (2024a) investigated age differences in exploration of novel objects, and found that older monkeys spend on average less time playing with a novel object than their younger counterparts (we looked at this with both with the linear effect of age in years, and by comparing adults to juveniles). Following this, in our [week 7 exercises](07_ex.html#more-monkeys){target="_blank"} Bolton, Archer, Peng, Winther & Gandolfi (2024b) wanted to see if monkeys showed a preference for different _types_ of object (i.e. ones with moving parts vs ones that are soft). They found that, after accounting for differences due to age, monkeys showed a significant preference for toys with moving parts in comparison to soft toys.  
+
+The same team of researchers are again asking for our help, and this time with a bigger study, of `r nrow(df)` monkeys. They are interested in whether the preference for mechanical toys over soft toys is different for different species of monkey. 
+Both the previous studies were conducted on Rhesus Macaques (a species that have adapted very well to human dominated landscapes), so this study has re-run the same experiment on `r sum(grepl("cap",df$species))` Capuchin monkeys, `r sum(grepl("tam",df$species))` Tamarin monkeys and `r sum(grepl("mac",df$species))` Macaques.  
+
+The aim of this study is to investigate the following question:  
+
+> Are preferences between soft toys vs mechanical toys different for different species of monkey?  
+
+The data is available at [https://uoepsy.github.io/data/ctmtoys.csv](https://uoepsy.github.io/data/ctmtoys.csv){target="_blank"} and contains the variables described in @tbl-ctmtoys
+```{r}
+#| label: tbl-ctmtoys
+#| tbl-cap: "Data dictionary for ctmtoys.csv"
+#| echo: false
+ctmtoys <- read_csv("https://uoepsy.github.io/data/ctmtoys.csv")
+tibble(
+  variable = names(ctmtoys),
+  description = c("Monkey Name",
+                  "Age of monkey in years", 
+                  "Species (capuchin, macaque, tamarin)",
+                  "Type of novel object given (mechanical / soft)",
+                  "Main colour of object (red / green / blue)",
+                  "Size of object in cm (length of largest dimension of the object)",
+                  "Time (in minutes) spent exploring the object")
+) |>
+  gt::gt()
+```
+
+:::
+
+
+`r qbegin(qcounter())`
+As always, begin by reading in your data and making some exploratory plots to get an idea of the distributions we're dealing with.  
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Everything looks okay in terms of our variable ranges here:  
+```{r}
+ctmtoys <- read_csv("https://uoepsy.github.io/data/ctmtoys.csv")
+summary(ctmtoys)
+```
+
+Let's shove it in `pairs.panels`:  
+```{r}
+ctmtoys |> 
+  select(age, obj_size, exptime) |>
+  psych::pairs.panels()
+```
+
+And let's tabulate `obj_type` and `species`: 
+```{r}
+ctmtoys |>
+  select(obj_type, species) |>
+  table()
+```
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Try making some initial exploratory plots of the relationships in the data that are relevant to the research question.  
+
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+We're wanting to plot `exploration_time` and `obj_type` here, but we're also wanting to show it for each species.  This means we'll need things like colours, facets, etc.  
+
+:::
+
+`r qend()`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
+
+From initial exploration - it looks like capuchins are generally spending more time playing with the objects (of both types).  
+The slight preference for mechanical toys seems to be present Capuchins and Macaques, but it's less clear in the Tamarins.  
+
+```{r}
+ggplot(ctmtoys, aes(x = obj_type, y = exptime, 
+                    col = obj_type)) +
+  geom_violin() + 
+  geom_jitter(width=.2, alpha=.4) + 
+  facet_wrap(~species)
+```
+
+
+All of this is just initial speculation, however - we haven't considered lots of things such as the distributions of ages between the species, or whether they all saw objects of similar sizes and colours. These things could make these plots appear to show relationships that are actually driven by other things. They could also make these plots hide relationships that are present once these things are controlled for.  
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Fit an appropriate model to address the research question.  
+Think about what we already know from previous studies - we'll likely want to control for age and for other aspects of objects like size and colour.  
+
+Then think about the specific research question and what is needed to test it.  
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+modelmonkey <- lm(exptime ~ age + obj_size + obj_colour +
+                obj_type * species, data = ctmtoys)
+```
+
+`r solend()`
+
+`r qbegin(qcounter())`
+Now that you've fitted your model, test the interaction to get an overall answer to "Do species differ in their preference for different types of object?"  
+
+::: {.callout-tip collapse="true"}
+#### Hints
+
+Think about how the question is worded - there's no "how"/"what" etc, it's just "*are* there differences?" (this is just the same as we did last week, and in [8B #testing-group-differences](08b_catpred.html#testing-group-differences){target="_blank"} - try a model comparison?).  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Let's compare a reduced model _without_ the interaction to our model _with_ the interaction:  
+
+```{r}
+modelmonkey0 <- lm(exptime ~ age + obj_size + obj_colour +
+                obj_type + species, data = ctmtoys)
+
+anova(modelmonkey0, modelmonkey)
+```
+
+
+Alternatively, we could use the shortcut and just give one model to `anova()` and take a look at the last line. They should be the same:  
+```{r}
+anova(modelmonkey)
+```
+
+
+```{r}
+#| include: false
+res<-anova(modelmonkey0, modelmonkey)
+```
+
+
+:::int
+Species significantly differed in the extent to which exploration time varied between different types of object ($F(`r res[2,3]`, `r res[2,1]`)=`r round(res[2,5],2)`, p=`r format.pval(res[2,6],eps=.001,digits=3)`$).  
+:::
+
+`r solend()`
+
+`r qbegin(qcounter())`
+We're almost always going to want to know __how__ species differ in their preferences for different types of object (if they do differ).  
+
+To get this information, we can just look at the model coefficients.  
+Take a look at the interaction coefficients - notice anything that _appears to_ contradict the previous question?  
+`r qend()`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
+
+```{r}
+summary(modelmonkey)
+```
+
+In our model coefficients, both interaction terms are non-significant.  
+But we just said before that in the previous question that there _is_ an interaction (we got our F test for it).  
+
+The coefficients above are telling us that, compared to the reference species (capuchins), neither macaques nor tamarins show significant differences in their preference for mechanical toys vs soft toys.  
+
+But while macaques and tamarins may not be different from capuchins, it is entirely possible that macaques and tamarins could be different _from each other_?  
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+Model coefficients are always relative to some reference point (i.e. capuchins with mechanical toys).  
+
+1. Change the reference point to Macaques with soft toys.  
+2. Refit the model.
+3. Interpret the coefficients.  
+
+`r qend()`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
+
+We always get to choose which level we want as a reference. Sometimes, this will be easy because on level represents the norm/status quo. In this context, Macaques is possibly a more useful reference, given that the study description earlier mentioned the previous studies were conducted on Macaques.   
+
+Re-levelling `obj_type` to have "soft" as the reference won't make much difference - it will just swap the signs of the coefficients (comparing mechanical to soft, as opposed to comparing soft to mechanical).  
+```{r}
+ctmtoys <- 
+  ctmtoys |>
+  mutate(
+    species = fct_relevel(species, "macaque"),
+    obj_type = fct_relevel(obj_type, "soft")
+  )
+
+lm(exptime ~ age + obj_size + obj_colour +
+                obj_type * species, data = ctmtoys) |>
+  summary()
+```
+
+These coefficients show us that Macaques tend to spend 3.5 more minutes playing with mechanical toys than soft toys, and that Capuchins do not significantly differ in this respect, but Tamarins do. Relative to Macaques, Tamarins spend 3.05 less additional time with mechanical toys compared to soft toys.  
+
+`r solend()`
+
+`r qbegin(qcounter())`
+The interpretation of interaction coefficients tends to be quite confusing, and invariably it helps to tie these to a visualisation. We're going to do it manually here, because it's a very useful learning exercise. 
+
+Below are our coefficients of interest from the model, when the reference level for `obj_type` is "soft" and for `species` is "macaque".  
+```
+...
+obj_typemechanical                  3.47317    0.76957   4.513 1.07e-05 ***
+speciescapuchin                     5.41843    0.80728   6.712 1.83e-10 ***
+speciestamarin                      1.87117    0.80555   2.323  0.02116 *  
+obj_typemechanical:speciescapuchin -1.51124    1.11855  -1.351  0.17816    
+obj_typemechanical:speciestamarin  -3.05110    1.11480  -2.737  0.00674 ** 
+```
+
+Grab a piece of paper, and draw the points for each species & obj_type combination, relative to the reference point.  
+Start with the plot below:  
+
+```{r}
+#| echo: false
+effects::effect("obj_type*species",modelmonkey) |>
+  as.data.frame() |> 
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
+  mutate(fit=ifelse(obj_type=="soft",10.2587,NA),p = c(1,1,2,2,0,0)) |>
+  arrange(p) |>
+  ggplot(aes(x=obj_type, y=fit, col=species))+
+  geom_point(size=3)+
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
+```
+
+`r qend()`
+`r solbegin(label="Solution Part 1 - coefficient: obj_typemechanical", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+The coefficient "obj_typemechanical" tells us the difference between soft and mechanical toys _when species is zero_ - i.e., when it is at the reference level (macaques).  
+
+So we know that macaques spend 3.5 more minutes with mechanical toys compared to soft toys:  
+
+```{r}
+#| echo: false
+effects::effect("obj_type*species",modelmonkey) |>
+  as.data.frame() |> 
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
+  mutate(fit=
+           case_when(
+             obj_type=="mechanical" & species=="macaque" ~ fit,
+             obj_type=="soft" ~ 10.2587,
+             TRUE~NA
+           ),
+         p = c(1,1,2,2,0,0)) |>
+  arrange(p) |>
+  ggplot(aes(x=obj_type, y=fit, col=species))+
+  geom_point(size=3)+
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
+```
+
+
+`r solend()`
+`r solbegin(label="Solution Part 2 - coefficient: speciescapuchin", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+The coefficient "speciescapuchin" tells us the difference between capuchins and macaques, _when obj_type is zero_ - i.e., when it is at the reference level (soft).  
+
+So we know that capuchins spend 5.4 more minutes with soft toys compared to macaques with soft toys:  
+
+```{r}
+#| echo: false
+effects::effect("obj_type*species",modelmonkey) |>
+  as.data.frame() |> 
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
+  mutate(fit=
+           case_when(
+             obj_type=="mechanical" & species=="macaque" ~ fit,
+             obj_type=="soft" & species=="capuchin"~fit,
+             obj_type=="soft" ~ 10.2587,
+             TRUE~NA
+           ),
+         p = c(1,1,2,2,0,0)) |>
+  arrange(p) |>
+  ggplot(aes(x=obj_type, y=fit, col=species))+
+  geom_point(size=3)+
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
+```
+
+`r solend()`
+`r solbegin(label="Solution Part 3 - coefficient: speciestamarin", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+The coefficient "speciestamarin" tells us the difference between tamarins and macaques, _when obj_type is zero_ - i.e., when it is at the reference level (soft).  
+
+So we know that tamarins spend 1.9 more minutes with soft toys compared to macaques with soft toys:  
+
+```{r}
+#| echo: false
+effects::effect("obj_type*species",modelmonkey) |>
+  as.data.frame() |> 
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
+  mutate(fit=
+           case_when(
+             obj_type=="mechanical" & species=="macaque" ~ fit,
+             obj_type=="soft" ~ fit,
+             TRUE~NA
+           ),
+         p = c(1,1,2,2,0,0)) |>
+  arrange(p) |>
+  ggplot(aes(x=obj_type, y=fit, col=species))+
+  geom_point(size=3)+
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
+```
+
+`r solend()`
+
+`r solbegin(label="Solution Part 4 - coefficient: obj_typemechanical:speciescapuchin", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+The coefficient "obj_typemechanical:speciescapuchin" tells us the difference between capuchins and macaques' soft-vs-mechanical differences.  
+i.e. when moving from macaques to capuchins, the soft-to-mechanical difference changes by this much.  
+
+So we know that whereas macaques spend 3.5 more minutes with mechanical toys compared to soft toys, for capuchins this is 1.5 minutes less.  
+So rather than going up 3.5, we go up $3.5-1.5=2$.  
+
+However, this is non-significant. So the difference could easily just be 0 - i.e. they could increase by the same 3.5 minutes as Macaques do. So we know that the uncertainty here should also capture as if Capuchins and Macaques have the same increases from soft to mechanical.  
+
+```{r}
+#| echo: false
+
+dd = tibble(obj_type="mechanical",species="capuchin",fit=17.63906,
+            fit2=3.5+15.67713)
+effects::effect("obj_type*species",modelmonkey) |>
+  as.data.frame() |> 
+  mutate(fit=
+           case_when(
+             obj_type=="mechanical" & species=="tamarin" ~ NA,
+             TRUE ~ fit
+           ),
+         p = c(1,1,2,2,0,0)) |>
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
+  arrange(p) |>
+  ggplot(aes(x=obj_type, y=fit, col=species))+
+  geom_point(size=3)+
+  geom_segment(data=dd,aes(x=obj_type,xend=obj_type,y=fit,yend=fit2),lwd=1)+
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
+```
+
+`r solend()`
+`r solbegin(label="Solution Part 5 - coefficient: obj_typemechanical:speciestamarin", slabel=FALSE,show=TRUE, toggle=params$TOGGLE)`
+
+The coefficient "obj_typemechanical:speciestamarin" tells us the difference between tamarins and macaques' soft-vs-mechanical differences.  
+i.e. when moving from macaques to tamarins, the soft-to-mechanical difference changes by this much.  
+
+So we know that whereas macaques spend 3.5 more minutes with mechanical toys compared to soft toys, for tamarins this is 3.05 minutes less.  
+So rather than going up 3.5, we go up $3.5-3.05=0.45$:    
+
+```{r}
+#| echo: false
+effects::effect("obj_type*species",modelmonkey) |>
+  as.data.frame() |>
+  mutate(obj_type=fct_relevel(factor(obj_type),"soft")) |>
+  ggplot(aes(x=obj_type, y=fit, col=species))+
+  geom_point(size=3)+
+  geom_segment(data=dd,aes(x=obj_type,xend=obj_type,y=fit,yend=fit2),lwd=1)+
+  scale_y_continuous(limits=c(4,19.5),breaks=4:19)
+```
+
+`r solend()`
+
+
+`r qbegin(qcounter())`
+Okay, now let's make a plot in R.  
+
+Try running this code in pieces to see what each bit does, and then running it all at once to get the plot.  
+
+Does it match with what you sketched in the previous question?  
+
+```{r}
+#| eval: false
+library(effects)
+effect("obj_type*species",modelmonkey) |>
+  as.data.frame() |>
+  mutate(
+    obj_type = fct_relevel(factor(obj_type), "soft")
+  ) |>
+  ggplot(aes(x=obj_type, y=fit, col=species)) +
+  geom_pointrange(aes(ymin=lower,ymax=upper))
+```
+
+
+::: {.callout-note collapse="true"}
+#### Why use the effects package?  
+
+Up to now, when we've been plotting our associations of interest we've been choosing to construct our plots at the mean of our other predictors.  
+
+However, in our current monkey model, we've also got a categorical covariate (`obj_colour`) in our model. What should we do with that?
+
+```{r}
+#| eval: false
+plotdat <- expand_grid(
+  age = mean(ctmtoys$age),
+  obj_size = mean(ctmtoys$obj_size),
+  obj_colour = ???
+  obj_type = c("soft","mechanical"), # of interest
+  species = c("macaque","capuchin","tamarin") # of interest
+)
+```
+
+We could:
+
+a) choose just one colour to plot it at
+b) make separate plots to  each colour
+c) plot the association of interest holding the colours at their proportions
+
+To achieve a) or b), we can use the strategy we have been using already (make a little dataframe, use `augment` etc).  
+
+However, to achieve c), it is easiest to use something like the `effect()` function from the __effects__ package. This will also come in handy next semester, as we will use it for plotting effects from more complex models.  
+
+:::
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+```{r}
+library(effects)
+effect("obj_type*species",modelmonkey) |>
+  as.data.frame() |>
+  mutate(
+    obj_type = fct_relevel(factor(obj_type), "soft")
+  ) |>
+  ggplot(aes(x=obj_type, y=fit, col=species)) +
+  geom_pointrange(aes(ymin=lower,ymax=upper))
+```
+
+`r solend()`
+
+<div class="divider div-transparent div-dot"></div>
+
+# Teamwork and Communication
+
+:::frame
+__Dataset: teamprod.csv__  
+
+A company has recently decided to move towards having more structured team-based projects for its employees, rather than giving individual projects. They want better understanding what makes teams work well together. Specifically, they want to know whether the amount of communication in a team is associated with better quality work, and if this is different depending upon the teams' 'collective efficacy' (their belief in their ability to do the work)?   
+
+They have collected data on 80 teams. Prior to starting the projects, each team completed a questionnaire measuring 'collective efficacy' (the teams' belief in their ability to succeed at their project), and 'collective experience' (a measure of how much relevant experience the team has). At the end of the projects, each team's work was rated across various measures (timeliness, quality, relevance etc) to provide a metric of 'work quality'. In addition, information was gathered on the volume of each teams' communication (via the company's workspace chat platform). 
+
+The data is available at [https://uoepsy.github.io/data/teamqual.csv](https://uoepsy.github.io/data/teamqual.csv){target="_blank"}
+
+```{r}
+#| echo: false
+set.seed(5887)
+df = tibble(
+  commvol = runif(80,150,1500)/30,
+  exp = rnorm(80),
+  colleff = exp*.4 + rnorm(80),
+  work_qual = exp*.2 + colleff*1 + commvol*.1 + colleff*commvol*-.02 + rnorm(80)
+) |>
+  mutate(
+    team_id = paste0("team",1:80),
+    work_qual=round(scale(work_qual)[,1]*26+70),
+    colleff = scale(colleff)[,1]*12+31,
+    colleff = round(pmax(0,colleff))
+    ) |> relocate(team_id)
+#write_csv(df, file="../../data/teamqual.csv")
+tibble(
+  variable=names(df),
+  description=c("Team ID","Volume of communication (avg messages per day)","Prior experience (Z-scored)","Collective Efficacy measure of team's belief in ability to succeed (range 0 - 70)","Work Quality measure (metric based on timeliness, quality, relevance etc). Ranges 0 to Infinity")
+) |> gt::gt()
+```
+
+
+:::
+
+
+`r qbegin(qcounter())`
+Below, we have provided a regression table, a plot, and a written paragraph.  
+
+There are _lots_ of mistakes in the writing (both mismatching numbers _and_ errors in interpretation). Note down as many errors as you can find.  
+Feel free to read in the data yourself to play around.  
+
+::::panelset
+:::panel
+#### Table
+```{r}
+#| echo: false
+sjPlot::tab_model(lm(work_qual~exp+commvol*colleff,df),
+                  show.ci = F,show.se=T,show.stat = T)
+```
+
+:::
+:::panel
+#### Plot
+
+```{r}
+#| echo: false
+sjPlot::plot_model(lm(work_qual~exp+commvol*colleff,df),
+                   type="eff",terms=c("commvol","colleff"))
+```
+
+:::
+:::panel
+#### Writing
+
+Work quality was modelled using multiple regression. Team experience (Z-scored), Communication volume (messages per day) and Collective efficacy (Z-scored) were included as predictors, along with the interaction between communication and collective efficacy. The model explained 80% of the variance in work-quality scores. More experienced teams were found to produce significantly better quality work ($\beta=0.82, t(74)=0.4, p>.05$). Volume of communication was significantly associated with work quality ($\beta=2.68, t(75)=6.17, p<.001$), suggesting that teams that communicate more produced better quality work. Collective efficacy was also significantly associated with work quality ($\beta=1.59, t(75)=3.64, p<.001$), indicating that better quality work will be produced by a team that has collective efficacy (compared to those that do not). A significant interaction ($\beta=-0.03, t=2.68, p < .09$) was found between volume of communication and collective efficacy, suggesting that these two predictors are related. Overall these results suggest that for teams that have more collective efficacy, communication is more important in producing quality work.  
+
+:::
+::::
+
+`r qend()`
+
+
+
+
+
+
+
