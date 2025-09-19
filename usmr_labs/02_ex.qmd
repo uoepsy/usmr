@@ -1,7 +1,7 @@
 ---
-title: "Exercises: More R; Estimates & Intervals"
+title: "W2: More R; Estimates & Intervals"
 params: 
-    SHOW_SOLS: TRUE
+    SHOW_SOLS: FALSE
     TOGGLE: TRUE
 ---
 
@@ -27,7 +27,7 @@ There was a section in reading [Chapter 1 #useful-settings](https://uoepsy.githu
 
 While you're at it - pick your favourite colour scheme for RStudio and change that too!
 
-It might also be useful to find a font which differentiates 1 from l, and 0 from O.  
+It might also be useful to find a font which differentiates 1 (the number) from l (the letter), and 0 (the number) from O (the letter).  
 `r qend()`
 
 
@@ -37,7 +37,7 @@ It might also be useful to find a font which differentiates 1 from l, and 0 from
 :::frame
 __Data: Past Surveys__  
 In the last few years, we have asked students of the statistics courses in the Psychology department to fill out a little survey.  
-Anonymised data are available at [https://uoepsy.github.io/data/surveydata_historical.csv](https://uoepsy.github.io/data/surveydata_historical.csv).  
+Anonymised data are available at [https://uoepsy.github.io/data/usmr25surveydata_historical.csv](https://uoepsy.github.io/data/usmr25surveydata_historical.csv).  
 
 __Note:__ this does _not_ contain the responses from this year. 
 :::
@@ -50,7 +50,7 @@ Read in the data, giving it a name to store it in your environment.
 ```{r}
 library(tidyverse)
 
-surveydata <- read_csv("https://uoepsy.github.io/data/surveydata_historical.csv")
+surveydata <- read_csv("https://uoepsy.github.io/data/usmr25survey_historical.csv")
 
 ```
 
@@ -214,7 +214,7 @@ You might also want to add an extra `aesthetic` mapping from the `course` variab
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 
 They're all going to look pretty similar - the center will be at around 167 and the majority of the distribution will lie within about 15cm either side (2 times the standard deviation of about 7.5).  
-Note that the USMR students have a very very slightly higher mean as well as a slightly bigger standard deviation. So this plot will be slightly shifted to the right, and will be slightly more spread out. It might be hard to see these differences just by looking at the plots though.  
+Note that the USMR students have a very slightly bigger standard deviation. So this plot will be slightly more spread out. It might be hard to see these differences just by looking at the plots though.  
 
 ```{r}
 ggplot(surveydata, aes(x=height, fill = course)) + 
@@ -279,7 +279,7 @@ Just like finding out how many people were over 6 foot, we can quickly work out 
 For instance, here is a table of how many people are taller than me (Josiah):  
 
 ```{r}
-table(surveydata$height > 177)
+table(surveydata$height > 176)
 ```
 
 However, as a learning exercise, let's make sure we can recreate these numbers by doing the calculations manually.  
@@ -305,7 +305,7 @@ b) What proportion of respondents (with valid height data) are taller than you?
 There are this _many_ people who are taller than me. 
 We need to ignore the NAs again:  
 ```{r}
-sum(surveydata$height > 177, na.rm = T)
+sum(surveydata$height > 176, na.rm = T)
 ```
 
 To get the total number of respondents with height data, we can sum the non-NA values:
@@ -315,7 +315,7 @@ sum(!is.na(surveydata$height))
 
 And if we divide the number who are taller than me by the total number of respondents, we get the proportion:  
 ```{r}
-sum(surveydata$height > 177, na.rm = T) / sum(!is.na(surveydata$height))
+sum(surveydata$height > 176, na.rm = T) / sum(!is.na(surveydata$height))
 ```
 
 We can do all this inside tidyverse too! 
@@ -323,7 +323,7 @@ We can do all this inside tidyverse too!
 ```{r}
 surveydata |> 
   summarise(
-    n_taller = sum(height > 177, na.rm = T),
+    n_taller = sum(height > 176, na.rm = T),
     n_heights = sum(!is.na(height)),
     prop_taller = n_taller / n_heights
   )
@@ -347,14 +347,14 @@ We only asked the sleep quality rating question to students in USMR since 2022, 
 
 ::: {.callout-tip collapse="true"}
 #### Hints  
-This will need some `filter`ing, and assigning (e.g. `usmr2022 <-`) to a new name.
+This will need some `filter`ing, and assigning (e.g. `usmr2022on <-`) to a new name.
 :::
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 ```{r}
-usmr2022 <- surveydata |> 
+usmr2022on <- surveydata |> 
   filter(course == "usmr", year >= 2022)
-dim(usmr2022)
+dim(usmr2022on)
 ```
 `r solend()`
 
@@ -375,7 +375,7 @@ You can do this with things like `mean(data$variable)`, or you can do it all in 
 `r qend()`
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 ```{r}
-usmr2022 |> 
+usmr2022on |> 
   summarise(
     m_sleep = mean(sleeprating, na.rm = TRUE),
     sd_sleep = sd(sleeprating, na.rm = TRUE),
@@ -388,7 +388,8 @@ usmr2022 |>
 
 `r qbegin(qcounter())`
 Using your answers to the previous question, construct a 95% confidence interval for the average Sleep-Quality rating.  
-Why might it be a _bad_ idea to use this as an estimate of the average Sleep-Quality  rating of the global population?  
+
+Why might it be a _bad_ idea to use this as an estimate of the average Sleep-Quality rating of the global population?  
 
 ::: {.callout-tip collapse="true"}
 #### Hints  
@@ -403,15 +404,15 @@ Why might it be a _bad_ idea to use this as an estimate of the average Sleep-Qua
 
 ```{r}
 #| echo: false
-mu = mean(usmr2022$sleeprating, na.rm = TRUE)
-su = sd(usmr2022$sleeprating, na.rm = TRUE)
-m = round(mean(usmr2022$sleeprating, na.rm = TRUE),2)
-s = round(sd(usmr2022$sleeprating, na.rm = TRUE),2)
-n = sum(!is.na(usmr2022$sleeprating))
+mu = mean(usmr2022on$sleeprating, na.rm = TRUE)
+su = sd(usmr2022on$sleeprating, na.rm = TRUE)
+m = round(mean(usmr2022on$sleeprating, na.rm = TRUE),2)
+s = round(sd(usmr2022on$sleeprating, na.rm = TRUE),2)
+n = sum(!is.na(usmr2022on$sleeprating))
 se = round(su/sqrt(n),2)
 ```
 
-So we have our estimate, which is the mean sleep quality rating in our sample: $\bar x = `r m`$. And we have a standard deviation of our sleep quality ratings: $s = `r s`$. While our sample has `r nrow(usmr2022)` students in it, only `r n` responded to the sleep question, so really our $n$ for this calculation is `r n`.  
+So we have our estimate, which is the mean sleep quality rating in our sample: $\bar x = `r m`$. And we have a standard deviation of our sleep quality ratings: $s = `r s`$. While our sample has `r nrow(usmr2022on)` students in it, only `r n` responded to the sleep question, so really our $n$ for this calculation is `r n`.  
 
 We can calculate our standard error as $SE = \frac{s}{\sqrt{n}}$, which is $\frac{`r s`}{\sqrt{`r n`}} = `r se`$.
 
@@ -425,6 +426,7 @@ $$
 \end{align}
 $$
 
+
 How well does our sample represent the global population? Well, for one thing, they're all university students, and while there will be many students from across the globe, it's highly likely that our sample is biased towards certain countries or continents. Additionally, we're going to have a lot of people in our sample in a fairly narrow age range. It might be that sleep quality changes a lot as people age, in which case our results are probably not going to generalise very well to, for instance, people who are 70 years old. It's also important to remember that this is a snapshot taken at a certain point in time, and might not generalise to other times. There are lots more ways in which our sample might be biased - you can find a nice little 1 page article at [https://www.nature.com/articles/466029a](https://www.nature.com/articles/466029a){target="_blank"} to get you thinking.  
 
 
@@ -434,7 +436,7 @@ How well does our sample represent the global population? Well, for one thing, t
 `r qbegin(qlabel = FALSE, "Optional Extra")`
 Note that the confidence interval from the previous question is concerned with describing the abstract and _theoretical_ distribution of "what the mean sleep quality rating would look like from all possible samples of this size that I _could_ take". In order to do this we used a formula to describe the spread of this distribution, and in doing so had to assume that the standard deviation of our sample is a good approximation of the standard deviation of the population, and that the population is normally distributed.  
 
-We can also avoid ever using the standard deviation of our sample (`sd(usmr2022$sleeprating)`), and instead approximate the sampling distribution of the mean by "bootstrapping" - taking repeated _resamples_ with replacement from the original sample (see [Chapter 4 #standard-error](https://uoepsy.github.io/usmr/2526/readings/04_sampling.html#standard-error-in-practice){target="_blank"}.  
+We can also avoid ever using the standard deviation of our sample (`sd(usmr2022on$sleeprating)`), and instead approximate the sampling distribution of the mean by "bootstrapping" - taking repeated _resamples_ with replacement from the original sample (see [Chapter 4 #standard-error](https://uoepsy.github.io/usmr/2526/readings/04_sampling.html#standard-error-in-practice){target="_blank"}.  
 
 ```{r}
 #| eval: false
@@ -463,7 +465,7 @@ For 3, look up `quantile()`. We saw this in [Chapter 4 #confidence-intervals](ht
 
 Here is our sample of sleep ratings: 
 ```{r}
-sleeprates <- usmr2022$sleeprating
+sleeprates <- usmr2022on$sleeprating
 ```
 And we can get rid of the NA's: 
 ```{r}
