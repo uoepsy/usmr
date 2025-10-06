@@ -1,7 +1,7 @@
 ---
 title: "W4: Binomial & Chi-Square Tests"
 params: 
-    SHOW_SOLS: FALSE
+    SHOW_SOLS: TRUE
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
@@ -31,18 +31,18 @@ set.seed(017)
 
 ## Cats n Dogs
 
-> **Research Question:** Is the probability that a student prefers Dogs over Cats greater than 50%?
+> **Research Question:** Is the probability that a USMR student in 2025 prefers Dogs over Cats greater than 50%?
 
 :::frame
-__Data: Past Surveys__  
-In the last few years, we have asked students of the statistics courses in the Psychology department to fill out a little survey.  
-Anonymised data are available at [https://uoepsy.github.io/data/usmr25survey_historical.csv](https://uoepsy.github.io/data/usmr25survey_historical.csv)  
+__Data: USMR 2025! It's YOU!!__  
 
-__Note:__ this does _not_ contain the responses from this year. 
+We've used the survey data from previous years for a few weeks now, but let's start using the data that *you* provided!  
+
+You can find the results from the `r substr(Sys.Date(),1,4)` survey at [https://uoepsy.github.io/data/usmr2025.csv](https://uoepsy.github.io/data/usmr2025.csv)  
 
 ```{r}
-surveydata <- 
-  read_csv("https://uoepsy.github.io/data/usmr25survey_historical.csv")
+usmr25 <- 
+  read_csv("https://uoepsy.github.io/data/usmr2025.csv")
 ```
 :::
 
@@ -60,12 +60,12 @@ If the probability that a student prefers dogs to cats is 50%, what would we _ex
 
 I sometimes like adding a `|> print() |>` in the middle of these sequences of pipes to print out the intermediary output as well:  
 ```{r}
-table(surveydata$catdog) |>
+table(usmr25$catdog) |>
   print() |>
   prop.table()
 ```
 
-If the probability was 50%, or 0.5, then we would expect the numbers to be equal. We have `r sum(!is.na(surveydata$catdog))` responses here, so we would expect `r sum(!is.na(surveydata$catdog))/2` to be team cats, and `r sum(!is.na(surveydata$catdog))/2` to be team dogs!  
+If the probability was 50%, or 0.5, then we would expect the numbers to be equal. We have `r sum(!is.na(usmr25$catdog))` responses here, so we would expect `r sum(!is.na(usmr25$catdog))/2` to be team cats, and `r sum(!is.na(usmr25$catdog))/2` to be team dogs!  
 
 `r solend()`
 
@@ -89,18 +89,22 @@ We're going to want to use the `binom.test()` function. This is just like the re
 
 We can either type in the numbers of "Dog" people out of our total number:
 ```{r}
-binom.test(317, 539, p = 0.5, alternative = "greater")
+binom.test(35, 77, p = 0.5, alternative = "greater")
 ```
 Or give the function a table.  
 _BUT_ we need to make sure that it is picking up the right value as "successes".  
 Notice that this gives us a different result:
 ```{r}
 #| echo: false
-table(surveydata$catdog) |>
+table(usmr25$catdog) |>
   binom.test(p = 0.5, alternative = "greater")
 ```
 This is because it is taking the first entry as the number of successes. So it is saying that Cat people = 1 and Dog people = 0. But we want it the other way around! You could either create a different table (or switch its order), or simply switch to the alternative being "less" (because in this unrealistic binary world, the question "is the probability of being Dog person >0.5?" is the same thing as "is probability of being Cat person <0.5?")
-
+```{r}
+#| echo: false
+table(usmr25$catdog) |>
+  binom.test(p = 0.5, alternative = "less")
+```
 
 `r solend()`
 
@@ -111,18 +115,18 @@ This is because it is taking the first entry as the number of successes. So it i
 
 ## Birth-Months
 
-> **Research Question:** Are students more likely to be born in certain months than others?  
+> **Research Question:** Are USMR 2025 students more likely to be born in certain months than others?  
 
 :::frame
-__Data: Past Surveys__  
-In the last few years, we have asked students of the statistics courses in the Psychology department to fill out a little survey.  
-Anonymised data are available at [https://uoepsy.github.io/data/usmr25survey_historical.csv](https://uoepsy.github.io/data/usmr25survey_historical.csv)  
+__Data: USMR 2025! It's YOU!!__  
 
-__Note:__ this does _not_ contain the responses from this year. 
+We've used the survey data from previous years for a few weeks now, but let's start using the data that *you* provided!  
+
+You can find the results from the `r substr(Sys.Date(),1,4)` survey at [https://uoepsy.github.io/data/usmr2025.csv](https://uoepsy.github.io/data/usmr2025.csv)  
 
 ```{r}
-surveydata <- 
-  read_csv("https://uoepsy.github.io/data/usmr25survey_historical.csv")
+usmr25 <- 
+  read_csv("https://uoepsy.github.io/data/usmr2025.csv")
 ```
 :::
 
@@ -142,12 +146,12 @@ You can do this quickly with `barplot()` and `table()`, or you could create try 
 `r solbegin(show=params$SHOW, toggle=params$TOGGLE)`
 The quick and dirty way to plot:
 ```{r}
-barplot(table(surveydata$birthmonth))
+barplot(table(usmr25$birthmonth))
 ```
 
 A ggplot option:
 ```{r}
-ggplot(data = surveydata, aes(x = birthmonth)) +
+ggplot(data = usmr25, aes(x = birthmonth)) +
     geom_bar() +
     labs(x = "- Birth Month -")
 ```
@@ -187,23 +191,23 @@ How many responses (i.e. not missing values) do we have for this question?
 `r qend()`
 
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
-There are `r sum(!is.na(surveydata$birthmonth))` people who have non-NA values (`sum(!is.na(surveydata$birthmonth))`).  
+There are `r sum(!is.na(usmr25$birthmonth))` people who have non-NA values (`sum(!is.na(usmr25$birthmonth))`).  
 
-Under the null hypothesis, we would expect $\frac{1}{12} \times$ `r sum(!is.na(surveydata$birthmonth))` = `r round(sum(!is.na(surveydata$birthmonth))/12,2)` observations born in each month. 
+Under the null hypothesis, we would expect $\frac{1}{12} \times$ `r sum(!is.na(usmr25$birthmonth))` = `r round(sum(!is.na(usmr25$birthmonth))/12,2)` observations born in each month. 
 `r solend()`
 
 `r qbegin(qcounter())`
 The code below creates counts for each month. Before doing that, it removes the rows which have an NA in them for birthmonth: 
 ```{r}
 #| eval: false
-surveydata |>
+usmr25 |>
   filter(!is.na(birthmonth)) |>
   group_by(birthmonth) |>
   summarise(
       observed = n()
   )
 ```
-(A shortcut for this would be `surveydata |> filter(!is.na(birthmonth)) |> count(birthmonth)`)  
+(A shortcut for this would be `usmr25 |> filter(!is.na(birthmonth)) |> count(birthmonth)`)  
 
 Add to the code above to create columns showing:
 
@@ -224,12 +228,12 @@ This was all done in the step-by-step example of a $\chi^2$ test in [Chapter 7 #
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 ```{r}
 chi_table <- 
-    surveydata |>
+    usmr25 |>
     filter(!is.na(birthmonth)) |>
     group_by(birthmonth) |>
     summarise(
         observed = n(),
-        expected = sum(!is.na(surveydata$birthmonth))/12,
+        expected = sum(!is.na(usmr25$birthmonth))/12,
         diff = observed-expected,
         sq_diff = diff^2,
         std_sq_diff = sq_diff / expected
@@ -257,7 +261,7 @@ knitr::include_graphics("https://upload.wikimedia.org/wikipedia/commons/thumb/3/
 We can find out the proportion of the distribution which falls to either side of a given value of $\chi^2$ using `pchisq()`. We need to give it our calculated $\chi^2$ statistic, our degrees of freedom (`df`), which is equal to the number of categories minus 1. We also need to specify whether we want the proportion to the left (`lower.tail=TRUE`) or to the right (`lower.tail=FALSE`).  
 
 1. Using `pchisq()`, calculate the probability of observing a $\chi^2$ statistic as least as extreme as the one we have calculated.  
-2. Check that these results match with those provided by R's built-in function: `chisq.test(table(surveydata$birthmonth))` (the `table` function will ignore NAs by default, so we don't need to do anything extra for this).    
+2. Check that these results match with those provided by R's built-in function: `chisq.test(table(usmr25$birthmonth))` (the `table` function will ignore NAs by default, so we don't need to do anything extra for this).    
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -267,7 +271,7 @@ pchisq(sum(chi_table$std_sq_diff), df = 11, lower.tail = FALSE)
 ```
 
 ```{r}
-chisq.test(table(surveydata$birthmonth))
+chisq.test(table(usmr25$birthmonth))
 ```
 `r solend()`
 
@@ -290,7 +294,7 @@ chi_table |>
 
 From the barplot we created earlier on, we can see which months make up higher/lower proportions than expected:
 ```{r}
-ggplot(chi_table, aes(x = birthmonth, y = observed/nrow(surveydata))) +
+ggplot(chi_table, aes(x = birthmonth, y = observed/nrow(usmr25))) +
   geom_col(fill = 'lightblue') +
   geom_hline(yintercept = 1/12, color = 'red') +
   theme_classic(base_size = 15)
@@ -300,12 +304,12 @@ ggplot(chi_table, aes(x = birthmonth, y = observed/nrow(surveydata))) +
 
 Equivalently, you could answer by looking at Pearson residuals:
 ```{r}
-chisq.test(table(surveydata$birthmonth))$residuals
+chisq.test(table(usmr25$birthmonth))$residuals
 ```
 
 ```{r}
 #| echo: false
-presids <- chisq.test(table(surveydata$birthmonth))$residuals
+presids <- chisq.test(table(usmr25$birthmonth))$residuals
 presids <- presids[order(abs(presids),decreasing = TRUE)]
 ```
 
@@ -653,7 +657,9 @@ chisq.test(childadult)
 `r solend()`
 
 `r qbegin(qlabel = FALSE, "Optional Extra 2")`
-Using the data from the past surveys: [https://uoepsy.github.io/data/usmr25survey_historical.csv](https://uoepsy.github.io/data/usmr25survey_historical.csv)  
+Using the data from the USMR 2025 survey: 
+
+[https://uoepsy.github.io/data/usmr2025.csv](https://uoepsy.github.io/data/usmr2025.csv)  
 
 Is students' preference for evenings over mornings associated with a pet preference (cats vs dogs)? 
 
@@ -661,9 +667,10 @@ Is students' preference for evenings over mornings associated with a pet prefere
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
 
 ```{r}
-surveydata <- read_csv("https://uoepsy.github.io/data/usmr25survey_historical.csv")
+usmr25 <- 
+  read_csv("https://uoepsy.github.io/data/usmr2025.csv")
 
-surveydata |> 
+usmr25 |> 
   select(ampm, catdog) |>
   table() |> print() |>
   chisq.test()
