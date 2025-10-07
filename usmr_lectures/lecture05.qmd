@@ -524,10 +524,10 @@ t %>% ggplot(aes(x=r)) + geom_density(size=2) +
 ```{r}
 #| echo: false
 #| fig.asp: 0.8
-t <- tibble(r=replicate(10000,randomCor(30)))
+t <- tibble(r=replicate(10000,randomCor(50)))
 p <- t %>% ggplot(aes(x=r)) + geom_density(size=2) +
-  ggtitle("10000 correlations of 30 random pairs") +
-  ylim(0,2.5) + xlim(-.8,.8)
+  ggtitle("10000 correlations of 50 random pairs") +
+  ylim(0,3) + xlim(-.6,.6)
 p
 ```
 
@@ -537,36 +537,26 @@ p
 ```{r}
 #| echo: false
 #| fig.asp: 0.8
-rt <- function(r,n) {r*sqrt((n-2)/(1-r^2))}
-dtr <- function(r,n) {dt(rt(r,n),n-2)*sqrt((n-2)/(1-r^2))}
-p2 <- p + stat_function(fun=dtr,colour="red",args=list(n=30),linewidth=2) +
-  ylab("density")
-p2
-```
 
+tt <- ggplot_build(p)$data[[1]]
+crit <- cor(dat$BloodAlc,dat$RT)
 
-:::
-
-
-::: {.fragment fragment-index=1}
-```{r}
-#| echo: false
-#| fig.asp: 0.8
-
-#density_data <- ggplot_build(p2)$data[[2]]
-
-tt <- ggplot_build(p2)$data[[1]]
-
-p +
+ggplot(tt,aes(x=x,y=y)) +
   # STEP 1: Draw the filled red area first
   geom_ribbon(
-    data = tt |> filter(x > 0.4),
+    data = . %>% filter(x > crit),
     aes(ymin = 0, ymax = y),
     fill = "red",
     alpha = 0.8
   ) +
+  geom_line(size=2,colour="black") +
+  geom_vline(aes(xintercept=crit),linetype="dotted",size=1,colour="red") +
   # STEP 2: Draw the black line on top of the fill
-  labs(x = "r", y = "density") + xlim(.8,.8)
+  labs(x = "r", y = "density") + ylim(0,3) + xlim(-.6,.6) +
+  ggtitle("10000 correlations of 50 random pairs") +
+  annotate("text",y=2.4,x=crit-.05,
+           label=bquote(r==.(crit)),
+           size=9,colour="red",hjust=1)
 
 
 ```
@@ -582,17 +572,14 @@ p +
 
 - distribution of $r$ under chance
 
+
 :::: {.fragment fragment-index=1}
-
-- can be mapped to $t$ distribution
-
-::::
-
-:::: {.fragment fragment-index=2}
 
 - probability of getting observed $r$ or higher
 
-$$t=(r - 0) / \textrm{se}$$
+- estimate using $t$ distribution with $n-2$ df
+
+
 
 ::::
 
@@ -606,39 +593,24 @@ $$t=(r - 0) / \textrm{se}$$
 
 ::: {.column width="50%"}
 
-:::: r-stack
-
-::: {#hello}
-
-```{r}
-#| echo: false
-#| fig.asp: 0.8
-# t <- tibble(r=replicate(10000,randomCor(30)))
-# p <- t %>% ggplot(aes(x=r)) + geom_density(size=2) +
-#   ggtitle("10000 correlations of 30 random pairs") +
-#   ylim(0,2.5) + xlim(-.8,.8)
-p
-```
-
-:::
-
-::: {.fragment fragment-index=1}
 ```{r}
 #| echo: false
 #| fig.asp: 0.8
 rt <- function(r,n) {r*sqrt((n-2)/(1-r^2))}
 dtr <- function(r,n) {dt(rt(r,n),n-2)*sqrt((n-2)/(1-r^2))}
-p + stat_function(fun=dtr,colour="red",args=list(n=30),linewidth=2) +
+p + stat_function(fun=dtr,colour="red",args=list(n=50),linewidth=2) +
   ylab("density")
 ```
 
 :::
-
-::::
-
-:::
 ::: {.column width="50%"}
-- distribution of random $r$s is $t$ distribution, with $n-2$ df
+
+$$
+\begin{align}
+t &=(r - 0) / \textrm{se}
+  &=\frac{r}{\sqrt{\frac{1-r^2}{n-2}}}
+\end{align}
+$$
 
 ::: {.fragment fragment-index=1}
 
@@ -1619,7 +1591,7 @@ reaction time slowed by `r .rround(coef(mod)[2],1)` ms for every additional 0.0
 
 ::: {.content-visible when-profile="local"}
 
-## [Reading Week 21--27 October]{.red}
+## [Reading Week 20--26 October]{.red}
 
 :::: {.columns}
 
@@ -1643,9 +1615,9 @@ reaction time slowed by `r .rround(coef(mod)[2],1)` ms for every additional 0.0
 ::::
 
 ::: {style="text-align: center; font-size: 1.5em;"}
-next lab: Thu 17
+next lab: Thu 16
 
-[next lecture: Mon 28]{.red}
+[next lecture: Mon 27]{.red}
 :::
 
 :::
