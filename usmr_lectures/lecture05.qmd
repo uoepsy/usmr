@@ -537,10 +537,42 @@ p
 ```{r}
 #| echo: false
 #| fig.asp: 0.8
+rt <- function(r,n) {r*sqrt((n-2)/(1-r^2))}
+dtr <- function(r,n) {dt(rt(r,n),n-2)*sqrt((n-2)/(1-r^2))}
+p2 <- p + stat_function(fun=dtr,colour="red",args=list(n=30),linewidth=2) +
+  ylab("density")
+p2
+```
+
+
+:::
+
+
+::: {.fragment fragment-index=1}
+```{r}
+#| echo: false
+#| fig.asp: 0.8
+
+#density_data <- ggplot_build(p2)$data[[2]]
+
+tt <- ggplot_build(p2)$data[[1]]
+
+p +
+  # STEP 1: Draw the filled red area first
+  geom_ribbon(
+    data = tt |> filter(x > 0.4),
+    aes(ymin = 0, ymax = y),
+    fill = "red",
+    alpha = 0.8
+  ) +
+  # STEP 2: Draw the black line on top of the fill
+  labs(x = "r", y = "density") + xlim(.8,.8)
+
 
 ```
 
 :::
+
 
 ::::
 
@@ -548,7 +580,22 @@ p
 
 ::: {.column width="50%"}
 
-HERE
+- distribution of $r$ under chance
+
+:::: {.fragment fragment-index=1}
+
+- can be mapped to $t$ distribution
+
+::::
+
+:::: {.fragment fragment-index=2}
+
+- probability of getting observed $r$ or higher
+
+$$t=(r - 0) / \textrm{se}$$
+
+::::
+
 :::
 
 ::::
@@ -566,10 +613,10 @@ HERE
 ```{r}
 #| echo: false
 #| fig.asp: 0.8
-t <- tibble(r=replicate(10000,randomCor(30)))
-p <- t %>% ggplot(aes(x=r)) + geom_density(size=2) +
-  ggtitle("10000 correlations of 30 random pairs") +
-  ylim(0,2.5) + xlim(-.8,.8)
+# t <- tibble(r=replicate(10000,randomCor(30)))
+# p <- t %>% ggplot(aes(x=r)) + geom_density(size=2) +
+#   ggtitle("10000 correlations of 30 random pairs") +
+#   ylim(0,2.5) + xlim(-.8,.8)
 p
 ```
 
