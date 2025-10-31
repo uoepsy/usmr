@@ -574,8 +574,8 @@ $$\color{red}{\textrm{utility}_i}\color{white}{=}\color{blue}{(\textrm{some func
 #| tidy.opts: { width.cutoff: 22 }
 
 toys <- toys |>
-  mutate(is_playmo =
-           ifelse(type=="playmo",1,0))
+  mutate(is_zing =
+           ifelse(type=="zing",1,0))
 toys
 ```
 :::
@@ -584,22 +584,22 @@ toys
 - this maps to a linear model
 
 
-$$\color{red}{\textrm{utility}_i}=\color{blue}{b_0+b_1\cdot{}\textrm{is_playmo}}+\epsilon_i$$
+$$\color{red}{\textrm{utility}_i}=\color{blue}{b_0+b_1\cdot{}\textrm{is_zing}}+\epsilon_i$$
 
 
-- $\overline{\textrm{utility}}$ for SuperZings is **intercept**
+- $\overline{\textrm{utility}}$ for playmobil is **intercept**
 
-- "change due to playmo-ness" is **slope**
+- "change due to zing-ness" is **slope**
 :::
 
 ::::
 
-## Linear Model Using `is_playmo`
+## Linear Model Using `is_zing`
 
 ```{r}
 #| label: lm1
 #| output-line-numbers: "12"
-mod1 <- lm(UTILITY~is_playmo,data=toys)
+mod1 <- lm(UTILITY~is_zing,data=toys)
 summary(mod1)
 ```
 
@@ -615,6 +615,7 @@ summary(mod1)
 
 ```{r}
 #| label: lm2
+#| output-line-numbers: "2"
 contrasts(toys$type)
 ```
 
@@ -622,9 +623,22 @@ contrasts(toys$type)
 
 - NB the first value will be the default intercept (because $b_n=0$ for that value)
 
-  + can change this using the `relevel()` function (or tidyverse `fct_relevel()`)
+
+## Let R Do the Work {visibility="uncounted"}
+
+```{r}
+#| label: lm2a
+contrasts(toys$type)
+```
+
+- already built-in to factors
+
+- NB the first value will be the default intercept (because $b_n=0$ for that value)
+
 
 - as long as we have a _factor_, can just use lm() with that column
+
+
 
 ## Linear Model Using `type`
 
@@ -652,9 +666,36 @@ mod2 <- lm(UTILITY~type, data=toys)
 
 ```
 
-::: {.fragment}
-- why is the coefficient negative? why is the intercept different?
-:::
+
+## Linear Model Using `type` {visibility="unnumbered"}
+
+#### original
+
+```r
+summary(mod1)
+```
+```{r}
+#| echo: false
+#| output-line-numbers: "3"
+.pp(summary(mod1),l=list(0,c(11,12),0))
+```
+
+#### with the factor `type`
+
+```r
+mod2 <- lm(UTILITY~type, data=toys)
+summary(mod2)
+```
+```{r}
+#| echo: false
+#| output-line-numbers: "3"
+mod2 <- lm(UTILITY~type, data=toys)
+.pp(summary(mod2),l=list(0,c(11,12),0))
+
+```
+
+- the intercept is `playmo` _by inference_ from the coefficient
+
 
 ::: notes
 - point out the `typezing` label
@@ -668,7 +709,7 @@ mod2 <- lm(UTILITY~type, data=toys)
 #| fig-align: center
 toys |> ggplot(aes(x=type,y=UTILITY)) +
   geom_point(size=3) +
-  geom_smooth(aes(x=2-is_playmo),method="lm")
+  geom_smooth(aes(x=is_zing+1),method="lm")
 ```
 
 - shows "what the model is doing", but isn't a very good presentation
@@ -717,7 +758,7 @@ while (doit) {
     doit <- 0
   }
 }
-toys <- toys |> select(-is_playmo) |> full_join(t2)
+toys <- toys |> select(-is_zing) |> full_join(t2)
 toys <- toys |> group_by(type) |> mutate(id=1:n()) |> ungroup() |> arrange(id,desc(type)) |> select(-id) |> mutate(type=as_factor(type))
 ```
 
