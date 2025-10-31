@@ -759,7 +759,7 @@ while (doit) {
   }
 }
 toys <- toys |> select(-is_zing) |> full_join(t2)
-toys <- toys |> group_by(type) |> mutate(id=1:n()) |> ungroup() |> arrange(id,desc(type)) |> select(-id) |> mutate(type=as_factor(type))
+toys <- toys |> group_by(type) |> mutate(id=1:n()) |> ungroup() |> arrange(id,type) |> select(-id) |> mutate(type=as_factor(type))
 ```
 
 
@@ -791,11 +791,15 @@ toys |> ggplot(aes(x=as.numeric(as.factor(type))-1,y=UTILITY)) +
 ```{r}
 #| label: addthem
 toys <- toys |> mutate(
-  is_playmo = ifelse(type=="playmo",1,0),
-  is_lego   = ifelse(type=="lego",1,0)
+  is_playmo   = ifelse(type=="playmo",1,0),
+  is_zing = ifelse(type=="zing",1,0)
 )
 head(toys)
 ```
+
+::: aside
+I'm keeping these in alphabetic order to match `R` defaults
+::: 
 
 ## [Three-Level Predictor: Two Coefficients]{.r-fit-text}
 
@@ -822,7 +826,7 @@ head(toys) |> gt() |>
 ::: {.column width="60%"}
 
 
-$$\textrm{utility}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot\textrm{is_playmo}_i+b_2\cdot\textrm{is_lego}_i}+\epsilon_i$$
+$$\textrm{utility}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot\textrm{is_playmo}_i+b_2\cdot\textrm{is_zing}_i}+\epsilon_i$$
 
 $$\textrm{utility}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot0+b_2\cdot0}+\epsilon_i$$
 
@@ -832,7 +836,7 @@ $$\textrm{utility}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot0+b_2\cdot0}+\epsilo
 ::::
 
 ::: {.myyellowblock style="text-align: center;"}
-"utility of a zing"
+"utility of a lego minfig"
 :::
 
 
@@ -859,14 +863,14 @@ head(toys) |> gt() |>
 
 ::: {.column width="60%"}
 
-$$\textrm{utility}_i=\color{blue}{b_0}\color{red}{+b_1\cdot\textrm{is_playmo}_i}+\color{gray}{b_2\cdot\textrm{is_lego}_i}+\epsilon_i$$
+$$\textrm{utility}_i=\color{blue}{b_0}\color{red}{+b_1\cdot\textrm{is_playmo}_i}+\color{gray}{b_2\cdot\textrm{is_zing}_i}+\epsilon_i$$
 $$\textrm{utility}_i=\color{blue}{b_0}\color{red}{+b_1\cdot1}+\color{gray}{b_2\cdot0}+\epsilon_i$$
 
 :::
 ::::
 
 ::: {.myyellowblock style="text-align: center;"}
-"change in utility from a zing due to being a playmo"
+"change in utility from lego due to being a playmo"
 :::
 
 ## [Three-Level Predictor: Two Coefficients]{.r-fit-text}
@@ -893,13 +897,13 @@ head(toys) |> gt() |>
 
 ::: {.column width="60%"}
 
-$$\textrm{utility}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot\textrm{is_playmo}_i}+\color{red}{b_2\cdot\textrm{is_lego}_i}+\epsilon_i$$
+$$\textrm{utility}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot\textrm{is_playmo}_i}+\color{red}{b_2\cdot\textrm{is_zing}_i}+\epsilon_i$$
 $$\textrm{utility}_i=\color{blue}{b_0}\color{gray}{+b_1\cdot0}+\color{red}{b_2\cdot1}+\epsilon_i$$
 
 :::
 ::::
 ::: {.myyellowblock style="text-align: center;"}
-"change in utility from a zing due to being a lego"
+"change in utility from lego due to being a zing"
 :::
 
 ```{r}
@@ -911,7 +915,7 @@ mod <- lm(UTILITY~type,data=toys)
 ## Three-level Predictor Linear Model
 
 ```{r}
-mod <- lm(UTILITY ~ is_playmo + is_lego, data=toys)
+mod <- lm(UTILITY ~ is_playmo + is_zing, data=toys)
 summary(mod)
 ```
 
@@ -925,7 +929,7 @@ contrasts(toys$type)
 ```
 - already built-in to factors, as before
 
-- NB this time `zing` is the intercept
+- NB this time `lego` is the intercept
 
 
 
@@ -975,7 +979,7 @@ summary(mod)
 ::: {.column width="30%"}
 $$\hat{\textrm{utility}}= b_0$$
 
-$$+ \color{blue}{b_1} . \textrm{is_playmo}$$
+$$+ \color{blue}{b_1}\cdot\textrm{is_playmo}$$
 :::
 
 ::::
@@ -997,12 +1001,36 @@ $$\hat{\textrm{utility}} = b_0$$
 
 $$+ \color{blue}{b_1}\cdot\textrm{is_playmo}$$
 
-$$+ \color{red}{b_2}\cdot\textrm{is_lego}$$
+$$+ \color{red}{b_2}\cdot\textrm{is_zing}$$
 :::
 
 ::::
 
+## Let R Do the Work {visibility="uncounted"}
+:::: {.columns}
 
+::: {.column width="70%"}
+```{r}
+#| output-line-numbers: "19"
+mod <- lm(UTILITY ~ type, data=toys)
+summary(mod)
+```
+
+:::
+
+::: {.column width="30%"}
+$$\hat{\textrm{utility}} = b_0$$
+
+$$+ \color{blue}{b_1}\cdot\textrm{is_playmo}$$
+
+$$+ \color{red}{b_2}\cdot\textrm{is_zing}$$
+:::
+
+::::
+
+::: notes
+- just remember the model fit
+:::
 
 ## Graphically
 
@@ -1047,7 +1075,7 @@ p + annotate("segment",x=.48,y=0,xend=.48,yend=coef(mod)[1],linewidth=2,color="g
 
 ::::
 
-$$\textrm{utility}_i=\color{grey}{b_0}\color{blue}{+b_1}\cdot\textrm{is_playmo}_i+\color{red}{b_2}\cdot\textrm{is_lego}_i+\epsilon_i$$
+$$\textrm{utility}_i=\color{grey}{b_0}\color{blue}{+b_1}\cdot\textrm{is_playmo}_i+\color{red}{b_2}\cdot\textrm{is_zing}_i+\epsilon_i$$
 
 ## Not Quite a Multiple Regression
 
@@ -1060,5 +1088,170 @@ anova(mod)
 - in some sense it can't be decomposed
 
 - but it has two **degrees of freedom** because $b_1$ and $b_2$ are independent of each other
+
+## [But You Never Compared Playmo to Zing]{.r-fit-text}
+
+- change the order of the factor
+
+```r
+#| output-line-numbers: "11"
+toys <-
+  toys |> mutate(type=fct_relevel(type,c('playmo','lego','zing')))
+mod.r <- lm(UTILITY~type, data=toys)
+summary(mod.r)
+```
+
+```{r}
+#| echo: false
+#| output-line-numbers: "6,12"
+toys <-
+  toys |> mutate(type=fct_relevel(type,c('playmo','lego','zing')))
+mod.r <- lm(UTILITY~type, data=toys)
+.pp(summary(mod.r),l=list(0,9:19))
+```
+
+## Different Contrast Codings
+
+- multiple models increase the chance of a **type 1** error
+- **different contrast coding**s may suit our research question
+- a predictor with $g$ levels (or 'groups') has $g-1$ possible contrasts
+- contrasts can be _anything you like_ (a few are built in to `R`)
+
+<!-- spacer -->
+ 
+<!-- end spacer -->
+
+- contrasts act like 'tests of differences of interest'
+
+::: aside
+model fit is not affected, for type I sums-of-squares
+:::
+
+## Sum Contrasts
+
+```{r}
+#| include: false
+toys <- toys |> filter(type != 'lego') |> droplevels()
+```
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+- how much better are playmos than the average toy?
+
+- let's just look at zings
+
+:::
+
+::: {.column width="50%"}
+
+```{r}
+#| echo: false
+toys |> gt() |>
+  data_color("type",palette=c("red","blue"),alpha=0.3) |>
+  tab_options(table.font.size=pct(70))
+
+```
+
+:::
+::::
+
+- 'average' (grand mean) utility = `mean(toys$UTILITY)` = `r mean(toys$UTILITY)`
+
+## Sum Contrasts
+
+- we can change the contrast type of `toys$type`
+
+```{r}
+contrasts(toys$type) <- "contr.sum"
+contrasts(toys$type)
+```
+
+```r
+mod.s <- lm(UTILITY ~ type, data=toys)
+summary(mod.s)
+```
+```{r}
+#| echo: false
+mod.s <- lm(UTILITY ~ type, data=toys)
+.pp(summary(mod.s),l=list(0,9:12,0))
+
+```
+
+## Sum Contrasts {visibility="uncounted"}
+
+- we can change the contrast type of `toys$type`
+
+```{r}
+contrasts(toys$type) <- "contr.sum"
+contrasts(toys$type)
+```
+
+```r
+mod.s <- lm(UTILITY ~ type, data=toys)
+summary(mod.s)
+```
+```{r}
+#| echo: false
+#| output-line-numbers: "4"
+.pp(summary(mod.s),l=list(0,9:12,0))
+
+```
+
+- mean = `r coef(mod.s)[1]`
+
+## Sum Contrasts
+
+- we can change the contrast type of `toys$type`
+
+```{r}
+#| output-line-numbers: "2"
+contrasts(toys$type) <- "contr.sum"
+contrasts(toys$type)
+```
+
+```r
+mod.s <- lm(UTILITY ~ type, data=toys)
+summary(mod.s)
+```
+```{r}
+#| echo: false
+#| output-line-numbers: "5"
+.pp(summary(mod.s),l=list(0,9:12,0))
+
+```
+
+- mean = `r coef(mod.s)[1]`
+- difference = `r coef(mod.s)[2]`
+
+::: {.content-visible when-profile="local"}
+
+## [Group Assessment Available on Thursday]{.red .r-fit-text}
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- coursework will be released [on Learn]{.red} after labs
+
+- full instructions (and plenty of extra help) online
+
+- please read carefully
+
+- plan time to work with your group
+:::
+
+::: {.column width="50%"}
+![](img/playmo_group.jpg){width="50%" fig-align="center"}
+:::
+
+::::
+
+
+::: {style="text-align: center; font-size: 1.5em;"}
+[good luck!]{.red}
+:::
+
+:::
 
 # End
