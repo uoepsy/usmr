@@ -1,0 +1,80 @@
+---
+title: "Lie Detectors"
+author: "jk"
+date: "2025-11-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# load libraries
+library(tidyverse)
+library(broom)
+library(psych)
+# read in the data
+liedf <- read_csv("https://uoepsy.github.io/data/usmr_polygraph.csv")
+
+# there seems to be a 5 there.. 
+table(liedf$strategy)
+# the other variables look okay though
+describe(liedf)
+pairs.panels(liedf)
+
+
+liedf <- liedf |> 
+  filter(strategy!=5) |>
+  mutate(
+    # strategy is a factor. but currently numbers
+    # i'm going to give them better labels too.. 
+    # to do this is need to tell factor() what "levels" to look for
+    # and then give it some "labels" to apply to those.
+    strategy = factor(strategy, 
+                      levels = c("0","1","2","3"),
+                      labels = c("do nothing", "close eyes",
+                                 "cough", "deep breathing")
+                      )
+  )
+
+liemod <- lm(hr ~ age + anx + strategy, data = liedf)
+
+# Does HR differ between strategies?
+anova(liemod)
+# the above is a shortcut for getting this comparison out:
+anova(
+  lm(hr ~ age + anx, data = liedf),
+  lm(hr ~ age + anx + strategy, data = liedf)
+)
+
+# i want a plot to show the HRs of different strategies.. 
+plotdat <- data.frame(
+  age = mean(liedf$age),
+  anx = mean(liedf$anx),
+  strategy = unique(liedf$strategy)
+)
+myplot <- 
+  augment(liemod, newdata=plotdat, interval="confidence") |>
+  ggplot(aes(x=strategy,y=.fitted, col=strategy))+
+  geom_pointrange(aes(ymin=.lower,ymax=.upper)) +
+  guides(col="none")
+```
+
+# Introduction
+
+Law enforcement in some countries regularly rely on "polygraph" tests as a form of "lie detection". These tests involve measuring heart rate, blood pressure, respiratory rate and sweat. However, there is very little evidence to suggest that these methods are remotely accurate in being able to determine whether or not someone is lying.
+
+Researchers are interested in if peoples’ heart rates during polygraph tests can be influenced by various pre-test strategies, including deep breathing, or closing their eyes. They recruited 142 participants (ages 22 to 64). Participants were told they were playing a game in which their task was to deceive the polygraph test, and they would receive financial rewards if they managed successfully. At the outset of the study, they completed a questionnaire which asked about their anxiety in relation to taking part. Participants then chose one of 4 strategies to prepare themselves for the test, each lasting 1 minute. These were "do nothing", "deep breathing", "close your eyes" or "cough". The average heart rate of each participant was recorded during their test.
+
+# Description of sample 
+
+The median age of participants was `r median(liedf$age)`, with `r table(liedf$strategy)[1]` (`r round(prop.table(table(liedf$strategy))*100,1)[1]`%) people choosing to do nothing as a pre-test strategy, `r table(liedf$strategy)[2]` (`r round(prop.table(table(liedf$strategy))*100,1)[2]`%) people choosing to close their eyes, `r table(liedf$strategy)[3]` (`r round(prop.table(table(liedf$strategy))*100,1)[3]`%) people choosing to cough, and `r table(liedf$strategy)[4]` (`r round(prop.table(table(liedf$strategy))*100,1)[4]`%) people choosing to do deep breathing. During the polygraph tests, heart rates varied from `r min(liedf$hr)` to `r max(liedf$hr)` bpm.  
+
+# Analysis
+
+Linear regression was used to examine whether participants’ heart rate during the polygraph test (measured in beats per minute) was different between the frou pre-test strategies, while controlling for participant age (in years) and self-reported anxiety (Z-scored). Pre-test strategy was treatment coded with "do nothing" as the reference level. 
+
+# Results
+
+```{r}
+myplot
+```
