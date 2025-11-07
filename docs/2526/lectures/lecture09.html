@@ -1,0 +1,2846 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<script src="lecture09_files/libs/clipboard/clipboard.min.js"></script>
+<script src="lecture09_files/libs/quarto-html/tabby.min.js"></script>
+<script src="lecture09_files/libs/quarto-html/popper.min.js"></script>
+<script src="lecture09_files/libs/quarto-html/tippy.umd.min.js"></script>
+<link href="lecture09_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="lecture09_files/libs/quarto-html/light-border.css" rel="stylesheet">
+<link href="lecture09_files/libs/quarto-html/quarto-syntax-highlighting-8d579c7e4cb5e38eaddfdf7e7f03f655.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="lecture09_files/libs/quarto-contrib/videojs/video.min.js"></script>
+<link href="lecture09_files/libs/quarto-contrib/videojs/video-js.css" rel="stylesheet"><meta charset="utf-8">
+  <meta name="generator" content="quarto-1.8.25">
+
+  <meta name="author" content="Martin Corley">
+  <title>The Generalized Linear Model</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+  <link rel="stylesheet" href="lecture09_files/libs/revealjs/dist/reset.css">
+  <link rel="stylesheet" href="lecture09_files/libs/revealjs/dist/reveal.css">
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+      vertical-align: middle;
+    }
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+      }
+    pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+    div.sourceCode
+      { color: #1f1c1b;  }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span { color: #1f1c1b; } /* Normal */
+    code span.al { color: #bf0303; background-color: #f7e6e6; font-weight: bold; } /* Alert */
+    code span.an { color: #ca60ca; } /* Annotation */
+    code span.at { color: #0057ae; } /* Attribute */
+    code span.bn { color: #b08000; } /* BaseN */
+    code span.bu { color: #644a9b; font-weight: bold; } /* BuiltIn */
+    code span.cf { color: #1f1c1b; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #924c9d; } /* Char */
+    code span.cn { color: #aa5500; } /* Constant */
+    code span.co { color: #898887; } /* Comment */
+    code span.cv { color: #0095ff; } /* CommentVar */
+    code span.do { color: #607880; } /* Documentation */
+    code span.dt { color: #0057ae; } /* DataType */
+    code span.dv { color: #b08000; } /* DecVal */
+    code span.er { color: #bf0303; text-decoration: underline; } /* Error */
+    code span.ex { color: #0095ff; font-weight: bold; } /* Extension */
+    code span.fl { color: #b08000; } /* Float */
+    code span.fu { color: #644a9b; } /* Function */
+    code span.im { color: #ff5500; } /* Import */
+    code span.in { color: #b08000; } /* Information */
+    code span.kw { color: #1f1c1b; font-weight: bold; } /* Keyword */
+    code span.op { color: #ca60ca; } /* Operator */
+    code span.ot { color: #006e28; } /* Other */
+    code span.pp { color: #006e28; } /* Preprocessor */
+    code span.re { color: #0057ae; background-color: #e0e9f8; } /* RegionMarker */
+    code span.sc { color: #3daee9; } /* SpecialChar */
+    code span.ss { color: #ff5500; } /* SpecialString */
+    code span.st { color: #bf0303; } /* String */
+    code span.va { color: #0057ae; } /* Variable */
+    code span.vs { color: #bf0303; } /* VerbatimString */
+    code span.wa { color: #bf0303; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="lecture09_files/libs/revealjs/dist/theme/quarto-07c592ee70059a630b0e4338dea7c8ab.css">
+  <link rel="stylesheet" href="img/css/wizard.css">
+  <link href="lecture09_files/libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
+  <link href="lecture09_files/libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
+  <link href="lecture09_files/libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
+  <link href="lecture09_files/libs/revealjs/plugin/reveal-attribution/attribution.css" rel="stylesheet">
+  <link href="lecture09_files/libs/revealjs/plugin/quarto-support/footer.css" rel="stylesheet">
+  <style type="text/css">
+    .reveal div.sourceCode {
+      margin: 0;
+      overflow: auto;
+    }
+    .reveal div.hanging-indent {
+      margin-left: 1em;
+      text-indent: -1em;
+    }
+    .reveal .slide:not(.center) {
+      height: 100%;
+    }
+    .reveal .slide.scrollable {
+      overflow-y: auto;
+    }
+    .reveal .footnotes {
+      height: 100%;
+      overflow-y: auto;
+    }
+    .reveal .slide .absolute {
+      position: absolute;
+      display: block;
+    }
+    .reveal .footnotes ol {
+      counter-reset: ol;
+      list-style-type: none; 
+      margin-left: 0;
+    }
+    .reveal .footnotes ol li:before {
+      counter-increment: ol;
+      content: counter(ol) ". "; 
+    }
+    .reveal .footnotes ol li > p:first-child {
+      display: inline-block;
+    }
+    .reveal .slide ul,
+    .reveal .slide ol {
+      margin-bottom: 0.5em;
+    }
+    .reveal .slide ul li,
+    .reveal .slide ol li {
+      margin-top: 0.4em;
+      margin-bottom: 0.2em;
+    }
+    .reveal .slide ul[role="tablist"] li {
+      margin-bottom: 0;
+    }
+    .reveal .slide ul li > *:first-child,
+    .reveal .slide ol li > *:first-child {
+      margin-block-start: 0;
+    }
+    .reveal .slide ul li > *:last-child,
+    .reveal .slide ol li > *:last-child {
+      margin-block-end: 0;
+    }
+    .reveal .slide .columns:nth-child(3) {
+      margin-block-start: 0.8em;
+    }
+    .reveal blockquote {
+      box-shadow: none;
+    }
+    .reveal .tippy-content>* {
+      margin-top: 0.2em;
+      margin-bottom: 0.7em;
+    }
+    .reveal .tippy-content>*:last-child {
+      margin-bottom: 0.2em;
+    }
+    .reveal .slide > img.stretch.quarto-figure-center,
+    .reveal .slide > img.r-stretch.quarto-figure-center {
+      display: block;
+      margin-left: auto;
+      margin-right: auto; 
+    }
+    .reveal .slide > img.stretch.quarto-figure-left,
+    .reveal .slide > img.r-stretch.quarto-figure-left  {
+      display: block;
+      margin-left: 0;
+      margin-right: auto; 
+    }
+    .reveal .slide > img.stretch.quarto-figure-right,
+    .reveal .slide > img.r-stretch.quarto-figure-right  {
+      display: block;
+      margin-left: auto;
+      margin-right: 0; 
+    }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+  $(document).ready(function() {
+      $('.cell').each(function() {
+          let highlightLines = $(this).attr('data-output-line-numbers');
+          if (highlightLines) {
+              let lines = highlightLines.split(',').map(x => parseInt(x));
+              $(this).find('.cell-output-stdout pre code').html(function(_, html) {
+                  return html.split('\n').map((line, index) => {
+                      if (lines.includes(index + 1)) {
+                          return '<span style="background-color: #D0D8FC;">' + line + '</span>';
+                      } else {
+                          return line;
+                      }
+                  }).join('\n');
+              });
+          }
+      });
+  });
+  </script>
+</head>
+<body class="quarto-light">
+  <div class="reveal">
+    <div class="slides">
+
+<section id="title-slide" data-background-color="#FCBB06" data-background-image="img/logo.svg" data-background-position="2% 2%" data-background-size="25%" class="quarto-title-block center">
+  <h1 class="title">The Generalized Linear Model</h1>
+  <p class="subtitle">Univariate Statistics and Methodology using R</p>
+
+<div class="quarto-title-authors">
+<div class="quarto-title-author">
+<div class="quarto-title-author-name">
+Martin Corley 
+</div>
+        <p class="quarto-title-affiliation">
+            Psychology, PPLS
+          </p>
+        <p class="quarto-title-affiliation">
+            University of Edinburgh
+          </p>
+    </div>
+</div>
+
+</section>
+<section>
+<section id="aliens" class="title-slide slide level1 center" data-background-color="#FCBB06">
+<h1>Aliens</h1>
+
+</section>
+<section class="slide level2">
+
+<video id="video_shortcode_videojs_video1" class="video-js vjs-default-skin vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="img/video/alien.mp4"></video>
+</section>
+<section id="a-binary-world" class="slide level2">
+<h2>A Binary World</h2>
+
+<img data-src="img/playmo_aliens.jpg" class="center-img r-stretch"></section>
+<section id="a-binary-world-1" class="slide level2" data-visibility="uncounted">
+<h2>A Binary World</h2>
+
+<img data-src="img/playmo_aliens_splat.jpg" class="center-img r-stretch"></section>
+<section id="a-binary-world-2" class="slide level2">
+<h2>A Binary World</h2>
+
+<img data-src="img/playmo_aliens_10.jpg" class="center-img r-stretch"></section>
+<section id="aliens-1" class="slide level2">
+<h2>1,000 Aliens</h2>
+<div class="columns">
+<div class="column" style="width:60%;">
+<div class="cell">
+<div class="cell-output-display">
+<div id="ygmnhryvkj" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#ygmnhryvkj table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#ygmnhryvkj thead, #ygmnhryvkj tbody, #ygmnhryvkj tfoot, #ygmnhryvkj tr, #ygmnhryvkj td, #ygmnhryvkj th {
+  border-style: none;
+}
+
+#ygmnhryvkj p {
+  margin: 0;
+  padding: 0;
+}
+
+#ygmnhryvkj .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 70%;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#ygmnhryvkj .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#ygmnhryvkj .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#ygmnhryvkj .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#ygmnhryvkj .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#ygmnhryvkj .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#ygmnhryvkj .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#ygmnhryvkj .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#ygmnhryvkj .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#ygmnhryvkj .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#ygmnhryvkj .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#ygmnhryvkj .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#ygmnhryvkj .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#ygmnhryvkj .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#ygmnhryvkj .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ygmnhryvkj .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#ygmnhryvkj .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#ygmnhryvkj .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#ygmnhryvkj .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ygmnhryvkj .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#ygmnhryvkj .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ygmnhryvkj .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#ygmnhryvkj .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ygmnhryvkj .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ygmnhryvkj .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ygmnhryvkj .gt_left {
+  text-align: left;
+}
+
+#ygmnhryvkj .gt_center {
+  text-align: center;
+}
+
+#ygmnhryvkj .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#ygmnhryvkj .gt_font_normal {
+  font-weight: normal;
+}
+
+#ygmnhryvkj .gt_font_bold {
+  font-weight: bold;
+}
+
+#ygmnhryvkj .gt_font_italic {
+  font-style: italic;
+}
+
+#ygmnhryvkj .gt_super {
+  font-size: 65%;
+}
+
+#ygmnhryvkj .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#ygmnhryvkj .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#ygmnhryvkj .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#ygmnhryvkj .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#ygmnhryvkj .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#ygmnhryvkj .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#ygmnhryvkj .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#ygmnhryvkj .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#ygmnhryvkj div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top" data-quarto-bootstrap="false">
+<thead>
+<tr class="gt_col_headings header">
+<th id="id" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">id</th>
+<th id="quality" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">quality</th>
+<th id="SPLATTED" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">SPLATTED</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="id">The Great Odorjan of Erpod</td>
+<td class="gt_row gt_right" headers="quality">84</td>
+<td class="gt_row gt_right" headers="SPLATTED">0</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="id">Hapetox Bron</td>
+<td class="gt_row gt_right" headers="quality">34</td>
+<td class="gt_row gt_right" headers="SPLATTED">1</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="id">Loorn Molzeks</td>
+<td class="gt_row gt_right" headers="quality">92</td>
+<td class="gt_row gt_right" headers="SPLATTED">0</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="id">Ba'lite Adrflen</td>
+<td class="gt_row gt_right" headers="quality">49</td>
+<td class="gt_row gt_right" headers="SPLATTED">1</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="id">Tedlambo Garilltet</td>
+<td class="gt_row gt_right" headers="quality">93</td>
+<td class="gt_row gt_right" headers="SPLATTED">0</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="id">Goraveola Grellorm</td>
+<td class="gt_row gt_right" headers="quality">5</td>
+<td class="gt_row gt_right" headers="SPLATTED">1</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="id">Colonel Garqun</td>
+<td class="gt_row gt_right" headers="quality">55</td>
+<td class="gt_row gt_right" headers="SPLATTED">1</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="id">Bosgogo Lurcat</td>
+<td class="gt_row gt_right" headers="quality">64</td>
+<td class="gt_row gt_right" headers="SPLATTED">1</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="id">Osajed Voplily</td>
+<td class="gt_row gt_right" headers="quality">45</td>
+<td class="gt_row gt_right" headers="SPLATTED">0</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="id">Subcommander Edorop</td>
+<td class="gt_row gt_right" headers="quality">90</td>
+<td class="gt_row gt_right" headers="SPLATTED">0</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</div><div class="column" style="width:40%;">
+<ul>
+<li><p><code>quality</code> = quality of singing</p></li>
+<li><p><code>SPLATTED</code> = whether splatted (1 or 0)</p></li>
+</ul>
+</div></div>
+</section>
+<section id="aliens-2" class="slide level2 nostretch">
+<h2>1,000 Aliens</h2>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="lecture09_files/figure-revealjs/plotm-1.svg" class="quarto-figure quarto-figure-center"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="aliens-3" class="slide level2 nostretch" data-visibility="uncounted">
+<h2>1,000 Aliens</h2>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="lecture09_files/figure-revealjs/plotme-1.svg" class="quarto-figure quarto-figure-center"></p>
+</figure>
+</div>
+</div>
+</div>
+<ul>
+<li>using <code>geom_jitter()</code> with <code>alpha=.5</code></li>
+</ul>
+</section>
+<section id="binomial-regression-conceptually" class="slide level2">
+<h2>Binomial Regression, Conceptually</h2>
+<ul>
+<li><p>each alien either gets splatted or doesn’t</p>
+<ul>
+<li>each observation is either a 1 or a 0</li>
+</ul></li>
+<li><p>underlyingly, there’s a <strong>binomial</strong> distribution</p></li>
+<li><p>for each value of “quality of singing” there’s a <em>probability</em> of getting splatted</p></li>
+</ul>
+<div class="fragment">
+<ul>
+<li><p>for each alien, the outcome is deterministic</p></li>
+<li><p>but it’s the <em>probability</em> we are ultimately interested in</p></li>
+<li><p>we can approximate it by binning our data…</p></li>
+</ul>
+</div>
+</section>
+<section id="binned-data" class="slide level2" data-auto-animate="true">
+<h2 data-id="quarto-animate-title">Binned Data</h2>
+<div class="cell columns column-output-location">
+<div class="column">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy" data-id="quarto-animate-code"><code class="sourceCode r hljs"><span id="cb1-1" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>singers <span class="ot">&lt;-</span> singers <span class="sc">|&gt;</span></span>
+<span id="cb1-2" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">bin =</span> <span class="fu">cut_interval</span>(quality,</span>
+<span id="cb1-3" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>        <span class="dv">10</span>))</span>
+<span id="cb1-4" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> singers <span class="sc">|&gt;</span></span>
+<span id="cb1-6" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(bin) <span class="sc">|&gt;</span></span>
+<span id="cb1-7" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(<span class="at">prop =</span> <span class="fu">mean</span>(SPLATTED))</span>
+<span id="cb1-8" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>dat</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div><div class="column">
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 2
+   bin            prop
+   &lt;fct&gt;         &lt;dbl&gt;
+ 1 [1,10.9]    0.982  
+ 2 (10.9,20.8] 0.959  
+ 3 (20.8,30.7] 0.935  
+ 4 (30.7,40.6] 0.803  
+ 5 (40.6,50.5] 0.573  
+ 6 (50.5,60.4] 0.311  
+ 7 (60.4,70.3] 0.115  
+ 8 (70.3,80.2] 0.0388 
+ 9 (80.2,90.1] 0.00893
+10 (90.1,100]  0.0351 </code></pre>
+</div>
+</div></div>
+</section>
+<section id="binned-data-1" class="slide level2" data-auto-animate="true">
+<h2 data-id="quarto-animate-title">Binned Data</h2>
+<div class="cell columns column-output-location">
+<div class="column">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy" data-id="quarto-animate-code"><code class="sourceCode r hljs"><span id="cb3-1" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>singers <span class="ot">&lt;-</span> singers <span class="sc">|&gt;</span></span>
+<span id="cb3-2" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">bin =</span> <span class="fu">cut_interval</span>(quality,</span>
+<span id="cb3-3" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>        <span class="dv">10</span>))</span>
+<span id="cb3-4" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> singers <span class="sc">|&gt;</span></span>
+<span id="cb3-6" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(bin) <span class="sc">|&gt;</span></span>
+<span id="cb3-7" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(<span class="at">prop =</span> <span class="fu">mean</span>(SPLATTED))</span>
+<span id="cb3-8" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>dat <span class="sc">|&gt;</span></span>
+<span id="cb3-10" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> bin, <span class="at">y =</span> prop)) <span class="sc">+</span></span>
+<span id="cb3-11" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">xlab</span>(<span class="st">"quality bin"</span>) <span class="sc">+</span></span>
+<span id="cb3-12" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ylab</span>(<span class="st">"prop splatted"</span>) <span class="sc">+</span></span>
+<span id="cb3-13" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb3-14" class="hljs-ln-code"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_discrete</span>(<span class="at">label =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div><div class="column">
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img data-src="lecture09_files/figure-revealjs/unnamed-chunk-4-1.svg"></p>
+</figure>
+</div>
+</div>
+</div></div>
+</section>
+<section id="best-fit-lines" class="slide level2">
+<h2>Best Fit Lines</h2>
+<div class="columns">
+<div class="column" style="width:50%;">
+<ul>
+<li><p>we can fit our data using a standard linear model</p></li>
+<li><p>but there’s something very wrong…</p></li>
+</ul>
+</div><div class="column" style="width:50%;">
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img data-src="lecture09_files/figure-revealjs/with_line-1.svg"></p>
+</figure>
+</div>
+</div>
+</div>
+</div></div>
+</section>
+<section id="the-problem-with-probability" class="slide level2 nostretch">
+<h2>The Problem with Probability</h2>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="lecture09_files/figure-revealjs/bplot-1.svg" class="quarto-figure quarto-figure-center"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="the-problem-with-probability-1" class="slide level2 nostretch" data-visibility="uncounted">
+<h2>The Problem with Probability</h2>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="lecture09_files/figure-revealjs/bplot2-1.svg" class="quarto-figure quarto-figure-center"></p>
+</figure>
+</div>
+</div>
+</div>
+<ul>
+<li>a <em>linear</em> model predicts impossible values because probability isn’t linear; it’s <strong>asymptotic</strong></li>
+</ul>
+</section>
+<section id="the-problem-with-probability-2" class="slide level2 nostretch">
+<h2>The Problem with Probability</h2>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="lecture09_files/figure-revealjs/bplot3-1.svg" class="quarto-figure quarto-figure-center"></p>
+</figure>
+</div>
+</div>
+</div>
+<ul>
+<li>variance <em>necessarily</em> covaries with probability</li>
+</ul>
+</section>
+<section id="assumptions" class="slide level2">
+<h2>Assumptions</h2>
+
+<img data-src="lecture09_files/figure-revealjs/ass-1.svg" class="quarto-figure quarto-figure-center r-stretch"></section></section>
+<section>
+<section id="log-odds" class="title-slide slide level1 center" data-background-color="#FCBB06">
+<h1>Log Odds</h1>
+
+</section>
+<section id="probability-and-odds" class="slide level2">
+<h2>Probability and Odds</h2>
+<div class="myblock">
+<div class="columns">
+<div class="column" style="width:50%;">
+<p><span class="math display">\[\textrm{odds}(y)=\frac{p(y)}{1-p(y)}\]</span></p>
+</div><div class="column" style="width:50%;">
+<p><span class="math display">\[0&lt;p&lt;1\]</span> <span class="math display">\[0&lt;\textrm{odds}&lt;\infty\]</span></p>
+</div></div>
+</div>
+<div class="quarto-layout-panel" data-layout="[[-1,4,2,2,-1],[-1,4,2,2,-1]],[-1,4,2,2,-1]],[-1,4,2,2,-1]]">
+<div class="quarto-layout-row">
+<div class="quarto-figure-spacer quarto-layout-cell" style="flex-basis: 10.0%;justify-content: flex-start;">
+<p>&nbsp;</p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 40.0%;justify-content: flex-start;">
+<p>&nbsp;</p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: flex-start;">
+<p><span class="math inline">\(p(y)\)</span></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: flex-start;">
+<p><span class="math inline">\(\textrm{odds}(y)\)</span></p>
+</div>
+<div class="quarto-figure-spacer quarto-layout-cell" style="flex-basis: 10.0%;justify-content: flex-start;">
+<p>&nbsp;</p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-figure-spacer quarto-layout-cell" style="flex-basis: 10.0%;justify-content: flex-start;">
+<p>&nbsp;</p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 40.0%;justify-content: flex-start;">
+<p>throw heads</p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: flex-start;">
+<p><span class="math inline">\(\frac{1}{2}\)</span></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: flex-start;">
+<p><span class="math inline">\(\frac{1}{1}\)</span></p>
+</div>
+<div class="quarto-figure-spacer quarto-layout-cell" style="flex-basis: 10.0%;justify-content: flex-start;">
+<p>&nbsp;</p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-figure-spacer quarto-layout-cell" style="flex-basis: 10.0%;justify-content: flex-start;">
+<p>&nbsp;</p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 40.0%;justify-content: flex-start;">
+<p>throw 8 with two dice</p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: flex-start;">
+<p><span class="math inline">\(\frac{5}{36}\)</span></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: flex-start;">
+<p><span class="math inline">\(\frac{5}{31}\)</span></p>
+</div>
+<div class="quarto-figure-spacer quarto-layout-cell" style="flex-basis: 10.0%;justify-content: flex-start;">
+<p>&nbsp;</p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-figure-spacer quarto-layout-cell" style="flex-basis: 10.0%;justify-content: flex-start;">
+<p>&nbsp;</p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 40.0%;justify-content: flex-start;">
+<p>get splatted</p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: flex-start;">
+<p><span class="math inline">\(\frac{99}{100}\)</span></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: flex-start;">
+<p><span class="math inline">\(\frac{99}{1}\)</span></p>
+</div>
+<div class="quarto-figure-spacer quarto-layout-cell" style="flex-basis: 10.0%;justify-content: flex-start;">
+<p>&nbsp;</p>
+</div>
+</div>
+</div>
+</section>
+<section id="probability-and-odds-1" class="slide level2">
+<h2>Probability and Odds</h2>
+<div class="cell quarto-layout-panel" data-layout="[1,1,-1]">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/unnamed-chunk-5-1.svg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/unnamed-chunk-5-2.svg"></p>
+</div>
+<div class="quarto-figure-spacer quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<p>&nbsp;</p>
+</div>
+</div>
+</div>
+<ul>
+<li><p>odds never goes below zero</p></li>
+<li><p>odds rises to <span class="math inline">\(\infty\)</span></p></li>
+</ul>
+</section>
+<section id="refresher-natural-logarithms" class="slide level2">
+<h2>Refresher: (Natural) Logarithms</h2>
+<ul>
+<li>a <strong>logarithm</strong> is the power you would raise a number to to obtain another number</li>
+</ul>
+<p><span class="math display">\[10^3=1000; \log_{10}(1000)=3\]</span></p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">log</span>(<span class="dv">1000</span>, <span class="at">base =</span> <span class="dv">10</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3</code></pre>
+</div>
+</div>
+</section>
+<section id="refresher-natural-logarithms-1" class="slide level2" data-visibility="uncounted">
+<h2>Refresher: (Natural) Logarithms</h2>
+<ul>
+<li>a <strong>logarithm</strong> is the power you would raise a number to to obtain another number</li>
+</ul>
+<p><span class="math display">\[10^3=1000; \log_{10}(1000)=3\]</span></p>
+<ul>
+<li>a <strong>natural logarithm</strong> is the power you would raise the number <span class="math inline">\(e\)</span> to to obtain another number</li>
+</ul>
+<p><span class="math display">\[e^{6.908}=1000; \log(1000) = 6.908\]</span></p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">exp</span>(<span class="fl">6.908</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1000</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">log</span>(<span class="dv">1000</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 6.908</code></pre>
+</div>
+</div>
+</section>
+<section id="refresher-2" class="slide level2">
+<h2>Refresher 2</h2>
+<ul>
+<li>what value does <span class="math inline">\(e\)</span> have? (<span class="math inline">\(e^1=e\)</span>)</li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">exp</span>(<span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2.71828182845904509080"</code></pre>
+</div>
+</div>
+</section>
+<section id="why-e" class="slide level2">
+<h2><img data-src="img/css/what.jpg" style="transform: translateY(50%);" width="70"> Why <span class="math inline">\(e\)</span>?</h2>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="lecture09_files/figure-revealjs/unnamed-chunk-9-1.svg" class="quarto-figure quarto-figure-center"></p>
+</figure>
+</div>
+</div>
+</div>
+<ul>
+<li><span class="math inline">\(\log(l)\)</span> = area under curve between <span class="math inline">\(1\)</span> and <span class="math inline">\(l\)</span> (negative if <span class="math inline">\(l&lt;1\)</span>)</li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">log</span>(<span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1.099</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">log</span>(<span class="fl">0.3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] -1.204</code></pre>
+</div>
+</div>
+</section>
+<section id="refresher-2-1" class="slide level2">
+<h2>Refresher 2</h2>
+<ul>
+<li>what value does <span class="math inline">\(e\)</span> have? (<span class="math inline">\(e^1=e\)</span>)</li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">exp</span>(<span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "2.71828182845904509080"</code></pre>
+</div>
+</div>
+<ul>
+<li><span class="math inline">\((\textrm{any number})^0=1\)</span></li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">log</span>(<span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0</code></pre>
+</div>
+</div>
+<ul>
+<li><span class="math inline">\(\log(0)=-\infty\)</span></li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">log</span>(<span class="dv">0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] -Inf</code></pre>
+</div>
+</div>
+<ul>
+<li><span class="math inline">\(\log(\infty)=\infty\)</span></li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">log</span>(<span class="cn">Inf</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] Inf</code></pre>
+</div>
+</div>
+</section>
+<section id="probability-and-log-odds" class="slide level2">
+<h2>Probability and Log-Odds</h2>
+<div class="cell quarto-layout-panel" data-layout-ncol="3">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/unnamed-chunk-15-1.svg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/unnamed-chunk-15-2.svg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/unnamed-chunk-15-3.svg"></p>
+</div>
+</div>
+</div>
+<ul>
+<li><span class="math inline">\(\log(0)=-\infty\)</span>; <span class="math inline">\(\log(\infty)=+\infty\)</span>; <span class="math inline">\(\log(1)=0\)</span></li>
+<li>log-odds of <span class="math inline">\(0\)</span> (odds of <span class="math inline">\(1\)</span>) are exactly 50:50 (<span class="math inline">\(p=0.5\)</span>)</li>
+</ul>
+<aside class="notes">
+<ul>
+<li>working left-to-right, log-odds of zero are equal to odds of one which are even-stevens or p=.5</li>
+</ul>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="probability-and-log-odds-1" class="slide level2">
+<h2>Probability and Log-Odds</h2>
+<div class="cell quarto-layout-panel" data-layout-ncol="3">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/unnamed-chunk-16-1.svg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/unnamed-chunk-16-2.svg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/unnamed-chunk-16-3.svg"></p>
+</div>
+</div>
+</div>
+<ul>
+<li><p>if log-odds are <em>less than zero</em>, the odds go down (multiplied by &lt;1)</p></li>
+<li><p>if log-odds are <em>greater than zero</em>, the odds go up (multiplied by &gt;1)</p></li>
+<li><p>high odds = high probability</p></li>
+</ul>
+</section></section>
+<section>
+<section id="the-generalized-linear-model" class="title-slide slide level1 center" data-background-color="#FCBB06">
+<h1><span class="r-fit-text">The Generalized Linear Model</span></h1>
+
+</section>
+<section id="the-generalized-linear-model-1" class="slide level2">
+<h2>The Generalized Linear Model</h2>
+<ul>
+<li><p>generalises the linear model using mapping functions</p></li>
+<li><p>coefficients are in <strong>logit</strong> (log-odds) units</p></li>
+</ul>
+<!-- spacer -->
+<p>&nbsp; <!-- end spacer --></p>
+<ul>
+<li><p>coefficients use <strong>Wald’s <span class="math inline">\(z\)</span> </strong> instead of <span class="math inline">\(t\)</span></p></li>
+<li><p>fit using <strong>maximum likelihood</strong></p></li>
+</ul>
+</section>
+<section id="likelihood" class="slide level2">
+<h2>Likelihood</h2>
+<div class="columns">
+<div class="column" style="width:30%;">
+<p><img data-src="img/50p.jpg" style="width:70.0%"></p>
+</div><div class="column" style="width:70%;">
+<div class="cell quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/likely-1.svg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/likely-2.svg"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/likely-3.svg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img data-src="lecture09_files/figure-revealjs/likely-4.svg"></p>
+</div>
+</div>
+</div>
+</div></div>
+</section>
+<section id="the-generalized-linear-model-2" class="slide level2">
+<h2>The Generalized Linear Model</h2>
+<ul>
+<li><p>generalises the linear model using mapping functions</p></li>
+<li><p>coefficients are in <strong>logit</strong> (log-odds) units</p></li>
+</ul>
+<!-- spacer -->
+<p>&nbsp; <!-- end spacer --></p>
+<ul>
+<li><p>coefficients use <strong>Wald’s <span class="math inline">\(z\)</span> </strong> instead of <span class="math inline">\(t\)</span></p></li>
+<li><p>fit using <strong>maximum likelihood</strong></p></li>
+</ul>
+<!-- spacer -->
+<p>&nbsp; <!-- end spacer --></p>
+<ul>
+<li>but actually it’s all quite straightforward…</li>
+</ul>
+</section>
+<section id="alien-singer-splat-probability" class="slide level2">
+<h2>Alien Singer Splat Probability</h2>
+<div class="columns">
+<div class="column" style="width:49%;">
+<div class="cell">
+<div class="cell-output-display">
+<div id="uhwmgmnuqf" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#uhwmgmnuqf table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#uhwmgmnuqf thead, #uhwmgmnuqf tbody, #uhwmgmnuqf tfoot, #uhwmgmnuqf tr, #uhwmgmnuqf td, #uhwmgmnuqf th {
+  border-style: none;
+}
+
+#uhwmgmnuqf p {
+  margin: 0;
+  padding: 0;
+}
+
+#uhwmgmnuqf .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 70%;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#uhwmgmnuqf .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#uhwmgmnuqf .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#uhwmgmnuqf .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#uhwmgmnuqf .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#uhwmgmnuqf .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#uhwmgmnuqf .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#uhwmgmnuqf .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#uhwmgmnuqf .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#uhwmgmnuqf .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#uhwmgmnuqf .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#uhwmgmnuqf .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#uhwmgmnuqf .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#uhwmgmnuqf .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#uhwmgmnuqf .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uhwmgmnuqf .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#uhwmgmnuqf .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#uhwmgmnuqf .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#uhwmgmnuqf .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uhwmgmnuqf .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#uhwmgmnuqf .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uhwmgmnuqf .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#uhwmgmnuqf .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uhwmgmnuqf .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#uhwmgmnuqf .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#uhwmgmnuqf .gt_left {
+  text-align: left;
+}
+
+#uhwmgmnuqf .gt_center {
+  text-align: center;
+}
+
+#uhwmgmnuqf .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#uhwmgmnuqf .gt_font_normal {
+  font-weight: normal;
+}
+
+#uhwmgmnuqf .gt_font_bold {
+  font-weight: bold;
+}
+
+#uhwmgmnuqf .gt_font_italic {
+  font-style: italic;
+}
+
+#uhwmgmnuqf .gt_super {
+  font-size: 65%;
+}
+
+#uhwmgmnuqf .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#uhwmgmnuqf .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#uhwmgmnuqf .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#uhwmgmnuqf .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#uhwmgmnuqf .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#uhwmgmnuqf .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#uhwmgmnuqf .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#uhwmgmnuqf .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#uhwmgmnuqf div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top" data-quarto-bootstrap="false">
+<thead>
+<tr class="gt_col_headings header">
+<th id="id" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">id</th>
+<th id="quality" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">quality</th>
+<th id="SPLATTED" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">SPLATTED</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="id">The Great Odorjan of Erpod</td>
+<td class="gt_row gt_right" headers="quality">84</td>
+<td class="gt_row gt_right" headers="SPLATTED">0</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="id">Hapetox Bron</td>
+<td class="gt_row gt_right" headers="quality">34</td>
+<td class="gt_row gt_right" headers="SPLATTED">1</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="id">Loorn Molzeks</td>
+<td class="gt_row gt_right" headers="quality">92</td>
+<td class="gt_row gt_right" headers="SPLATTED">0</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="id">Ba'lite Adrflen</td>
+<td class="gt_row gt_right" headers="quality">49</td>
+<td class="gt_row gt_right" headers="SPLATTED">1</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="id">Tedlambo Garilltet</td>
+<td class="gt_row gt_right" headers="quality">93</td>
+<td class="gt_row gt_right" headers="SPLATTED">0</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="id">Goraveola Grellorm</td>
+<td class="gt_row gt_right" headers="quality">5</td>
+<td class="gt_row gt_right" headers="SPLATTED">1</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="id">Colonel Garqun</td>
+<td class="gt_row gt_right" headers="quality">55</td>
+<td class="gt_row gt_right" headers="SPLATTED">1</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="id">Bosgogo Lurcat</td>
+<td class="gt_row gt_right" headers="quality">64</td>
+<td class="gt_row gt_right" headers="SPLATTED">1</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</div><div class="column" style="width:2%;">
+<!-- spacer -->
+<p>&nbsp; <!-- end spacer --></p>
+</div><div class="column" style="width:49%;">
+<ul>
+<li><p>use <code>glm()</code> instead of <code>lm()</code></p></li>
+<li><p>specify <strong>link function</strong> with <code>family = binomial</code></p></li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="" aria-hidden="true" tabindex="-1"></a>mod.b <span class="ot">&lt;-</span> <span class="fu">glm</span>(SPLATTED <span class="sc">~</span> quality,</span>
+<span id="cb24-2"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> binomial, <span class="at">data =</span> singers)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div></div>
+
+<aside><div>
+<p>the DV can be a 2-level factor; <code>family="binomial"</code> (with quotes) also works</p>
+</div></aside></section>
+<section id="evaluating-the-model" class="slide level2">
+<h2>Evaluating the Model</h2>
+<div class="columns">
+<div class="column" style="width:50%;">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(mod.b)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell" data-output-line-numbers="11">
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Deviance Table
+
+Model: binomial, link: logit
+
+Response: SPLATTED
+
+Terms added sequentially (first to last)
+
+        Df Deviance Resid. Df Resid. Dev
+NULL                      999       1377
+quality  1      800       998        577</code></pre>
+</div>
+</div>
+</div><div class="column" style="width:50%;">
+<ul>
+<li><p>NB., no statistical test done by default</p></li>
+<li><p><strong>deviance</strong> compares the likelihood of the new model to that of the previous model</p>
+<ul>
+<li><p>a generalisation of sums of squares</p></li>
+<li><p><em>lower</em> “residual deviance” is good (<em>a bit like Residual Sums of Squares</em>)</p></li>
+</ul></li>
+</ul>
+</div></div>
+
+<aside class="notes">
+<ul>
+<li>deviance is similar to our notion of sums of squares that we used in linear models</li>
+<li>it is the likelihood of our model, compared to the null model (with no predictors)</li>
+<li>so lower residual deviance is kind of like less “misfit” of the model to the data</li>
+</ul>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+<aside><div>
+<p><code>anova()</code> in R <span class="math inline">\(\ge\)</span> 4.4 <em>will</em> execute a default statistical test for <code>glm</code>s (use <code>test=F</code> to remove it)</p>
+</div></aside></section>
+<section id="evaluating-the-model-1" class="slide level2">
+<h2><img data-src="img/css/what.jpg" style="transform: translateY(50%);" width="70"> Evaluating the Model</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>        Df Deviance Resid. Df Resid. Dev
+NULL                      999       1377
+quality  1      800       998        577</code></pre>
+</div>
+</div>
+<ul>
+<li>deviance is <span class="math inline">\(-2\times\)</span> the <strong>log-likelihood ratio</strong> of the reduced compared to the full model</li>
+<li>higher deviance is good (a bit like <span class="math inline">\(F\)</span>)</li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="" aria-hidden="true" tabindex="-1"></a>mod.n <span class="ot">&lt;-</span> <span class="fu">glm</span>(SPLATTED <span class="sc">~</span> <span class="dv">1</span>, <span class="at">family =</span> binomial, <span class="at">data =</span> singers)</span>
+<span id="cb28-2"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">logLik</span>(mod.n)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'log Lik.' -688.5 (df=1)</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">logLik</span>(mod.b)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'log Lik.' -288.6 (df=2)</code></pre>
+</div>
+</div>
+<div class="cell" data-output-line-numbers="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="sc">-</span><span class="dv">2</span> <span class="sc">*</span> (<span class="fu">logLik</span>(mod.n) <span class="sc">-</span></span>
+<span id="cb32-2"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="fu">logLik</span>(mod.b))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'log Lik.' 799.8 (df=1)</code></pre>
+</div>
+</div>
+<aside class="notes">
+<ul>
+<li>here, 799.8 is pretty much equal to the Deviance of 800 above</li>
+</ul>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="evaluating-the-model-2" class="slide level2">
+<h2>Evaluating the Model</h2>
+<ul>
+<li><p>model deviance maps to the <span class="math inline">\(\chi^2\)</span> distribution</p></li>
+<li><p>can specify a <span class="math inline">\(\chi^2\)</span> test to statistically evaluate model in a similar way to <span class="math inline">\(F\)</span> ratio</p></li>
+</ul>
+<div class="cell" data-output-line-numbers="11">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(mod.b, <span class="at">test =</span> <span class="st">"Chisq"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Deviance Table
+
+Model: binomial, link: logit
+
+Response: SPLATTED
+
+Terms added sequentially (first to last)
+
+        Df Deviance Resid. Df Resid. Dev Pr(&gt;Chi)    
+NULL                      999       1377             
+quality  1      800       998        577   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<aside class="notes">
+<ul>
+<li>now when we consider deviance, we can actually test it against a chisquare distribution</li>
+<li>just like F was a ratio</li>
+<li>we’re now using a likelihood ratio</li>
+<li>and we can test using something like this - anova, test chisq</li>
+</ul>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="model-coefficients" class="slide level2">
+<h2>Model Coefficients</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = SPLATTED ~ quality, family = binomial, data = singers)
+
+Coefficients:
+            Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)  5.08191    0.33410    15.2   &lt;2e-16 ***
+quality     -0.10557    0.00642   -16.5   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1377.06  on 999  degrees of freedom
+Residual deviance:  577.29  on 998  degrees of freedom
+AIC: 581.3
+
+Number of Fisher Scoring iterations: 6</code></pre>
+</div>
+</div>
+</section>
+<section id="model-coefficients-1" class="slide level2">
+<h2>Model Coefficients</h2>
+<div class="columns">
+<div class="column" style="width:60%;">
+<h4 id="coefficients-are-in-logits-log-odds">coefficients are in <strong>logits</strong> (= log-odds)</h4>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>...
+            Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)  5.08191    0.33410    15.2   &lt;2e-16 ***
+quality     -0.10557    0.00642   -16.5   &lt;2e-16 ***
+...</code></pre>
+</div>
+</div>
+<ul>
+<li><p>zero = “50/50” (odds of 1)</p></li>
+<li><p>value below zero: probability of being splatted <em>decreases</em> as quality increases</p></li>
+</ul>
+</div><div class="column" style="width:40%;">
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure>
+<p><img data-src="lecture09_files/figure-revealjs/p3-1.svg"></p>
+</figure>
+</div>
+</div>
+</div>
+</div></div>
+</section>
+<section id="log-odds-odds-and-probability" class="slide level2">
+<h2>Log-Odds, Odds, and Probability</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>...
+            Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)  5.08191    0.33410    15.2   &lt;2e-16 ***
+quality     -0.10557    0.00642   -16.5   &lt;2e-16 ***
+...</code></pre>
+</div>
+</div>
+<div class="columns">
+<div class="column" style="width:65%;">
+<p>a calculation for <code>quality = 50</code></p>
+<ul>
+<li><p><em>log-odds</em>: <span class="math inline">\(5.08+-0.11\cdot50=\color{red}{-0.42}\)</span></p></li>
+<li><p><em>odds</em>: <span class="math inline">\(e^{-0.42}=\color{red}{0.657}\)</span></p></li>
+<li><p><em>probability</em>: <span class="math inline">\(\frac{0.657}{1+0.657}=\color{red}{0.397}\)</span></p></li>
+</ul>
+</div><div class="column" style="width:35%;">
+<p><br> <span class="math display">\[\hat{y}_i=b_0+b_1x_i\]</span> <span class="math display">\[\textrm{odds}=e^{\hat{y}_i}\]</span> <span class="math display">\[p=\frac{\textrm{odds}}{1+\textrm{odds}}\]</span></p>
+</div></div>
+<aside class="notes">
+<ul>
+<li><p>well, can convert them back, at least some of the way</p></li>
+<li><p>exponent is the opposite of logarithm</p></li>
+<li><p>so for a singer who has quality of singing 50</p></li>
+<li><p>their log-odds of splatted are the intercept + the coef * 50</p></li>
+<li><p>we can exponentiate that, to get their odds</p></li>
+<li><p>and we can then convert that back to probability</p></li>
+<li><p>note we can do this for a single predicted value, but how do we talk about “the association”.</p>
+<ul>
+<li>every 1 quality decreases log-odds by -0.11</li>
+<li>go up 1 qual, you add that amount onto your log odds</li>
+<li>this isn’t true of odds</li>
+</ul></li>
+</ul>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="a-useful-function" class="slide level2">
+<h2>A Useful Function</h2>
+<ul>
+<li><p>intuitive to think in probability</p></li>
+<li><p>useful to write a function which takes a value in logits <code>l</code> and converts it to a probability <code>p</code></p></li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="" aria-hidden="true" tabindex="-1"></a>l2p <span class="ot">&lt;-</span> <span class="cf">function</span>(logits) {</span>
+<span id="cb39-2"><a href="" aria-hidden="true" tabindex="-1"></a>  odds <span class="ot">&lt;-</span> <span class="fu">exp</span>(logits)</span>
+<span id="cb39-3"><a href="" aria-hidden="true" tabindex="-1"></a>  prob <span class="ot">&lt;-</span> odds<span class="sc">/</span>(<span class="dv">1</span> <span class="sc">+</span> odds)</span>
+<span id="cb39-4"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(prob)</span>
+<span id="cb39-5"><a href="" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="columns">
+<div class="column" style="width:50%;">
+<ul>
+<li>qualities 50 and 51</li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">l2p</span>(<span class="fl">5.08</span><span class="sc">+-</span><span class="fl">0.11</span><span class="sc">*</span><span class="dv">50</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.3965</code></pre>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">l2p</span>(<span class="fl">5.08</span><span class="sc">+-</span><span class="fl">0.11</span><span class="sc">*</span><span class="dv">51</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.3705</code></pre>
+</div>
+</div>
+</div><div class="column" style="width:50%;">
+<ul>
+<li>qualities 70 and 71</li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">l2p</span>(<span class="fl">5.08</span><span class="sc">+-</span><span class="fl">0.11</span><span class="sc">*</span><span class="dv">70</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.06786</code></pre>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="fu">l2p</span>(<span class="fl">5.08</span><span class="sc">+-</span><span class="fl">0.11</span><span class="sc">*</span><span class="dv">71</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.06123</code></pre>
+</div>
+</div>
+</div></div>
+<aside class="notes">
+<ul>
+<li>for 50 and 51, changes are in the second digit; for 70 and 71, they’re in the 3rd digit</li>
+</ul>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="representing-the-model-graphically" class="slide level2">
+<h2>Representing the Model Graphically</h2>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="" aria-hidden="true" tabindex="-1"></a>singers <span class="sc">|&gt;</span></span>
+<span id="cb48-2"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> quality, <span class="at">y =</span> SPLATTED)) <span class="sc">+</span></span>
+<span id="cb48-3"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylab</span>(<span class="st">"p(SPLATTED)"</span>) <span class="sc">+</span></span>
+<span id="cb48-4"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="at">size =</span> <span class="dv">3</span>, <span class="at">width =</span> <span class="dv">0</span>, <span class="at">height =</span> <span class="fl">0.2</span>, <span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span></span>
+<span id="cb48-5"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"glm"</span>, <span class="at">method.args =</span> <span class="fu">list</span>(<span class="at">family =</span> binomial)) <span class="sc">+</span></span>
+<span id="cb48-6"><a href="" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">by =</span> <span class="fl">0.2</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+
+</div>
+<img data-src="lecture09_files/figure-revealjs/g-1.svg" class="quarto-figure quarto-figure-center r-stretch"><aside class="notes">
+<ul>
+<li>note the <code>scale_y_continuous</code> which ensures the y axis doesn’t show silly values</li>
+</ul>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="one-last-trick" class="slide level2">
+<h2>One Last Trick</h2>
+<ul>
+<li><p>so far we’ve looked at</p>
+<ul>
+<li><p>model <em>deviance</em> and <span class="math inline">\(\chi^2\)</span> (similar to sums of squares and <span class="math inline">\(F\)</span>)</p></li>
+<li><p>model <em>coefficients</em> and how to map them to probability</p></li>
+</ul></li>
+<li><p>what about “explained variance” (similar to <span class="math inline">\(R^2\)</span>)?</p></li>
+<li><p>no really good way of doing this, many proposals</p></li>
+<li><p>SPSS uses something called “accuracy” (how well does the model predict actual data?)</p></li>
+<li><p>not very informative, but good for learning R</p></li>
+</ul>
+</section>
+<section id="accuracy" class="slide level2">
+<h2>Accuracy</h2>
+<ul>
+<li>first, what does the model predict (in logit units)?</li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="" aria-hidden="true" tabindex="-1"></a>guess <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod.b)  <span class="co"># in logit units</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<ul>
+<li>if the chance of being splatted is more than .5 (logit &gt; 0) call it a “splat”</li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="" aria-hidden="true" tabindex="-1"></a>guess <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(guess <span class="sc">&gt;</span> <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<ul>
+<li>how well do predicted splats match actual splats?</li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="" aria-hidden="true" tabindex="-1"></a>hits <span class="ot">&lt;-</span> <span class="fu">sum</span>(guess <span class="sc">==</span> singers<span class="sc">$</span>SPLATTED)</span>
+<span id="cb51-2"><a href="" aria-hidden="true" tabindex="-1"></a>hits<span class="sc">/</span><span class="fu">length</span>(singers<span class="sc">$</span>SPLATTED)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.879</code></pre>
+</div>
+</div>
+<ul>
+<li>present model “correctly predicts” 87.9% of the observations</li>
+</ul>
+</section>
+<section id="other-types-of-data" class="slide level2">
+<h2>Other Types of Data</h2>
+<ul>
+<li><p>logit regression is <em>one type</em> of GLM</p></li>
+<li><p>others make use of different <strong>link functions</strong> (through <code>family=...</code>)</p></li>
+</ul>
+<!-- spacer -->
+<p>&nbsp; <!-- end spacer --></p>
+<ul>
+<li><p><strong>poisson</strong>: number of events in a time period</p></li>
+<li><p><strong>inverse gaussian</strong>: time to reach some criterion</p></li>
+<li><p>…</p></li>
+</ul>
+</section>
+<section id="glms" class="slide level2">
+<h2>GLMs</h2>
+<div class="columns">
+<div class="column" style="width:48%;">
+<section id="predictor-variables" class="myblock">
+<h3>Predictor Variables</h3>
+<ul>
+<li><p>linear</p></li>
+<li><p>convertible to linear (use <code>log()</code> etc.)</p></li>
+<li><p>non-convertible (use <code>contrasts()</code> etc. to map)</p></li>
+<li><p><strong>don’t affect the choice of model</strong></p></li>
+</ul>
+</section>
+</div><div class="column" style="width:4%;">
+<!-- spacer -->
+<p>&nbsp; <!-- end spacer --></p>
+</div><div class="column" style="width:48%;">
+<section id="dependent-variables" class="myblock">
+<h3>Dependent Variables</h3>
+<ul>
+<li><p>linear</p></li>
+<li><p>convertible to linear (use <code>log()</code> etc.)</p></li>
+<li><p>non-convertible (use <code>glm()</code> with <code>family=...</code>)</p></li>
+<li><p><strong>affect the choice of model</strong></p></li>
+</ul>
+</section>
+</div></div>
+</section></section>
+<section id="end" class="title-slide slide level1 center" data-background-color="#FCBB06">
+<h1>End</h1>
+
+</section>
+    </div>
+  <div class="quarto-auto-generated-content" style="display: none;">
+<div class="footer footer-default">
+
+</div>
+</div></div>
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script>
+  <script src="lecture09_files/libs/revealjs/dist/reveal.js"></script>
+  <!-- reveal.js plugins -->
+  <script src="lecture09_files/libs/revealjs/plugin/quarto-line-highlight/line-highlight.js"></script>
+  <script src="lecture09_files/libs/revealjs/plugin/pdf-export/pdfexport.js"></script>
+  <script src="lecture09_files/libs/revealjs/plugin/reveal-menu/menu.js"></script>
+  <script src="lecture09_files/libs/revealjs/plugin/reveal-menu/quarto-menu.js"></script>
+  <script src="lecture09_files/libs/revealjs/plugin/reveal-attribution/attribution.js"></script>
+  <script src="lecture09_files/libs/revealjs/plugin/quarto-support/support.js"></script>
+  
+
+  <script src="lecture09_files/libs/revealjs/plugin/notes/notes.js"></script>
+  <script src="lecture09_files/libs/revealjs/plugin/search/search.js"></script>
+  <script src="lecture09_files/libs/revealjs/plugin/zoom/zoom.js"></script>
+  <script src="lecture09_files/libs/revealjs/plugin/math/math.js"></script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script>
+
+  <script>
+
+      // Full list of configuration options available at:
+      // https://revealjs.com/config/
+      Reveal.initialize({
+'controlsAuto': true,
+'previewLinksAuto': true,
+'pdfSeparateFragments': false,
+'autoAnimateEasing': "ease",
+'autoAnimateDuration': 1,
+'autoAnimateUnmatched': true,
+'jumpToSlide': true,
+'menu': {"side":"left","useTextContentForMissingTitles":true,"markers":false,"loadIcons":false,"custom":[{"title":"Tools","icon":"<i class=\"fas fa-gear\"></i>","content":"<ul class=\"slide-menu-items\">\n<li class=\"slide-tool-item active\" data-item=\"0\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.fullscreen(event)\"><kbd>f</kbd> Fullscreen</a></li>\n<li class=\"slide-tool-item\" data-item=\"1\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.speakerMode(event)\"><kbd>s</kbd> Speaker View</a></li>\n<li class=\"slide-tool-item\" data-item=\"2\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.overview(event)\"><kbd>o</kbd> Slide Overview</a></li>\n<li class=\"slide-tool-item\" data-item=\"3\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.togglePdfExport(event)\"><kbd>e</kbd> PDF Export Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"4\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.toggleScrollView(event)\"><kbd>r</kbd> Scroll View Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"5\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.keyboardHelp(event)\"><kbd>?</kbd> Keyboard Help</a></li>\n</ul>"}],"openButton":true},
+'smaller': false,
+ 
+        // Display controls in the bottom right corner
+        controls: false,
+
+        // Help the user learn the controls by providing hints, for example by
+        // bouncing the down arrow when they first encounter a vertical slide
+        controlsTutorial: false,
+
+        // Determines where controls appear, "edges" or "bottom-right"
+        controlsLayout: 'edges',
+
+        // Visibility rule for backwards navigation arrows; "faded", "hidden"
+        // or "visible"
+        controlsBackArrows: 'faded',
+
+        // Display a presentation progress bar
+        progress: true,
+
+        // Display the page number of the current slide
+        slideNumber: 'c/t',
+
+        // 'all', 'print', or 'speaker'
+        showSlideNumber: 'all',
+
+        // Add the current slide number to the URL hash so that reloading the
+        // page/copying the URL will return you to the same slide
+        hash: true,
+
+        // Start with 1 for the hash rather than 0
+        hashOneBasedIndex: false,
+
+        // Flags if we should monitor the hash and change slides accordingly
+        respondToHashChanges: true,
+
+        // Push each slide change to the browser history
+        history: true,
+
+        // Enable keyboard shortcuts for navigation
+        keyboard: true,
+
+        // Enable the slide overview mode
+        overview: true,
+
+        // Disables the default reveal.js slide layout (scaling and centering)
+        // so that you can use custom CSS layout
+        disableLayout: false,
+
+        // Vertical centering of slides
+        center: false,
+
+        // Enables touch navigation on devices with touch input
+        touch: true,
+
+        // Loop the presentation
+        loop: false,
+
+        // Change the presentation direction to be RTL
+        rtl: false,
+
+        // see https://revealjs.com/vertical-slides/#navigation-mode
+        navigationMode: 'linear',
+
+        // Randomizes the order of slides each time the presentation loads
+        shuffle: false,
+
+        // Turns fragments on and off globally
+        fragments: true,
+
+        // Flags whether to include the current fragment in the URL,
+        // so that reloading brings you to the same fragment position
+        fragmentInURL: false,
+
+        // Flags if the presentation is running in an embedded mode,
+        // i.e. contained within a limited portion of the screen
+        embedded: false,
+
+        // Flags if we should show a help overlay when the questionmark
+        // key is pressed
+        help: true,
+
+        // Flags if it should be possible to pause the presentation (blackout)
+        pause: true,
+
+        // Flags if speaker notes should be visible to all viewers
+        showNotes: false,
+
+        // Global override for autoplaying embedded media (null/true/false)
+        autoPlayMedia: null,
+
+        // Global override for preloading lazy-loaded iframes (null/true/false)
+        preloadIframes: null,
+
+        // Number of milliseconds between automatically proceeding to the
+        // next slide, disabled when set to 0, this value can be overwritten
+        // by using a data-autoslide attribute on your slides
+        autoSlide: 0,
+
+        // Stop auto-sliding after user input
+        autoSlideStoppable: true,
+
+        // Use this method for navigation when auto-sliding
+        autoSlideMethod: null,
+
+        // Specify the average time in seconds that you think you will spend
+        // presenting each slide. This is used to show a pacing timer in the
+        // speaker view
+        defaultTiming: null,
+
+        // Enable slide navigation via mouse wheel
+        mouseWheel: false,
+
+        // The display mode that will be used to show slides
+        display: 'block',
+
+        // Hide cursor if inactive
+        hideInactiveCursor: true,
+
+        // Time before the cursor is hidden (in ms)
+        hideCursorTime: 5000,
+
+        // Opens links in an iframe preview overlay
+        previewLinks: false,
+
+        // Transition style (none/fade/slide/convex/concave/zoom)
+        transition: 'fade',
+
+        // Transition speed (default/fast/slow)
+        transitionSpeed: 'default',
+
+        // Transition style for full page slide backgrounds
+        // (none/fade/slide/convex/concave/zoom)
+        backgroundTransition: 'none',
+
+        // Number of slides away from the current that are visible
+        viewDistance: 3,
+
+        // Number of slides away from the current that are visible on mobile
+        // devices. It is advisable to set this to a lower number than
+        // viewDistance in order to save resources.
+        mobileViewDistance: 2,
+
+        // The "normal" size of the presentation, aspect ratio will be preserved
+        // when the presentation is scaled to fit different resolutions. Can be
+        // specified using percentage units.
+        width: 1050,
+
+        height: 700,
+
+        // Factor of the display size that should remain empty around the content
+        margin: 0.1,
+
+        math: {
+          mathjax: 'https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js',
+          config: 'TeX-AMS_HTML-full',
+          tex2jax: {
+            inlineMath: [['\\(','\\)']],
+            displayMath: [['\\[','\\]']],
+            balanceBraces: true,
+            processEscapes: false,
+            processRefs: true,
+            processEnvironments: true,
+            preview: 'TeX',
+            skipTags: ['script','noscript','style','textarea','pre','code'],
+            ignoreClass: 'tex2jax_ignore',
+            processClass: 'tex2jax_process'
+          },
+        },
+
+        // reveal.js plugins
+        plugins: [QuartoLineHighlight, PdfExport, RevealMenu, RevealAttribution, QuartoSupport,
+
+          RevealMath,
+          RevealNotes,
+          RevealSearch,
+          RevealZoom
+        ]
+      });
+    </script>
+    <style>
+      .hide {
+        display: none !important;
+      }
+    </style>
+
+
+    <script>
+      function remove() {
+        let footer = document.querySelector('div.footer');
+        let slideNo = document.querySelector('div.slide-number');
+        slideNo.classList.add('hide');
+        footer.classList.add('hide');
+      
+        Reveal.on('slidechanged', event => {  
+          if(Reveal.isFirstSlide()) {
+            slideNo.classList.add('hide');
+            footer.classList.add('hide');
+          } else {
+            slideNo.classList.remove('hide');
+            footer.classList.remove('hide');
+          }
+        });
+      }
+      
+      window.onload = remove();
+    </script>
+    
+    <script>
+      // htmlwidgets need to know to resize themselves when slides are shown/hidden.
+      // Fire the "slideenter" event (handled by htmlwidgets.js) when the current
+      // slide changes (different for each slide format).
+      (function () {
+        // dispatch for htmlwidgets
+        function fireSlideEnter() {
+          const event = window.document.createEvent("Event");
+          event.initEvent("slideenter", true, true);
+          window.document.dispatchEvent(event);
+        }
+
+        function fireSlideChanged(previousSlide, currentSlide) {
+          fireSlideEnter();
+
+          // dispatch for shiny
+          if (window.jQuery) {
+            if (previousSlide) {
+              window.jQuery(previousSlide).trigger("hidden");
+            }
+            if (currentSlide) {
+              window.jQuery(currentSlide).trigger("shown");
+            }
+          }
+        }
+
+        // hookup for slidy
+        if (window.w3c_slidy) {
+          window.w3c_slidy.add_observer(function (slide_num) {
+            // slide_num starts at position 1
+            fireSlideChanged(null, w3c_slidy.slides[slide_num - 1]);
+          });
+        }
+
+      })();
+    </script>
+
+    <script id="quarto-html-after-body" type="application/javascript">
+      window.document.addEventListener("DOMContentLoaded", function (event) {
+        const tabsets =  window.document.querySelectorAll(".panel-tabset-tabby")
+        tabsets.forEach(function(tabset) {
+          const tabby = new Tabby('#' + tabset.id);
+        });
+        const isCodeAnnotation = (el) => {
+          for (const clz of el.classList) {
+            if (clz.startsWith('code-annotation-')) {                     
+              return true;
+            }
+          }
+          return false;
+        }
+        const onCopySuccess = function(e) {
+          // button target
+          const button = e.trigger;
+          // don't keep focus
+          button.blur();
+          // flash "checked"
+          button.classList.add('code-copy-button-checked');
+          var currentTitle = button.getAttribute("title");
+          button.setAttribute("title", "Copied!");
+          let tooltip;
+          if (window.bootstrap) {
+            button.setAttribute("data-bs-toggle", "tooltip");
+            button.setAttribute("data-bs-placement", "left");
+            button.setAttribute("data-bs-title", "Copied!");
+            tooltip = new bootstrap.Tooltip(button, 
+              { trigger: "manual", 
+                customClass: "code-copy-button-tooltip",
+                offset: [0, -8]});
+            tooltip.show();    
+          }
+          setTimeout(function() {
+            if (tooltip) {
+              tooltip.hide();
+              button.removeAttribute("data-bs-title");
+              button.removeAttribute("data-bs-toggle");
+              button.removeAttribute("data-bs-placement");
+            }
+            button.setAttribute("title", currentTitle);
+            button.classList.remove('code-copy-button-checked');
+          }, 1000);
+          // clear code selection
+          e.clearSelection();
+        }
+        const getTextToCopy = function(trigger) {
+          const outerScaffold = trigger.parentElement.cloneNode(true);
+          const codeEl = outerScaffold.querySelector('code');
+          for (const childEl of codeEl.children) {
+            if (isCodeAnnotation(childEl)) {
+              childEl.remove();
+            }
+          }
+          return codeEl.innerText;
+        }
+        const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+          text: getTextToCopy
+        });
+        clipboard.on('success', onCopySuccess);
+        if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+          const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+            text: getTextToCopy,
+            container: window.document.getElementById('quarto-embedded-source-code-modal')
+          });
+          clipboardModal.on('success', onCopySuccess);
+        }
+          var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+          var mailtoRegex = new RegExp(/^mailto:/);
+            var filterRegex = new RegExp('/' + window.location.host + '/');
+          var isInternal = (href) => {
+              return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+          }
+          // Inspect non-navigation links and adorn them if external
+         var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+          for (var i=0; i<links.length; i++) {
+            const link = links[i];
+            if (!isInternal(link.href)) {
+              // undo the damage that might have been done by quarto-nav.js in the case of
+              // links that we want to consider external
+              if (link.dataset.originalHref !== undefined) {
+                link.href = link.dataset.originalHref;
+              }
+            }
+          }
+        function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+          const config = {
+            allowHTML: true,
+            maxWidth: 500,
+            delay: 100,
+            arrow: false,
+            appendTo: function(el) {
+                return el.closest('section.slide') || el.parentElement;
+            },
+            interactive: true,
+            interactiveBorder: 10,
+            theme: 'light-border',
+            placement: 'bottom-start',
+          };
+          if (contentFn) {
+            config.content = contentFn;
+          }
+          if (onTriggerFn) {
+            config.onTrigger = onTriggerFn;
+          }
+          if (onUntriggerFn) {
+            config.onUntrigger = onUntriggerFn;
+          }
+            config['offset'] = [0,0];
+            config['maxWidth'] = 700;
+          window.tippy(el, config); 
+        }
+        const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+        for (var i=0; i<noterefs.length; i++) {
+          const ref = noterefs[i];
+          tippyHover(ref, function() {
+            // use id or data attribute instead here
+            let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+            try { href = new URL(href).hash; } catch {}
+            const id = href.replace(/^#\/?/, "");
+            const note = window.document.getElementById(id);
+            if (note) {
+              return note.innerHTML;
+            } else {
+              return "";
+            }
+          });
+        }
+            let selectedAnnoteEl;
+            const selectorForAnnotation = ( cell, annotation) => {
+              let cellAttr = 'data-code-cell="' + cell + '"';
+              let lineAttr = 'data-code-annotation="' +  annotation + '"';
+              const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+              return selector;
+            }
+            const selectCodeLines = (annoteEl) => {
+              const doc = window.document;
+              const targetCell = annoteEl.getAttribute("data-target-cell");
+              const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+              const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+              const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+              const lineIds = lines.map((line) => {
+                return targetCell + "-" + line;
+              })
+              let top = null;
+              let height = null;
+              let parent = null;
+              if (lineIds.length > 0) {
+                  //compute the position of the single el (top and bottom and make a div)
+                  const el = window.document.getElementById(lineIds[0]);
+                  top = el.offsetTop;
+                  height = el.offsetHeight;
+                  parent = el.parentElement.parentElement;
+                if (lineIds.length > 1) {
+                  const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+                  const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+                  height = bottom - top;
+                }
+                if (top !== null && height !== null && parent !== null) {
+                  // cook up a div (if necessary) and position it 
+                  let div = window.document.getElementById("code-annotation-line-highlight");
+                  if (div === null) {
+                    div = window.document.createElement("div");
+                    div.setAttribute("id", "code-annotation-line-highlight");
+                    div.style.position = 'absolute';
+                    parent.appendChild(div);
+                  }
+                  div.style.top = top - 2 + "px";
+                  div.style.height = height + 4 + "px";
+                  div.style.left = 0;
+                  let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+                  if (gutterDiv === null) {
+                    gutterDiv = window.document.createElement("div");
+                    gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                    gutterDiv.style.position = 'absolute';
+                    const codeCell = window.document.getElementById(targetCell);
+                    const gutter = codeCell.querySelector('.code-annotation-gutter');
+                    gutter.appendChild(gutterDiv);
+                  }
+                  gutterDiv.style.top = top - 2 + "px";
+                  gutterDiv.style.height = height + 4 + "px";
+                }
+                selectedAnnoteEl = annoteEl;
+              }
+            };
+            const unselectCodeLines = () => {
+              const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+              elementsIds.forEach((elId) => {
+                const div = window.document.getElementById(elId);
+                if (div) {
+                  div.remove();
+                }
+              });
+              selectedAnnoteEl = undefined;
+            };
+              // Handle positioning of the toggle
+          window.addEventListener(
+            "resize",
+            throttle(() => {
+              elRect = undefined;
+              if (selectedAnnoteEl) {
+                selectCodeLines(selectedAnnoteEl);
+              }
+            }, 10)
+          );
+          function throttle(fn, ms) {
+          let throttle = false;
+          let timer;
+            return (...args) => {
+              if(!throttle) { // first call gets through
+                  fn.apply(this, args);
+                  throttle = true;
+              } else { // all the others get throttled
+                  if(timer) clearTimeout(timer); // cancel #2
+                  timer = setTimeout(() => {
+                    fn.apply(this, args);
+                    timer = throttle = false;
+                  }, ms);
+              }
+            };
+          }
+            const annoteTargets = window.document.querySelectorAll('.code-annotation-anchor');
+            for (let i=0; i<annoteTargets.length; i++) {
+              const annoteTarget = annoteTargets[i];
+              const targetCell = annoteTarget.getAttribute("data-target-cell");
+              const targetAnnotation = annoteTarget.getAttribute("data-target-annotation");
+              const contentFn = () => {
+                const content = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+                if (content) {
+                  const tipContent = content.cloneNode(true);
+                  tipContent.classList.add("code-annotation-tip-content");
+                  return tipContent.outerHTML;
+                }
+              }
+              const config = {
+                allowHTML: true,
+                content: contentFn,
+                onShow: (instance) => {
+                  selectCodeLines(instance.reference);
+                  instance.reference.classList.add('code-annotation-active');
+                  window.tippy.hideAll();
+                },
+                onHide: (instance) => {
+                  unselectCodeLines();
+                  instance.reference.classList.remove('code-annotation-active');
+                },
+                maxWidth: 300,
+                delay: [50, 0],
+                duration: [200, 0],
+                offset: [5, 10],
+                arrow: true,
+                appendTo: function(el) {
+                  return el.parentElement.parentElement.parentElement;
+                },
+                interactive: true,
+                interactiveBorder: 10,
+                theme: 'light-border',
+                placement: 'right',
+                popperOptions: {
+                  modifiers: [
+                  {
+                    name: 'flip',
+                    options: {
+                      flipVariations: false, // true by default
+                      allowedAutoPlacements: ['right'],
+                      fallbackPlacements: ['right', 'top', 'top-start', 'top-end', 'bottom', 'bottom-start', 'bottom-end', 'left'],
+                    },
+                  },
+                  {
+                    name: 'preventOverflow',
+                    options: {
+                      mainAxis: false,
+                      altAxis: false
+                    }
+                  }
+                  ]        
+                }      
+              };
+              window.tippy(annoteTarget, config); 
+            }
+        const findCites = (el) => {
+          const parentEl = el.parentElement;
+          if (parentEl) {
+            const cites = parentEl.dataset.cites;
+            if (cites) {
+              return {
+                el,
+                cites: cites.split(' ')
+              };
+            } else {
+              return findCites(el.parentElement)
+            }
+          } else {
+            return undefined;
+          }
+        };
+        var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+        for (var i=0; i<bibliorefs.length; i++) {
+          const ref = bibliorefs[i];
+          const citeInfo = findCites(ref);
+          if (citeInfo) {
+            tippyHover(citeInfo.el, function() {
+              var popup = window.document.createElement('div');
+              citeInfo.cites.forEach(function(cite) {
+                var citeDiv = window.document.createElement('div');
+                citeDiv.classList.add('hanging-indent');
+                citeDiv.classList.add('csl-entry');
+                var biblioDiv = window.document.getElementById('ref-' + cite);
+                if (biblioDiv) {
+                  citeDiv.innerHTML = biblioDiv.innerHTML;
+                }
+                popup.appendChild(citeDiv);
+              });
+              return popup.innerHTML;
+            });
+          }
+        }
+      });
+      </script>
+    <script>videojs(video_shortcode_videojs_video1);</script>
+    
+
+</body></html>
