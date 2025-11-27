@@ -380,10 +380,46 @@ Let's conduct an F-test of the interaction:
 anova(hhmod)
 ```
 
-- the final row tells us that the interaction weekstopped*health explains significantly more variance than we would expect by chance
+the final row tells us that the interaction weekstopped*health explains significantly more variance than we would expect by chance
+
+But really, in this specific case, where the interaction is just one coefficients, framing it as an F test doesn't give us anything more than just looking at the coefficients. Note that the p-value is the same for the interaction in the F test as it is for the t test for the coefficient.  
+
+::: {.callout-tip collapse="true"}
+#### so why bother with anova(mod) or anova(mod1,mod2)?  
+
+In this case, there's not really much to gain.  
+The two questions:
+
+- Does the `weekstopped*health` interaction explain variance in happiness? 
+- Is the `weekstopped*health` interaction coefficient different from zero?  
+
+Are the same, because they are both just about one parameter.  
+Model comparisons become really useful when we have multiple parameters that we want to test at the same time. 
+
+As an example, suppose we had measured "health" as 3 groups, rather than a continuous variable. In that case, the two questions are slightly different, because there are two coefficients captured by the interaction:  
+
+- Does the `weekstopped*healthcat` interaction explain variance in happiness? 
+- **Which** of the `weekstopped*healthcat` interaction coefficient**s** is different from zero?  
+
+E.g., if we had instead only 3 distinct groups of health:  
+```{r}
+tmp <- couchto5k |>
+  mutate(
+    # cut health into 3 groups:
+    healthcat = cut(healthZ, 3)
+  )
+
+tmp_mod <- lm(happiness ~ age + season + week_stopped * healthcat, data = tmp)
+
+anova(tmp_mod)
+summary(tmp_mod)
+```
 
 
-- the coefficients can tell us effect sizes, directions etc.  
+:::
+
+
+the coefficients can tell us effect sizes, directions etc.  
 ```{r}
 #| eval: false
 summary(hhmod)
@@ -469,6 +505,7 @@ The number of weeks at which participants stopped (1-9), a multi-test measure of
 Analysis of variance indicated that after accounting for season and age, there was a significant interaction between participants' self-reported health at the end of the programme and the week at which they stopped ($F(`r res1[5,1]`,`r res1[6,1]`)=`r res1[5,4]`$,  $p `r res1[5,5]`$). The full model explained approximately `r round(summary(hhmod)$adj.r.squared*100)`% (adjusted $R^2$) of the variance in happiness scores.
 
 ```{r}
+#| include: false
 #| echo: false
 #| label: tbl-couchanova
 #| tbl-cap: "Analysis of variance in happiness scores" 
