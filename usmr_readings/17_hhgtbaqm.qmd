@@ -381,3 +381,311 @@ mr3 <- lm(aggression ~ k_time + enclosure, chimp_rct)
 mr4 <- lm(aggression ~ age + k_time + enclosure, chimp_rct)
 ```
 
+
+
+# ignore below
+explain..
+  - if what we want to estimate is "the effect of putting a chimp in a large enclosure on its aggression". or essentially we want to know "if i put chimp Z into large enclosure, will it get more aggressive?", then we want to ignore M, because that is _part_ of the effect of size>aggression. 
+
+## more generally
+
+- so what should we do (generally). 
+
+- often, questions are often "X>Y?".  
+- what we do with other variables, depends on where we see them as fitting in the data generation process (DGP)
+- three dags
+- information flows along arrows. 
+  - it can flow backwards, then forwards. but not forwards then backwards. 
+    - (e.g., if i know your height, i can take a guess at your birthweight, and from that take a guess at XX)
+    - e.g., if i know your birthweight, i can take a guess at your height, but i can't from that take a guess at your XX) 
+- to isolate arrow d, we need to:
+  - close back doors
+  - leave required front doors open
+- three dags
+  - controlling for C closes path
+  - controlling for M closes path
+  - controlling for Z opens path
+
+
+countering common misconceptions
+  - do not simply control for *all* available variables
+  - do not just simply control for all pre-treatment variables
+      - zoo-budget past >> enclosure size
+      - zoo-budget past >> stress
+      - enclosure size >> stress
+      - aggression >> stress
+      - genetic >> aggression
+      - genetic >> stress
+  - if your research goal is explanatory do not use predictive criteria to determine what to include in your model
+  - we can't interpret coefficients of confounders in the same way as we do the focal predictor (table 2 fallacy)
+
+
+:::{.readingref}
+
+wizocki et al - stat control requires causal justific
+rohrer - causal inference for psych
+pearl - crash course
+:::
+
+<div class="divider div-transparent div-dot"></div>
+
+# key takeaways
+
+- observational studies are hard. 
+- experiments help (control by design), but still not absolved
+if nothing else, draw your theory about DGP. use it to inform what you put in your model
+
+additional considerations: 
+
+- what about descriptive work?
+- can't we just stick at 'associations'?
+    - just plausible deniability
+    - unclear what it means
+- what about interactions?
+- what about longitudinal studies?  
+
+
+
+section 2 - querying your model
+
+- the aim here is to estimate the unit specific quantity defined in our research Q.  
+- sometimes that will correspond to a coefficient
+- but be careful not to simply define RQ relative to a model coefficient. it creates circularity we need to we need to be able to know that the quantity is actually a theoretically useful or interesting one.  
+
+
+
+```{r}
+library(tidyverse)
+library(gt)
+library(patchwork)
+#set.seed(43)
+## obs
+chimp_obs <- tibble(
+  #chimp = paste0("chimp-", letters),
+  age = round(runif(260, 13, 29)),
+  treat = rbinom(260,1,plogis(5*scale(age))),
+  enclosure = ifelse(treat==1,"L","S")
+)
+nnk = residuals(lm(rnorm(260) ~ chimp_obs$age + chimp_obs$treat))
+nny = residuals(lm(rnorm(260) ~ chimp_obs$age + chimp_obs$treat + nnk))
+
+chimp_obs <- 
+  chimp_obs |>
+  mutate(
+    K0 = round(12 + nnk, 1),
+    K1 = K0 - 4,
+    k_time = ifelse(enclosure == "L", K1, K0),
+    Y0 = round(15 - 0.4 * age + 0.5 * K0 + nny, 1),
+    Y1 = Y0 - 1 + 0.5 * (K1 - K0),
+    aggression = ifelse(enclosure=="L",Y1,Y0),
+    agg1 = rbinom(260,1,plogis(4*scale(aggression)))
+  ) 
+
+mm <- glm(agg1 ~ enclosure * age, chimp_obs, family=binomial)
+summary(mm)
+mm <- glm(agg1 ~ enclosure * scale(age), chimp_obs, family=binomial)
+summary(mm)
+library(marginaleffects)
+avg_comparisons(mm, variables="enclosure",type = "response")
+```
+
+
+
+
+
+## i'm just doing descriptive work
+
+but, even successfully maintaining "i'm only describing things" does not absolve us from _thinking_ causally. 
+and analyses of experimental designs can still fall foul of some of these trip ups
+
+
+It can be surprising how many assumptions about the causal net are necessary to support causal claims. Philosopher of science Nancy Cartwright summarizes this as “No causes in, no causes out” (Cartwright, 1994). And given that even description usually requires assumptions about the causal processes that generated the data, she may be underselling the point (“No causes in, nothing out”, McElreath, 2022).
+
+
+Goal: estimate proportion of people with diagnosis of severe depression
+```{r}
+library(tidyverse)
+pdf <- tibble( 
+  uY = rbinom(1e5, 1, .2),
+  pM = rbinom(1e5,1, plogis(uY)),
+  Y = ifelse(pM==1,NA,uY)
+) 
+df <- sample_n(na.omit(pdf), 100) |> select(Y)
+mean(df$Y)
+mean(pdf$uY)
+```
+
+
+
+## Third variables
+"Don't be so gloomy. After all, it's not that awful"
+Harry Lime, the third man
+
+
+many started intro stat courses with t-tests, cor.tests etc. 
+rare for these to be sufficient for any study in reality - even v simply design two groups randomised into T/C, requires full compliance etc.  
+
+X -> Y
+
+more often, there are other variables that form "part of the story". somehow.. 
+
+confounder, mediator, collider
+
+it can be very useful to begin to think about the net of variables in diagrams, because this helps us to figure out how build a model that estimates the thing we actually want.  
+
+diagrams are not statistical models. they are just diagrams. 
+footnote - there is a formal logic to how these diagrams work allowing us to use them to reason about causality. we don't need to know the formal logic here though. 
+the diagrams are just arrows between variables, representing a theoretical model of what things cause changes in what other things.  
+
+a simple 2 sample t test assumes that all we need to consider is something like this: 
+ 
+
+suppose that we observe N people who take D and N who don't, and we measure their Y. If we have reason to think that older people are more likely to take D, and may well have lower Y, then our theory about how these variables connect is something like: 
+
+does doing t.test(Y~D) give us "the effect of D on Y"? No! when we use terms like "effect", we really mean "if person i takes D as opposed to not, what happens to their Y?" But our t test says it would go up! It's like saying "person i takes D and has higher Y, and person j doesn't and has lower Y" but completely ignores the fact that person i is 80 and person j is 24!  
+Note that we are _never_ going to be able to actually estimate "what would have happened to person i _if they hadn't_ taken D?". This is sometimes why people view the problem of causal inference as a missing data problem: 
+
+table with potential outcomes and treatment effects with ? 
+
+So the aim in being able to identify an "effect" is to make the two groups exchangeable in their potential outcomes.  
+
+So if we believe the pattern in ? to be true, then we would want to adjust for age. 
+what this is essentially does is remove the age-effect from the table, and now the two groups are comparable
+
+another way to achieve this is through design! this is why randomised control trials are sometimes viewed as the gold standard. by randomly allocating people in to D, we remove the arrows going into the back of D, and our theoretical model of how the variables are related is more like:^[in practice, RCTs are rarely as simple as this because of non-compliance etc]  
+
+image with forced D
+
+the discussion so far has only really touched upon third variables that enter in our theory as "back door" confounders (they enter in the back of D and bias the estimate of D->Y).  
+But this is not the only way in which third variables might connect with D and Y.  
+
+x - 
+y - 
+c - 
+
+```{r}
+#| eval: false
+library(tidyverse)
+library(patchwork)
+library(modelsummary)
+
+df <- tibble(
+  C = rnorm(100),
+  X = rbinom(100, 1, plogis(C)),
+  Y = rnorm(100, -C + .5*X, 1)
+)
+
+m1 <- lm(Y~X,df)
+m2 <- lm(Y~C+X,df)
+
+modelsummary(list(m1,m2),
+              fmt = 1, estimate  = "{estimate} [{conf.low}, {conf.high}]",
+              statistic = NULL, gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
+
+
+broom::augment(m1, 
+               newdata=expand_grid(X=c(0,1)),
+               interval="confidence") |>
+  ggplot(aes(x=X,y=.fitted,col=factor(X))) +
+  geom_pointrange(aes(ymin=.lower,ymax=.upper),
+                  position=position_nudge(x=.3))+
+  geom_jitter(data=df,aes(y=Y),alpha=.5,size=3, width=.2,height=0)
+
+broom::augment(m2, 
+               newdata=expand_grid(X=c(0,1),C=seq(min(df$C),max(df$C),length.out=50)),
+               interval="confidence") |>
+  ggplot(aes(x=C,y=.fitted,col=factor(X),fill=factor(X))) +
+  geom_line()+
+  geom_ribbon(aes(ymin=.lower,ymax=.upper),alpha=.3,col=NA)+
+  geom_point(data=df,aes(y=Y),alpha=.5,size=3)
+
+
+df <- tibble(
+  X = rbinom(100, 1, .5),
+  M = rnorm(100, X, 1),
+  Y = rnorm(100, M + .5*X, 1)
+)
+
+m1 <- lm(Y~X,df)
+m2 <- lm(Y~M+X,df)
+
+modelsummary(list(m1,m2),
+              fmt = 1, estimate  = "{estimate} [{conf.low}, {conf.high}]",
+              statistic = NULL, gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
+
+
+broom::augment(m1, 
+               newdata=expand_grid(X=c(0,1)),
+               interval="confidence") |>
+  ggplot(aes(x=X,y=.fitted,col=factor(X))) +
+  geom_pointrange(aes(ymin=.lower,ymax=.upper),
+                  position=position_nudge(x=.3))+
+  geom_jitter(data=df,aes(y=Y),alpha=.5,size=3, width=.2,height=0)
+
+broom::augment(m2, 
+               newdata=expand_grid(X=c(0,1),M=seq(min(df$M),max(df$M),length.out=50)),
+               interval="confidence") |>
+  ggplot(aes(x=M,y=.fitted,col=factor(X),fill=factor(X))) +
+  geom_line()+
+  geom_ribbon(aes(ymin=.lower,ymax=.upper),alpha=.3,col=NA)+
+  geom_point(data=df,aes(y=Y),alpha=.5,size=3)
+
+
+
+df <- tibble(
+  X = rbinom(100, 1, .5),
+  Y = rnorm(100,.5*X, 1),
+  C = rnorm(100, X+Y, 1)
+)
+lm(Y~X,df) |> summary()
+lm(Y~C+X,df) |> summary()
+```
+
+# building your model
+
+#### what to put in my model?  
+
+close back doors
+
+reference: statistical control requires causal justification
+
+more complex (i.e., C->X C->M   Y->CC CC->M)
+
+rec: 
+  wyzocki cntrol causal
+  crash course good controls bad controls
+  
+part of the process of building your model will depend on how you plan to use it, so in some respects we can't treat this chapter as a stepwise tutorial of 1 build your model 2 use your model. we should think about both.  
+
+
+
+## from diagrams to potential outcomes
+
+potential outcomes framework
+
+
+
+
+::: {.callout-tip collapse="true"}
+#### don't use predictive criteria for explanatory models!  
+
+note that if our goal is to explain, then the predictive accuracy of a model is not a good criteria for choosing which model we should use. 
+
+something like a simple model comparison of residual SS (using `anova(mod1, mod2)`) will make us think that X is the "better model", because the addition of XX explains more variance --- it does a better job of predicting Y. 
+The issue is that using model fit criteria (anything like an F test, AIC, BIC, etc) **doesn't care** about the direction of the arrows in your theory. 
+
+for example, we can add in XX to predict Y, but that really doesn't make any sense to do.  
+
+:::
+
+
+
+::: {.callout-tip collapse="true"}
+#### "table 2" fallacy! 
+ 
+
+:::
+
+
+
+
