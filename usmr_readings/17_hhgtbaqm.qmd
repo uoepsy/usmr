@@ -1,11 +1,13 @@
 ---
-title: "Hitchhiker's guide to building and querying statistical models"
+title: "Hitchhiker's guide to building statistical models"
 editor_options: 
   chunk_output_type: console
 ---
 
-{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
-{{< include ./_extensions/r-wasm/live/_gradethis.qmd >}}
+
+<!-- > We demand rigidly defined areas of doubt and uncertainty -->
+<!-- > I'd far rather be happy than right any day -->
+
 
 ```{r}
 #| include: false
@@ -13,91 +15,111 @@ editor_options:
 library(tidyverse)
 library(gt)
 library(patchwork)
-set.seed(43)
+library(modelsummary)
+# eseed=round(runif(1,1,1e7))
+# set.seed(eseed)
+set.seed(7570359)
 ## obs
 chimp_obs <- tibble(
   chimp = paste0("chimp-", letters),
   age = round(runif(26, 13, 29)),
   treat = rbinom(26,1,plogis(5*scale(age))),
-  enclosure = ifelse(treat==1,"L","S")
+  enclosure_type = ifelse(treat==1,"Group","Paired")
 )
 nnk = residuals(lm(rnorm(26) ~ chimp_obs$age + chimp_obs$treat))
-nny = residuals(lm(rnorm(26) ~ chimp_obs$age + chimp_obs$treat + nnk))
+nny = residuals(lm(rnorm(26,0,2) ~ chimp_obs$age + chimp_obs$treat + nnk))
 
 chimp_obs <- 
   chimp_obs |>
   mutate(
     K0 = round(12 + nnk, 1),
-    K1 = K0 - 4,
-    k_time = ifelse(enclosure == "L", K1, K0),
-    Y0 = round(15 - 0.4 * age + 0.5 * K0 + nny, 1),
-    Y1 = Y0 - 1 + 0.5 * (K1 - K0),
-    aggression = ifelse(enclosure=="L",Y1,Y0)
+    K1 = K0 + 4,
+    k_time = ifelse(enclosure_type == "Group", K1, K0),
+    Y0 = round(35 - 0.4 * age + 0.5 * K0 + nny, 1),
+    Y1 = Y0 + 1 + 0.5 * (K1 - K0),
+    CURIOUS = ifelse(enclosure_type=="Group",Y1,Y0)
   ) 
-
+chimp_obs <- 
+  chimp_obs |>
+  transmute(chimp, age,enrichment_hrs=k_time, enclosure_type, CURIOUS)
+write_csv(chimp_obs, file="../../data/chimp_obs.csv")
+sjPlot::tab_model(
+  lm(CURIOUS ~ enclosure_type, chimp_obs),
+  lm(CURIOUS ~ age+enclosure_type, chimp_obs),
+  lm(CURIOUS ~ age+enrichment_hrs+enclosure_type, chimp_obs),
+  lm(CURIOUS ~ enrichment_hrs+enclosure_type, chimp_obs)
+)
 
 ## rct
-set.seed(29)
+# eseed=round(runif(1,1,1e7))
+# set.seed(eseed)
+set.seed(738557)
 chimp_rct <- tibble(
   chimp = paste0("chimp-", letters),
   age = rep(round(runif(13, 13, 29)),2),
   treat = rep(0:1,e=13),
-  enclosure = ifelse(treat==1,"L","S"),
+  enclosure_type = ifelse(treat==1,"Group","Paired"),
 )
 nnk = residuals(lm(rnorm(26) ~ chimp_rct$age + chimp_rct$treat))
-nny = residuals(lm(rnorm(26) ~ chimp_rct$age + chimp_rct$treat + nnk))
+nny = residuals(lm(rnorm(26,0,2) ~ chimp_rct$age + chimp_rct$treat + nnk))
 
 chimp_rct <- 
   chimp_rct |>
   mutate(
     K0 = round(12 + nnk, 1),
-    K1 = K0 - 4,
-    k_time = ifelse(enclosure == "L", K1, K0),
-    Y0 = round(15 - 0.4 * age + 0.5 * K0 + nny, 1),
-    Y1 = Y0 - 1 + 0.5 * (K1 - K0),
+    K1 = K0 + 4,
+    k_time = ifelse(enclosure_type == "Group", K1, K0),
+    Y0 = round(35 - 0.4 * age + 0.5 * K0 + nny, 1),
+    Y1 = Y0 + 1 + 0.5 * (K1 - K0),
     # Y0 = round(15 - .4*age + nny,1),
     # Y1 = Y0 + delta,
-    aggression = ifelse(enclosure=="L",Y1,Y0)
+    CURIOUS = ifelse(enclosure_type=="Group",Y1,Y0)
   ) 
 
-chimp_rct |>
-  select(chimp, age, enclosure,aggression) |>
-  write_csv(file="../../data/chimp_rct.csv")
-chimp_obs |>
-  select(chimp, age, enclosure,aggression) |>
-  write_csv(file="../../data/chimp_obs.csv")
-# sjPlot::tab_model(
-#   lm(aggression ~ enclosure, chimp_obs),
-#   lm(aggression ~ age+enclosure, chimp_obs),
-#   lm(aggression ~ age+k_time+enclosure, chimp_obs),
-#   lm(aggression ~ k_time+enclosure, chimp_obs)
-# )
-# sjPlot::tab_model(
-#   lm(aggression ~ enclosure, chimp_rct),
-#   lm(aggression ~ age+enclosure, chimp_rct),
-#   lm(aggression ~ age+k_time+enclosure, chimp_rct),
-#   lm(aggression ~ k_time+enclosure, chimp_rct)
-# )
+set.seed(135074)
+chimp_rct$injured <- 
+  rbinom(nrow(chimp_rct),1,
+         plogis(
+           scale(chimp_rct$CURIOUS)*+1 + 1*(chimp_rct$enclosure_type=="Group")
+  ))
+
+# lm(CURIOUS~enclosure_type,chimp_rct)
+# lm(CURIOUS~coll+enclosure_type,chimp_rct)
+# lm(CURIOUS~enclosure_type,chimp_rct[chimp_rct$coll==0,])
+
+
+chimp_rct <- chimp_rct |>
+  transmute(chimp, age, injured, enrichment_hrs=k_time, enclosure_type, CURIOUS)
+write_csv(chimp_rct, file="../../data/chimp_rct.csv")
+
+sjPlot::tab_model(
+  lm(CURIOUS ~ enclosure_type, chimp_rct),
+  lm(CURIOUS ~ age+enclosure_type, chimp_rct),
+  lm(CURIOUS ~ age+enrichment_hrs+enclosure_type, chimp_rct),
+  lm(CURIOUS ~ enrichment_hrs+enclosure_type, chimp_rct)
+)
 # 
 # 
 
 ```
 
 
-context
-option 1: 
-- yield ~ tomatoes greenhouse v inside
-  - conf = planted nice ones in greenhouse
-  - med = i water greenhouse more regularly
-option 2:
-- aggression ~ chimps in large v small enclosures
-  - conf = zookeeper put older chimps in small enclosures
-  - med = zookeeper spends more time with each chimp in small enclosures
 
+# tools vs design
 
-## tools vs design
+::::{.columns}
+:::{.column width="50%"}
 
 Over the past 10 weeks, we have done a lot of work learning about the machinery of statistical models. But learning how different tools work is not the same as learning how to use them to build something. 
+
+One of the biggest challenges in doing scientific research is to thinking very carefully, deliberately, and __clearly__ about all parts of the process. 
+It is all too easy to go through the motions and do what _looks like_ science, but only ever have a research question that is ill-defined and ambiguous. 
+No amount of fancy statistics can provide a clear answer to an under-specified question.  
+
+:::
+:::{.column width="2%"}
+:::
+:::{.column width="48%"}
 
 ```{r}
 #| echo: false
@@ -106,14 +128,16 @@ Over the past 10 weeks, we have done a lot of work learning about the machinery 
 knitr::include_graphics("images/tools.png")
 ```
 
-One of the biggest challenges in doing scientific research is to thinking very carefully, deliberately, and __clearly__ about all parts of the process. 
-It is all too easy to go through the motions and do what _looks like_ science, but with only ever having a research question that is ill-defined and ambiguous. 
-No amount of fancy statistics can provide a clear answer to an under-specified question.  
+:::
+::::
 
-> The first principle is that you must not fool yourself and you are the easiest person to fool  
-> [Richard Feynmann]
+<!-- > The first principle is that you must not fool yourself and you are the easiest person to fool   -->
+<!-- > [Richard Feynmann] -->
 
-## specifying clear research questions
+# What is your quest?   
+
+> *"I checked it very thoroughly," said the computer, "and that quite definitely is the answer. I think the problem, to be quite honest with you, is that you’ve never actually known what the question is."*  
+> The Hitchhikers Guide to the Galaxy, Douglas Adams.
 
 At a big picture level, research goals typically fall into one of three categories:  
 
@@ -123,15 +147,15 @@ At a big picture level, research goals typically fall into one of three categori
 
 The majority of psychological research tends to fall into the "explanatory" category. 
 Often, after taking an introductory statistics class, we have had the phrase "correlation does not imply causation" endlessly hammered into us. 
-It's a valid statement, but it's not very useful --- if our aim is to understand the world and how it works, we cannot shy away from thinking about causality when defining our research questions. 
+It's a valid statement, but it's not very useful - if our aim is to understand the world and how it works, we cannot shy away from thinking about causality when defining our research questions. 
 
 
 Research questions in the social sciences will very often use language that is *implicitly* causal, but then fail to engage with the assumptions that underpin whether their analysis is actually able to address that question. 
 Words such as "effect", "influence", "explain", "prevent", "improve", "protect" etc., are all terms that imply causation, asking a question about what *would* happen to a variable $Y$ in the event that variable $X$ changed. 
-Without careful thought (about both design and analysis) a correlation tells us nothing about the questions we are actually interested in. 
+Without careful thought (about both design and analysis) a statistical association might not tell us anything about the specific question that we are actually interested in. 
 
 :::imp
-Note, we're not going to learn anything in this reading that magically allows us to interpret our estimates as 'causal'. No such thing exists.  
+**Important Note:** we're not going to learn anything in this reading that magically allows us to interpret our estimates as 'causal'. No such thing exists.  
 
 Consider this reading more as a gentle encouragement to think more carefully about *which* association it is that you actually want to report. 
 
@@ -142,59 +166,68 @@ Consider this reading more as a gentle encouragement to think more carefully abo
 
 To build the intuition of how we can improve our research questions, let's move to an example:  
 
-> **Research Question:** Are chimpanzees more aggressive in large groups (enclosures with >10 chimps) compared to small groups (enclosures with <10 chimps)?
+- **Research Question:** Are chimpanzees in group-housing enclosures (with >2 chimps) more curious than chimpanzees in paired-housing enclosures (2 chimps)?  
 
 Take a few minutes to reflect on whether the above research question is clear and specific. What exactly is it asking? Is it descriptive? predictive? explanatory?  
 
-As it currently reads, this may _feel_ like it is fairly clear, but it is actually underspecified. 
-As well as not being clear about whether our question is about *all* chimpanzees, just adults, or just those in zoos, the question does not explicitly differentiate between whether we are interested in:  
+As it currently reads, this may _feel_ like it is fairly clear, but it is actually quite underspecified. 
+As well as not being clear about whether our question is about *all* chimpanzees, just adults, or just those in zoos, and not specifying how "curiosity" is measured, the question does not explicitly differentiate between whether we are interested in:  
 
-- a descriptive question: "what is the difference in aggression between chimpanzees currently living in large-group enclosures and those in small-group enclosures?"
-- an explanatory question: "what is the difference in aggression for a given chimpanzee in a large-group enclosure compared to how aggressive that same chimpanzee *would be* if placed in a small-group enclosure?"
+- a descriptive question, targeting the observed difference in curiosity levels between chimpanzees currently in group-enclosures and those currently in paired-enclosures?
+- an explanatory question, targetting the difference in curiosity levels for a given chimpanzee in group-enclosure compared to how curious that same chimpanzee *would be* if placed in paired-enclosure?"
 
-
+## How to specify clear research questions
 
 A clearly defined research question should have two things: 
 
 1. a unit-specific quantity
-    - this is the specific thing we want to know about, defined at the level of the unit of interest. It could be a single value $Y_i$ for a given unit $i$, or a counterfactual comparison of $Y_i$ under different levels of another variable $X$, which we can write as $Y_i(X_i=1) - Y_i(X_i=0)$
+    - this is the thing we want to know about, defined at the level of the unit of interest. It could be a single value $Y_i$ for a given unit $i$, or a counterfactual comparison of $Y_i$ under different levels of another variable $X$, which we could write as $Y_i(X_i=1) - Y_i(X_i=0)$
 2. a target population
     - this is the set of units over which we are aggregating our quantity. 
   
-In our example, we can move to a somewhat more clearly stated question: 
+Returning to our chimp example, we can move to a somewhat more clearly stated question: 
 
-> **Research Question:** For adult chimpanzees housed in UK zoos, what is the average effect on individual daily aggression of a chimpanzee being placed in a large group (>10 chimp enclosures) compared to being placed in a small group (<10 chimp enclosures)?
+- **Research Question:** For adult chimpanzees housed in UK zoos, what is the average effect on curiosity (average minutes per day spent engaging with novel objects, over the course of a week) of being placed in group-housing enclosure (>2 chimps) compared to being placed in paired-housing enclosure (2 chimps)?
 
-Note that the word "effect" here is stating that we want to know how much of chimpanzee $i$'s aggressive behaviour is _because_ they are in a large group.
-We are asking a question that concerns what we would expect chimp $i$'s aggression levels to be like in the counterfactual world where we observed them in the other size of enclosure. 
-The unit-specific quantity that we are interested in here are the values that are in the `diff` column in @tbl-delta.  
+Note that the word "effect" here is stating that we want to know how much of the chimpanzee $i$'s curiosity is _because_ they are in a group-enclosure.  
+This is a causal question, and as such concerns what we would expect chimp $i$'s score on our curiosity measure to be like in the counterfactual world where we observed them in the other type of enclosure. 
+The unit-specific quantity that we are interested in here is $\text{Curiosity}_i(\text{Group-Housing}) - \text{Curiosity}_i(\text{Paired-Housing})$, and these correspond to the values that are in the `diff` column in @tbl-delta.  
 
 ```{r}
 #| echo: false
 #| label: tbl-delta
-#| tbl-cap: "The unit specific quantity we are interested in is the average difference in a chimpanzee's aggression when it is placed in a large group enclosure vs when it is placed in a small group enclosure - these values are in the diff column"
-set.seed(885)
+#| tbl-cap: "The unit specific quantity we are interested in is the average difference in a chimpanzee's curiosity score if it were placed in a group-enclosure vs if were placed in a paired-enclosure - these values are in the diff column"
+set.seed(56011)
 chdat <- tibble(
   age = round(runif(26,13,29)),
   delta = round(rnorm(26,3,1)),
-  Y0 = pmax(0,round(rnorm(26,12+-5*scale(age),3))),
+  Y0 = pmax(0,round(rnorm(26,35-0.4 * age,3))),
   Y1 = Y0 + delta,
-  enclosure = rbinom(26,1,plogis(.6*scale(age))),
-  AGGR = ifelse(enclosure==1,Y1,Y0)
-) |> arrange(enclosure) |>
+  enclosure_type = rbinom(26,1,plogis(1.3*scale(age))),
+  CURIOUS = ifelse(enclosure_type==1,Y1,Y0)
+) |> arrange(enclosure_type) |>
   transmute(
     chimp = paste0("chimp-",letters),
     age,
-    aggr_small = Y0, aggr_large = Y1, diff = delta,
-    enclosure = ifelse(enclosure==0,"S","L"), AGGR
+    curious_P = Y0, curious_G = Y1, diff = delta,
+    enclosure_type = ifelse(enclosure_type==0,"Paired","Group"), 
+    CURIOUS
 )
+chdat[24,3:5] <- chdat[4,3:5]
+chdat[24,7] <- chdat[24,4]
+chdat[1,c(3:4,7)] <-chdat[1,c(3:4,7)]-8 
+chdat[3,c(3:4,7)] <-chdat[3,c(3:4,7)]+7 
+
+chdat[26,c(3:4,7)] <-chdat[26,c(3:4,7)]-3
+chdat[25,c(3:4,7)] <-chdat[25,c(3:4,7)]-7
+
 
 bind_rows(
   chdat[1:4,],
   data.frame(chimp=c(NA,NA)),
-  chdat[24:26,]
+  chdat[23:26,]
 ) |> 
-  select(-age,-enclosure,-AGGR) |>
+  select(-age,-enclosure_type,-CURIOUS) |>
   gt() |> sub_missing(missing_text="...")
 ```
 
@@ -206,137 +239,209 @@ Lundberg et al
 <div class="divider div-transparent div-dot"></div>
 
 
-## study designs
+## Study Designs
+
 
 Now that we have a well defined research question, there are lots of ways we might design a study to address it. 
 For a few simple examples, we could consider studies where we:  
 
-1. observe the aggression levels of chimpanzees in both types of enclosure, along with other variables required to identify the quantity of interest. 
-2. randomly allocate half the chimpanzees into a large-group enclosure, and half into a small-group enclosure, and measure their aggression. 
-3. measure each chimpanzee's aggression in both types of enclosure (counterbalancing the order in which these occur for each chimp) 
+1. measure chimpanzee's curiosity levels (record the time they spend engaging with novel objects) in both types of enclosure, along with other variables required to identify the quantity of interest.   
+2. randomly allocate half of chimpanzees into group-enclosures, and half into paired-enclosures, and then measure their curiosity.^[after a period of time that we would expect any effect to have taken place]   
+3. place each chimpanzee in both types of enclosure (counterbalancing the order in which these occur for each chimp), and measure their curiosity.  
 
-We will not cover 3 right now - this design involves multiple measurements per chimpanzee, and we will cover statistical models for such designs in MSMR. 
-Here, we would like to contrast options 1 and 2, and how our understanding of the 'data generating process' informs the statistics we will use to address our research question.
-In both scenarios, we only ever observe a given chimpanzee in _one type of enclosure_. 
-This means that we can never observe the values in both of the `aggr_small` and `aggr_large` columns for the same chimp - we can never directly observe the effect of enclosure size on aggression for any given chimpanzee:  
+We will not cover 3 right now - this design involves multiple measurements of curiosity per chimpanzee, and we will cover statistical models for such designs in MSMR. 
+Here, we will focus on options 1 and 2, to illustrate how our understanding of the how the data has come about informs the statistics we will use to address our research question. This includes understanding the bit about "other variables required to identify the quantity of interest".  
+
+In our options for desiging a study of chimp-curiosity, in both the scenarios 1 and 2 detailed above, we only ever observe a given chimpanzee in _one type of enclosure_. 
+This means that we can never observe the values in both of the `CURIOUS_paired` and `CURIOUS_group` columns for the same chimp - we can never directly observe the effect of enclosure type on curiosity for any given chimpanzee:  
 
 ```{r}
 #| label: tbl-miss
-#| tbl-cap: "Chimps allocated into different types of enclosure means we ultimately need to compare aggression levels between different groups of chimps. Greyed out values here show the data we cannot observe."
+#| tbl-cap: "Chimps allocated into different types of enclosure means we ultimately need to compare the curiosity levels between different groups of chimps. Greyed out values here show the data we cannot observe."
 #| echo: false
 bind_rows(
   chdat[1:4,],
   data.frame(chimp=c(NA,NA)),
-  chdat[24:26,]
+  chdat[23:26,]
 ) |> select(-age) |>
   gt() |> sub_missing(missing_text="...") |>
   tab_style(
     style = cell_text(color = 'grey80'),
-    locations = cells_body(columns=c(aggr_small, diff), rows=enclosure=="L")
+    locations = cells_body(columns=c(curious_P, diff), rows=enclosure_type=="Group")
   ) |>
    tab_style(
     style = cell_text(color = 'grey80'),
-    locations = cells_body(columns=c(aggr_large, diff), rows=enclosure=="S")
+    locations = cells_body(columns=c(curious_G, diff), rows=enclosure_type=="Paired")
   ) |>
-  tab_spanner("Observed",columns=c(enclosure,AGGR))
+  tab_spanner("Observed Data",columns=c(enclosure_type,CURIOUS))
 ```
 
-Our understanding of the study design is key in informing how we use our observed data to assess the research question appropriately. 
-Reasoning about how chimps were allocated to the different enclosures will be necessary to determine what to put in our model.  
+Our understanding of the study design (our theory about the 'data generating process') is absolutely crucial in informing how we use our observed data to assess the research question appropriately. 
+Knowing *how* chimps were allocated to the different types of enclosure will be necessary to determine what to put in our model.  
 
 To build the intuition, we are going to look at some diagrams.
-These diagrams represent our understanding of how the various attributes influence one another in the real world to generate the data that we have. 
-The arrows represent how one variable influences another. 
-So if we think about out research question in isolation, we can draw it as an arrow going from Enclosure to Aggression. 
+These diagrams represent our understanding of how the various attributes influence one another in the real world to generate the data that we have - they are visualisations of **data generating processes**!  
 
-TODO PIC simple x > y
+:::sticky
+__"Data Generating Process"__  
 
-In the real world, however, there are lots of other things that influence why a chimpanzee behaves aggressively: its age, sex, genetics, hunger, social status, rearing history, hormones etc., etc.
-To simplify our explanations, let's just pretend there's only one main thing that influences aggression levels, and that's a chimpanzee's age, with older chimpanzees being less aggressive than younger ones.  
+A data generating process (DGP) is a process in the real world that "generates" the data we are interested in. 
+Or, more broadly "how the data have come to be the way they are". 
+We don't know the *true* DGP, but we usually have some understanding to allow us to have a rough idea of it. 
 
-:::frame
-#### 1. an observational study
-
-If our study was simply observing chimpanzees in whatever enclosure we find them in, then we need to understand _how_ that allocation happened. If zoos tend to place younger chimpanzees in smaller enclosures, then when we observe a small enclosure we might see a higher level of aggression because it contains younger adults. If we fail to take into account the age differences between large and small enclosures, it is impossible to isolate the effect of group size on aggression - it would be 'confounded' by age.  
-
-TODO PIC conf
-:::
-
-:::frame
-#### 2. a randomised experiment
-
-If our study is instead a randomised experiment, then we know that our the small and large enclosures shouldn't have vastly different distributions of ages in them. 
-In our diagram, we know that there is no arrow going from Age to Enclosure. 
-In fact, we know that there are *no* arrows going into Enclosure, because it's just been randomly allocated.  
-
-TODO pic rct
-:::
+It may be easier to think of a DGP first in a closed system: imagine we're thinking about whether a toaster produces some toast. 
+Several things need to happen in order for me to get my toast. 
+We can draw a picture of how we understand the process to work:
 
 
-Below, you can play with some data from these two scenarios. In both cases, we have simulated it so that being in a large-group enclosure increases each chimpanzee's aggression score by 3 compared to when it is in a small-group enclosure. 
+![](images/chimpdag/Slide1.PNG){fig-align="center" width="200px"}
 
-- In `chimp_obs`, we have a study where the allocation of chimps into small-group/large-group enclosures was *not* random: zookeepers tended to put younger chimpanzees in smaller enclosures.  
-- In `chimp_rct`, we have a experiment in which chimpanzees are randomly allocated into either large-group or small-group enclosures. It wouldn't happen this perfectly in real randomisation, but we have ended up with exactly the same ages of chimps in both types of enclosure.  
-
-Compare the models in the two different scenarios. 
-We are interested, remember, in "the effect of enclosure on aggression", which corresponds to our `enclosureS` coefficient (the difference in aggression levels in Small vs Large group enclosures). 
-Remember that in both cases, we have made it so that this difference is 3 (Large v Small) for every chimp.  
-
-```{webr}
-chimp_obs <- read.csv("https://uoepsy.github.io/data/chimp_obs.csv")
-
-m1 <- lm(aggression ~ enclosure, chimp_obs) 
-m2 <- lm(aggression ~ age + enclosure, chimp_obs)
-
-chimp_rct <- read.csv("https://uoepsy.github.io/data/chimp_rct.csv")
-
-mr1 <- lm(aggression ~ enclosure, chimp_rct) 
-mr2 <- lm(aggression ~ age + enclosure, chimp_rct)
-```
+In diagrams like these, the words (or "nodes") represent variables - quantifiable attributes in the real-world. 
+The arrows represent how these different real-world attributes relate to one another to produce an outcome (toast).  
 
 :::
-::::
 
-Note that in the randomised experiment, age is a significant predictor, but including/excluding it does not change the `enclosure` coefficient. 
-Including it will increase our *precision* of the estimate, because we are explaining more variance in our outcome variable, but it does not bias the estimate.  
+In our chimpanzee studies, if we think about out research question in isolation, we can draw it as an arrow going from `EnclosureType` to `Curiosity`. 
 
-In contrast, for the observational study, it is necessary to adjust for age somehow to 'de-confound' the effect of enclosure on aggression. 
-If we fail to include age in our model then we might erroneously conclude that smaller enclosures lead to *more* aggression, rather than less!  
+![](images/chimpdag/Slide2.PNG)
 
-::: {.callout-tip collapse="true"}
-#### rabbit hole: exchangeability of potential outcomes
-- rabbit hole: another way to think of this.  
-  - what we want is "exchangeability" wrt to the Y that the groups _would have had_ if they had been in the other group.  
-  - tables of potential outcomes, with delta_i
-  - compare tables in A and B. 
-  - randomisation into X achieves this
+But in the real world, however, there are lots of other things that influence why a chimpanzee might be more/less curious: its age, sex, genetics, hunger, social status, rearing history, hormones etc., etc.
+To simplify our explanations, let's just pretend there's only one other thing that influences curiosity levels, and that's a chimpanzee's age, with older chimpanzees being less curious than younger ones. 
+How `age` relates to other variables in our diagram depends on how the study is designed, as well as what we theorise about the world. 
+For instance, let's suppose that we have good reason to suspect that zoos tend to place younger chimpanzees in paired-enclosures, and older ones in group-enclosures.  
 
-it's not that we need age to be balanced across groups
-we need the potential outcomes of aggr_small, aggr_large to be comparable between our groups
-in the observational study, they aren't.. 
+:::fancyframe
+#### 1. observational study
+
+If our study was simply observing chimpanzees in whatever type of enclosure that we find them in, then we need to understand _how_ that allocation happened. If zoos tend to place younger chimpanzees in paired-enclosures, then we would draw a line from `Age` to `EnclosureType`.  
+
+![](images/chimpdag/Slide3.PNG)
+:::
+
+:::fancyframe
+#### 2. randomised experiment
+
+If our study is instead a randomised experiment, then in our diagram, we know that there is no arrow going from `Age` to `EnclosureType`. 
+In fact, we know that there should be *no* arrows going into `EnclosureType`, because it's just been randomly allocated!  
+
+![](images/chimpdag/Slide4.PNG)
+:::
+
+In the observational study, because zoos are tending to place younger chimpanzees in paired-enclosures, then our data will likely reflect this: the chimps we observe from paired-enclosures might exhibit a higher level of curiosity than those we observe from group-enclosures *because* they tend to be younger.  
+If we fail to take into account the age differences, it is impossible to isolate the effect of enclosure type on curiosity - it would be 'confounded' by age. 
+By contrast, in our randomised experiment, because the only thing influencing which enclosure a chimp is allocated to is the random flip of a coin, it means that we should end up with similar aged chimps in each type. 
+
+To illustrate how this understanding of the data generating process changes how we should build our models, we have simulated data for the two scenarios above so that you can play around with it yourself. 
+In both the cases, we have made it so that being in a group-enclosure makes every individual chimpanzee spend on average exactly 3 minutes more playing with the novel objects (i.e. score 3 higher on the 'curiosity' measure) than they would be in a paired-enclosure.  
+
+
+- In <https://uoepsy.github.io/data/chimp_obs.csv> we have a study where the allocation of chimps into paired/group-enclosures was *not* random: zookeepers tended to put younger chimpanzees in paired-enclosures.  
+- In <https://uoepsy.github.io/data/chimp_rct.csv>, we have a experiment in which chimpanzees are randomly allocated into either paired or group enclosures. 
+
+In both cases, we have the chimpanzee's ages as a third variable. 
+Let's compare the models with and without age in the two scenarios. 
+We are interested, remember, in "the effect of enclosure type on curiosity", which in this case corresponds to the `enclosure_type` coefficient (the difference in curiosity minutes in `"Paired"` vs `"Group"` enclosures). 
+Remember that in both scenarios, we have made it so that this difference is 3 (`"Group"` vs `"Paired"`) for every chimp (or -3 if for `"Paired"` vs `"Group"`).  
+
+:::fancyframe
+#### 1. observational study
 ```{r}
-#set.seed(1220275)
-set.seed(1220275)
-cc <- tibble(
-  age = round(runif(26,13,29)),
-  #delta = round(rnorm(26,3,1)),
-  delta = 3,
-  Y0 = pmax(0,round(rnorm(26,12+-3*scale(age),1))),
-  Y1 = Y0 + delta,
-  enclosure = rbinom(26,1,plogis(5*scale(age))),
-  aggression = ifelse(enclosure==1,Y1,Y0)
-) |> arrange(enclosure) |>
-  mutate(chimp = paste0("chimp-",letters), .before=age)
+# TODO
+# chimp_obs <- read.csv("https://uoepsy.github.io/data/chimp_obs.csv")
 
+
+m1 <- lm(CURIOUS ~ enclosure_type, chimp_obs) 
+m2 <- lm(CURIOUS ~ age + enclosure_type, chimp_obs)
+```
+```{r}
+#| echo: false
+modelsummary(list(m1, m2),
+             fmt = 1, 
+             estimate  = "{estimate} [{conf.low}, {conf.high}]",
+             statistic = NULL, 
+             gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
+```
+:::
+:::fancyframe
+#### 2. randomized experiment
+```{r}
+# TODO
+# chimp_rct <- read.csv("https://uoepsy.github.io/data/chimp_rct.csv")
+
+mr1 <- lm(CURIOUS ~ enclosure_type, chimp_rct) 
+mr2 <- lm(CURIOUS ~ age + enclosure_type, chimp_rct)
+
+```
+```{r}
+#| echo: false
+modelsummary(list(mr1, mr2),
+             fmt = 1, 
+             estimate  = "{estimate} [{conf.low}, {conf.high}]",
+             statistic = NULL, 
+             gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
+```
+:::
+
+
+Note that in the randomised experiment, `age` is a significant predictor, but including/excluding it does not change the estimate of the `enclosure_type` coefficient. 
+In this toy example, the `enclosure_type` coefficient doesn't change **at all**, whereas in a real randomised experiment it probably would change just a little bit (this is just because we've made it so that the randomisation has resulted in *exactly* the same ages of chimps in both types of enclosure --- which is what randomisation achieves in the long-run).  
+While including/excluding `age` in the model doesn't *bias* in our estimate of the `enclosure_type` coefficient, its inclusion will increase our *precision* (note the confidence interval gets narrower), because we are explaining more variance in our outcome variable (making the variance explained by enclosure easier to detect^[Think of this as $\frac{\text{signal}}{\text{noise}}$. Including age doesn't change the signal, but it does make the noise smaller.]). 
+
+Contrast this with the observational study, in which it is absolutely necessary to adjust for `age` in order to 'de-confound' the effect of enclosure on curiosity. 
+If we fail to include `age` in our model then we might erroneously conclude that smaller enclosures lead to *more* aggression, rather than less!  
+
+::: {.callout-caution collapse="true"}
+#### optional note for wizards: exchangeability of potential outcomes
+
+It's tempting to think that what we're aiming for is having the same aged chimps in both types of enclosure - i.e., it feels like what we _want_ is "balanced" covariates. 
+Indeed, this is why people design studies that "match" subjects on things like age and sex - for instance, for each chimp observed in a paired enclosure, finding a chimp of the same age in a group enclosure.
+Technically however, this isn't actually the thing we're aiming for, it is simply one way to get it.  
+
+To identify the effect of `enclosure_type` on `curiosity`, what we are wanting is "exchangeability of the potential outcomes".  
+
+The "potential outcomes" here are the values of `curiosity` we would have measured if we could see a chimp in either enclosure type.  
+In the situation of the observational study, the sets of potential outcomes (`curious_P`, `curious_G`) are not comparable for the two groups of `enclosure_type` that we have observed (@tbl-miss2) --- where `enclosure_type=="Group"`, these values tend to be slightly lower than where `enclosure_type=="Paired"`. This is because of age!  
+
+```{r}
+#| label: tbl-miss2
+#| tbl-cap: "To identify the effect of a treatment on an outcome, we want it so that units in treatment group A, *had they been in group B, would have had the same outcome distribution as the units we do see in group B (and vice versa)"
+#| echo: false
 bind_rows(
-  cc[1:4,],
+  chdat[1:4,],
   data.frame(chimp=c(NA,NA)),
-  cc[23:26,]
-)
+  chdat[23:26,]
+) |> select(chimp,curious_P,curious_G,
+            diff,age,enclosure_type,CURIOUS)  |>
+  gt() |> sub_missing(missing_text="...") |>
+  tab_style(
+    style = cell_text(color = 'grey80'),
+    locations = cells_body(columns=c(curious_P, curious_G, diff))
+  ) |>
+  tab_spanner("Observed Data", columns =
+                c(enclosure_type,age,CURIOUS),
+              level=2) |>
+  tab_spanner("Potential Outcomes", columns =
+                c(curious_P, curious_G)) |>
+  tab_spanner("Individual Effect", columns =
+                c(diff)) |>
+  tab_spanner("Unobservable", columns=c(curious_P,
+                                        curious_G,
+                                        diff),level=2) |>
+  tab_spanner("Realised Outcome", columns=c(CURIOUS),
+              level=1)
 ```
 
-senn it's about randomisation not balanced
-dahly
+To think about how 'adjusting for age' helps this, simply consider how the comparison works when comparing chimpanzees of the same ages. 
+For instance, in @tbl-miss2, "chimp-d" and "chimp-x" are in different enclosure types, but are both the same age, and their potential outcomes are the same!  
+
+Randomisation achieves this because there is nothing that influences the allocation into different enclosures. 
+
+:::{.readingref}
+
+https://statsepi.substack.com/p/out-of-balance
+
+:::
+
 :::
  
 Our takeaway might be that we should always conduct experiments, and this is a reasonable first thought --- if we have randomly allocated our observations to values of our explanatory variable $X$, we don't have to worry about measuring all the possible confounding variables, because it is only randomness that influences what value of $X$ an observation takes. 
@@ -345,155 +450,237 @@ Remember however, that it may often be unethical or impossible to intervene and 
 
 More importantly, while randomisation may assist with confounding variables prior to allocation, experiments do not magically allow us to make causal claims, nor do they absolve us from thinking about the data generating process in our analytical decisions. 
 
-Consider, for example, that in our two studies of chimpanzees, we also recorded the amount of time the zookeeper spends with each chimpanzee. 
+Consider, for example, that in our two studies of chimpanzees, we also recorded the number of hours of "enrichment activities" that each chimpanzee receives (these are things the zookeeper might do such as scatter-feeding nuts, puzzle feeders, or novel scent trails). 
 Should we include this variable in our analysis in the observational study? What about in the experimental study? Will it matter?  
 
-To answer, this, we need a theory about how the variable fits in to the data generating process. 
-Let's suppose that it sits somewhere along path between Enclosure and Aggression. 
-If the zookeeper spends ~2 hours in each enclosure, then they spend more time-per-chimp for small-group enclosures than they do for large-group ones. 
-It may also be that part (or all) of the effect of enclosure type on chimps' aggression is that they get less attention from the zookeeper.  
-In this case, the 'time with zookeeper' variable fits in our data generating process as so: 
+To answer, this, we need to consult our understanding of how the variable fits in to the data generating process. 
+Let's suppose that it sits somewhere along path between `EnclosureType` and `Curiosity`.
+Here we are saying that zookeepers give more enrichment activities to the group enclosures, and that enrichment activities encourage chimps to be more curious. 
+In this case, the `Enrichment Hrs` variable fits in our data generating process as so: 
 
 ::::{.columns}
 :::{.column width="50%"}
-pic obs ZK
+__1. an observational study__  
+
+![](images/chimpdag/Slide5.png)
 :::
 :::{.column width="50%"}
-pic RCT ZK
+__2. a randomised experiment__  
+
+![](images/chimpdag/Slide6.png)
 :::
 ::::
 
-If we are right with our view of the data generating process, which model should we use in order to address our research question?  
+If we are right with our above view of the data generating process, which model should we use in order to address our research question? 
+Try it out for yourself in the two simulated datasets! 
+Remember, that in both of datasets, we have made it so that chimpanzees scores on the curiosity measure are exactly 3 points higher in group-enclosures than they would be in paired-enclosures (and exactly 3 points lower in paired-enclosures than they would be in group-enclosures) --- i.e., we have made it so that the "effect of paired/group housing on curiosity" is exactly 3.  
 
-```{webr}
-chimp_obs <- read.csv("https://uoepsy.github.io/data/chimp_obs.csv")
+:::fancyframe
+#### 1. observational study
+```{r}
+# TODO
+# chimp_obs <- read.csv("https://uoepsy.github.io/data/chimp_obs.csv")
 
-m1 <- lm(aggression ~ enclosure, chimp_obs) 
-m2 <- lm(aggression ~ age + enclosure, chimp_obs)
-m3 <- lm(aggression ~ k_time + enclosure, chimp_obs)
-m4 <- lm(aggression ~ age + k_time + enclosure, chimp_obs)
+m1 <- lm(CURIOUS ~ enclosure_type, chimp_obs) 
+m2 <- lm(CURIOUS ~ age + enclosure_type, chimp_obs)
+m3 <- lm(CURIOUS ~ enrichment_hrs + enclosure_type, chimp_obs)
+m4 <- lm(CURIOUS ~ age + enrichment_hrs + enclosure_type, chimp_obs)
+```
 
-chimp_rct <- read.csv("https://uoepsy.github.io/data/chimp_rct.csv")
+```{r}
+#| echo: false
+modelsummary(list(m1, m2, m3, m4),
+             fmt = 1, 
+             estimate  = "{estimate} [{conf.low}, {conf.high}]",
+             statistic = NULL, 
+             gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
+```
 
-mr1 <- lm(aggression ~ enclosure, chimp_rct) 
-mr2 <- lm(aggression ~ age + enclosure, chimp_rct)
-mr3 <- lm(aggression ~ k_time + enclosure, chimp_rct)
-mr4 <- lm(aggression ~ age + k_time + enclosure, chimp_rct)
+:::
+:::fancyframe
+#### 2. randomized experiment
+```{r}
+# TODO
+# chimp_rct <- read.csv("https://uoepsy.github.io/data/chimp_rct.csv")
+
+mr1 <- lm(CURIOUS ~ enclosure_type, chimp_rct) 
+mr2 <- lm(CURIOUS ~ age + enclosure_type, chimp_rct)
+mr3 <- lm(CURIOUS ~ enrichment_hrs + enclosure_type, chimp_rct)
+mr4 <- lm(CURIOUS ~ age + enrichment_hrs + enclosure_type, chimp_rct)
+```
+```{r}
+#| echo: false
+modelsummary(list(mr1, mr2, mr3, mr4),
+             fmt = 1, 
+             estimate  = "{estimate} [{conf.low}, {conf.high}]",
+             statistic = NULL, 
+             gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
+```
+:::
+
+Note that, in both the observational study and the randomised experiment, when we include `enrichment_hrs` in the model, the coefficient for `enclosure_type` changes.  
+Given our diagrams above, this actually makes perfect sense - the coefficient no longer captures the total effect of "what would happen to a chimp *were* it to be in a paired (instead of group) enclosure?". 
+It changes to being "what would happen to a chimp *were* it to be in a paired (instead of group) enclosure, but the amount of time on enrichment activities did not change".  
+
+Note that that may in some cases be an interesting quantity, but it is not the quantity we were interested in when we specified our research question. To take a much more extreme simplification, imagine that we want to assess if lighting a fire will set off the fire alarms in 7GS, so we go and set fires in a randomly chosen set of rooms^[please don't do this!] and record whether the alarm is goes off, along with the level of smoke.
+Because fire alarms respond to smoke, not fire, when we fit a model of `lm(alarm ~ smoke + fire)`, the coefficient for `fire` would be zero, because the effect of the fire on the alarm is actually going via the increased volume of smoke. 
+This is because our question was "will lighting a fire set off an alarm" (all the arrows in green on the right hand side below) and not "will lighting a fire, but (somehow) not changing the volume of smoke in the room, set off an alarm?" (the single green arrow in the left hand below)
+
+![](images/chimpdag/Slide7.PNG)
+
+
+Returning to our chimpanzee examples, we are now at the point where we know that: 
+
+::::{.columns}
+:::{.column width="50%"}
+__1. observational study__  
+
+To answer our research question in this study, we _need_ to adjust for `age` in our model, and we *don't* want to adjust for `enrichment_hrs` (because that's part of the effect we're interested in).  
+
+:::
+:::{.column width="50%"}
+__2. randomised experiment__  
+
+To answer our research question in this study, we *don't* want to adjust for `enrichment_hrs`. Adjusting for `age` will help our power to detect the effect that we're interested in, but not including it in our model will not bias our results.    
+
+:::
+::::
+
+Another way in which we might come a cropper is if we also recorded whether or not chimps were injured in their enclosure, and then chose to adjust for that variable in our models. This creates a problem if, according to our DGP), `Injured` is influenced by both the predictor of interest `EnclosureType` and the outcome `Curiosity`. 
+This is a plausible scenario because being placed in group-housing increases the likelihood of a chimpanzee getting injured, as does being more curious (more curious chimps tend to explore more, push social boundaries, and take more risks).  
+
+![](images/chimpdag/Slide10.PNG)
+
+According to our DGP, chimps are more likely to be injured *either* because they are in group-housing **or** because they have more curiosity (or both).
+
+To illustrate how this causes a problem, suppose that there was **no** effect of `EnclosureType` on `Curious`, meaning that we shouldn't be able to see any pattern between the two.
+If we recorded whether or not each chimpanzee was injuted, and then include this in our model `lm(CURIOUS ~ injured + enclosure_type)`, then we will actually create a spurious association between curiosity and enclosure type. 
+Think of it like we did with `age`, and consider how the Paired vs Group chimps would differ when we compare chimps of the same value in `injured`. 
+If you consider all the non-injured chimps, then suddenly we see a spurious association: 
+
+- `enclosure_type=="Group"` is indicative of low curiosity.
+- `enclosure_type=="Paired"` is indicative of high curiosity.
+
+This same mechanism can be seen at work in "selection bias", which is when this sort of variable decides whether or not we include/exclude observations from a study. 
+For instance, a study which didn't measure the curiosity levels for injured chimps (meaning they aren't included in the analysis), creates the same spurious association because it looks at the effect specific within the non-injured chimpanzees.  
+
+You can play around with this yourself:  
+
+```{r}
+mr1 <- lm(CURIOUS ~ enclosure_type, chimp_rct)
+mr5 <- lm(CURIOUS ~ injured + enclosure_type, chimp_rct)
+
+# selecting on non-injured:
+chimp_rct_healthy <- chimp_rct |>
+  filter(injured == 0)
+mr6 <- lm(CURIOUS ~ enclosure_type, chimp_rct_healthy)
+```
+```{r}
+#| echo: false
+modelsummary(list(mr1, mr5, mr6),
+             fmt = 1, 
+             estimate  = "{estimate} [{conf.low}, {conf.high}]",
+             statistic = NULL, 
+             gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
 ```
 
 
-
-# ignore below
-explain..
-  - if what we want to estimate is "the effect of putting a chimp in a large enclosure on its aggression". or essentially we want to know "if i put chimp Z into large enclosure, will it get more aggressive?", then we want to ignore M, because that is _part_ of the effect of size>aggression. 
-
-## more generally
-
-- so what should we do (generally). 
-
-- often, questions are often "X>Y?".  
-- what we do with other variables, depends on where we see them as fitting in the data generation process (DGP)
-- three dags
-- information flows along arrows. 
-  - it can flow backwards, then forwards. but not forwards then backwards. 
-    - (e.g., if i know your height, i can take a guess at your birthweight, and from that take a guess at XX)
-    - e.g., if i know your birthweight, i can take a guess at your height, but i can't from that take a guess at your XX) 
-- to isolate arrow d, we need to:
-  - close back doors
-  - leave required front doors open
-- three dags
-  - controlling for C closes path
-  - controlling for M closes path
-  - controlling for Z opens path
+As another example, if we wanted to know if "attractiveness tends to co-occur with talent", but we only take a sample of famous people, then we might see a negative correlation, because famous people tend to be famous because they are _either_ talented _or_ attractive (see <https://colliderbias.herokuapp.com/>)
 
 
-countering common misconceptions
-  - do not simply control for *all* available variables
-  - do not just simply control for all pre-treatment variables
-      - zoo-budget past >> enclosure size
-      - zoo-budget past >> stress
-      - enclosure size >> stress
-      - aggression >> stress
-      - genetic >> aggression
-      - genetic >> stress
-  - if your research goal is explanatory do not use predictive criteria to determine what to include in your model
-  - we can't interpret coefficients of confounders in the same way as we do the focal predictor (table 2 fallacy)
+::: {.callout-tip collapse="true"}
+## Optional: More generally 
 
+If you're planning on heading into observational research, then do read on. To ignore this sort of stuff will make it much harder for your work to provide meaningful insights.  
+
+If you feel the draw of experimental work, then this is all useful stuff, but we would maybe recommend devoting time to https://experimentology.io/ instead. 
+
+> *Let's think the unthinkable, let's do the undoable. Let us prepare to grapple with the ineffable itself, and see if we may not eff it after all*  
+> The Hitchhikers Guide to the Galaxy, Douglas Adams.
+
+Many questions of interest to us are concerned with estimating "the effect of $X$ on $Y$".  
+
+Part of the challenge of getting this from a statistical model is ensuring that the specific effect of interest is 'identified' (i.e., under our assumed DGP, the observed data is sufficient to isolate the 'what happens to $Y$ if $X$ changes without being confounded or masked by other variables).
+What we do with other variables will depend on where we see them fitting in the DGP.  
+
+![](images/chimpdag/Slide8.PNG)
+
+We can think of information as flowing along the arrows in these diagrams, with flow passing through nodes that have the form &rarr;V&rarr; and &larr;V&rarr; but not &rarr;V&larr;.
+As such, there are three places a third variable might be placed - it could be a 'confounder' (variable $Z$), a 'mediator' (variable $M$) or a 'collider' (variable $C$). It could also be a descendent (variable $D$) of some other variable.  
+
+In our image above:  
+
+- The path $X$&larr;$Z$&rarr;$Y$ is by default "open" (letting information flow). By adjusting for $Z$ in our model, we close it.  
+- The path $X$&rarr;$M$&rarr;$Y$ is by default open. Adjusting for $M$ in our model closes it. 
+- The path $X$&rarr;$C$&larr;$Y$ is by default closed. If we adjust for $C$ in our model, we open it. If we adjust for $D$ in our model, we would also open this path! 
+
+::::{.columns}
+:::{.column width="50%"}
+
+So if our DGP had all variables included (see the image to the right), then in order to isolate the specific effect of interest $X$&rarr;$Y$, we should:
+
+- close the back doors paths going into $X$
+- leave open the required front doors paths coming out of $X$ open that capture the causal effect of interest
+
+If we want "the effect of $X$ on $Y$", this therefore means including $Z$ in our model, but not $M$ or $C$ or $D$.
+Including $M$ would fail to capture the total effect of $X$ on $Y$, and including $C$ or $D$ would introduce a spurious association.  
+:::
+:::{.column width="50%"}
+
+![](images/chimpdag/Slide9.PNG)
+
+:::
+::::
+
+Regression adjustment is just *one* way to "control" for third variables, and there are many more sophisticated approaches if you are interested. 
+In practice, however, all of the fancy tools will only go so far to making up for the fact that it is very difficult to specify a clear DGP for observational studies. Especially in psychology where constructs can be ill-defined and everything relates to everything else! 
+
+It is still possible to get useful things from observational studies, but it takes a lot more careful thought. In fact, the diagrams that we have been using ("directed acyclic graphs", or "DAGS") are actually one of the key tools used! While many sophisticated methods have arisen from this are, often it is only possible to address a causal question from an observational study in certain very specific circumstances.  
 
 :::{.readingref}
+https://theeffectbook.net/
 
 wizocki et al - stat control requires causal justific
 rohrer - causal inference for psych
 pearl - crash course
 :::
+:::
 
-<div class="divider div-transparent div-dot"></div>
+The problem with observational studies is that things are rarely as simple as in the toy example we have used here. 
+There are loads and loads of other things that might fit into our data generating process. Figuring out what they are, and how they fit in, is extremely difficult. 
+We may end up with a much more complex diagram that is something like the image below.  
+And that's just as many things as I could think of in ~10 minutes! 
 
-# key takeaways
+Note that this includes variables which are descendents of.. 
+
+and some which are not directly observable! 
+
+TODO
+
+
+optional - suppose i captured all those variables.. what should i include.. what shouldn't i include? 
+
+
+
+
+
+# Key Takeaways
+
+> *Don't Panic.*  
+> The Hitchhikers Guide to the Galaxy, Douglas Adams.
 
 - observational studies are hard. 
-- experiments help (control by design), but still not absolved
-if nothing else, draw your theory about DGP. use it to inform what you put in your model
+- experiments are great.  
+- if nothing else, draw your theory about the data generating process ahead of time, and use it to inform what variables to collect, and what to put in your model
 
-additional considerations: 
+## Additional considerations
 
-- what about descriptive work?
-- can't we just stick at 'associations'?
-    - just plausible deniability
-    - unclear what it means
-- what about interactions?
-- what about longitudinal studies?  
+> **Would it save you a lot of time if i just gave up and went mad now?**  
+> The Hitchhikers Guide to the Galaxy, Douglas Adams.
 
 
-
-section 2 - querying your model
-
-- the aim here is to estimate the unit specific quantity defined in our research Q.  
-- sometimes that will correspond to a coefficient
-- but be careful not to simply define RQ relative to a model coefficient. it creates circularity we need to we need to be able to know that the quantity is actually a theoretically useful or interesting one.  
-
-
-
-```{r}
-library(tidyverse)
-library(gt)
-library(patchwork)
-#set.seed(43)
-## obs
-chimp_obs <- tibble(
-  #chimp = paste0("chimp-", letters),
-  age = round(runif(260, 13, 29)),
-  treat = rbinom(260,1,plogis(5*scale(age))),
-  enclosure = ifelse(treat==1,"L","S")
-)
-nnk = residuals(lm(rnorm(260) ~ chimp_obs$age + chimp_obs$treat))
-nny = residuals(lm(rnorm(260) ~ chimp_obs$age + chimp_obs$treat + nnk))
-
-chimp_obs <- 
-  chimp_obs |>
-  mutate(
-    K0 = round(12 + nnk, 1),
-    K1 = K0 - 4,
-    k_time = ifelse(enclosure == "L", K1, K0),
-    Y0 = round(15 - 0.4 * age + 0.5 * K0 + nny, 1),
-    Y1 = Y0 - 1 + 0.5 * (K1 - K0),
-    aggression = ifelse(enclosure=="L",Y1,Y0),
-    agg1 = rbinom(260,1,plogis(4*scale(aggression)))
-  ) 
-
-mm <- glm(agg1 ~ enclosure * age, chimp_obs, family=binomial)
-summary(mm)
-mm <- glm(agg1 ~ enclosure * scale(age), chimp_obs, family=binomial)
-summary(mm)
-library(marginaleffects)
-avg_comparisons(mm, variables="enclosure",type = "response")
-```
-
-
-
-
-
-## i'm just doing descriptive work
+::: {.callout-tip collapse="true"}
+#### what about descriptive work?
 
 but, even successfully maintaining "i'm only describing things" does not absolve us from _thinking_ causally. 
 and analyses of experimental designs can still fall foul of some of these trip ups
@@ -516,158 +703,47 @@ mean(pdf$uY)
 ```
 
 
-
-## Third variables
-"Don't be so gloomy. After all, it's not that awful"
-Harry Lime, the third man
-
-
-many started intro stat courses with t-tests, cor.tests etc. 
-rare for these to be sufficient for any study in reality - even v simply design two groups randomised into T/C, requires full compliance etc.  
-
-X -> Y
-
-more often, there are other variables that form "part of the story". somehow.. 
-
-confounder, mediator, collider
-
-it can be very useful to begin to think about the net of variables in diagrams, because this helps us to figure out how build a model that estimates the thing we actually want.  
-
-diagrams are not statistical models. they are just diagrams. 
-footnote - there is a formal logic to how these diagrams work allowing us to use them to reason about causality. we don't need to know the formal logic here though. 
-the diagrams are just arrows between variables, representing a theoretical model of what things cause changes in what other things.  
-
-a simple 2 sample t test assumes that all we need to consider is something like this: 
- 
-
-suppose that we observe N people who take D and N who don't, and we measure their Y. If we have reason to think that older people are more likely to take D, and may well have lower Y, then our theory about how these variables connect is something like: 
-
-does doing t.test(Y~D) give us "the effect of D on Y"? No! when we use terms like "effect", we really mean "if person i takes D as opposed to not, what happens to their Y?" But our t test says it would go up! It's like saying "person i takes D and has higher Y, and person j doesn't and has lower Y" but completely ignores the fact that person i is 80 and person j is 24!  
-Note that we are _never_ going to be able to actually estimate "what would have happened to person i _if they hadn't_ taken D?". This is sometimes why people view the problem of causal inference as a missing data problem: 
-
-table with potential outcomes and treatment effects with ? 
-
-So the aim in being able to identify an "effect" is to make the two groups exchangeable in their potential outcomes.  
-
-So if we believe the pattern in ? to be true, then we would want to adjust for age. 
-what this is essentially does is remove the age-effect from the table, and now the two groups are comparable
-
-another way to achieve this is through design! this is why randomised control trials are sometimes viewed as the gold standard. by randomly allocating people in to D, we remove the arrows going into the back of D, and our theoretical model of how the variables are related is more like:^[in practice, RCTs are rarely as simple as this because of non-compliance etc]  
-
-image with forced D
-
-the discussion so far has only really touched upon third variables that enter in our theory as "back door" confounders (they enter in the back of D and bias the estimate of D->Y).  
-But this is not the only way in which third variables might connect with D and Y.  
-
-x - 
-y - 
-c - 
-
-```{r}
-#| eval: false
-library(tidyverse)
-library(patchwork)
-library(modelsummary)
-
-df <- tibble(
-  C = rnorm(100),
-  X = rbinom(100, 1, plogis(C)),
-  Y = rnorm(100, -C + .5*X, 1)
-)
-
-m1 <- lm(Y~X,df)
-m2 <- lm(Y~C+X,df)
-
-modelsummary(list(m1,m2),
-              fmt = 1, estimate  = "{estimate} [{conf.low}, {conf.high}]",
-              statistic = NULL, gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
-
-
-broom::augment(m1, 
-               newdata=expand_grid(X=c(0,1)),
-               interval="confidence") |>
-  ggplot(aes(x=X,y=.fitted,col=factor(X))) +
-  geom_pointrange(aes(ymin=.lower,ymax=.upper),
-                  position=position_nudge(x=.3))+
-  geom_jitter(data=df,aes(y=Y),alpha=.5,size=3, width=.2,height=0)
-
-broom::augment(m2, 
-               newdata=expand_grid(X=c(0,1),C=seq(min(df$C),max(df$C),length.out=50)),
-               interval="confidence") |>
-  ggplot(aes(x=C,y=.fitted,col=factor(X),fill=factor(X))) +
-  geom_line()+
-  geom_ribbon(aes(ymin=.lower,ymax=.upper),alpha=.3,col=NA)+
-  geom_point(data=df,aes(y=Y),alpha=.5,size=3)
-
-
-df <- tibble(
-  X = rbinom(100, 1, .5),
-  M = rnorm(100, X, 1),
-  Y = rnorm(100, M + .5*X, 1)
-)
-
-m1 <- lm(Y~X,df)
-m2 <- lm(Y~M+X,df)
-
-modelsummary(list(m1,m2),
-              fmt = 1, estimate  = "{estimate} [{conf.low}, {conf.high}]",
-              statistic = NULL, gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
-
-
-broom::augment(m1, 
-               newdata=expand_grid(X=c(0,1)),
-               interval="confidence") |>
-  ggplot(aes(x=X,y=.fitted,col=factor(X))) +
-  geom_pointrange(aes(ymin=.lower,ymax=.upper),
-                  position=position_nudge(x=.3))+
-  geom_jitter(data=df,aes(y=Y),alpha=.5,size=3, width=.2,height=0)
-
-broom::augment(m2, 
-               newdata=expand_grid(X=c(0,1),M=seq(min(df$M),max(df$M),length.out=50)),
-               interval="confidence") |>
-  ggplot(aes(x=M,y=.fitted,col=factor(X),fill=factor(X))) +
-  geom_line()+
-  geom_ribbon(aes(ymin=.lower,ymax=.upper),alpha=.3,col=NA)+
-  geom_point(data=df,aes(y=Y),alpha=.5,size=3)
-
-
-
-df <- tibble(
-  X = rbinom(100, 1, .5),
-  Y = rnorm(100,.5*X, 1),
-  C = rnorm(100, X+Y, 1)
-)
-lm(Y~X,df) |> summary()
-lm(Y~C+X,df) |> summary()
-```
-
-# building your model
-
-#### what to put in my model?  
-
-close back doors
-
-reference: statistical control requires causal justification
-
-more complex (i.e., C->X C->M   Y->CC CC->M)
-
-rec: 
-  wyzocki cntrol causal
-  crash course good controls bad controls
-  
-part of the process of building your model will depend on how you plan to use it, so in some respects we can't treat this chapter as a stepwise tutorial of 1 build your model 2 use your model. we should think about both.  
-
-
-
-## from diagrams to potential outcomes
-
-potential outcomes framework
-
-
-
+:::
 
 ::: {.callout-tip collapse="true"}
-#### don't use predictive criteria for explanatory models!  
+#### can't we just stick at 'associations'?
+    - just plausible deniability
+    - unclear what it means
+:::
+
+::: {.callout-tip collapse="true"}
+#### what about moderation?
+
+:::
+
+::: {.callout-tip collapse="true"}
+#### what about longitudinal studies?  
+
+
+:::
+## Countering some common misconceptions
+
+::: {.callout-tip collapse="true"}
+#### do not simply control for *all* available variables
+
+:::
+
+::: {.callout-tip collapse="true"}
+#### do not just simply control for all pre-treatment variables
+
+      - zoo-budget past >> enclosure size
+      - zoo-budget past >> stress
+      - enclosure size >> stress
+      - aggression >> stress
+      - genetic >> aggression
+      - genetic >> stress
+      
+:::
+
+::: {.callout-tip collapse="true"}
+#### do not use predictive criteria for an explanatory question 
+  
+- if your research goal is explanatory do not use predictive criteria to determine what to include in your model
 
 note that if our goal is to explain, then the predictive accuracy of a model is not a good criteria for choosing which model we should use. 
 
@@ -678,13 +754,28 @@ for example, we can add in XX to predict Y, but that really doesn't make any sen
 
 :::
 
-
-
 ::: {.callout-tip collapse="true"}
-#### "table 2" fallacy! 
- 
+#### not all coefficients are the same
+
+  - we can't interpret coefficients of confounders in the same way as we do the focal predictor (table 2 fallacy)
 
 :::
+
+
+
+
+
+<div class="divider div-transparent div-dot"></div>
+
+# Part 2 querying your model
+
+- the aim here is to estimate the unit specific quantity defined in our research Q.  
+- sometimes that will correspond to a coefficient
+- but be careful not to simply define RQ relative to a model coefficient. it creates circularity we need to we need to be able to know that the quantity is actually a theoretically useful or interesting one.  
+
+
+
+
 
 
 
