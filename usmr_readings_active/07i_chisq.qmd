@@ -3,6 +3,8 @@ title: "7: Binomial & Chi-Square Tests"
 params: 
     SHOW_SOLS: TRUE
     TOGGLE: TRUE
+webr:
+  packages: ['dplyr','ggplot2']
 ---
 
 
@@ -14,6 +16,20 @@ library(tidyverse)
 library(patchwork)
 set.seed(017)
 ```
+
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
+
+```{webr}
+#| include: false
+#| autorun: true
+options(max.print = 20)
+timehands <- read.csv("https://uoepsy.github.io/data/timehands.csv") timehands$isLeft = ifelse(timehands$handed=="left", "left", "other")
+
+depdata <- read.csv("https://uoepsy.github.io/data/usmr_chisqdep.csv") 
+
+```
+
+<small style="display:block;text-align:right">You are viewing an interactive version of this reading.<br>Please allow ~30 seconds for packages to load before code chunks can be run<br><a class="intlink" href="../readings/07_chisq.html">Click here for the static version</a></small>
 
 :::lo
 This reading:  
@@ -45,8 +61,9 @@ We now turn to investigate tests for __categorical__ outcome variables.
 
 When studying categorical variables, we tend to be interested in __counts__ (or "frequencies"), and these can be presented in tables:
 
-```{r}
-timehands <- read_csv("https://uoepsy.github.io/data/timehands.csv") |>
+```{webr}
+#| autorun: true
+timehands <- read.csv("https://uoepsy.github.io/data/timehands.csv") |>
   mutate(
     isLeft = ifelse(handed=="left", "left", "other")
   )
@@ -57,7 +74,7 @@ table(timehands$isLeft)
 # Binomials
 
 If we just have two categories, then our frequency table really can be summarised as a proportion. E.g., "the proportion who are left-handed". We know that the other number (the proportion who are *not* left-handed) *has* to be 1-the proportion who _are_:  
-```{r}
+```{webr}
 table(timehands$isLeft) |>
   prop.table() # turn into proportions
 ```
@@ -134,7 +151,7 @@ $$
 $$
 
 We can actually check this in R using a handy function: 
-```{r}
+```{webr}
 dbinom(x = 1, size = 3, prob = 0.5)
 ```
 
@@ -162,19 +179,14 @@ ggplot(., aes(x=response, y=prob))+
 
 Much like the null hypothesis testing we have seen already concerning whether our observed mean is different from some hypothesised value (see [Chapter 6 #one-sample-t-test](06_inference2.html#one-sample-t-test){target="_blank"}), we can conduct a test of whether our observed sample proportion (12/100 = 0.12) is likely to have been drawn from a population where the true probability is 0.1:  
 
-```{r}
+```{webr}
 table(timehands$isLeft)
 ```
 
 Either of these will work, and both will produce the same output:
-```{r}
-#| eval: false
+```{webr}
 binom.test(x = 12, n = 100, p = 0.1)
 table(timehands$isLeft) |> binom.test(p = 0.1)
-```
-```{r}
-#| echo: false
-binom.test(x = 12, n = 100, p = 0.1)
 ```
 
 In this case, the p-value is >.05^[the conventional $\alpha$ level used in psychology], so we fail to reject the null hypothesis that the probability of being left-handed is 0.1.  
@@ -184,13 +196,13 @@ In this case, the p-value is >.05^[the conventional $\alpha$ level used in psych
 While the binomials capture the distribution of a series of binary trials, what happens when we are interested in something that _isn't_ binary? There are lots of categorical variables that have more than two possible values. 
 For example, handedness isn't as simple as "Left vs Others", we might have 3 categories: 
 
-```{r}
+```{webr}
 table(timehands$handed)
 ```
 
 Furthermore, we might have a slightly more nuanced question that involves two variables, rather than just one! For instance, we might be interested in whether left/right/ambidextrous proportions are different across people who prefer the morning or night.  
 In this case, with 2 variables, we have a 2-dimensional table (also referred to as a 'contingency table'):
-```{r}
+```{webr}
 table(timehands$handed, timehands$ampm)
 ```
 
@@ -217,8 +229,8 @@ This means that under the null hypothesis, larger values are less likely. And th
 ```{r}
 #| label: fig-chidist1
 #| echo: false
-#| fig.cap: "Chi-Square Distributions"
-knitr::include_graphics("https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Chi-square_pdf.svg/1200px-Chi-square_pdf.svg.png")
+#| fig.cap: "Chi-Square Distributions (source: wikipedia)"
+knitr::include_graphics("https://thumb.wikimedia.org/wikipedia/commons/thumb/3/35/Chi-square_pdf.svg/1920px-Chi-square_pdf.svg.png")
 ```
 
 <div class="divider div-transparent div-dot"></div>
@@ -316,12 +328,12 @@ df$fam_hist <- sample(c("n","y"),1000, replace=T,prob=c(.7,.3))
 In 2019, it was reported that 80% of  adults (18+) experienced no symptoms of depression, 12% experienced mild symptoms, 4% experienced moderate symptoms, and 4% experienced severe symptoms.  
 The dataset is accessible at [https://uoepsy.github.io/data/usmr_chisqdep.csv](https://uoepsy.github.io/data/usmr_chisqdep.csv) contains data from 1000 people to whom the PHQ-9 depression scale was administered in 2022.  
 
-```{r}
-depdata <- read_csv("https://uoepsy.github.io/data/usmr_chisqdep.csv") 
+```{webr}
+depdata <- read.csv("https://uoepsy.github.io/data/usmr_chisqdep.csv") 
 head(depdata)
 ```
 We can see our table of observed counts with the `table()` function:  
-```{r}
+```{webr}
 table(depdata$dep)
 ```
 
@@ -339,7 +351,7 @@ __Note:__ the proportions must be in the correct order as the entries in the tab
 :::
 
 This will give us the test statistic, degrees of freedom, and the p-value:  
-```{r}
+```{webr}
 # note the order of the table is mild, moderate, no, severe. 
 # so we put the proportions in that order
 chisq.test(table(depdata$dep), p = c(.12, .04, .8, .04))
@@ -351,11 +363,11 @@ $\chi^2$ goodness of fit test indicated that the observed proportions of people 
 :::
 
 We can examine where the biggest deviations from the hypothesised distribution are by examining the 'residuals': 
-```{r}
+```{webr}
 chisq.test(table(depdata$dep), p = c(.12, .04, .8, .04))$residuals
 ```
 This matches with what we see when we look at the table of counts. With $n=1000$, under our 2019 distribution, we would expect 800 to have no depression, 120 mild, 40 moderate, and 40 severe.   
-```{r}
+```{webr}
 table(depdata$dep)
 ```
 
@@ -372,12 +384,12 @@ $$
 ### Step-by-step calculations
 
 First we calculate the observed counts: 
-```{r}
+```{webr}
 depdata |> 
   count(dep)
 ```
 Let's add to this the expected counts:  
-```{r}
+```{webr}
 depdata |> 
   count(dep) |>
   mutate(
@@ -399,7 +411,7 @@ $$
 $$
 
 We can calculate each part of the equation:  
-```{r}
+```{webr}
 depdata |> 
   count(dep) |>
   mutate(
@@ -410,7 +422,7 @@ depdata |>
 ```
 
 The test-statistic $\chi^2$ is obtained by adding up all the standardized squared deviations:  
-```{r}
+```{webr}
 depdata |> 
   count(dep) |>
   mutate(
@@ -443,12 +455,12 @@ The $\chi^2$ Test of Independence is used to determine whether or not there is a
 ```{r}
 #| eval: false
 #| echo: false
-depdata <- read_csv("https://uoepsy.github.io/data/usmr_chisqdep.csv") 
+depdata <- read.csv("https://uoepsy.github.io/data/usmr_chisqdep.csv") 
 table(depdata$dep,depdata$fam_hist)
 ```
 ```{r}
 #| echo: false
-depdata <- read_csv("https://uoepsy.github.io/data/usmr_chisqdep.csv") 
+depdata <- read.csv("https://uoepsy.github.io/data/usmr_chisqdep.csv") 
 table(depdata$dep,depdata$fam_hist,  dnn=c("Depression Severity","Family History of Depression"))
 ```
 
@@ -526,16 +538,17 @@ __Assumptions__
 
 The dataset accessible at [https://uoepsy.github.io/data/usmr_chisqdep.csv](https://uoepsy.github.io/data/usmr_chisqdep.csv) contains data from 1000 people to whom the PHQ-9 depression scale was administered in 2022, and for which respondents were asked a brief family history questionnaire to establish whether they had a family history of depression.  
 
-```{r}
-depdata <- read_csv("https://uoepsy.github.io/data/usmr_chisqdep.csv")
+```{webr}
+#| autorun: true
+depdata <- read.csv("https://uoepsy.github.io/data/usmr_chisqdep.csv")
 head(depdata)
 ```
 We can create our contingency table: 
-```{r}
+```{webr}
 table(depdata$dep, depdata$fam_hist)
 ```
 And even create a quick and dirty visualisation of this too: 
-```{r}
+```{webr}
 plot(table(depdata$dep, depdata$fam_hist))
 ```
 
@@ -546,7 +559,7 @@ plot(table(depdata$dep, depdata$fam_hist))
 
 Again, we can perform this test very easily by passing the table to the `chisq.test()` function. We don't need to give it any hypothesised proportions here - it will work them out based on the null hypothesis that the two variables are independent.  
 
-```{r}
+```{webr}
 chisq.test(table(depdata$dep, depdata$fam_hist))
 ```
 If there was no association between depression severity and having a family history of depression, then the probability that we would obtain a test statistic this large (or larger) by random chance alone is 0.79. With an $\alpha=.05$, we fail to reject the null hypothesis that there is no association between depression severity and family history of depression.  
@@ -557,7 +570,7 @@ A $\chi^2$ test of independence indicated no significant association between sev
 :::
 
 We can see the expected and observed counts:
-```{r}
+```{webr}
 chisq.test(table(depdata$dep, depdata$fam_hist))$expected
 chisq.test(table(depdata$dep, depdata$fam_hist))$observed
 ```
@@ -568,12 +581,12 @@ chisq.test(table(depdata$dep, depdata$fam_hist))$observed
 ### Step-by-step calculations
 
 We have our observed table:
-```{r}
+```{webr}
 table(depdata$dep, depdata$fam_hist)
 ```
 To work out our _expected_ counts, we have to do something a bit tricky. 
 Let's look at the variables independently:  
-```{r}
+```{webr}
 table(depdata$fam_hist)
 table(depdata$dep)
 ```
@@ -581,13 +594,13 @@ With $\frac{315}{315+685} = 0.315$ of the sample having a family history, then _
 
 For a given cell of the table we can calculate the expected count as $\text{row total} \times \frac{\text{column total}}{\text{samplesize}}$.  
 Or, quickly in R:  
-```{r}
+```{webr}
 obs <- table(depdata$dep, depdata$fam_hist)
 exp <- rowSums(obs) %o% colSums(obs) / sum(obs)
 exp
 ```
 Now that we have our table of observed counts, and our table of expected counts, we can actually fit these into our formula to calculate the test statistic: 
-```{r}
+```{webr}
 sum ( (obs - exp)^2 / exp )
 ```
 The p-value is computed using a $\chi^2$ distribution with $df = (\text{nr rows} - 1) \times (\text{nr columns} - 1)$.  
@@ -596,7 +609,7 @@ Why is this? Well, remember that the degrees of freedom is the number of values 
 
 We have 4 rows, and 2 columns, so $df = (4-1) \times (2-1) = 3$.  
 
-```{r}
+```{webr}
 pchisq(1.066686, df = 3, lower.tail=FALSE)
 ```
 
