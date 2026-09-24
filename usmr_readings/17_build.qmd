@@ -701,36 +701,93 @@ Huntington-Klein, N. (2025). *The effect: An introduction to research design and
 
 
 ::: {.callout-tip collapse="true"}
-#### TODO What about descriptive work?
+#### What about descriptive work?
 
-but, even successfully maintaining "i'm only describing things" does not absolve us from _thinking_ causally. 
-and analyses of experimental designs can still fall foul of some of these trip ups
-
-
-It can be surprising how many assumptions about the causal net are necessary to support causal claims. Philosopher of science Nancy Cartwright summarizes this as “No causes in, no causes out” (Cartwright, 1994). And given that even description usually requires assumptions about the causal processes that generated the data, she may be underselling the point (“No causes in, nothing out”, McElreath, 2022).
-
-
-Goal: estimate proportion of people with diagnosis of severe depression
 ```{r}
+#| include: false
 set.seed(3456)
-pdf <- tibble( 
+hhgbsm_desc <- tibble( 
   uY = rbinom(1e5, 1, .2),
   pM = rbinom(1e5,1, plogis(uY)),
   Y = ifelse(pM==1,NA,uY)
-) 
-df <- sample_n(na.omit(pdf), 100) |> select(Y)
-mean(df$Y)
-mean(pdf$uY)
+)
+set.seed(3)
+dep_fullpop <- hhgbsm_desc |>
+  transmute(
+    status = uY,
+    will_complete_survey = (pM==0)*1
+    # observed_status = Y
+  ) |> slice_sample(prop=1)
+dep_sample <- dep_fullpop |>
+  filter(will_complete_survey==1) |>
+  slice(1:100)
+
+mean(dep_fullpop$status)
+mean(dep_sample$status)
 ```
+
+
+The phrase "No causes in, no causes out" (Nancy Cartwright) is a useful reminder that to interpret a statistical estimate as an "effect", we need to make causal assumptions --- assumptions about the data generating process.  
+
+Even successfully maintaining that "I'm only describing things" does not absolve us from _thinking_ about these things.  
+
+__Example__  
+
+Suppose our goal is to estimate the prevalence of severe depression.  
+
+This is purely descriptive: we're aiming to simply summarise the proportion of people with a diagnosis of severe depression. 
+
+To demonstrate, let's see pretend we complete data for the entire population. This is no longer an estimate, it's just the true value we're interested in:   
+```{r}
+table(dep_fullpop$status) |>
+  prop.table()
+```
+
+In practice, we rarely have the full population data, and so we take a random sample and conduct a survey. However, we need to be careful to think about the things that might lead people to decide to complete (or not complete) a questionnaire on depression. 
+Typically, people who are severely depressed a wya less likely to ever fill out these surveys.
+So we can think of our population as containing people like this: 
+```{r}
+head(dep_fullpop)
+```
+
+What that means is, when we take our sample, we are far less likely to see those people, and we are therefore likely to _underestimate_ the prevalence of depression: 
+This code mimics taking a sample of 100 people who 'will complete the survey'
+`r set.seed(55)`
+```{r}
+dep_sample <- dep_fullpop |>
+  filter(will_complete_survey==1) |>
+  slice_sample(n = 100)
+
+table(dep_sample$status) |>
+  prop.table()
+```
+
+Even with a bigger sample of 10,000 the problem persists! 
+```{r}
+dep_sample <- dep_fullpop |>
+  filter(will_complete_survey==1) |>
+  slice_sample(n = 10000)
+
+table(dep_sample$status) |>
+  prop.table()
+```
+
+And that's because the problem is that our statistics misrepresent the data generating process. 
+
+
+"No causes in, nothing out" (Richard McElreath)
 
 
 :::
 
 ::: {.callout-tip collapse="true"}
-#### TODO can't we just stick at 'associations'?
-    
-- this might just be trying to maintain plausible deniability
-- unclear what it means
+#### TODO Can't we just report 'associations'?
+
+All we ever report are statistical associations, but the question is really *which* association do we want?  
+
+
+the term now appears to be sometimes used to maintain plausible deniability. 
+
 
 (see e.g., <https://youtu.be/IKdCuY-GjP4?si=4gX-94YjgieCnygI&t=1618> )
 
@@ -738,7 +795,12 @@ mean(pdf$uY)
 :::
 
 ::: {.callout-tip collapse="true"}
-#### TODO what about moderation?
+#### TODO what about moderation/interaction?  
+
+
+
+
+
 
 :::
 
@@ -750,6 +812,8 @@ mean(pdf$uY)
 
 ::: {.callout-tip collapse="true"}
 #### TODO do not simply control for *all* available variables
+
+
 
 :::
 
