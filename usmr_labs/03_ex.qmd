@@ -1,7 +1,11 @@
 ---
 title: "W3: T-tests"
 link-citations: true
+webr:
+  packages: ['dplyr','ggplot2','tibble']
 ---
+
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
 
 
 ```{r}
@@ -24,7 +28,8 @@ qcounter <- function(){
 vars <- readRDS("week_sols.rds")
 # set params manually rather than yaml params
 params <- list(
-  SHOW_SOLS = vars$sols[[tools::file_path_sans_ext(knitr::current_input(dir=FALSE))]],
+  SHOW_SOLS = tryCatch({ vars$sols[[tools::file_path_sans_ext(knitr::current_input(dir=FALSE))]]},
+                       error = function(e) { TRUE } ),
   TOGGLE = TRUE
 )
 
@@ -698,3 +703,43 @@ ggplot(surveydata, aes(x = isPG, y = height)) +
 
 `r solend()`
 
+
+
+`r qbegin(qlabel = FALSE, "![](assets/wiz.png){width='50px'} Optional Extra 4")`
+
+
+This is some code that creates some fake data, where we have a continuous variable measured for two different groups.  
+
+As it is currently written, there is *no difference* in between the two groups (both groups are random samples from a population with a mean of 0 and a standard deviation of 2).  
+
+```{webr}
+n_per_group = 500
+
+fakedata <- 
+  tibble(
+    # creates the variable indicating what condition 
+    # each observation is in. 
+    # rep() repeats values and "each" is the way to say
+    # "repeat each thing N times".
+    condition = rep(c("A","B"), each = n_per_group),
+    
+    # create the outcome variable
+    outcome = c(
+      rnorm(n_per_group, mean = 0, sd = 2), # values for A
+      rnorm(n_per_group, mean = 0, sd = 2) # values for B
+    )
+  )
+
+t.test(outcome ~ condition, data = fakedata)
+```
+
+
+
+- **Question:** If we just run this over and over again, without changing anything in the code, will we *always* get a non-significant result?   
+- **Question:** If you change one of the groups to have `mean = 0.5`, what happens? Are you more or less likely to see $p<.05$?   
+- **Question:** What about if you also change `n_per_group = 500`?
+- **Question:** And now what if you change `sd = 10` for both groups A and B?  
+
+
+
+`r qend()`
