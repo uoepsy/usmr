@@ -722,7 +722,7 @@ If you're excited by observational research, then you've got your work cut out! 
 
 
 ::: {.callout-tip collapse="true"}
-#### What about descriptive work?
+#### TODO What about descriptive work?
 
 ```{r}
 #| include: false
@@ -750,7 +750,7 @@ mean(dep_sample$status)
 
 The phrase "No causes in, no causes out" (Nancy Cartwright) is a useful reminder that to interpret a statistical estimate as an "effect", we need to make causal assumptions --- assumptions about the data generating process.  
 
-Even successfully maintaining that "I'm only describing things" does not absolve us from _thinking_ about these things.  
+What then, if we are not trying to answer an explanatory question, and are sticking with descriptive work? 
 
 __Example__  
 
@@ -760,18 +760,22 @@ This is purely descriptive: we're aiming to simply summarise the proportion of p
 
 To demonstrate, let's see pretend we complete data for the entire population. This is no longer an estimate, it's just the true value we're interested in:   
 ```{r}
-table(dep_fullpop$status) |>
+table(dep_fullpop$status) |> 
   prop.table()
 ```
 
-In practice, we rarely have the full population data, and so we take a random sample and conduct a survey. However, we need to be careful to think about the things that might lead people to decide to complete (or not complete) a questionnaire on depression. 
-Typically, people who are severely depressed a wya less likely to ever fill out these surveys.
+With access to the full population, we know that `r round(mean(dep_fullpop$status)*100)`% of the population has severe depression.  
+
+In practice, however, we rarely have the full population data, and so instead we might conduct a survey on a random sample of people. But we still need to think carefully about the data generating process - we should think about the things that might lead people to decide to complete (or not complete) a questionnaire on depression. 
+
+Typically, people who are severely depressed a way less likely to ever fill out these surveys. 
 So we can think of our population as containing people like this: 
 ```{r}
 head(dep_fullpop)
 ```
 
-What that means is, when we take our sample, we are far less likely to see those people, and we are therefore likely to _underestimate_ the prevalence of depression: 
+What that means is, when we take a sample, we are far less likely to see those people who have severe depression, and we are therefore likely to _underestimate_ the prevalence of depression.  
+
 This code mimics taking a sample of 100 people who 'will complete the survey'
 `r set.seed(55)`
 ```{r}
@@ -793,22 +797,31 @@ table(dep_sample$status) |>
   prop.table()
 ```
 
-And that's because the problem is that our statistics misrepresent the data generating process. 
+The problem here is that we are using statistics in such a way that misrepresents the data generating process. 
+We are assuming that we have the situation in @fig-desc Left, whereas in reality it looks more like @fig-desc Right. 
 
-TODO 
+TODO figure
 
+It is clear then, that maintaining that "I'm only describing things" does not absolve us from _thinking_ about the data generating process.  
 "No causes in, nothing out" (Richard McElreath)
-
 
 :::
 
 ::: {.callout-tip collapse="true"}
 #### TODO Can't we just report 'associations'?
 
-All we ever report are statistical associations, but the question is really *which* association do we want?  
+Occasionally, people will appear to avoid engaging with difficult thinking about the data generating process by maintaining that their results are only ever 'associations' or 'correlations'.  
 
+It is true that all our statistics cannot transcend the world of 'associations' - all any of us ever report are associations.  
 
-the term now appears to be sometimes used to maintain plausible deniability. 
+However, this somewhat misses the key point that we need clarity in our research question in order to decide *which* association it is that we actually want to report.  
+
+An example from Rohrer et al shows a commonly used template for research: 
+
+1. Does money bring happiness << implicitly causal question
+2. report associations between income and happiness from a cross-sectional survey << does not target the causal question 
+3.  << implicitly causal answer to 1.
+4. state correlation != causation 
 
 
 (see e.g., <https://youtu.be/IKdCuY-GjP4?si=4gX-94YjgieCnygI&t=1618> )
@@ -819,11 +832,42 @@ the term now appears to be sometimes used to maintain plausible deniability.
 ::: {.callout-tip collapse="true"}
 #### TODO what about moderation/interaction?  
 
+If both variables involved in the interaction can be controlled/manipulated then we can design a randomised experiment accordingly, for instance following a "2x2 factorial design", in which participants are randomly allocated to one of the following rows:
+
+```{r}
+expand_grid(
+  predictor_1 = LETTERS[1:2],
+  predictor_2 = LETTERS[3:4],
+  outcome = "..."
+) |> gt::gt()
+```
+
+Because allocation to both predictors is randomised, we can study the interaction `outcome ~ predictor_1 * predictor_2` without worrying about confounding variables.  
+
+However, very often there are situations in which researchers wish to study an interaction in which one (or both) of the predictors is an observed attribute (not something they can manipulate).  
+
+For example: 
+
+
+
 https://journals.sagepub.com/doi/10.1177/25152459211007368
 
 https://datacolada.org/80 
 
 ```{r}
+df <- tibble(
+  w = scale(rnorm(200))[,1],
+  x = rep(0:1,100),
+  z = scale(rnorm(200,.5*w,1))[,1],
+  lp = -w + z + x + x*z + -x*w,
+  y = rnorm(200,lp,.0001)
+) 
+sjPlot::tab_model(
+  lm(y~x,df),
+  lm(y~x*z,df),
+  lm(y~w+x*z,df),
+  lm(y~x*(w + z),df)
+)
 
 ```
 
