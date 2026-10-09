@@ -684,6 +684,179 @@ usmr26 |>
 
 `r solend()`
 
+`r qbegin(qlabel = FALSE, "Optional Extra 3")`
+Following from one of last week's optional exercises, we're going do the same idea of simulating some data that we might conduct a $\chi^2$ test for.  
+
+This is actually a bit more involved, because we're not able to use things like `rnorm` for categories.. 
+
+```{r}
+# this is to total number of observations: 
+totalN <- 1000
+
+mydata <- 
+  data.frame(
+    # we're going to start by simulating just one of our variables. 
+    # here, X has 3 levels (a,b,c), and we're equally likely to see each of them:  
+    x = sample(c("a","b","c"), 
+               size = totalN,
+               replace = TRUE,
+               prob = c(.33,.33,.33)),
+    # to create our second variable Y, we'll start by making a vector full of NAs
+    y = NA
+  )
+
+head(mydata)
+
+# we now will change all the Y values, but do it separately for those where X = "a", "b", and "c" etc.  
+
+
+mydata$y[mydata$x=="a"] <- sample(c("u","v","w"), 
+                                  size = sum(mydata$x=="a"), 
+                                  replace = TRUE,
+                                  prob = c(.1,.4,.5))
+mydata$y[mydata$x=="b"] <- sample(c("u","v","w"), 
+                                  size = sum(mydata$x=="b"), 
+                                  replace = TRUE,
+                                  prob = c(.1,.4,.5))
+mydata$y[mydata$x=="c"] <- sample(c("u","v","w"), 
+                                  size = sum(mydata$x=="c"), 
+                                  replace = TRUE,
+                                  prob = c(.1,.4,.5))
+
+```
+
+Questions.. 
+
+- in the current format, should is there an association between X and Y?
+- if we change line `prob = c(.33,.33,.33)` to `prob = c(.6,.1,.3)`, are we creating an association between X and Y?
+- if we change **one of** the `prob = c(.1,.4,.5)` to `prob = c(.5,.4,.1)` are we creating an association between X and Y?  
+
+
+`r qend()`
+
+
+`r qbegin(qlabel = FALSE, "Optional Extra 4")`
+We're going to go back to the t-test simulation from last week's optional exercises, because it's less code.  
+
+But.. we're now going to make it into a function!  
+Below, the inside of the function is actually just the same as the optional extra from last week. We've just wrapped it in the `function(){... }` bit and given it a name.  
+```{r}
+fake_ttest <- function(n_per_group = 50){
+  
+  fakedata <- 
+    tibble(
+      # creates the variable indicating what condition 
+      # each observation is in. 
+      # rep() repeats values and "each" is the way to say
+      # "repeat each thing N times".
+      condition = rep(c("A","B"), each = n_per_group),
+      # create the outcome variable
+      outcome = c(
+        rnorm(n_per_group, mean = 0, sd = 2), # values for A
+        rnorm(n_per_group, mean = 0, sd = 2) # values for B
+      )
+    )
+  
+  faketest <- t.test(outcome ~ condition, data = fakedata)
+  return(faketest$p.value)
+  
+}
+```
+It means we can now just run this, and it will 1) fake some data, 2) do a t.test on the fake data, and 3) return the p-value: 
+```{r}
+fake_ttest()
+```
+
+Last week, one of the questions asked: 
+
+- "If we just run this over and over again, without changing anything in the code, will we *always* get a non-significant result?"  
+
+Now we've made it a function, we can actually do this quickly!  Just like when we used the `dice()` function in week 1!   
+```{r}
+many_ttests <- replicate(1000, fake_ttest())
+
+hist(many_ttests, 
+     main = "p-values from lots of fake t tests
+     where there is no difference
+     between means")
+
+# how many of them are significant? 
+sum(many_ttests<.05) / 1000
+```
+
+Let's make a new function so that there **is** an effect, but only a small one: 
+
+```{r}
+
+fake_ttest2 <- function(n_per_group = 50){
+  
+  fakedata <- 
+    tibble(
+      condition = rep(c("A","B"), each = n_per_group),
+      outcome = c(
+        rnorm(n_per_group, mean = 0, sd = 2), 
+        rnorm(n_per_group, mean = 0.5, sd = 2)
+      )
+    )
+  
+  faketest <- t.test(outcome ~ condition, data = fakedata)
+  return(faketest$p.value)
+  
+}
+```
+And again let's run this 1000 times, and plot all the p-values we get out:  
+```{r}
+replicate(1000, fake_ttest2()) |> 
+  hist()
+```
+
+**Task:** How many people do we need in each group in order to correctly reject the null hypothesis roughly 80% of the time?  
+
+Why is this useful? It's a "power analysis"! It can help us to work out how much data to collect!  
+
+It tells us how much data would be needed to correctly conclude there is a mean difference of 0.5 between the two groups.  
+
+*note:* in practice this is always difficult, because it requires us to know _before collecting the data_ a) what size of an effect we would expect, and b) what variability we would expect.  
+
+`r qend()`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
+
+Let's try with 100 per group:  
+```{r}
+manyt <- replicate(1000, fake_ttest2(n_per_group = 100))
+
+sum(manyt<.05) / 1000
+```
+
+And 500?
+
+```{r}
+manyt <- replicate(1000, fake_ttest2(n_per_group = 500))
+
+sum(manyt<.05) / 1000
+```
+
+Somewhere in between?
+```{r}
+manyt <- replicate(1000, fake_ttest2(n_per_group = 300))
+
+sum(manyt<.05) / 1000
+```
+
+If we experiment a bit, we will probably settle on ~255
+```{r}
+manyt <- replicate(1000, fake_ttest2(n_per_group = 255))
+
+sum(manyt<.05) / 1000
+```
+
+
+`r solend()`
+
+
+
+
+
 
 
 
