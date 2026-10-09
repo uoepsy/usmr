@@ -1,0 +1,245 @@
+---
+title: "![](assets/wiz.png){width=75px} Welcome to the SampleSpace! ![](assets/wiz.png){width=75px}"
+webr:
+  packages: ['dplyr','ggplot2','tibble']
+---
+
+:::imp
+
+The SampleSpace is a hidden collection of bits and pieces. Everything here is *beyond* optional for the USMR course.  
+
+If you're feeling inquisitive, have a nose around.  
+If you came here by accident and don't like the look of it, that is absolutely fine, you can completely forget about this page (and will probably be better off for doing so!)
+
+:::
+
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+params <- list(
+  SHOW_SOLS = TRUE,
+  TOGGLE = TRUE
+)
+set.seed(017)
+```
+
+
+## simulating associations between categorical variables  
+
+Following from one of last week's optional exercises, how do we simulate some data that we might use in a $\chi^2$ test?  
+
+This is actually a bit more involved, because we're not able to use things like `rnorm` for categories.. 
+
+I figured the most easy-to-understand way to do this might be to rely heavily on `sample()`:  
+```{webr}
+# this is our total number of observations: 
+totalN <- 1000
+
+# and this is a little dataframe:
+mydata <- 
+  data.frame(
+    # we're going to start by simulating just one of our variables. 
+    # here, X has 3 levels (a,b,c), and we're equally likely to see each of them:  
+    x = sample(c("a","b","c"), 
+               size = totalN,
+               replace = TRUE,
+               prob = c(.33,.33,.33)),
+    # to create our second variable Y, we'll start by making a vector full of NAs
+    y = NA
+  )
+
+# we now will change all the Y values from NAs to one of 3 levels (u,v,w),
+# but we're going to do it separately for those where X = "a", "b", and "c" etc.  
+mydata$y[mydata$x=="a"] <- sample(c("u","v","w"), 
+                                  size = sum(mydata$x=="a"), 
+                                  replace = TRUE,
+                                  prob = c(.1,.4,.5))
+mydata$y[mydata$x=="b"] <- sample(c("u","v","w"), 
+                                  size = sum(mydata$x=="b"), 
+                                  replace = TRUE,
+                                  prob = c(.1,.4,.5))
+mydata$y[mydata$x=="c"] <- sample(c("u","v","w"), 
+                                  size = sum(mydata$x=="c"), 
+                                  replace = TRUE,
+                                  prob = c(.1,.4,.5))
+
+
+# when you are ready to do a chisq.test,
+# uncomment and run this:  
+# table(mydata) |> print() |> chisq.test()
+```
+
+Questions.. 
+
+- in the current format, should is there an association between X and Y?
+- if we change line `prob = c(.33,.33,.33)` to `prob = c(.6,.1,.3)`, are we creating an association between X and Y?
+- if we change **one of** the `prob = c(.1,.4,.5)` to `prob = c(.5,.4,.1)` are we creating an association between X and Y?  
+
+## a use of simulation
+
+We're going to go back to the t-test simulation from last week's optional exercises, because it's less code.  
+
+But.. we're now going to make it into a function!  
+
+Below, the inside of the function is actually just the same as the optional extra from last week. We've just wrapped it in the `function(){... }` bit and given it a name.  
+
+```{webr}
+#| autorun: true
+fake_ttest <- function(n_per_group = 50){
+  
+  fakedata <- 
+    tibble(
+      # creates the variable indicating what condition 
+      # each observation is in. 
+      # rep() repeats values and "each" is the way to say
+      # "repeat each thing N times".
+      condition = rep(c("A","B"), each = n_per_group),
+      # create the outcome variable
+      outcome = c(
+        rnorm(n_per_group, mean = 0, sd = 2), # values for A
+        rnorm(n_per_group, mean = 0, sd = 2) # values for B
+      )
+    )
+  
+  faketest <- t.test(outcome ~ condition, data = fakedata)
+  return(faketest$p.value)
+  
+}
+```
+
+It means we can now just run this, and it will: 
+
+1) fake some data, 
+2) do a t.test on the fake data, and 
+3) return the p-value
+
+```{webr}
+fake_ttest()
+```
+
+Last week, one of the questions asked: 
+
+- "If we just run this over and over again, without changing anything in the code, will we *always* get a non-significant result?"  
+
+Now we've made it a function, we can actually do this quickly!  Just like when we used the `dice()` function in week 1!   
+```{webr}
+many_ttests <- replicate(1000, fake_ttest())
+
+hist(many_ttests, 
+     main = "p-values from lots of fake t tests
+     where there is no difference
+     between means")
+```
+
+So we can ask things like, "of the 1000 p-values from t-tests on 1000 fake datasets where there is no difference in means, how many are <.05?":  
+```{webr}
+sum(many_ttests<.05) / 1000
+```
+
+What about if there **is** a difference in means? 
+Let's make a new function, but with just a small difference in means of 0.5:  
+
+```{webr}
+#| autorun: true
+fake_ttest2 <- function(n_per_group = 50){
+  
+  fakedata <- 
+    tibble(
+      condition = rep(c("A","B"), each = n_per_group),
+      outcome = c(
+        rnorm(n_per_group, mean = 0, sd = 2), 
+        rnorm(n_per_group, mean = 0.5, sd = 2)
+      )
+    )
+  
+  faketest <- t.test(outcome ~ condition, data = fakedata)
+  return(faketest$p.value)
+}
+```
+
+And again let's run this 1000 times, and plot all the p-values we get out:  
+```{webr}
+replicate(1000, fake_ttest2()) |> 
+  hist()
+```
+
+
+`r qbegin()`
+How many people do we need in each group in order to correctly reject the null hypothesis roughly 80% of the time?  
+
+Why is this useful? It's a "power analysis"! It can help us to work out how much data to collect!  
+
+It tells us how much data would be needed to correctly conclude there is a mean difference of 0.5 between the two groups.  
+
+*note:* in practice this is always difficult, because it requires us to know _before collecting the data_ a) what size of an effect we would expect, and b) what variability we would expect. Essentially, it requires us to guess at the mean difference of 0.5 and sd of 2..   
+
+`r qend()`
+`r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
+
+Let's try with 100 per group:  
+```{webr}
+manyt <- replicate(1000, fake_ttest2(n_per_group = 100))
+
+sum(manyt<.05) / 1000
+```
+
+And 500?
+
+```{webr}
+manyt <- replicate(1000, fake_ttest2(n_per_group = 500))
+
+sum(manyt<.05) / 1000
+```
+
+Somewhere in between?
+```{webr}
+manyt <- replicate(1000, fake_ttest2(n_per_group = 300))
+
+sum(manyt<.05) / 1000
+```
+
+If we experiment a bit, we will probably settle on ~255
+```{webr}
+manyt <- replicate(1000, fake_ttest2(n_per_group = 255))
+
+sum(manyt<.05) / 1000
+```
+
+
+Don't like doing it by trial and error? Let's automate?  
+This will take a little bit of time (~2 minutes or so?), because it's doing 500 simulations for each sample size from 20, 40, 60, ... up to 500..  
+```{webr}
+#| timelimit: 0
+sizes <- seq(20,500,20)
+
+# switch from doing 1000 to 500, to save a bit of time:  
+calc_power <- function(samplesize){
+  manyt <- replicate(500, fake_ttest2(n_per_group = samplesize))
+  sum(manyt<.05) / 500
+}
+
+plot(
+  x = sizes,
+  y = sapply(sizes, calc_power),
+  type = "l"
+)
+```
+
+Now.. this seems like a lot of work. And for a t-test, it is.  
+For simpler analyses like this one, we can actually calculate the number using maths rather than simulations. Many of the functionality for this is provided in the **pwr** package.  
+For instance:  
+```{r}
+library(pwr)
+
+pwr.t.test(d=0.5/2, power=0.8, sig.level=0.05, 
+           type="two.sample", alternative="two.sided")
+```
+
+`r solend()`
