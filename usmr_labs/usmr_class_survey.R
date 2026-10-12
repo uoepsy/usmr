@@ -23,4 +23,8 @@ df=read_csv("https://uoepsy.github.io/data/usmr26survey_historical.csv")
 
 ff = ff[,c(names(df)[names(df) %in% names(ff)],"pseudonym")]
 
+ff <- ff |>
+  mutate(pseudonym = map_chr(pseudonym, ~ if (length(.x) == 0) NA_character_ else paste(.x, collapse = ", "))) 
+
 write_csv(ff, file="../../data/usmr2026.csv")
+
