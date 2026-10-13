@@ -5,7 +5,11 @@ params:
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
+webr:
+  packages: ['dplyr','ggplot2','broom', 'effects']
 ---
+
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
   
@@ -50,6 +54,13 @@ library(patchwork)
 library(xaringanExtra)
 xaringanExtra::use_panelset()
 ```
+
+```{webr}
+#| include: false
+options(max.print = 20)
+```
+
+<small style="display:block;text-align:right">You are viewing an interactive version of this reading.<br>Please allow ~30 seconds for packages to load before code chunks can be run<br><a class="intlink" href="../readings/16_glm.html">Click here for the static version</a></small>
 
 :::lo
 This reading:  
@@ -464,7 +475,7 @@ Consider the base number 10. The R function implementing the logarithm base 10 i
 
 To what power do I need to raise the base number 10 in order to obtain the desired number 100? 
 
-```{r}
+```{webr}
 log10(100)
 ```
 
@@ -472,7 +483,7 @@ log10(100) = 2 as we need to raise 10 to the power of 2 in order to obtain the d
 
 To what power do I need to raise the base number 10 in order to obtain the desired number 1000? 
 
-```{r}
+```{webr}
 log10(1000)
 ```
 
@@ -480,13 +491,13 @@ log10(1000) = 3 as we need to raise 10 to the power of 3 in order to obtain the 
 
 Note that you can use this to write any desired number as a power of 10. For example, to which power do we raise 10 in order to obtain 13.5?
 
-```{r}
+```{webr}
 log10(13.5)
 ```
 
 So this is telling us that $10^{1.130334} = 13.5$ (with rounding error)
 
-```{r}
+```{webr}
 10^1.130334
 ```
 
@@ -496,7 +507,7 @@ $$10^{\log_{10}(x)} = x$$
 
 For example, $10^{\log_{10}(100)} = 10^{2} = 100$.
 
-```{r}
+```{webr}
 10^log10(100)
 ```
 
@@ -508,19 +519,19 @@ The logarithm with base number $e$ is implemented in the R function `log()`.
 
 To which number do I need to raise $e$ in order to obtain 8?
 
-```{r}
+```{webr}
 log(8)
 ```
 
 So this is telling us that $e^{2.079442} = 8$
-```{r}
+```{webr}
 2.718282^2.079442
 ```
 
 Our property is preserved: 
 $$e^{\log(x)} = x$$
 
-```{r}
+```{webr}
 2.718282^log(8)
 ```
 
@@ -944,8 +955,10 @@ We're interested in how the ability to wait to obtain something that one wants d
 Our outcome variable here is "whether or not the child takes the marshmallow", and we have one continuous predictor (age).  
 
 Here is our data:  
-```{r}
-mallow <- read_csv("https://uoepsy.github.io/data/mallow.csv")
+```{webr}
+#| autorun: true
+mallow <- read.csv("https://uoepsy.github.io/data/mallow.csv")
+
 ggplot(mallow, aes(x=age, y=taken))+
   geom_point(alpha=.5, size=3)+
   labs(x="Age (years)", y = "Takes Marshmallow")
@@ -953,7 +966,8 @@ ggplot(mallow, aes(x=age, y=taken))+
 
 Practically speaking, fitting our logistic regression model is very straightforward, and the summary output looks fairly similar. We can also easily compare models in a similar (but not identical) way as we have done with linear models. The differences come in when we interpreting the coefficients from these models, and how we compare models to one another.    
 
-```{r}
+```{webr}
+#| autorun: true
 mallowmod <- glm(taken ~ age, data = mallow,
                  family=binomial)
 ```
@@ -970,7 +984,7 @@ In the generalized linear model world, we don't have straightforward residuals, 
 For instance, we can compare our model to the null model (i.e. just an intercept):  
 
 In R we do this comparison as follows:
-```{r}
+```{webr}
 mallowmod0 <- glm(taken ~ 1, data = mallow, family=binomial)
 
 mallowmod1 <- glm(taken ~ age, data = mallow, family=binomial)
@@ -980,6 +994,10 @@ anova(mallowmod0, mallowmod1, test = 'Chisq')
 
 ```{r}
 #| echo: false
+mallow <- read.csv("https://uoepsy.github.io/data/mallow.csv")
+mallowmod <- glm(taken ~ age, data = mallow, family=binomial)
+mallowmod0 <- glm(taken ~ 1, data = mallow, family=binomial)
+mallowmod1 <- glm(taken ~ age, data = mallow, family=binomial)
 res = anova(mallowmod0, mallowmod1, test = 'Chisq')
 res[,2] <- round(res[,2],1)
 ```
@@ -1036,7 +1054,7 @@ where $n$ is the sample size and $p$ is the number of coefficients in the model.
 
 AIC and BIC differ in their degrees of penalization for number of regression coefficients, with BIC usually favouring models with fewer terms. 
 
-```{r}
+```{webr}
 AIC(mallowmod0, mallowmod1)
 BIC(mallowmod0, mallowmod1)
 ```
@@ -1048,13 +1066,8 @@ According to both AIC and BIC the model with `age` as a predictor has a lower sc
 # Coefficient Interpretation   
 
 An important result of our model capturing the linear associations between the predictors and the **log-odds of outcome Y**, is that our coefficients are all in these units. 
-```{r}
-#| eval: false
+```{webr}
 summary(mallowmod)
-```
-```{r}
-#| echo: false
-.pp(summary(mallowmod), l=list(3,5:11))
 ```
 
 ```{r}
@@ -1096,7 +1109,7 @@ tibble(
 
 For our marshmallow study, we can see our exponentiated coefficients here:  
 
-```{r}
+```{webr}
 exp(coef(mallowmod))
 ```
 
@@ -1183,13 +1196,8 @@ __Coefficient Tests__
 
 You might notice that the summary output of our logistic regression model has $z$ statistics instead of $t$ statistics. However, the logic of the tests remains just the same as it was for the linear model (and for all the tests we have done thus far) - it is a test against the null hypothesis that the coefficient is zero. Or, less formally, we can think of the corresponding p-value as "in the null universe where there is no relationship between $x$ and the occurrence of event $y$, there is a `p-value` chance of seeing a sample of this size with an association as strong as the one we have got"  
 
-```{r}
-#| eval: false
+```{webr}
 summary(mallowmod)
-```
-```{r}
-#| echo: false
-.pp(summary(mallowmod),l=list(6:11))
 ```
 
 :::int
@@ -1214,7 +1222,7 @@ In logistic regression, the variance is directly connect to the mean - we don’
 __Confidence Intervals__  
 With all our linear models (generalized or not), we can obtain confidence intervals using the `confint()` function. Because confidence intervals are just lower and upper bounds for a range of plausible values for our estimates, we can turn these into the confidence intervals around our odds ratios!  
 
-```{r}
+```{webr}
 exp(confint(mallowmod))
 ```
 
@@ -1228,7 +1236,7 @@ For every additional year older a child is, the odds of them taking the marshmal
 
 While interpreting coefficients leaves us speaking in the realm of odds-ratios, we can do more with visualisations! This is because we can simply display the predicted probability across values of some predictor. We don't have to try and rely solely on a numerical description of a relationship - a picture speaks a thousand words (and it's a lot easier!). 
 
-```{r}
+```{webr}
 library(effects)
 
 effect(term = "age", mod = mallowmod, xlevels = 20) |>
@@ -1244,7 +1252,7 @@ effect(term = "age", mod = mallowmod, xlevels = 20) |>
 
 As with previous plots in linear models, to make plots manually, we need to create a little plotting data frame and then add to that the model estimated values and interval bounds.   
 
-```{r}
+```{webr}
 plotdata <- tibble(
   # 50 values between 3 and 10 years old
   age = seq(3,10,length.out=50) 
@@ -1256,26 +1264,17 @@ For these models, we can actually predict on various different scales (e.g. do w
 Unfortunately, `augment` doesn't easily give us intervals for these models, so we'll have to make them ourselves. These have to be done on the log-odds scale first. We can't take the estimated probability and then $\pm$ some number, because then it might go over 1 or below 0.  
 
 `augment()` can get us _some_ of the way there. We can get out fitted values (on whatever scale we want, either "link" - the log-odds, or "response" - the probabilities), and we can get out standard errors (on that same scale)  
-```{r}
-#| eval: false
+```{webr}
 broom::augment(mallowmod, newdata = plotdata, 
                type.predict = "link",
                se_fit=TRUE)
-```
-```{r}
-#| echo: false
-broom::augment(mallowmod, newdata = plotdata, 
-               type.predict = "link",
-               se_fit=TRUE) |> 
-  mutate(across(1:3, ~round(.,2))) |>
-  head(4L) |> rbind("...") |> as.data.frame()
 ```
 
 Because this gets us the estimate and the standard error, we can then create out interval bounds using $estimate \pm 1.96 \cdot SE$. The 1.96 is back, because we're back using $z$ ("normal") distributions.  
 
 However, we're ultimately wanting to convert these back to probabilities for our plotting. We can do this with something like Martin's `l2p()` function in the lecture.^[other functions like `plogis()` are available]
 
-```{r}
+```{webr}
 l2p <- function(logits) {
   odds <- exp(logits)
   prob <- odds/(1 + odds)
@@ -1317,8 +1316,7 @@ There are three ways we can get out deviance residuals, each scaled differently
 - $i$th studentized residual = residual / SD(residual from model fitted without observation $i$)
 
 We get these in R using:  
-```{r}
-#| eval: false
+```{webr}
 # deviance residuals
 residuals(mallowmod, type = 'deviance')
 # studentised residuals
@@ -1330,7 +1328,7 @@ rstandard(mallowmod, type = 'deviance')
 :::
 
 We can check whether any residuals are larger than 2 or 3 in absolute value:
-```{r}
+```{webr}
 plot(rstudent(mallowmod, type = 'deviance'), 
      ylab = 'Studentized Deviance Residuals')
 ```

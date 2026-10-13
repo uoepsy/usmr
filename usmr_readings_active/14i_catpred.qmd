@@ -5,7 +5,11 @@ params:
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
+webr:
+  packages: ['dplyr','ggplot2']
 ---
+
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
 
 ```{r}
 #| include: false
@@ -14,7 +18,21 @@ library(tidyverse)
 library(patchwork)
 library(xaringanExtra)
 xaringanExtra::use_panelset()
+braindata <- read.csv("https://uoepsy.github.io/data/usmr_braindata.csv")
+
+braindata <- braindata |> mutate(
+  isMonkey = ifelse(species != "Human", "YES", "NO")
+)
+
 ```
+
+```{webr}
+#| include: false
+options(max.print = 20)
+```
+
+<small style="display:block;text-align:right">You are viewing an interactive version of this reading.<br>Please allow ~30 seconds for packages to load before code chunks can be run<br><a class="intlink" href="../readings/14_catpred.html">Click here for the static version</a></small>
+
 
 :::lo
 This reading:  
@@ -29,6 +47,7 @@ This reading:
 
 ```{r}
 #| include: false
+#| eval: false
 set.seed(50)
 mm <- MASS::Animals
 mm <- mm[c("Rhesus monkey","Potar monkey","Chimpanzee"), ]
@@ -37,14 +56,14 @@ mm$sbody <- c(2,7,6)
 mm$sbrain <- rep(100,3)
 
 mm <- 
-  mm %>% 
+  mm |> 
   mutate(
     species = row.names(mm),
     mass_body = pmap(list(n,body,sbody),~round(rnorm(..1,..2,..3))),
     mass_brain = pmap(list(n,brain,sbrain),~round(rnorm(..1,..2,..3))/1000)
-  ) %>%
-  select(species,mass_body,mass_brain) %>%
-  unnest() %>% 
+  ) |>
+  select(species,mass_body,mass_brain) |>
+  unnest() |> 
   sample_n(n())
 
 mm$mass_body = mm$mass_body + 10
@@ -64,11 +83,11 @@ Since we've started working with linear regression, we've seen a few examples of
 
 Let's consider a dataset which includes the brain mass and body mass of different primates. Below, we can see the `species` variable has 3 levels indicating whether the observation is a "Human", a "Rhesus monkey", or a "Potar monkey". We can easily create a binary variable such as the `isMonkey` variable (created below), which will allow us to compare monkeys (of _any_ type) vs not-monkeys (or "Humans", as we are better known!).  
 
-```{r}
-library(tidyverse)
-braindata <- read_csv("https://uoepsy.github.io/data/usmr_braindata.csv")
+```{webr}
+#| autorun: true
+braindata <- read.csv("https://uoepsy.github.io/data/usmr_braindata.csv")
 
-braindata <- braindata %>% mutate(
+braindata <- braindata |> mutate(
   isMonkey = ifelse(species != "Human", "YES", "NO")
 )
 head(braindata)
@@ -78,11 +97,10 @@ To recap what we've seen already - when we use a binary variable like `isMonkey`
 
 ```{r}
 #| echo: false
-braindata %>% mutate(
+braindata |> mutate(
   isMonkey = ifelse(species != "Human", "YES", "NO"),
   isMonkeyYES = (isMonkey=="YES")*1
 ) |> head()
-
 ```
 
 
@@ -92,15 +110,9 @@ This means that from the model below we can get out an estimate of the differenc
 ::::panelset
 :::panel
 #### Model
-```{r}
-#| eval: false
+```{webr}
 monkmod <- lm(mass_brain~isMonkey, data = braindata)
 summary(monkmod)
-```
-```{r}
-#| echo: false
-monkmod <- lm(mass_brain~isMonkey, data = braindata)
-.pp(summary(monkmod),l=list(9:12))
 ```
 
 - `(Intercept)`: the estimated brain mass of Humans (when the isMonkeyYES variable is zero)
@@ -134,16 +146,11 @@ ggplot(braindata, aes(x=isMonkey,y=mass_brain))+
 <br>
 When used as predictors in **multiple** regression models (i.e. when there are other predictors involved), binary variables behave much the same way. The coefficient will give us the estimated change in $y$ when moving from one level to the other^[and the intercept will be the estimated $y$ when **all** predictors are zero], _while holding other predictors constant_ (see [Chapter 11 #interpreting-coefficients](11_mlr.html#interpreting-multiple-regression-coefficients)).  
 
-```{r}
-#| eval: false
+```{webr}
 monkmod2 <- lm(mass_brain~age + isMonkey, data = braindata)
 summary(monkmod2)
 ```
-```{r}
-#| echo: false
-monkmod2 <- lm(mass_brain~age + isMonkey, data = braindata)
-.pp(summary(monkmod2),l=list(9:13))
-```
+
 
 - `(Intercept)`: the estimated brain mass of *new-born* Humans (when both age is zero and isMonkeyYES is zero)
 - `age`: the estimated change in brain mass for every 1 year increase in age, holding isMonkey constant.
@@ -249,13 +256,14 @@ Note that while we have **3** species in our variable, we only have **2** coeffi
 This logic scales up - when we have categorical predictors with multiple levels, we will have $\text{number-of-levels}-1$ coefficients in our model. This is because to determine which of the $k$ categories an observation is in, we actually only need to have $k-1$ binary variables.  
 
 For instance, we can re-express all the the information contained in the `species` variable (with 3 levels) with just two binary variables:   
-```{r}
-braindata <- braindata %>% mutate(
+```{webr}
+braindata <- braindata |> mutate(
   speciesPotar = ifelse(species == "Potar monkey", 1, 0),
   speciesRhesus = ifelse(species == "Rhesus monkey", 1, 0),
 )
-braindata %>% 
-  select(mass_brain, species, speciesPotar, speciesRhesus) %>%
+
+braindata |> 
+  select(mass_brain, species, speciesPotar, speciesRhesus) |>
   head()
 ```
 
@@ -298,15 +306,11 @@ ggplot(braindata, aes(x=species,y=mass_brain))+
 
 Try fitting a model that uses the two binary variables we made above instead of using `species`. Take a look at the coefficients, try to compare the models to one another.   
 They are identical! 
-```{r}
-#| eval: false
+```{webr}
 specmod2 <- lm(mass_brain ~ speciesPotar + speciesRhesus, data = braindata)
 summary(specmod2)
 ```
-```{r}
-#| echo: false
-.pp(summary(lm(mass_brain ~ speciesPotar + speciesRhesus, data = braindata)),l=list(3,9:13))
-```
+
 
 :::
 
@@ -410,7 +414,7 @@ So from our model comparison below, we can say something like...
 ... species differences (Human/Potar monkey/Rhesus monkey) explained a significant amount of variance in brain mass over the null model ($F(2, 32) = 37.22,\ p <.001$).
 :::
 
-```{r}
+```{webr}
 m0 <- lm(mass_brain ~ 1, data = braindata)
 m1 <- lm(mass_brain ~ species, data = braindata)
 anova(m0, m1)
@@ -444,8 +448,8 @@ We can actually do *lots* of clever things with categorical predictors in regres
 
 The first thing we need to do is to explicitly tell R that they are categorical variables (i.e. we need to make them 'factors'): 
 
-```{r}
-braindata <- braindata %>% 
+```{webr}
+braindata <- braindata |> 
   mutate(
     isMonkey = factor(isMonkey),
     species = factor(species)
@@ -466,8 +470,8 @@ knitr::include_graphics("images/contrasts.png")
 ```
 
 We can easily "relevel" factor, thereby changing which one is the 'reference level' (the level against which all other levels are compared), by using handy functions like `fct_relevel()`. For instance, if we wanted to see how each species compared to Rhesus monkeys, re-levelling the factor changes the contrasts accordingly:  
-```{r}
-braindata <- braindata %>% 
+```{webr}
+braindata <- braindata |>
   mutate(
     species2 = fct_relevel(species, "Rhesus monkey")
   )
@@ -515,7 +519,7 @@ When we use this approach:
 This involves a bit of trickery that uses -1s and 1s rather than 0s and 1s, in order to make "0" be mid-way between all the levels - the average of the levels.  
 
 We can adjust the coding scheme that we use like so:  
-```{r}
+```{webr}
 contrasts(braindata$isMonkey) <- "contr.sum"
 contrasts(braindata$isMonkey)
 ```
@@ -524,15 +528,11 @@ contrasts(braindata$isMonkey)
 note that the column of the contrast matrix no longer has a name! It's just got a `[,1]`. This means that the coefficient we get out is not going to have a name either!!! 
 :::
 
-```{r}
-#| eval: false
+```{webr}
 monkmod_sum <- lm(mass_brain~isMonkey, braindata)
 summary(monkmod_sum)
 ```
-```{r}
-#| echo: false
-.pp(summary(lm(mass_brain~isMonkey, braindata)), l=list(3,9:12))
-```
+
 
 The intercept from this model is the estimated average brain mass averaged across monkeys and non-monkeys. i.e. the estimated 'grand mean' brain mass.  
 The coefficient represents moving from the overall mean brain mass to the `isMonkey=="NO"` mean brain mass.^[we know it is to this group because a 1 increase in the column of our contrast matrix takes us to this group] This is visualised in @fig-binpredplot2.  
@@ -542,8 +542,8 @@ The coefficient represents moving from the overall mean brain mass to the `isMon
 #| fig-cap: "A binary categorical predictor with sum contrasts"
 #| echo: false
 fit <- lm(mass_brain~isMonkey, braindata, contrasts=list(isMonkey="contr.sum"))
-braindata %>% mutate(n = as.numeric(isMonkey=="NO")) %>%
-ggplot(., aes(x=n,y=mass_brain))+
+braindata |> mutate(n = as.numeric(isMonkey=="NO")) |>
+ggplot(aes(x=n,y=mass_brain))+
   geom_jitter(width=.05, alpha=.1,size=3)+
   stat_summary(geom="pointrange", size = 1, aes(col=isMonkey)) + 
   geom_segment(aes(x=.5,xend=1,y=coef(fit)[1],yend=sum(coef(fit)[1:2])),col="blue",lwd=1, lty="solid") +
@@ -566,18 +566,13 @@ For sum contrasts, sometimes people prefer to use -.5 and .5 instead of -1 and 1
 This works because with just these two groups, the distance from `isMonkey==YES` to `isMonkey==NO` is _twice as far_ as the distance from the grand mean to the `isMonkey==NO` group (because the grand mean is the mid-point).  
 By halving the contrast, it doubles our coefficient (because 'a change in 1' is now twice as far).  
 
-```{r}
+```{webr}
 contrasts(braindata$isMonkey) <- c(.5, -.5)
 contrasts(braindata$isMonkey)
 ```
-```{r}
-#| eval: false
+```{webr}
 monkmod_sum <- lm(mass_brain~isMonkey, braindata)
 summary(monkmod_sum)
-```
-```{r}
-#| echo: false
-.pp(summary(lm(mass_brain~isMonkey, braindata)), l=list(3,9:12))
 ```
 
 ```{r}
@@ -585,8 +580,8 @@ summary(monkmod_sum)
 #| fig-cap: "A binary categorical predictor with sum contrasts using -.5 and .5"
 #| echo: false
 fit <- lm(mass_brain~isMonkey, braindata, contrasts=list(isMonkey="contr.sum"))
-braindata %>% mutate(n = as.numeric(isMonkey=="NO")) %>%
-ggplot(., aes(x=n,y=mass_brain))+
+braindata |> mutate(n = as.numeric(isMonkey=="NO")) |>
+ggplot(aes(x=n,y=mass_brain))+
   geom_jitter(width=.05, alpha=.1,size=3)+
   stat_summary(geom="pointrange", size = 1, aes(col=isMonkey)) + 
   geom_point(x=.5,y=coef(fit)[1],size=3,col="blue")+
@@ -609,18 +604,13 @@ ggplot(., aes(x=n,y=mass_brain))+
 
 When we move to using variables with more than 2 levels, sum contrasts can look a lot more confusing, but the logic of how we interpret coefficients stays very much the same.  
 For instance, using sum contrasts with the `species` variable:  
-```{r}
+```{webr}
 contrasts(braindata$species) <- "contr.sum"
 contrasts(braindata$species)
 ```
-```{r}
-#| eval: false
+```{webr}
 specmod_sum <- lm(mass_brain ~ species, braindata)
 summary(specmod_sum)
-```
-```{r}
-#| echo: false
-.pp(summary(lm(mass_brain~species, braindata)), l=list(3,9:13))
 ```
 
 - Our intercept is the 'grand mean' (the mean of each species' estimated mean brain mass). 
@@ -681,7 +671,7 @@ $$
 \end{align}
 $$
 And there we have our Rhesus monkeys! Because there are no other predictors in our model, this should match exactly (with rounding error in the above calculations!) with what the mean brain mass of Rhesus monkeys is in our data:   
-```{r}
+```{webr}
 mean(braindata$mass_brain[braindata$species=="Rhesus monkey"])
 ```
 

@@ -5,7 +5,11 @@ params:
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
+webr:
+  packages: ['dplyr','ggplot2','patchwork','broom']
 ---
+
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
 
 ```{r}
 #| label: setup
@@ -15,7 +19,19 @@ library(xaringanExtra)
 library(tidyverse)
 library(patchwork)
 xaringanExtra::use_panelset()
+slr_data <- read_csv("https://uoepsy.github.io/data/usmr_slr.csv")
+simplemod <- lm(y ~ x, data = slr_data)
+mlr_data <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+model2 <- lm(y ~ x1 + x2, data = mlr_data)
 ```
+
+```{webr}
+#| include: false
+options(max.print = 20)
+```
+
+<small style="display:block;text-align:right">You are viewing an interactive version of this reading.<br>Please allow ~30 seconds for packages to load before code chunks can be run<br><a class="intlink" href="../readings/11_mlr.html">Click here for the static version</a></small>
+
 
 :::lo
 This reading:  
@@ -30,9 +46,12 @@ This reading:
 
 When we introduced the linear regression model (see [Chapter 10](10_slr.html)), we talked mainly about the intercept and the slope (collectively referred to as "the coefficients"). We saw that the model summary output (from `summary(model)`) gave us some tests next to each coefficient: 
 
-```{r}
-slr_data <- read_csv("https://uoepsy.github.io/data/usmr_slr.csv")
+```{webr}
+#| autorun: true
+slr_data <- read.csv("https://uoepsy.github.io/data/usmr_slr.csv")
+
 simplemod <- lm(y ~ x, data = slr_data)
+
 summary(simplemod)
 ```
 
@@ -134,17 +153,22 @@ Approximately 38\% of the total variability in `y` is explained by the linear as
 ::: {.callout-caution collapse="true"}
 #### optional: manual calculation of R-Squared   
 
-```{r}
-slr_data <- read_csv("https://uoepsy.github.io/data/usmr_slr.csv")
+```{webr}
+slr_data <- read.csv("https://uoepsy.github.io/data/usmr_slr.csv")
+
 simplemod <- lm(y ~ x, data = slr_data)
 
+# for each observation,
+# get the fitted values y_hat
+# then calculate the residuals as y-y_hat
 simplemod_fitted <- slr_data |>
   mutate(
     y_hat = predict(simplemod),
     resid = y - y_hat
   )
-head(simplemod_fitted)
 
+# calculate SSmodel and SStotal,
+# then R^2 = SSM/SST
 simplemod_fitted |>
   summarise(
     SSModel = sum( (y_hat - mean(y))^2 ),
@@ -228,7 +252,6 @@ Note that the p-value here is exactly the same as the one for the coefficient. T
 
 You can check that the squared t-statistic is equal, up to rounding error, to the F-statistic:
 ```{r}
-slr_data <- read_csv("https://uoepsy.github.io/data/usmr_slr.csv")
 simplemod <- lm(y ~ x, data = slr_data)
 
 summary(simplemod)$fstatistic['value']
@@ -411,9 +434,12 @@ mydata <- tibble(
 mydata$x3<-cut(mydata$x3,3,labels = c("level1","level2","level3"))
 #write_csv(mydata, "../../data/usmr_mlr.csv")
 ```
-```{r}
-mlr_data <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+```{webr}
+#| autorun: true
+mlr_data <- read.csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+
 model2 <- lm(y ~ x1 + x2, data = mlr_data)
+
 summary(model2)
 ```
 
@@ -460,7 +486,6 @@ $$
 
 ```{r}
 #| eval: false
-model2 <- lm(y ~ x1 + x2, data = mlr_data)
 summary(model2)
 ```
 ```{r}
@@ -505,7 +530,6 @@ $$
 
 ```{r}
 #| eval: false
-model2 <- lm(y ~ x1 + x2, data = mlr_data)
 summary(model2)
 ```
 ```{r}
@@ -526,7 +550,7 @@ Now we have seen that we can add in more predictors to a linear regression model
 
 An easy starting point would be to compare how the $R^2$ values change when we add predictors - showing the extent to which different models 'explain variance' in our outcome. The two models below explain 10% and 26%, respectively, of the variance in y.  
 
-```{r}
+```{webr}
 model1 <- lm(y ~ x1, data = mlr_data)
 model2 <- lm(y ~ x1 + x2, data = mlr_data)
 summary(model1)$r.squared
@@ -539,6 +563,7 @@ summary(model2)$r.squared
 #| out-width: "100%"
 knitr::include_graphics("images/mlr/output_mlr_rsq2.png")
 ```
+
 
 But this comparison is _descriptive_, in that we are not performing any _test_ of whether the differences between the models' explanatory power is more than we might just expect by chance. To do this, we need to utilise our $F$-tests again!  
 
@@ -607,7 +632,7 @@ anova(model1, model2)
 
 If we wanted to, for example, compare a model with just one predictor, $x_1$, to a model with 3 predictors: $x_1,\ x_2,\ x_3$, we can assess the extent to which the variables $x_2$ and $x_3$ *jointly* improve model fit by explaining more variance (i.e. by reducing the residual sums of squares):    
 
-```{r}
+```{webr}
 model1 <- lm(y ~ x1, data = mlr_data)
 model3 <- lm(y ~ x1 + x2 + x3, data = mlr_data)
 anova(model1, model3)
@@ -741,10 +766,19 @@ If we fit a simple regression $JobSat \sim b_0 + b_1(CommuteTime)$, we get a nic
 
 ::::panelset
 :::panel
+#### Data
+
+```{webr}
+#| autorun: true
+happycommute <- read.csv("https://uoepsy.github.io/data/happycommute.csv")
+
+head(happycommute)
+```
+:::
+:::panel
 #### Plot
-```{r}
+```{webr}
 #| fig-height: 3
-#| code-fold: true
 ggplot(happycommute, aes(x=commute,y=jobsat))+
   geom_point() +
   geom_smooth(method=lm)+
@@ -753,9 +787,9 @@ ggplot(happycommute, aes(x=commute,y=jobsat))+
 :::
 :::panel
 #### Model summary
-```{r}
-#| code-fold: true
-lm(jobsat ~ commute, data = happycommute) |> summary()
+```{webr}
+lm(jobsat ~ commute, data = happycommute) |> 
+  summary()
 ```
 
 :::
@@ -766,7 +800,7 @@ But... what if the reason that we are seeing "more commuting >> more job satisfa
 
 When we compare two models, one with job satisfaction predicted by work flexibility, and one with job satisfaction predicted by both work flexibility _and_ commuting time, we now conclude that commuting time is **not** a useful predictor.. 
 
-```{r}
+```{webr}
 jobmodel1 <- lm(jobsat ~ work_flex, data = happycommute)
 jobmodel2 <- lm(jobsat ~ work_flex + commute, data = happycommute)
 anova(jobmodel1, jobmodel2)
@@ -822,24 +856,22 @@ There are some shortcuts that will sometimes save us time, as they don't involve
 ::: {.callout-note collapse="true"}
 #### Comparisons incrementally adding each predictor
 
-*Using the order in which predictors are entered into our model*, we can set up a series of models that incrementally add each next predictor.  
-```{r}
+*Using the order in which predictors are entered into our model*, we can set up a series of models that incrementally add each next predictor.   
+
+We can then easily compare them by giving them _all_ to the `anova()` function (which can take as many models as we want to give it).  
+```{webr}
 model0 <- lm(y ~ 1, data = mlr_data)
 model1 <- lm(y ~ 1 + x1, data = mlr_data)
 model2 <- lm(y ~ 1 + x1 + x2, data = mlr_data)
 model3 <- lm(y ~ 1 + x1 + x2 + x3, data = mlr_data)
-```
 
-We can then easily compare them by giving them _all_ to the `anova()` function (which can take as many models as we want to give it).  
-
-```{r}
 anova(model0, model1, model2, model3)
 ```
 
 The output here compares each model to the model before it. This means each test is of the **incremental** addition of of each predictor after the predictors before it.   
 
 However, if we just give the fullest model to `anova()`, then it will do this procedure for us!  
-```{r}
+```{webr}
 anova(model3)
 ```
 
@@ -863,7 +895,7 @@ When we give one model the `anova()`, the order that we write our predictors in 
 #### Comparisons with and without each predictor
 
 We might instead want to set up a series of comparisons that individually drop each predictor:
-```{r}
+```{webr}
 modelall   <- lm(y ~ 1 + x1 + x2 + x3, data = mlr_data)
 modeldrop1 <- lm(y ~ 1 +      x2 + x3, data = mlr_data)
 modeldrop2 <- lm(y ~ 1 + x1 +      x3, data = mlr_data)
@@ -876,7 +908,7 @@ anova(modeldrop3, modelall) # models with and without x3
 ```
 
 There is also a shorthand way of doing this! 
-```{r}
+```{webr}
 drop1(modelall, test="F")
 ```
 
@@ -1051,10 +1083,12 @@ The typical way to plot these associations is to make a 2-dimensional figure tha
 Notice what we are doing here is plotting a "model estimated" slope. We can't just plot our data an add `geom_smooth(method=lm)`, because that would give a visualisation of a linear model **with just one predictor** (whichever one is on the x-axis). 
 
 Returning to our Happy Commuter example from above, we want a way to present the estimated slope of `commute` from the model which _also_ has `work_flex` in it.  
-```{r}
-happycommute <- read_csv("https://uoepsy.github.io/data/happycommute.csv")
-model2 <- lm(jobsat ~ work_flex + commute, data = happycommute)
-coef(model2)
+```{webr}
+happycommute <- read.csv("https://uoepsy.github.io/data/happycommute.csv")
+
+jobmodel2 <- lm(jobsat ~ work_flex + commute, data = happycommute)
+
+coef(jobmodel2)
 ```
 In our Happy Commuters example, the difference between the coefficients when we did/didn't include the `work_flex` predictor were _very_ different.  
 ```{r}
@@ -1064,7 +1098,9 @@ plotdata <- data.frame(
   work_flex = 20.75,
   commute = 3:58
 )
-p2 <- broom::augment(model2, newdata = plotdata, interval="confidence") |>
+jobmodel2 <- lm(jobsat ~ work_flex + commute, data = happycommute)
+
+p2 <- broom::augment(jobmodel2, newdata = plotdata, interval="confidence") |>
   ggplot(aes(x = commute, y = .fitted,
                      ymin = .lower, ymax = .upper)) +
   geom_line() +
@@ -1085,7 +1121,7 @@ There are various helpful packages that are designed to make this easy (which we
 
 We will need to create a little dataset of the values of the predictors that we wish to predict across. We'll go across all values of `commute` from 3 to 58 (the range of commuting times in our data), and we'll keep `work_flex` as 20.75 (which is the mean of `work_flex` in our data):
 
-```{r}
+```{webr}
 plotdata <- data.frame(
   commute = 3:58, # integers from 3 to 58
   work_flex = 20.75 # every value will be 20.75
@@ -1093,14 +1129,14 @@ plotdata <- data.frame(
 ```
 
 Using this little dataset we can now form predictions from our model, which we can then plot. Using the **broom** package is a nice way to get the confidence intervals^[these intervals are using the standard errors multiplied by the appropriate value of $t$. We did this more explicitly in Week 5, but the `augment()` function will do it for us here] as well as the predictions, and it returns it all attached to the dataframe:  
-```{r}
+```{webr}
 library(broom)
-augment(model2, newdata = plotdata, interval="confidence")
+augment(jobmodel2, newdata = plotdata, interval="confidence")
 ```
 
 And this looks like something we can put into ggplot!! 
-```{r}
-augment(model2, newdata = plotdata, interval="confidence") |>
+```{webr}
+augment(jobmodel2, newdata = plotdata, interval="confidence") |>
   ggplot(aes(x = commute, y = .fitted,
              ymin = .lower, ymax = .upper)) +
   geom_line() +

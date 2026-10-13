@@ -5,7 +5,21 @@ params:
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
+webr:
+  packages: ['dplyr','ggplot2','broom']
 ---
+
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
+
+
+```{webr}
+#| include: false
+options(max.print = 20)
+```
+
+<small style="display:block;text-align:right">You are viewing an interactive version of this reading.<br>Please allow ~30 seconds for packages to load before code chunks can be run<br><a class="intlink" href="../readings/15_interactions.html">Click here for the static version</a></small>
+
+
 
 :::lo
 This reading:  
@@ -31,11 +45,11 @@ contcont <- tibble(
   partner_time = round(7+(scale(x1)[,1]*3),2),
   relationship_qual = round((scale(x2)[,1]*10) + 60),
   wellbeing = 20 + (scale(y)[,1]*5)
-) %>% mutate(x1=partner_time,x2=relationship_qual,y=wellbeing)
+) |> mutate(x1=partner_time,x2=relationship_qual,y=wellbeing)
 
-ptdat <- contcont %>%
+ptdat <- contcont |>
   select(partner_time,relationship_qual,wellbeing)
-concont <- contcont %>%
+concont <- contcont |>
   select(x1,x2,y)
 
 
@@ -46,11 +60,11 @@ contcat <- tibble(
   apoe4 = x2,
   aqpi = round((scale(x1)[,1]*100) + 180),
   mmse = round((scale(y)[,1]*4) + 22),
-) %>% mutate(x1=aqpi, x2=apoe4, y=mmse)
+) |> mutate(x1=aqpi, x2=apoe4, y=mmse)
 
-airpol <- contcat %>%
-  select(aqpi, apoe4, mmse) %>% mutate(apoe4=ifelse(apoe4==0,"neg","pos"))
-contcat <- contcat %>%
+airpol <- contcat |>
+  select(aqpi, apoe4, mmse) |> mutate(apoe4=ifelse(apoe4==0,"neg","pos"))
+contcat <- contcat |>
   select(x1,x2,y)
 set.seed(913)
 catcat <- tibble(
@@ -61,7 +75,7 @@ catcat <- tibble(
   asgroup = ifelse(x2==1,"group","alone"),
   candybars = y
 )
-candy <- catcat %>% select(anonymity, asgroup, candybars)
+candy <- catcat |> select(anonymity, asgroup, candybars)
 # write_csv(ptdat, "../../data/usmr_partnertime.csv")
 # write_csv(candy, "../../data/usmr_candy.csv")
 # write_csv(airpol, "../../data/usmr_airpol.csv")
@@ -97,25 +111,19 @@ So for _any_ value of $x_2$, a one unit increase in $x_1$ is associated with a $
 
 Let's use our primate brains data for a more realistic example: 
 
-```{r}
-#| output: false
-braindata <- read_csv("https://uoepsy.github.io/data/usmr_braindata.csv")
-braindata <- braindata %>% mutate(
+```{webr}
+#| autorun: true
+braindata <- read.csv("https://uoepsy.github.io/data/usmr_braindata.csv")
+
+braindata <- braindata |> mutate(
   isMonkey = ifelse(species != "Human", "YES", "NO")
 )
 
 monkeymod <- lm(mass_brain ~ age + isMonkey, data = braindata)
-summary(monkeymod)
+
+coef(monkeymod)
 ```
-```
-...
-Coefficients:
-             Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.668308   0.050478  13.240 1.57e-14 ***
-age         -0.004081   0.002337  -1.746   0.0904 .  
-isMonkeyYES -0.246933   0.044152  -5.593 3.54e-06 ***
----
-```
+
 
 Our coefficient for `isMonkeyYES` coefficient is the estimated difference in brain mass between a human and a monkey **of the same age**.  
 Similarly, our coefficient for `age` is the estimated change in brain mass for every additional year of age, provided we are not comparing a monkey to a human. 
@@ -127,6 +135,12 @@ The `age` coefficient is the comparison between A and B, or between C and D.
 #| label: fig-constplot
 #| fig-cap: "multiple regression model of brain mass predicted by age and isMonkey. The age coefficient is the slope of the lines, and the isMonkey coefficient is the difference in their heights"
 #| echo: false
+braindata <- read.csv("https://uoepsy.github.io/data/usmr_braindata.csv")
+braindata <- braindata |> mutate(
+  isMonkey = ifelse(species != "Human", "YES", "NO")
+)
+monkeymod <- lm(mass_brain ~ age + isMonkey, data = braindata)
+
 mm = data.frame(
   who = c("A\nHuman age 10","C\nMonkey age 10","B\nHuman age 11","D\nMonkey age 11"),
   age = c(10,10,11,11),
@@ -560,12 +574,21 @@ lm(y ~ c1 + x1 + x2 + x1:x2)
 
 > The amount to which spending time with my partner influences my wellbeing _depends on_ the quality of our relationship.  
 
-```{r}
+```{webr}
 # data
-ptdat <- read_csv("https://uoepsy.github.io/data/usmr_partnertime.csv")
+ptdat <- read.csv("https://uoepsy.github.io/data/usmr_partnertime.csv")
+
 # model
 eg1mod <- lm(wellbeing ~ partner_time * relationship_qual, data = ptdat)
 summary(eg1mod)
+```
+
+```{r}
+#| include: false
+# data
+ptdat <- read.csv("https://uoepsy.github.io/data/usmr_partnertime.csv")
+# model
+eg1mod <- lm(wellbeing ~ partner_time * relationship_qual, data = ptdat)
 ```
 
 - For someone who spends 0 hours with their partner, and who has a relationship quality score of 0, their estimated wellbeing is `r round(coef(eg1mod)[1],2)`.  
@@ -581,8 +604,16 @@ summary(eg1mod)
 > The influence of air-pollution on cognitive functioning _depends on_ your genetic status.  
 
 ```{r}
+#| include: false
 # data
 airpol <- read_csv("https://uoepsy.github.io/data/usmr_airpol.csv")
+# model
+eg2mod <- lm(mmse ~ aqpi * apoe4, data = airpol)
+```
+
+```{webr}
+# data
+airpol <- read.csv("https://uoepsy.github.io/data/usmr_airpol.csv")
 # model
 eg2mod <- lm(mmse ~ aqpi * apoe4, data = airpol)
 summary(eg2mod)
@@ -601,6 +632,14 @@ summary(eg2mod)
 > The influence of being anonymous on childrens' greedy behaviours _depends on_ if they are alone or part of a group.
 
 ```{r}
+#| include: false
+# data
+candy <- read_csv("https://uoepsy.github.io/data/usmr_candy.csv")
+# model
+eg3mod <- lm(candybars ~ anonymity * asgroup, data = candy)
+```
+
+```{webr}
 # data
 candy <- read_csv("https://uoepsy.github.io/data/usmr_candy.csv")
 # model
@@ -617,7 +656,7 @@ summary(eg3mod)
 ```{r}
 #| eval: false
 #| echo: false
-fit = lm(y~x1*x2,catcat %>% mutate(across(x1:x2,factor)))
+fit = lm(y~x1*x2,catcat |> mutate(across(x1:x2,factor)))
 sjPlot::plot_model(fit, type="int",show.data=T)+geom_line()
 
 # it's just viewing that cube from one side 
@@ -683,10 +722,9 @@ Plotting continuous by continuous interactions requires choosing a set of values
 
 Here, we could choose to plot the slope of `wellbeing ~ partner_time` for the mean `relationship_qual`, and for 1 SD above and below that mean.  
 
-```{r}
-#| code-fold: true
+```{webr}
 # data
-ptdat <- read_csv("https://uoepsy.github.io/data/usmr_partnertime.csv")
+ptdat <- read.csv("https://uoepsy.github.io/data/usmr_partnertime.csv")
 # model
 eg1mod <- lm(wellbeing ~ partner_time * relationship_qual, data = ptdat)
 
@@ -742,10 +780,9 @@ broom::augment(eg1mod, newdata = plotdat, interval="confidence") |>
 
 This is the most straightforward type of interaction to visualise, as there are only a set number of values that one of the variables can take, meaning only a finite number of lines we need to draw:  
 
-```{r}
-#| code-fold: true
+```{webr}
 # data
-airpol <- read_csv("https://uoepsy.github.io/data/usmr_airpol.csv")
+airpol <- read.csv("https://uoepsy.github.io/data/usmr_airpol.csv")
 # model
 eg2mod <- lm(mmse ~ aqpi * apoe4, data = airpol)
 
@@ -783,10 +820,9 @@ broom::augment(eg2mod, newdata = plotdat, interval="confidence") |>
 > The influence of being anonymous on childrens' greedy behaviours _depends on_ if they are alone or part of a group.
 
 For these types of interactions (between categorical variables), plotting the estimates from our model is best done as our set of estimated group means.   
-```{r}
-#| code-fold: true
+```{webr}
 # data
-candy <- read_csv("https://uoepsy.github.io/data/usmr_candy.csv")
+candy <- read.csv("https://uoepsy.github.io/data/usmr_candy.csv")
 # model
 eg3mod <- lm(candybars ~ anonymity * asgroup, data = candy)
 
@@ -825,7 +861,7 @@ broom::augment(eg3mod, newdata=plotdat, interval="confidence") |>
 ```{r}
 #| eval: false
 #| echo: false
-fit = lm(y~x1*x2,catcat %>% mutate(across(x1:x2,factor)))
+fit = lm(y~x1*x2,catcat |> mutate(across(x1:x2,factor)))
 sjPlot::plot_model(fit, type="int",show.data=T)+geom_line()
 
 # it's just viewing that cube from one side 
@@ -864,16 +900,14 @@ By mean centering a continuous predictor, we change what "0" means. Normally, wh
 
 Using one of our examples from throughout this reading, we might mean-center the air-pollution so that we can consider the difference in MMSE scores between APOE4 positive and negative people _at the average air-pollution level_
 
-```{r}
+```{webr}
 # data
-airpol <- read_csv("https://uoepsy.github.io/data/usmr_airpol.csv")
+airpol <- read.csv("https://uoepsy.github.io/data/usmr_airpol.csv")
 # model with original variable
 eg2mod <- lm(mmse ~ aqpi * apoe4, data = airpol)
 # model with mean centered predictor
 eg2mod_cent <- lm(mmse ~ scale(aqpi,scale=FALSE) * apoe4, data = airpol)
-```
 
-```{r}
 # coefficients:
 coef(eg2mod)
 coef(eg2mod_cent)
@@ -884,7 +918,7 @@ This is because the coefficient for APOE4 compares the heights of the two lines 
 ```{r}
 #| out-width: "100%"
 #| echo: false
-airpol <- airpol %>% 
+airpol <- airpol |> 
   mutate(
     aqpiC = aqpi - mean(aqpi)
   )
@@ -913,13 +947,13 @@ For example, when we have two categorical variables:
 
 Then the default is to take the alphabetical ordering. We can change the ordering using functions that "relevel" a factor. Note, this only works if the variable is _already_ a `factor` in R (see [Chapter 3 #categorical](03_measurement.html#categorical){target="_blank"} for a reminder of 'factors').   
 
-```{r}
+```{webr}
 # data 
-candy <- read_csv("https://uoepsy.github.io/data/usmr_candy.csv")
+candy <- read.csv("https://uoepsy.github.io/data/usmr_candy.csv")
 
 # make both predictors 'factors'
 candy <- 
-  candy %>% 
+  candy |> 
   mutate(
     anonymity = factor(anonymity),
     asgroup = factor(asgroup)
@@ -928,34 +962,22 @@ candy <-
 
 Once they are factors, we can see the default levels:  
 
-:::: {.columns}
-::: {.column width="47.5%"}
-```{r}
+```{webr}
 levels(candy$anonymity)
-```
-:::
-::: {.column width="5%"}
-<!-- empty column to create gap -->
-:::
-::: {.column width="47.5%"}
-```{r}
 levels(candy$asgroup)
 ```
-:::
-
-::::
 
 
 This is the original model, with the default levels:  
-```{r}
+```{webr}
 eg3mod <- lm(candybars ~ anonymity * asgroup, data = candy)
 coef(eg3mod)
 ```
 
 Let's relevel anonymity to have "identifiable" as the first level, and then refit the model:  
-```{r}
+```{webr}
 candy <- 
-  candy %>% 
+  candy |> 
   mutate(
     anonymity = fct_relevel(anonymity, "identifiable")
   )
@@ -974,6 +996,14 @@ Again, the model doesn't change, we are simply extracting different bits from it
 ```{r}
 #| echo: false
 #| out-width: "100%"
+candy <- 
+  candy |> 
+  mutate(
+    anonymity = fct_relevel(anonymity, "identifiable")
+  )
+eg3mod_rel <- lm(candybars ~ anonymity * asgroup, data = candy)
+
+
 p1 <- sjPlot::plot_model(eg3mod, type = "int") +
   labs(title="with 'anonymous' and 'alone' as reference levels") + 
   
@@ -1056,12 +1086,12 @@ df <- expand_grid(
   grouping = c("1","2"),
   condition = c("A","B"),
   n = 1:30
-) %>%
+) |>
   mutate(
     lp = 2 + -2*(grouping=="2") + 1*(condition=="B") +
       -2*(grouping=="2" & condition=="B"),
     y = lp + rnorm(n())
-  ) %>% mutate_if(is.character,factor)
+  ) |> mutate_if(is.character,factor)
 
 # group means and marginals ----
 # tab <- xtabs( ~ grouping + condition, data = df)
@@ -1081,8 +1111,8 @@ model1 <- lm(y ~ condition * grouping, df)
 
 
 
-modplot <- as.data.frame(effects::effect("condition * grouping",model)) %>%
-  ggplot(.,aes(x=condition, y=fit, ymin=lower,ymax=upper))+
+modplot <- as.data.frame(effects::effect("condition * grouping",model)) |>
+  ggplot(aes(x=condition, y=fit, ymin=lower,ymax=upper))+
   geom_pointrange(aes(col=grouping,shape=condition), size=1.5,alpha=.8) +
   geom_line(aes(col=grouping,group=grouping), lty="dashed",linewidth=1)+
   # labs(title="The model", subtitle="lm()") + 
@@ -1292,7 +1322,7 @@ df <- tibble(
 )
 mod1 <- lm(height ~ age, data = df)
 mod2 <- lm(height ~ age + I(age^2), data = df)
-df <- df %>% mutate(f1 = fitted(mod1),f2=fitted(mod2))
+df <- df |> mutate(f1 = fitted(mod1),f2=fitted(mod2))
 
 ggplot(df,aes(x=age,y=height))+
   geom_point() + 
@@ -1315,21 +1345,21 @@ However, it's useful as a means of seeing how we can extend linear models to fit
 
 It is estimating a persons' height as:
 
-- an intercept of `r coef(mod2)[1] %>% round(2)` (the estimated height of a newborn baby of age 0)
-- plus `r coef(mod2)[2] %>% round(2)` cm for every year of age they have
-- plus `r coef(mod2)[3] %>% round(2)` cm for every year of age they have, squared.  
+- an intercept of `r coef(mod2)[1] |> round(2)` (the estimated height of a newborn baby of age 0)
+- plus `r coef(mod2)[2] |> round(2)` cm for every year of age they have
+- plus `r coef(mod2)[3] |> round(2)` cm for every year of age they have, squared.  
 
 So for a 4 year old, the estimated height is: 
 
 $$
-height = `r coef(mod2)[1] %>% round(2)` + (`r coef(mod2)[2] %>% round(2)` \times 4) + (`r coef(mod2)[3] %>% round(2)` \times 4^2) = `r round(coef(mod2),1) %*% c(1,4,16)`
+height = `r coef(mod2)[1] |> round(2)` + (`r coef(mod2)[2] |> round(2)` \times 4) + (`r coef(mod2)[3] |> round(2)` \times 4^2) = `r round(coef(mod2),1) %*% c(1,4,16)`
 $$
 and for a 10 year old, it is:  
 
 $$
-height = `r coef(mod2)[1] %>% round(2)` + (`r coef(mod2)[2] %>% round(2)` \times 10) + (`r coef(mod2)[3] %>% round(2)` \times 10^2) = `r round(coef(mod2),1) %*% c(1,10,100)`
+height = `r coef(mod2)[1] |> round(2)` + (`r coef(mod2)[2] |> round(2)` \times 10) + (`r coef(mod2)[3] |> round(2)` \times 10^2) = `r round(coef(mod2),1) %*% c(1,10,100)`
 $$
-We can see how the quadratic "$\text{age}^2$ term has a larger (negative) effect as age increases (for the 4 year old it makes the estimated height $`r coef(mod2)[3] %>% round(2)` \times 4^2 = `r round(coef(mod2)[3]*4^2,1)`$ lower, and for the 10 year old it makes the estimated height $`r coef(mod2)[3] %>% round(2)` \times 10^2 = `r round(coef(mod2)[3]*10^2,1)`$ lower). This captures the plateauing of heights as children get older.  
+We can see how the quadratic "$\text{age}^2$ term has a larger (negative) effect as age increases (for the 4 year old it makes the estimated height $`r coef(mod2)[3] |> round(2)` \times 4^2 = `r round(coef(mod2)[3]*4^2,1)`$ lower, and for the 10 year old it makes the estimated height $`r coef(mod2)[3] |> round(2)` \times 10^2 = `r round(coef(mod2)[3]*10^2,1)`$ lower). This captures the plateauing of heights as children get older.  
 
 :::
 

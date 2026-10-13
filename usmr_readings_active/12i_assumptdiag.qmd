@@ -5,7 +5,11 @@ params:
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
+webr:
+  packages: ['dplyr','ggplot2','car']
 ---
+
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
 
 ```{r}
 #| label: setup
@@ -15,7 +19,16 @@ library(xaringanExtra)
 library(tidyverse)
 library(patchwork)
 xaringanExtra::use_panelset()
+mydata <- read.csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+mymodel <- lm(y ~ x1 + x2, data = mydata)
 ```
+
+```{webr}
+#| include: false
+options(max.print = 20)
+```
+
+<small style="display:block;text-align:right">You are viewing an interactive version of this reading.<br>Please allow ~30 seconds for packages to load before code chunks can be run<br><a class="intlink" href="../readings/12_assumptdiag.html">Click here for the static version</a></small>
 
 :::lo
 This reading:  
@@ -41,20 +54,14 @@ To examine our assumptions, we can either rely on plotting, or on conducting sta
 
 We already saw how to interpret the plots in simple regression models ([Chapter 10 #first-look-assumptions](10_slr.html#a-first-look-at-linear-model-assumptions){target="_blank"}), and this doesn't change when we move to multiple regression models.  
 
-```{r}
-#| eval: false
-mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+```{webr}
+#| autorun: true
+mydata <- read.csv("https://uoepsy.github.io/data/usmr_mlr.csv")
 mymodel <- lm(y ~ x1 + x2, data = mydata)
+par(mfrow=c(2,2)) # make plots in a 2x2 grid
 plot(mymodel)
 ```
-```{r}
-#| echo: false
-mydata <- read_csv("../../data/usmr_mlr.csv")
-mymodel <- lm(y ~ x1 + x2, data = mydata)
-par(mfrow=c(2,2))
-plot(mymodel)
-par(mfrow=c(1,1))
-```
+
 
 - Top Left: For the __Residuals vs Fitted__ plot, we want the red line to be horizontal at close to zero across the plot. We don't want the residuals (the points) to be fanning in/out.  
 - Top Right: For the __Normal Q-Q__ plot, we want the residuals (the points) to follow closely to the diagonal line, indicating that they are relatively normally distributed.^[QQplots plot the values against the associated percentiles of the normal distribution. So if we had ten values, it would order them lowest to highest, then plot them on the y against the 10th, 20th, 30th.. and so on percentiles of the standard normal distribution (mean 0, SD 1)]
@@ -82,8 +89,9 @@ We can perform tests to examine how (un)likely we would be to see some residuals
 
 The Shapiro-Wilk test (we saw this very briefly with our $t$-tests in [Chapter 6 #assumptions](06_inference2.html#assumptions){target="_blank"}) is a test against the alternative hypothesis that the residuals were not sampled from a normally distributed population. $p >.05$ indicates that we do _not_ have evidence that the assumption has been violated. We can perform this test quickly in R using `shapiro.test(residuals(modelname))`.  
 
-```{r}
+```{webr}
 shapiro.test(residuals(mymodel))
+# the same assumption can be assessed with this plot: 
 plot(mymodel, which = 2)
 ```
 
@@ -102,14 +110,16 @@ Model residuals showed slight deviation from normality (see QQplot), but this wa
 
 The `ncvTest()` function (from the **car** package) performs a test against the alternative hypothesis that the error variance changes with the level of the fitted values (also known as the "Breusch-Pagan test"). $p >.05$ indicates that we do _not_ have evidence that the assumption has been violated.  
 
-```{r}
-plot(mymodel, which = 3)
+```{webr}
 library(car)
 ncvTest(mymodel)
+# the same assumption can be assessed with this plot: 
+plot(mymodel, which = 3)
 ```
 
 ```{r}
 #| include: false
+library(car)
 res_ncv = ncvTest(mymodel)
 res_ncv$ChiSquare = round(res_ncv$ChiSquare,2)
 res_ncv$p = round(res_ncv$p, 2)
@@ -143,7 +153,7 @@ It's good practice to define what you will consider an acceptable value _prior_ 
 
 In R, the `vif()` function from the **car** package will provide VIF values for each predictor in your model (these are called "GVIF" if there are categorical predictors). 
 
-```{r}
+```{webr}
 vif(mymodel)
 ```
 
@@ -204,7 +214,7 @@ You can get a whole bucket-load of these measures with the `influence.measures()
 
 :::
 
-```{r}
+```{webr}
 summary(influence.measures(mymodel))
 ```
 
@@ -215,12 +225,15 @@ This process can then go into our write-up!
 
 To refit a model without the $n^{th}$ rows, we can simply remove those from the data that we give the `lm()` function.  
 For instance, if I want to fit my model to all the data _except_ the 10th and 32nd rows:  
-```{r}
+```{webr}
 mydata_sub <- mydata[-c(10,32), ]
 mymodel_subset <- lm(y ~ x1 + x2, mydata_sub)
+
+summary(mymodel)
+summary(mymodel_subset)
 ```
 
-We can then compare `summary(mymodel)` and `summary(mymodel_subset)` to examine whether our conclusions about the relevant association changes when we exclude these people. If it doesn't change our conclusions, then our eventual findings are robust to the  influence of these people. If it does, then we have something we can discuss!  
+We can then compare to examine whether our conclusions about the relevant association changes when we exclude these people. If it doesn't change our conclusions, then our eventual findings are robust to the  influence of these people. If it does, then we have something we can discuss!  
 
 
 <div class="divider div-transparent div-dot"></div>
@@ -244,20 +257,20 @@ set.seed(3)
 tibble(
   age = rdunif(100, 3, 18),
   score = pmax(1,-.1*age + (rchisq(100, 2)*10))
-) -> agetest
+) -> dftest
 ```
 ```{r}
 #| fig-height: 2.5
 #| echo: !expr c(2)
 par(mfrow=c(1,2))
-hist(agetest$score, breaks=40)
+hist(dftest$score, breaks=40)
 par(mfrow=c(1,1))
 ```
 If we are interested in how scores are predicted by age, it may well be the case that the amount scores increase/decrease with age is different depending on how far up the scores we are thinking about. It may be that modelling the raw scores predicted by age results in some problematic assumption plots: 
 ```{r}
 #| fig-height: 3.5
 #| echo: !expr c(1,3)
-mod <- lm(score ~ age, data = agetest)
+mod <- lm(score ~ age, data = dftest)
 par(mfrow=c(1,2))
 plot(mod, which = 2)
 par(mfrow=c(1,1))
@@ -275,8 +288,8 @@ The resulting distribution of transformed scores is closer to normally distribut
 #| fig-height: 3.5
 #| echo: !expr c(2:4)
 par(mfrow=c(1,2))
-hist(log(agetest$score), breaks=40)
-modlog <- lm(log(score) ~ age, data = agetest)
+hist(log(dftest$score), breaks=40)
+modlog <- lm(log(score) ~ age, data = dftest)
 plot(modlog, which = 2)
 par(mfrow=c(1,1))
 ```
@@ -294,8 +307,8 @@ Bootstrapping is a way to estimate the standard error without having to rely on 
 
 In practice, this can all be done very easily in R by using the `Boot()` function from the __car__ package. We can ask it to resample 1000 times (getting a distribution of 1000 values for the coefficients): 
 
-```{r}
-mydata <- read_csv("https://uoepsy.github.io/data/usmr_mlr.csv")
+```{webr}
+mydata <- read.csv("https://uoepsy.github.io/data/usmr_mlr.csv")
 mymodel <- lm(y ~ x1 + x2, data = mydata)
 
 library(car)
@@ -304,7 +317,7 @@ bootmymodel <- Boot(mymodel, R = 1000)
 The `bootmymodel` object actually contains lots of stuff (it contains all 1000 sets of coefficient estimates!). 
 We can get some confidence intervals easily:  
 _Note: the actual estimates are those from our original model, it is just the bounds of the interval that bootstrapping is providing us with)_  
-```{r}
+```{webr}
 Confint(bootmymodel)
 ```
 

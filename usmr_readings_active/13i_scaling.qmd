@@ -5,7 +5,11 @@ params:
     TOGGLE: TRUE
 editor_options: 
   chunk_output_type: console
+webr:
+  packages: ['dplyr','ggplot2']
 ---
+
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
 
 
 ```{r}
@@ -15,8 +19,17 @@ library(tidyverse)
 library(patchwork)
 library(xaringanExtra)
 xaringanExtra::use_panelset()
+hrdat <- read_csv("https://uoepsy.github.io/data/usmr_hrsleep.csv")
+mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
+mod_z <- lm(HR ~ scale(hrs_sleep), data = hrdat)
 ```
 
+```{webr}
+#| include: false
+options(max.print = 20)
+```
+
+<small style="display:block;text-align:right">You are viewing an interactive version of this reading.<br>Please allow ~30 seconds for packages to load before code chunks can be run<br><a class="intlink" href="../readings/13_scaling.html">Click here for the static version</a></small>
 
 :::lo
 This reading:  
@@ -53,8 +66,9 @@ For this section we're going to play with some random data looking at whether pe
 
 Our data contains `r nrow(df)` people, for which we have a variety of measures. The only ones we are going to concern ourselves with are heart rate (`HR`) and hours slept (`hrs_sleep`), but there are plenty of other ones for you to play around with if you like  
 
-```{r}
-hrdat <- read_csv("https://uoepsy.github.io/data/usmr_hrsleep.csv")
+```{webr}
+#| autorun: true
+hrdat <- read.csv("https://uoepsy.github.io/data/usmr_hrsleep.csv")
 head(hrdat)
 ```
 
@@ -77,7 +91,7 @@ A common option is to _mean center_ (i.e. to subtract the mean from each value).
 
 In our heart-rates data, the average hours of sleep is `r round(mean(hrdat$hrs_sleep),1)`. If we subtract that from each person's hours of sleep, we get the mean-centered hours slept (the `hrs_sleepC` column below). You can see that the first person in our data (Biancha) sleeps 14 hours a night, which is (according to the `hrs_sleepC` variable) 5.2 hours more than average.  
 
-```{r}
+```{webr}
 hrdat |>
   mutate(
     hrs_sleepC = hrs_sleep - mean(hrs_sleep), 
@@ -112,16 +126,6 @@ The process of standardisation (subtracting the mean and dividing by the standar
 :::: {.columns}
 ::: {.column width="70%"}
 Consider Martin. He goes on a lot about people's heights. He is 182cm tall, and he has size 43 feet (in EU sizes). Is Martin's height more unusual than the size of his feet? If we standardise both variables, we can see that he is 1.2 standard deviations above average height, but only .56 standard deviations above average in shoe size.  
-
-```{r}
-#| eval: false
-hrdat |> 
-  mutate(
-    Zheight = (height-mean(height))/sd(height), 
-    Zshoe = (shoe_size-mean(shoe_size))/sd(shoe_size), 
-      .after = shoe_size
-  ) |> head(5L) # just show the first 5
-```
 :::
 ::: {.column width="30%"}
 ```{r}
@@ -130,8 +134,7 @@ knitr::include_graphics("images/playmo_mc.jpg")
 ```
 :::
 ::::
-```{r}
-#| echo: false
+```{webr}
 hrdat |> 
   mutate(
     Zheight = (height-mean(height))/sd(height), 
@@ -139,10 +142,6 @@ hrdat |>
       .after = shoe_size
   ) |> head(5L) # just show the first 5
 ```
-
-
-
-
 
 :::
 
@@ -154,8 +153,7 @@ __handy functions__
 
 We can easily center and scale in R by just performing those calculations using something like `(var - mean(var)) / sd(var)`, but there is a handy function that can do it quickly for us:  
 
-```{r}
-#| eval: false
+```{webr}
 hrdat |> mutate(
   hrs_sleepC = scale(hrs_sleep, scale = FALSE), # mean centered
   hrs_sleepZ = scale(hrs_sleep), # standardised
@@ -163,8 +161,7 @@ hrdat |> mutate(
 ```
 
 We can actually use these _inside_ the call to the `lm()` function, e.g.  
-```{r}
-#| eval: false
+```{webr}
 lm(HR ~ scale(hrs_sleep), data = hrdat)
 ```
 
@@ -246,16 +243,11 @@ p1 + p2 + p3 + p4
 :::panel
 #### Original
 
-```{r}
-#| eval: false
+```{webr}
 mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
 summary(mod_orig)
 ```
-```{r}
-#| echo: false
-mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
-.pp(summary(mod_orig),l=list(3,9:12))
-```
+
 
 - `(Intercept)`: estimated heart rate (HR) for someone who didn't sleep at all
 - `hrs_sleep`: estimated change in HR for every 1 additional hour of sleep.
@@ -264,15 +256,9 @@ mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
 :::panel
 #### Mean centered X
 
-```{r}
-#| eval: false
+```{webr}
 mod_mc <- lm(HR ~ scale(hrs_sleep, scale=FALSE), data = hrdat)
 summary(mod_mc)
-```
-```{r}
-#| echo: false
-mod_mc <- lm(HR ~ scale(hrs_sleep, scale=FALSE), data = hrdat)
-.pp(summary(mod_mc),l=list(3,9:12))
 ```
 
 - `(Intercept)`: estimated heart rate (HR) for someone who **slept an average number of hours**
@@ -282,15 +268,9 @@ mod_mc <- lm(HR ~ scale(hrs_sleep, scale=FALSE), data = hrdat)
 :::panel
 #### Standardised X
 
-```{r}
-#| eval: false
+```{webr}
 mod_z <- lm(HR ~ scale(hrs_sleep), data = hrdat)
 summary(mod_z)
-```
-```{r}
-#| echo: false
-mod_z <- lm(HR ~ scale(hrs_sleep), data = hrdat)
-.pp(summary(mod_z),l=list(3,9:12))
 ```
 
 - `(Intercept)`: estimated heart rate (HR) for someone who **slept an average number of hours**
@@ -302,15 +282,9 @@ mod_z <- lm(HR ~ scale(hrs_sleep), data = hrdat)
 
 The function `I()` can be used to isolate a computation. The `+` and `-` symbols in linear models _mean_ something (they are how we add predictors), so we can use `I()` here to just tell R to do the computation of `hrs_sleep-8` on its own. 
 
-```{r}
-#| eval: false
+```{webr}
 mod_8 <- lm(HR ~ I(hrs_sleep-8), data = hrdat)
 summary(mod_8)
-```
-```{r}
-#| echo: false
-mod_8 <- lm(HR ~ I(hrs_sleep-8), data = hrdat)
-.pp(summary(mod_8),l=list(3,9:12))
 ```
 
 - `(Intercept)`: estimated heart rate (HR) for someone who **slept 8 hours**
@@ -325,7 +299,7 @@ However, in this case, the `hrs_sleep` variable is in every model (just transfor
 
 Note that the residual sums of squares for these models is identical - no model is explaining more variance than the other, because underlyingly they are all just the same model!  
 
-```{r}
+```{webr}
 mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
 mod_mc <- lm(HR ~ scale(hrs_sleep, scale=FALSE), data = hrdat)
 mod_z <- lm(HR ~ scale(hrs_sleep), data = hrdat)
@@ -384,34 +358,23 @@ p1 / p2
 
 The same applies when we standardise a predictor. Since standardising involves dividing a variable by its standard deviation, the coefficient for the standardised variable will be the original coefficient multiplied by the variable's standard deviation.  
 
-:::: {.columns}
-::: {.column width="45%"}
-Original coefficients  
-`lm(HR ~ hrs_sleep, data = hrdat)`
-```{r}
-coef(mod_orig)
-```
+```{webr}
+mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
+mod_z <- lm(HR ~ scale(hrs_sleep), data = hrdat)
 
-:::
-::: {.column width="2.5%"}
-:::
-::: {.column width="45%"}
-Standardised coefficients  
-`lm(HR ~ scale(hrs_sleep), data = hrdat)`
-```{r}
+# original coefficients
+coef(mod_orig)
+# standardised coefficients
 coef(mod_z)
 ```
 
-:::
-::::
-
 The standard deviation of `hrs_sleep` we can calculate:  
-```{r}
+```{webr}
 sd(hrdat$hrs_sleep) 
 ```
 
 And we can move from the original coefficient to the standardised one!  
-```{r}
+```{webr}
 # original coefficient multiplied by sd of hrs sleep
 coef(mod_orig)[2] * sd(hrdat$hrs_sleep)
 ```
@@ -459,15 +422,10 @@ p1 / p2
 :::panel
 #### Original
 
-```{r}
-#| eval: false
+```{webr}
 mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
+
 summary(mod_orig)
-```
-```{r}
-#| echo: false
-mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
-.pp(summary(mod_orig),l=list(3,9:12))
 ```
 
 - `(Intercept)`: estimated heart rate (HR) for someone who didn't sleep at all
@@ -477,15 +435,10 @@ mod_orig <- lm(HR ~ hrs_sleep, data = hrdat)
 :::panel
 #### Standardised Y
 
-```{r}
-#| eval: false
+```{webr}
 mod_yz <- lm(scale(HR) ~ hrs_sleep, data = hrdat)
+
 summary(mod_yz)
-```
-```{r}
-#| echo: false
-mod_yz <- lm(scale(HR) ~ hrs_sleep, data = hrdat)
-.pp(summary(mod_yz),l=list(3,9:12))
 ```
 
 - `(Intercept)`: estimated **number of standard deviations above average heart rate (HR)** for someone who didn't sleep at all
