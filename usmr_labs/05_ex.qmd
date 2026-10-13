@@ -4,6 +4,7 @@ editor_options:
   chunk_output_type: console
 ---
 
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
 
 ```{r}
 #| label: setup
@@ -76,7 +77,7 @@ To quickly sum across rows, you might find the `rowSums()` function useful (you 
 If my items were in columns between 4 to 15:  
 ```{r}
 #| eval: false
-dataframe$sumscore = rowSums(dataframe[, 4:15])
+dataframe$sumscore <- rowSums(dataframe[, 4:15])
 ```
 
 :::
@@ -746,9 +747,42 @@ $$
 
 `r qbegin(qcounter())`
 Take a look at the assumption plots (see [Chapter 10 #assumptions](https://uoepsy.github.io/usmr/2627/readings/10_slr.html#assumptions){target="_blank"}) for your model.  
-    
-- The trick to looking at assumption plots in linear regression is to look for "things that don't look random". 
-- As well as looking for patterns, these plots can also higlight individual datapoints that might be skewing the results. Can you figure out if there are any unusual monkeys in our dataset? Can you re-fit the model without that monkey? When you do so, do your conclusions change?  
+
+We'll see more about assumptions (and these plots) in the lectures and readings in the coming weeks, but for now, let's just have a first look at them. The trick to looking at assumption plots in linear regression is to look for "things that don't look random".  
+
+::: {.callout-tip collapse="true"}
+#### What does 'random' look like?
+
+In order to get a sense of what 'randomness' looks like, hit the "run code" button below lots and lots of times and look at how the plots change. 
+The code below creates a predictor, `x`, and then creates an outcome `y`, based on the following model: 
+$$
+\begin{align}
+\color{red}{y} &= \color{blue}{\underset{\underset{\text{intercept}}{\uparrow}}{1} + \underset{\underset{\text{slope}}{\uparrow}}{1} \cdot x} + \color{black}{\varepsilon}
+\quad \\
+\quad \\
+\varepsilon &\sim N(0, \underset{\underset{\text{residual sd}}{\uparrow}}{1}) \\
+\end{align}
+$$
+It then fits a regression model, and runs `plot(model)` to show the assumption plots.  
+Because we are fitting a model that perfectly matches how the data are generated, our we know our model is correctly specified, and so we know our residuals contain only randomness.  
+
+Run it a few times to see how the plots vary:  
+```{webr}
+#| caption: "simulate data, fit model, plot assumption plots"
+# simulate some data: 
+x <- rnorm(100)
+y <- 1 + 1*x + rnorm(100,0,1)
+somedata <- data.frame(x,y)
+# fit a model:
+somemodel <- lm(y ~ x, somedata)
+# plot assumption plots:
+par(mfrow=c(2,2))
+plot(somemodel)
+```
+
+:::
+
+As well as looking for patterns, these plots can also highlight individual datapoints that might be skewing the results. Can you figure out if there are any unusual monkeys in our dataset? Can you re-fit the model without that monkey? When you do so, do your conclusions change?  
 
 `r qend()`
 `r solbegin(show=params$SHOW_SOLS, toggle=params$TOGGLE)`
@@ -877,17 +911,23 @@ summary(interceptonly_model)$coefficients
 
 <div class="divider div-transparent div-dot"></div>
 
-# Extra! A team task!   
+# Extra: some silliness  
 
 `r qbegin("EXTRA!", qlabel=FALSE)`
 
-The data from this year's survey that you filled out in the first couple of weeks is available at [https://uoepsy.github.io/data/usmr2026.csv](https://uoepsy.github.io/data/usmr2026.csv)  
+Feel free to do this in groups if you like (if you do, just one of you needs to submit).  
 
-- **Step 1:** Using the USMR 2026 survey data, make *either* the prettiest plot you can or the ugliest plot you can . 
-- **Step 2:** Submit your plot! Go to [https://forms.office.com/e/KiGevk6xH3](https://forms.office.com/e/KiGevk6xH3){target="_blank"} and upload your plot and the code used to create it (save the plot via the plot window in R/take a screenshot/put it in a .Rmd and knit/whatever gets the picture uploaded!)   
-
-All plots submitted by end-of-day on 30th October will be rated by a number of non-USMR staff, and prizes made of chocolate will be awarded to the team with the prettiest plot and to the team with the ugliest plot. 
-
+- **Step 1 - Create your plot:** 
+Using the USMR 2026 survey data ( [https://uoepsy.github.io/data/usmr2026.csv](https://uoepsy.github.io/data/usmr2026.csv) ), make the ugliest plot you can, while preserving the clarity of the patterns/message you are trying to conveyed with your plot.   
+  
+- **Step 2 - Submission:** 
+Submit your plot! Go to the Learn page > Week 5 > Ugly Plot Competition, and upload your plot. This can be either a screenshot, or look up the `ggsave()` function, or just the code to reproduce the plot. 
+    - Deadline: **Friday 30th October 12:00**  
+    
+- **Step 3 - Reviewing & Rating:** After the submission deadline, go back to the Learn page > Week 5 > Ugly Plot Competition, and rate the other submissions. 
+    - Deadline: **Friday 6th November 12:00**  
+    
+When the results are in, prizes (made of chocolate) will be awarded to the authors of ugliest plot. 
 
 `r qend()`
 
