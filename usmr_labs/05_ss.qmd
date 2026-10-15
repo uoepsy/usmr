@@ -1,0 +1,242 @@
+---
+title: "![](assets/wiz.png){width=75px} Welcome to the SampleSpace! ![](assets/wiz.png){width=75px}"
+webr:
+  packages: ['dplyr','ggplot2','tibble','broom']
+---
+
+:::imp
+
+The SampleSpace is a hidden collection of bits and pieces. Everything here is *beyond* optional for the USMR course.  
+
+If you're feeling inquisitive, have a nose around.  
+If you came here by accident and don't like the look of it, that is absolutely fine, you can completely forget about this page (and will probably be better off for doing so!)
+
+:::
+
+{{< include ./_extensions/r-wasm/live/_knitr.qmd >}} 
+
+```{r}
+#| label: setup
+#| include: false
+source('assets/setup.R')
+library(tidyverse)
+library(patchwork)
+library(xaringanExtra)
+xaringanExtra::use_panelset()
+params <- list(
+  SHOW_SOLS = TRUE,
+  TOGGLE = TRUE
+)
+set.seed(017)
+```
+
+## simulating covarying variables.  
+
+When we simulate one continuous variable on its own, we have been using `rnorm()`:  
+
+```{webr}
+x <- rnorm(n = 20, mean = 160, sd = 12)
+```
+
+The way to express this variable in mathematical terms would be to use $\sim N(\mu, \sigma^2)$  to indicate that it is normally distributed with mean $\mu$ and variance $\sigma^2$:  
+
+$$
+X \sim N(100, 15^2)
+$$
+When we have two variables that co-vary, we need to express both at once...  
+So we will have two means, two variances, and the covariance. So we have something like:  
+
+$$
+\begin{pmatrix} X \\ Y \end{pmatrix} \sim N \left( \begin{pmatrix} \mu_x \\ \mu_y \end{pmatrix}, \begin{pmatrix} \sigma_x^2 & \text{Cov}(X,Y) \\ \text{Cov}(X,Y) & \sigma_y^2 \end{pmatrix} \right)
+$$
+
+In R, the way to simulate variables matches this setup, and uses the `mvrnorm()` function from the **MASS** package. 
+*(note, i don't like using `library(MASS)` because it contains functions called `filter()` and `select()` that get in the way of the tidyverse functions of the same name!)*  
+
+Play around with the different parts of the code below:  
+```{webr}
+# simulate two correlated variables:  
+somedata <- MASS::mvrnorm(n = 50, 
+              mu = c(160, 39),
+              Sigma = matrix(c(12,5,5,4), nrow = 2))
+
+# make it a dataframe,
+# and set names of variables
+somedata <- as.data.frame(somedata)
+names(somedata) <- c("height_cm","shoesize_eu")
+
+# plot them! 
+plot(somedata)
+```
+
+## simulating regression
+
+
+When we move from covariance/correlation to linear regression, we are assuming a directionality to things: Y changes as a result of X, but not vice versa.  
+
+This means we can do our simulations in a stepwise manner! 
+
+For instance, let's simulate data for a pretend study. 
+Suppose we are planning a simple experiment, where we give 50 people a randomly chosen amount of money between £1 and £100, and then ask them to rate how happy they feel on a scale of -10 to 10.  
+
+
+
+```{webr}
+# runif() here is meaning there's an even probability
+# of being given £1, £2, £8, £75, or £100
+money <- round(runif(n=50, min=1, max=100))
+
+# average happiness score is -5 (when money=0)
+# and increases by .1 for every £1 of money
+happy_mu <- -5 + .1*money
+
+# observed happiness scores are the average
+# happiness scores + some random error. 
+# the errors have a standard deviation of 2 
+happy <- rnorm(50, mean=happy_mu, sd=2)
+
+# make it into a dataframe: 
+study1 <- data.frame(money, happy)
+
+head(study1)
+
+plot(study1)
+```
+
+We can write in mathematical terms the way these data would be generated as so:  
+$$
+\begin{align}
+\text{happy}_i &\sim N(\mu_{\text{happy}_i}, 2^2) \\
+\mu_{\text{happy}_i} &= -5 + 0.1 \cdot \text{money}_i \\
+\text{money}_i &\sim \text{Unif}(1, 100) \\
+\end{align}
+$$
+
+If we were to do this study in reality, we wouldn't know the specific values that generates the outcome distribution. 
+We would be starting from a place where we know the structure, but not the values (in blue below):  
+$$
+\begin{align}
+\text{happy}_i &\sim N(\mu_{\text{happy}_i}, \color{blue}{\sigma_e^2}\color{black}{)} \\
+\mu_{\text{happy}_i} &= \color{blue}{b_0} + \color{blue}{b_1} \color{black}{\cdot} \text{money}_i \\
+\text{money}_i &\sim \text{Unif}(1, 100) \\
+\end{align}
+$$
+
+And those are what we get estimates for when we fit a regression model! 
+```{webr}
+mod1 <- lm(happy ~ money, data = study1)
+# b0 and b1
+coef(mod1)
+# sd of resids
+sigma(mod1)
+```
+
+
+
+## simulating statistical uncertainty 
+
+Thus far in these little extra bits, we've been doing simulations of individual datasets to help understand the machinery (like above), and in last week's one we also saw that we could use simulation for doing things like determining how much data to collect in order to detect an effect of a given size (a "power calculation").  
+
+Another use of simulation is to visualise the uncertainty in statistical estimates.  
+
+```{webr}
+#| autorun: true
+#| include: false
+money <- round(runif(n=50, min=1, max=100))
+happy_mu <- -5 + .1*money
+happy <- rnorm(50, mean=happy_mu, sd=2)
+study1 <- data.frame(money,happy)
+mod1 <- lm(happy ~ money, data = study1)
+rm(happy,money,happy_mu)
+```
+
+
+
+Suppose we have fitted a model to some data, such as below. 
+
+```{webr}
+mod1 <- lm(happy ~ money, data = study1)
+summary(mod1)
+```
+
+Alongside our coefficients, we also have their estimated standard errors, capturing the uncertainty in coefficient estimates due to sampling variability.  
+
+We can use these to get confidence intervals, which we can also plot:
+```{webr}
+confint(mod1)
+
+library(broom)
+plot_dat <- data.frame(money=1:100)
+augment(mod1, newdata = plot_dat, interval = "confidence") |>
+  ggplot(aes(x=money,y=.fitted,ymin=.lower,ymax=.upper))+
+  geom_line() +
+  geom_ribbon(alpha=.3)
+```
+
+Behind the scenes, the model estimates uncertainty in both the intercept and in the slope, and it does so by estimating them *jointly* - i.e., it estimates how uncertainty in the intercept relates to uncertainty in the slope:  
+
+$$
+\begin{pmatrix} \text{Var}(int) & \text{Cov}(int,slope) \\ \text{Cov}(int,slope) & \text{Var}(slope) \end{pmatrix}
+$$
+
+::: {.callout-caution collapse="true"}
+#### Why?
+
+Why?? because the fitting of the line to minimse the sum of squared residuals forces the line to pass right through the center of the cloud of data points. This entails that the intercept is bound directly to the slope. If our sample happens to have a slightly steeper slope, then our intercept would be lower to compensate.   
+
+In mathematical terms, the line must always go through the center of the data, at the average x and average y (at $\bar x$ and $\bar y$):    
+$\bar{y} = b_0 + b_1 \bar{x}$  
+Which means that:  
+$b_0 = \bar{y} - b_1\bar{x}$  
+So if we happen to see a bigger $b_1$, we should expect a smaller $b_0$.  
+
+:::
+
+We can get out the model estimated uncertainty in the parameters using `vcov()`:
+```{webr}
+vcov(mod1)
+
+# note that the square-root of the diagonals are our standard errors!
+vcov(mod1) |> diag() |> sqrt()
+```
+
+`r qbegin()`
+Martin had a [nice slide with "many regression"](https://uoepsy.github.io/usmr/2627/lectures/lecture05.html#/many-regressions){target="_blank"} lines to show uncertainty in the estimates.  
+
+Using `coef()`, `vcov()`, `MASS::mvrnorm()`, and `ggplot()+geom_abline()`, can we do the same?  
+
+`r qend()`
+`r solbegin(show=TRUE, toggle=params$TOGGLE)`
+
+```{webr}
+# we can create lots and lots of values for the model parameters
+# so each row here is an intercept and a slope:  
+manylines <- MASS::mvrnorm(n = 1000,
+              mu = coef(mod1),
+              Sigma = vcov(mod1)) |>
+  as.data.frame()
+
+# and, e.g., of all the slopes we just generated, 
+# let's ask where the middle 95% fall:  
+quantile(manylines$money, c(.025,.975))
+# which is the same (pretty much) as what we get from 1.96*SE:
+confint(mod1)
+
+# and lets plot all the lines on top of each other, 
+# making each individual one very faint: 
+ggplot(study1, aes(x = money, y = happy)) +
+  geom_point(size = 3, alpha = .3) +
+  geom_abline(data = manylines, 
+              aes(intercept = `(Intercept)`,
+                  slope = money),
+              alpha = .01)
+
+```
+
+
+
+`r solend()`
+
+
+
+
