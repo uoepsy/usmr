@@ -109,8 +109,18 @@ We can now do one of two things.
 sleepdtf$dtf <- 50-rowSums(sleepdtf[, 2:11])
 ```
 
-**Or**, the tidyverse way to do this would be:  
+**Or**, the tidyverse way to do this would be this.  
+This is a bit weird because `rowSums()` isn't very tidyverse-y, so we have to use `pick()`, which is weird thing that allows us to use the logic of `select()` but **inside** `mutate()`:  
+```{r}
+#| eval: false
+sleeptdf <- 
+  sleepdtf |> 
+  mutate(
+    dtf = 50 - rowSums(pick(item_1:item_10))
+  )
+```
 
+An alternative would be to do it a bit more manually. This would work too: 
 ```{r}
 #| eval: false
 sleeptdf <- 
@@ -120,11 +130,13 @@ sleeptdf <-
   )
 ```
 
+
 `r solend()`
 
 `r qbegin(qcounter())`
-Calculate the correlation between the total sleep time (`TST`) and the overall daytime functioning score calculated in the previous question.  
-Conduct a test to establish the probability of observing a correlation this strong in a sample of this size assuming the true correlation to be 0.  
+We can use `cor()` to calculate the correlation between the total sleep time (`TST`) and the overall daytime functioning score calculated in the previous question.  
+
+Use to `cor.test()` to conduct a test to establish the probability of observing a correlation this strong in a sample of this size assuming the true correlation to be 0.  
 
 Write a sentence or two summarising the results. 
 
@@ -383,7 +395,7 @@ monkeyexp <- read_csv("https://uoepsy.github.io/data/monkeyexplorers.csv")
 :::frame
 __Data: monkeyexplorers.csv__  
 
-Archer, Winther & Gandolfi (2024)^[Not a real study!] have conducted a study on monkeys! They were interested in whether younger monkeys tend to be more inquisitive about new things than older monkeys do. They sampled `r nrow(monkeyexp)` monkeys ranging from `r min(monkeyexp$age)` to `r max(monkeyexp$age)` years old. Each monkey was given a novel object, the researchers recorded the time (in minutes) that each monkey spent exploring the object. 
+A team of researchers, Kelly-Iturriaga, Michaelides, Bolton & Crocker (2026)^[Not a real study! These are just our tutor's names!] have conducted a study on monkeys! They were interested in whether younger monkeys tend to be more inquisitive about new things than older monkeys do. They sampled `r nrow(monkeyexp)` monkeys ranging from `r min(monkeyexp$age)` to `r max(monkeyexp$age)` years old. Each monkey was given a novel object, the researchers recorded the time (in minutes) that each monkey spent exploring the object. 
 
 For this week, we're going to be investigating the research question:  
 
@@ -412,7 +424,9 @@ For this week, we're going to be investigating the following research question:
 
 > Do older monkeys spend more/less time exploring novel objects?  
 
-Read in the data to your R session, then visualise and describe the *marginal distributions* of those variables which are of interest to us. These are the distribution of each variable (time spent exploring, and monkey age) *without* reference to the values of the other variables.
+Read in the data to your R session. 
+The very first thing to do is always "take a look around the data". This means looking at `summary()` etc, and **plotting your variables**. 
+Make sure to make visualisations of all the distributions for each variables that is of interest to us (they can be quick plots, they don't have to be fancy plots!).  
 
 
 ::: {.callout-tip collapse="true"}
@@ -479,11 +493,10 @@ of `r round(mean(monkeyexp$exploration_time),1)` years, and a standard deviation
 `r solend()`
 
 `r qbegin(qcounter())`  
-After we've looked at the marginal distributions of the variables of interest in the analysis, we typically move on to examining *relationships* between the variables.  
+A first good step when you get data is to just plot the variables separately, to get a sense of if any immediately weird looking things jump out. 
+Next, we can look at visuals of the **patterns** between the variables.  
   
 Visualise and describe the relationship between age and exploration-time among the monkeys in the sample.  
-
-
 
 ::: {.callout-tip collapse="true"}
 #### Hints
@@ -523,11 +536,28 @@ that is, $r_{\text{age, exploration-time}} = `r round(cor(monkeyexp[,c("age","ex
 
 
 `r qbegin(qcounter())`
-Using the `lm()` function, fit a linear model to the sample data, in which time that monkeys spend exploring novel objects is explained by age. Assign it to a name to store it in your environment.  
+Using the `lm()` function, fit a linear model to the sample data, in which time that monkeys spend exploring novel objects is explained by age. 
+
+Make sure to assign a name to your model to ensure it is stored in your R environment.  
+
+
+
 
 ::: {.callout-tip collapse="true"}
 #### Hints
 You can see how to fit linear models in R using `lm()` in [Chapter 10 #fitting-linear-models-in-r](https://uoepsy.github.io/usmr/2627/readings/10_slr.html#fitting-linear-models-in-r){target="_blank"}
+
+Yes:  
+```{r}
+#| eval: false
+mod1 <- lm(y ~ x, data = somedata)
+```
+No:
+```{r}
+#| eval: false
+mod1 <- lm(somedata$y ~ somedata$x)
+```
+
 :::
 
 `r qend()`
@@ -582,7 +612,7 @@ A one year increase in age is associated with an estimated decrease of `r round(
 
 
 `r qbegin(qcounter())`
-Test the hypothesis that the population slope is zero --- that is, that there is no linear association between exploration time and age in the population.  
+What do you conclude about the null hypothesis that there is no linear association between exploration time and age in the population.  
 
 ::: {.callout-tip collapse="true"}
 #### Hints
@@ -658,7 +688,7 @@ A significant association was found between age (in years) and time spent explor
 
 `r qbegin(qcounter())`
 Create a visualisation of the estimated association between age and exploration time.   
-
+You've kind of already done this with the plot earlier, but we want to add our model line to it.  
 
 ::: {.callout-tip collapse="true"}
 #### Hints
@@ -679,14 +709,15 @@ ggplot(data = monkeyexp, aes(x = age, y = exploration_time)) +
 `r solend()`
 
 
-`r qbegin(paste0(qcounter(), " - Optional"))`
+`r qbegin(paste0(qcounter(), " - *Optional*"))`
 Consider the following:  
 
 1. In fitting a linear regression model, we make the assumption that the errors around the line are normally distributed around zero (this is the $\epsilon \sim N(0, \sigma)$ bit.)  
 2. About 95\% of values from a normal distribution fall within two standard deviations of the centre.  
 
-We can obtain the estimated standard deviation of the errors ($\hat \sigma$) from the fitted model using `sigma()` and giving it the name of our model.  
-What does this tell us?  
+We can obtain the estimated standard deviation of the errors ($\hat \sigma$) from the fitted model using `sigma(my_model)`.  
+
+From this, can you work out within what range 95% of observations differ from the model predictions?  
 
 ::: {.callout-tip collapse="true"}
 #### Hints
