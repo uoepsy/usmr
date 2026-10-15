@@ -7,6 +7,10 @@ editor_options:
   chunk_output_type: console
 ---
 
+<small style="display:block;text-align:right">Want to run and tweak code directly in this reading?  
+Check out the <a class="intlink" href="../readingswebr/15i_interactions.html">interactive version</a></small>
+
+
 :::lo
 This reading:  
 
@@ -31,11 +35,11 @@ contcont <- tibble(
   partner_time = round(7+(scale(x1)[,1]*3),2),
   relationship_qual = round((scale(x2)[,1]*10) + 60),
   wellbeing = 20 + (scale(y)[,1]*5)
-) %>% mutate(x1=partner_time,x2=relationship_qual,y=wellbeing)
+) |> mutate(x1=partner_time,x2=relationship_qual,y=wellbeing)
 
-ptdat <- contcont %>%
+ptdat <- contcont |>
   select(partner_time,relationship_qual,wellbeing)
-concont <- contcont %>%
+concont <- contcont |>
   select(x1,x2,y)
 
 
@@ -46,11 +50,11 @@ contcat <- tibble(
   apoe4 = x2,
   aqpi = round((scale(x1)[,1]*100) + 180),
   mmse = round((scale(y)[,1]*4) + 22),
-) %>% mutate(x1=aqpi, x2=apoe4, y=mmse)
+) |> mutate(x1=aqpi, x2=apoe4, y=mmse)
 
-airpol <- contcat %>%
-  select(aqpi, apoe4, mmse) %>% mutate(apoe4=ifelse(apoe4==0,"neg","pos"))
-contcat <- contcat %>%
+airpol <- contcat |>
+  select(aqpi, apoe4, mmse) |> mutate(apoe4=ifelse(apoe4==0,"neg","pos"))
+contcat <- contcat |>
   select(x1,x2,y)
 set.seed(913)
 catcat <- tibble(
@@ -61,7 +65,7 @@ catcat <- tibble(
   asgroup = ifelse(x2==1,"group","alone"),
   candybars = y
 )
-candy <- catcat %>% select(anonymity, asgroup, candybars)
+candy <- catcat |> select(anonymity, asgroup, candybars)
 # write_csv(ptdat, "../../data/usmr_partnertime.csv")
 # write_csv(candy, "../../data/usmr_candy.csv")
 # write_csv(airpol, "../../data/usmr_airpol.csv")
@@ -100,7 +104,7 @@ Let's use our primate brains data for a more realistic example:
 ```{r}
 #| output: false
 braindata <- read_csv("https://uoepsy.github.io/data/usmr_braindata.csv")
-braindata <- braindata %>% mutate(
+braindata <- braindata |> mutate(
   isMonkey = ifelse(species != "Human", "YES", "NO")
 )
 
@@ -617,7 +621,7 @@ summary(eg3mod)
 ```{r}
 #| eval: false
 #| echo: false
-fit = lm(y~x1*x2,catcat %>% mutate(across(x1:x2,factor)))
+fit = lm(y~x1*x2,catcat |> mutate(across(x1:x2,factor)))
 sjPlot::plot_model(fit, type="int",show.data=T)+geom_line()
 
 # it's just viewing that cube from one side 
@@ -825,7 +829,7 @@ broom::augment(eg3mod, newdata=plotdat, interval="confidence") |>
 ```{r}
 #| eval: false
 #| echo: false
-fit = lm(y~x1*x2,catcat %>% mutate(across(x1:x2,factor)))
+fit = lm(y~x1*x2,catcat |> mutate(across(x1:x2,factor)))
 sjPlot::plot_model(fit, type="int",show.data=T)+geom_line()
 
 # it's just viewing that cube from one side 
@@ -884,7 +888,7 @@ This is because the coefficient for APOE4 compares the heights of the two lines 
 ```{r}
 #| out-width: "100%"
 #| echo: false
-airpol <- airpol %>% 
+airpol <- airpol |> 
   mutate(
     aqpiC = aqpi - mean(aqpi)
   )
@@ -919,7 +923,7 @@ candy <- read_csv("https://uoepsy.github.io/data/usmr_candy.csv")
 
 # make both predictors 'factors'
 candy <- 
-  candy %>% 
+  candy |> 
   mutate(
     anonymity = factor(anonymity),
     asgroup = factor(asgroup)
@@ -928,22 +932,11 @@ candy <-
 
 Once they are factors, we can see the default levels:  
 
-:::: {.columns}
-::: {.column width="47.5%"}
 ```{r}
 levels(candy$anonymity)
-```
-:::
-::: {.column width="5%"}
-<!-- empty column to create gap -->
-:::
-::: {.column width="47.5%"}
-```{r}
 levels(candy$asgroup)
 ```
-:::
 
-::::
 
 
 This is the original model, with the default levels:  
@@ -955,7 +948,7 @@ coef(eg3mod)
 Let's relevel anonymity to have "identifiable" as the first level, and then refit the model:  
 ```{r}
 candy <- 
-  candy %>% 
+  candy |> 
   mutate(
     anonymity = fct_relevel(anonymity, "identifiable")
   )
@@ -1056,12 +1049,12 @@ df <- expand_grid(
   grouping = c("1","2"),
   condition = c("A","B"),
   n = 1:30
-) %>%
+) |>
   mutate(
     lp = 2 + -2*(grouping=="2") + 1*(condition=="B") +
       -2*(grouping=="2" & condition=="B"),
     y = lp + rnorm(n())
-  ) %>% mutate_if(is.character,factor)
+  ) |> mutate_if(is.character,factor)
 
 # group means and marginals ----
 # tab <- xtabs( ~ grouping + condition, data = df)
@@ -1081,8 +1074,8 @@ model1 <- lm(y ~ condition * grouping, df)
 
 
 
-modplot <- as.data.frame(effects::effect("condition * grouping",model)) %>%
-  ggplot(.,aes(x=condition, y=fit, ymin=lower,ymax=upper))+
+modplot <- as.data.frame(effects::effect("condition * grouping",model)) |>
+  ggplot(aes(x=condition, y=fit, ymin=lower,ymax=upper))+
   geom_pointrange(aes(col=grouping,shape=condition), size=1.5,alpha=.8) +
   geom_line(aes(col=grouping,group=grouping), lty="dashed",linewidth=1)+
   # labs(title="The model", subtitle="lm()") + 
@@ -1292,7 +1285,7 @@ df <- tibble(
 )
 mod1 <- lm(height ~ age, data = df)
 mod2 <- lm(height ~ age + I(age^2), data = df)
-df <- df %>% mutate(f1 = fitted(mod1),f2=fitted(mod2))
+df <- df |> mutate(f1 = fitted(mod1),f2=fitted(mod2))
 
 ggplot(df,aes(x=age,y=height))+
   geom_point() + 
@@ -1315,21 +1308,21 @@ However, it's useful as a means of seeing how we can extend linear models to fit
 
 It is estimating a persons' height as:
 
-- an intercept of `r coef(mod2)[1] %>% round(2)` (the estimated height of a newborn baby of age 0)
-- plus `r coef(mod2)[2] %>% round(2)` cm for every year of age they have
-- plus `r coef(mod2)[3] %>% round(2)` cm for every year of age they have, squared.  
+- an intercept of `r coef(mod2)[1] |> round(2)` (the estimated height of a newborn baby of age 0)
+- plus `r coef(mod2)[2] |> round(2)` cm for every year of age they have
+- plus `r coef(mod2)[3] |> round(2)` cm for every year of age they have, squared.  
 
 So for a 4 year old, the estimated height is: 
 
 $$
-height = `r coef(mod2)[1] %>% round(2)` + (`r coef(mod2)[2] %>% round(2)` \times 4) + (`r coef(mod2)[3] %>% round(2)` \times 4^2) = `r round(coef(mod2),1) %*% c(1,4,16)`
+height = `r coef(mod2)[1] |> round(2)` + (`r coef(mod2)[2] |> round(2)` \times 4) + (`r coef(mod2)[3] |> round(2)` \times 4^2) = `r round(coef(mod2),1) %*% c(1,4,16)`
 $$
 and for a 10 year old, it is:  
 
 $$
-height = `r coef(mod2)[1] %>% round(2)` + (`r coef(mod2)[2] %>% round(2)` \times 10) + (`r coef(mod2)[3] %>% round(2)` \times 10^2) = `r round(coef(mod2),1) %*% c(1,10,100)`
+height = `r coef(mod2)[1] |> round(2)` + (`r coef(mod2)[2] |> round(2)` \times 10) + (`r coef(mod2)[3] |> round(2)` \times 10^2) = `r round(coef(mod2),1) %*% c(1,10,100)`
 $$
-We can see how the quadratic "$\text{age}^2$ term has a larger (negative) effect as age increases (for the 4 year old it makes the estimated height $`r coef(mod2)[3] %>% round(2)` \times 4^2 = `r round(coef(mod2)[3]*4^2,1)`$ lower, and for the 10 year old it makes the estimated height $`r coef(mod2)[3] %>% round(2)` \times 10^2 = `r round(coef(mod2)[3]*10^2,1)`$ lower). This captures the plateauing of heights as children get older.  
+We can see how the quadratic "$\text{age}^2$ term has a larger (negative) effect as age increases (for the 4 year old it makes the estimated height $`r coef(mod2)[3] |> round(2)` \times 4^2 = `r round(coef(mod2)[3]*4^2,1)`$ lower, and for the 10 year old it makes the estimated height $`r coef(mod2)[3] |> round(2)` \times 10^2 = `r round(coef(mod2)[3]*10^2,1)`$ lower). This captures the plateauing of heights as children get older.  
 
 :::
 
