@@ -1,7 +1,7 @@
 ---
 title: "![](assets/wiz.png){width=75px} Welcome to the SampleSpace! ![](assets/wiz.png){width=75px}"
 webr:
-  packages: ['dplyr','ggplot2','tibble','broom']
+  packages: ['dplyr','ggplot2','tibble','patchwork']
 ---
 
 :::imp
@@ -27,7 +27,6 @@ params <- list(
   SHOW_SOLS = TRUE,
   TOGGLE = TRUE
 )
-set.seed(017)
 ```
 
 ## simulating multiple regression
@@ -39,21 +38,210 @@ To simulate data that can be modelled with simple regression, we essentially did
 
 When we have multiple predictors, we will need to have more steps, depending on how we consider them to fit into the process. 
 
-```{r}
-conf <- round(runif(50, 18, 60))
-xx <- rnorm(50, 4-.1*conf, 3)
-y <- rnorm(50, 4 + .4*xx +.6*conf, 2)
+Let's suppose we are interested in estimating if coffee increases reaction times, so we give 100 people coffee and 100 people water, and then measure their reaction time RT.  
 
-df <- data.frame(conf,xx,y)
+In this design, we're randomly allocating people to either coffee or water, so we can use `sample()`.    
 
-lm(y~xx,df) |> summary()
-lm(y~conf+xx,df) |> summary()
+And for our fake data, we're going to suppose that drinking coffee speeds up reaction times by 100ms compared to water.  
+
+```{webr}
+#| autorun: true
+rtexpt <- 
+  tibble(
+    condition = sample(c("water","coffee"), 200, 
+                       replace = TRUE, prob = c(.5, .5)),
+    RT = 600 - 100*(condition=="coffee") + rnorm(200, 0, 50)
+  )
+```
+
+Note that how we create the `RT` variable is a straightforward simple regression model: $RT = 600 - 100*(hasCoffee) + \epsilon$.  
+
+:::{.column-margin}
+If we want to represent the full data generating process here, we could write: 
+
+$$
+\begin{align}
+\text{RT}_i &\sim N(\mu_i, 50^2) \\ 
+\mu_i &= 600 - 100 \cdot \text{Coffee}_i \\ 
+\text{Coffee}_i &\sim \text{Bernoulli}(0.5) 
+\end{align}
+$$
+:::
+
+An appropriate model to estimate how coffee influences reaction times, from this very simple experimental design, would be just `lm(RT ~ condition)`.  
+
+Fitting this model provides us with an estimate that is close to how we generated the data (we said that coffee leads to 100ms faster RT than water):  
+
+```{webr}
+lm(RT ~ condition, data = rtexpt) |>
+  confint()
 ```
 
 
+Now let's suppose that instead of randomly allocating people into either drinking coffee or water, we gave all 200 people the choice. They came into a room, were given the choice of water or coffee, and then half an hour later we measured their reaction times.  
+
+For our fake data, we're going to suppose exactly the same as we did before - that drinking coffee speeds up reaction times by 100ms compared to water.  
+
+In this scenario, however, the code `sample(c("water","coffee"), 200, ...)` doesn't really reflect how people end up being in either the "coffee" group or the "water" group. 
+For one example, it's quite possible that people who are more tired will be more likely to drink coffee!  
+Not only that, but those tired people will probably have lower RTs!  
+
+We could generate such data as: 
+
+:::{.column-margin}
+And we could write this as:  
+
+$$
+\begin{align} 
+RT_i &\sim \text{Normal}(\mu_i, 50^2) \\ 
+\mu_i &= 600 - 100 \cdot \text{Coffee}_i + 200 \cdot  \text{Tired}_i \\ 
+\text{Coffee}_i &\sim \text{Bernoulli}(p_i) \\ 
+p_i &= 0.2 + 0.6 \cdot \text{Tired}_i \\ 
+\text{Tired}_i &\sim \text{Bernoulli}(0.4) 
+\end{align}
+$$
+:::
+
+```{webr}
+#| autorun: true
+# 40% of people are tired:
+tired <- sample(c("tired","not tired"), 200, replace = TRUE, prob = c(.4, .6))
+
+condition <- NA
+# tired people have an 80% chance of choosing coffee:  
+condition[tired=="tired"] <- sample(c("coffee","water"), 
+                                    size = sum(tired=="tired"), 
+                                    replace = TRUE, prob = c(.8,.2))
+# not-tired people have 20% chance of choosing coffee
+condition[tired=="not tired"] <- sample(c("coffee","water"), 
+                                        size = sum(tired=="not tired"), 
+                                        replace = TRUE, prob = c(.2,.8))
+
+rtobs <- 
+  tibble(
+    tired,
+    condition,
+    RT = 600 - 100*(condition=="coffee") + 
+      200*(tired=="tired") + rnorm(200, 0, 50)
+  )
+# remove the vectors now we've used them in the dataframe
+rm(tired,condition)
+```
 
 
+Note that because our design has changed, the model that previously was appropriate for our first design (randomly giving people coffee/water), is no longer estimating how coffee changes reaction times (coffee results in 100ms faster RT than water).  
+In fact, this model might actually now say that coffee leads to **slower** reaction times!  
+```{webr}
+lm(RT ~ condition, data = rtobs) |> summary()
+```
 
+Why? Because comparing the two groups ("coffee" vs "water") is no longer twp groups that *only* differ with respect to what they drank. We're actually comparing lots of tired people (in the "coffee" group) from lots of not-tired people (in the "water" group):  
+```{webr}
+library(patchwork)
+p1 <- ggplot(rtobs, aes(x=condition, y = RT))+
+  geom_jitter(height=0,alpha=.1) +
+  stat_summary(geom="pointrange", fatten=1) + 
+  ylim(250,1000) +
+  labs(title="ignoring tiredness")
+  
+p2 <- ggplot(rtobs, aes(x=condition, y = RT, col = tired))+
+  geom_jitter(height=0,alpha=.1) +
+  stat_summary(geom="pointrange", fatten=1) + 
+  ylim(250,1000) +
+  labs(title="coloured by tiredness")
+
+p1 + p2
+```
+
+When we add in `tired` as a predictor, it estimates the effect of coffee on reaction times _within_ the tired / not-tired people (and assumes that this effect is the same for both): 
+```{webr}
+lm(RT ~ tired + condition, rtobs) |>
+  summary()
+```
+
+::: {.callout-caution collapse="true"}
+### how??
+
+We can manually calculate the coefficient by calculating the coffee v water RT difference in both the tired and non-tired people, and then weighting them by how balanced the coffee/water is for each type of person.  
+
+This means that if we people fell into these groups:  
+```{r}
+#| echo: false
+tibble(
+  tired = rep(c("tired","not tired"),c(10,100)),
+  condition = c(
+    rep(c("coffee","water"),c(9,1)),
+    rep(c("coffee","water"),c(50,50))
+  )
+) |> table()
+```
+Then the $\text{RT}_\text{coffee} - \text{RT}_\text{water}$ difference for the tired group would be weighted by $\frac{9*1}{10}=0.9$ and the $\text{RT}_\text{coffee} - \text{RT}_\text{water}$ difference for the not-tired group would be weighted $\frac{50*50}{100}=25$, so our coefficient would more closely match what happens in the not-tired group. Which makes sense, because the comparison there is much clearer - we have 50 coffee vs 50 water!   
+
+```{webr}
+rtobs |>
+  # for each of tired/not-tired:
+  group_by(tired) |>
+  summarise(
+    # calc difference in RT between coffee and water:
+    diffRT = mean(RT[condition=="coffee"]) - mean(RT[condition=="water"]),
+    # how many coffees?
+    n_coffee = sum(condition=="coffee"),
+    # how many waters?
+    n_water = sum(condition=="water"),
+    # how many total?
+    n_total = n(),
+    # the weight that this will have in our coefficient
+    weight = (n_coffee * n_water) / n_total
+  ) |>
+  summarise(
+    # the coefficient is the weighted average:  
+    coef = sum(diffRT*weight)/sum(weight)
+  )
+```
+
+
+If `tired` was a continuous variable, then this same logic would happen: weighting the effect of coffee in each stratum of 'tiredness' based on the balance of coffee/water, but cutting up the tiredness variable into infinitely many bins. Some of the bins would have no data in them, and would contribute zero weight, etc. 
+
+:::
+
+
+## but... 
+
+Of course, this assumes we actually thought to measure people's tiredness! And it assumes that there's not things other than tiredness that are _also_ biasing our estimates.  
+
+This is in large part why observational research is so difficult. Our questions are often wanting to capture something *explanatory* (i.e. "does drinking coffee change RT?", and "by how much?"). But in order for our model to estimate our desired target, we need to capture and adjust for the other variables that could lead us astray. 
+
+For an example, here is some code to generate a more complex picture of reality. 
+But, we've used `select()` at the end to mimick what would happen if we never measured some of the variables.  
+
+As before, drinking coffee speeds up reaction times by 100ms compared to water.  
+But can we see that from our models?  
+```{webr}
+rt2 <- tibble(
+    # 25% of people are coffee addicts
+    uAddict = rbinom(200, 1, .25),
+    # coffee addicts typically book afternoon slots:
+    uhour_of_day = round(runif(200, 9, 15)) + 3*uAddict,
+    # people are more tired in the morning, and coffee addicts are more tired generally 
+    tired = rbinom(200, 1, plogis(2*uAddict - 2*scale(uhour_of_day))),
+    # people choose coffee more in the morning, and more if they are tired, and more if they are coffee addicts:
+    condition = rbinom(200, 1, plogis(-1*scale(uhour_of_day)+3*tired+5*uAddict)),
+    # RT are quicker in mornings, slower when tired,
+    # slower when coffee addict, faster with coffee
+    RT = 600 + 50*uhour_of_day + 200*tired + 350*uAddict -100*condition + rnorm(200,0,1)
+  ) |>
+  # we never actually measure whether they're a coffee addict, 
+  # or the time of day that they took part
+  select(-uhour_of_day, -uAddict) |>
+  mutate(
+    condition = ifelse(condition==1,"coffee","water"),
+    tired = ifelse(tired==1,"tired","not tired")
+  )
+
+with(rt2, table(tired, condition))
+lm(RT ~ condition, data = rt2)
+lm(RT ~ tired + condition, data = rt2)
+```
 
 
 
