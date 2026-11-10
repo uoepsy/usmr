@@ -1103,5 +1103,68 @@ anova(
 `r qend()`
 
 
+`r solbegin(show=FALSE, toggle=params$TOGGLE)`
+
+```{r}
+#| include: false
+liedf <- read_csv("https://uoepsy.github.io/data/usmr_polygraph.csv")
+
+# there seems to be a 5 there.. 
+table(liedf$strategy)
+# the other variables look okay though
+describe(liedf)
+pairs.panels(liedf)
+
+
+liedf <- liedf |> 
+  filter(strategy!=5) |>
+  mutate(
+    # strategy is a factor. but currently numbers
+    # i'm going to give them better labels too.. 
+    # to do this is need to tell factor() what "levels" to look for
+    # and then give it some "labels" to apply to those.
+    strategy = factor(strategy, 
+                      levels = c("0","1","2","3"),
+                      labels = c("do nothing", "close eyes",
+                                 "cough", "deep breathing")
+                      )
+  )
+
+liemod <- lm(hr ~ age + anx + strategy, data = liedf)
+
+# Does HR differ between strategies?
+anova(liemod)
+# the above is a shortcut for getting this comparison out:
+anova(
+  lm(hr ~ age + anx, data = liedf),
+  lm(hr ~ age + anx + strategy, data = liedf)
+)
+
+res = anova(liemod)
+```
+
+
+To evaluate whether heart rates during a polygraph differed between people using different pre-test strategies, a multiple linear regression model was fitted predicting average heart rate during the test (bpm) from age, baseline anxiety ($Z$-scored), and pre-test strategy (whether participants opted to do nothing, close their eyes, cough, or do deep breathing). The final sample consisted of `r nrow(liedf)` participants across the four strategy conditions (see @tbl-strat), with an average age of `r round(mean(liedf$age),1)` (SD `r round(sd(liedf$age),1)`).  
+
+```{r}
+#| echo: false
+#| label: tbl-strat
+#| tbl-cap: "Number of participants opting to do each pre-test strategy"
+liedf |> count(strategy) |>
+  rename(Frequency=n) |>
+  gt::gt()
+```
+
+
+The inclusion of pre-test strategy to the model with age and baseline anxiety significantly improved model fit ($F(`r res[3,1]`, `r round(res[3,2],1)`) = `r round(res[3,4],1)`$, $p < .001$), suggesting that average heart rate during polygraph testing significantly differs  between the groups choosing different strategies.  
+
+Specifically, [ insert interpretation coefficients here. ]
+
+[Insert plot here]
+
+Because participants self-selected their pre-test strategy these observed differences in heart rate may be confounded by unmeasured individual traits. Although age and baseline anxiety were controlled for, factors such as physiological reactivity, baseline heart rate, or motivation to win the financial reward could have influenced both a participant's choice of strategy and their heart rate during the test.
+
+`r solend()`
+
 <a style="color:white;" href="07_ss.html">are we still doing these?</a>
 
