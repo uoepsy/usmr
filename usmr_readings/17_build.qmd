@@ -7,7 +7,8 @@ editor_options:
 
 <!-- > We demand rigidly defined areas of doubt and uncertainty -->
 <!-- > I'd far rather be happy than right any day -->
-
+<small style="display:block;text-align:right">Want to run and tweak code directly in this reading?  
+Check out the <a class="intlink" href="../readingswebr/17i_build.html">interactive version</a></small>
 
 ```{r}
 #| include: false
@@ -42,13 +43,15 @@ chimp_obs <-
 chimp_obs <- 
   chimp_obs |>
   transmute(chimp, age,enrichment_hrs=k_time, enclosure_type, PUZZLET)
-write_csv(chimp_obs, file="../../data/chimp_obs.csv")
-sjPlot::tab_model(
-  lm(PUZZLET ~ enclosure_type, chimp_obs),
-  lm(PUZZLET ~ age+enclosure_type, chimp_obs),
-  lm(PUZZLET ~ age+enrichment_hrs+enclosure_type, chimp_obs),
-  lm(PUZZLET ~ enrichment_hrs+enclosure_type, chimp_obs)
-)
+
+
+# write_csv(chimp_obs, file="C:/Users/jking34/Desktop/uoepsy_courses/data/hhgbm_chimp_obs.csv")
+# sjPlot::tab_model(
+#   lm(PUZZLET ~ enclosure_type, chimp_obs),
+#   lm(PUZZLET ~ age+enclosure_type, chimp_obs),
+#   lm(PUZZLET ~ age+enrichment_hrs+enclosure_type, chimp_obs),
+#   lm(PUZZLET ~ enrichment_hrs+enclosure_type, chimp_obs)
+# )
 
 ## rct
 # eseed=round(runif(1,1,1e7))
@@ -90,16 +93,15 @@ chimp_rct$asleep <-
 
 chimp_rct <- chimp_rct |>
   transmute(chimp, age, asleep, enrichment_hrs=k_time, enclosure_type, PUZZLET)
-write_csv(chimp_rct, file="../../data/chimp_rct.csv")
 
-sjPlot::tab_model(
-  lm(PUZZLET ~ enclosure_type, chimp_rct),
-  lm(PUZZLET ~ age+enclosure_type, chimp_rct),
-  lm(PUZZLET ~ age+enrichment_hrs+enclosure_type, chimp_rct),
-  lm(PUZZLET ~ enrichment_hrs+enclosure_type, chimp_rct)
-)
+# write_csv(chimp_rct, file="C:/Users/jking34/Desktop/uoepsy_courses/data/hhgbm_chimp_rct.csv")
 # 
-# 
+# sjPlot::tab_model(
+#   lm(PUZZLET ~ enclosure_type, chimp_rct),
+#   lm(PUZZLET ~ age+enclosure_type, chimp_rct),
+#   lm(PUZZLET ~ age+enrichment_hrs+enclosure_type, chimp_rct),
+#   lm(PUZZLET ~ enrichment_hrs+enclosure_type, chimp_rct)
+# )
 
 ```
 
@@ -186,18 +188,18 @@ As well as not being clear about whether our question is about *all* chimpanzees
 A clearly defined research question should have two things, that can be defined outside of any statistical model: 
 
 1. a unit-specific quantity
-    - this is the thing we want to know about, defined at the level of the unit of interest. It could be a single value $Y_i$ for a given unit $i$, or a counterfactual comparison of $Y_i$ under different levels of another variable $X$, which we could be write as, e.g.,: $Y_i^{X=1} - Y_i^{X=0}$^[More complex questions involving interactions might then be framed in terms of comparisons of comparisons!]
+    - this is the thing we want to know about, defined at the level of the unit of interest. It could be a single value $Y_i$ for a given unit $i$, or a counterfactual comparison of $Y_i$ under different levels of another variable^[More complex questions involving interactions might then be framed in terms of comparisons of comparisons!] $X$, which we could be write as, e.g.,: $Y_i^{X=1} - Y_i^{X=0}$
 2. a target population
     - this is the set of units over which we are aggregating our quantity. 
   
 Returning to our chimp example, we can move to a somewhat more clearly stated question: 
 
-- **Research Question:** For adult chimpanzees housed in UK zoos, what is the average effect on time-spent engaging with puzzles due to being placed in group-housing enclosure (>2 chimps) compared to being placed in paired-housing enclosure (2 chimps)? 
+- **Research Question:** For adult chimpanzees housed in UK zoos, what is the average *effect* on time-spent engaging with puzzles due to being placed in group-housing enclosure (>2 chimps) compared to being placed in paired-housing enclosure (2 chimps)? 
 
-Note that the word "effect" here is stating that we want to know how much of the chimpanzee $i$'s "puzzle-time" is _because_ they are in a group-enclosure.  
+Note that the word "effect" here is stating that we want to know how much of the chimpanzee $i$'s "puzzle-time" is _because_ they are in a group-enclosure. 
 This is a causal question, and as such concerns what we would expect chimp $i$'s "puzzle-time" to be like in the counterfactual world where we observed them in the other type of enclosure. 
-The unit-specific quantity that we are interested in here is $\text{PuzzleTime}_i(\text{Group-Housing}) - \text{PuzzleTime}_i(\text{Paired-Housing})$, and these correspond to the values that are in the `diff` column in @tbl-delta. 
-We want the average of these across a sample that represents the target population 
+The unit-specific quantity that we are interested in here is $\text{PuzzleTime}_i^{(\text{Enclosure = Group})} - \text{PuzzleTime}_i^{(\text{Enclosure = Paired})}$, and these correspond to the values that are in the `diff` column in @tbl-delta. 
+And we we are going to want the average of these across a sample that represents the target population (adult chimps in UK zoos).  
 
 ```{r}
 #| echo: false
@@ -239,7 +241,7 @@ bind_rows(
 
 :::{.readingref}
 
-Lundberg, I., Johnson, R., & Stewart, B. M. (2021). *What is your estimand? Defining the target quantity connects statistical evidence to theory*. American Sociological Review, 86(3), 532-565.  
+- [Lundberg, I., Johnson, R., & Stewart, B. M. (2021). *What is your estimand? Defining the target quantity connects statistical evidence to theory*. American Sociological Review, 86(3), 532-565.](https://journals.sagepub.com/doi/full/10.1177/00031224211004187){target="_blank"}
 
 :::
 
@@ -252,7 +254,8 @@ Lundberg, I., Johnson, R., & Stewart, B. M. (2021). *What is your estimand? Defi
 Now that we have a well defined research question, there are lots of ways we might design a study to address it. 
 We'll assume that we are measuring "puzzle-time" the same way in all of these - by giving each chimpanzee an hour to work through a series of puzzles, and seeing how long they engage with the puzzles before they give up/get bored/wander off.  
 
-There are different ways we could study chimpanzees from both paired- and group-enclosures doing these puzzles:  
+There are different ways we could study chimpanzees from both paired- and group-enclosures doing these puzzles.  
+Here are three possibilities:  
 
 :::fancyframe
 **1. observational study**  
@@ -267,11 +270,11 @@ Randomly allocate half of chimpanzees into group-enclosures, and half into paire
 Place each chimpanzee in both types of enclosure (counterbalancing the order in which these occur for each chimp), and then administer our puzzle task.  
 :::
 
-We will not cover 3 right now - this design involves multiple measurements of the puzzle task per chimpanzee, and we will cover statistical models for such designs in MSMR. 
+We will not cover option 3 right now - this design involves multiple measurements of the puzzle task for each chimpanzee, and we will consider statistical models for this sort of design in MSMR. 
 Here, we will focus on options 1 and 2, to illustrate how our understanding of the how the data has come about informs the statistics we will use to address our research question. This includes understanding the bit about "other variables required to identify the quantity of interest".  
 
 In our options for desiging a study of chimp-puzzling, in both the scenarios 1 and 2 detailed above, we only ever observe a given chimpanzee in _one type of enclosure_. 
-This means that we can never observe the values in both of the `puzzlet_paired` and `puzzlet_group` columns for the same chimp - we can never directly observe the effect of enclosure type on puzzle-engagement-time for any given chimpanzee:  
+This means that (in these designs) we can never observe the values in both of the `puzzlet_paired` and `puzzlet_group` columns for the same chimp - we can never directly observe the effect of enclosure type on puzzle-engagement-time for any given chimpanzee:  
 
 ```{r}
 #| label: tbl-miss
@@ -307,35 +310,69 @@ A data generating process (DGP) is a process in the real world that "generates" 
 Or, more broadly "how the data have come to be the way they are". 
 We don't know the *true* DGP, but we usually have some understanding to allow us to have a rough idea of it. 
 
-It may be easier to think of a DGP first in a closed system: imagine we're thinking about whether a toaster produces some toast. 
+It may be easier to think of a DGP first in a closed system: imagine we're thinking about whether a toaster produces some toast, and we try making toast a few times, changing a few key variables (whether it's plugged in, whether I put the bread in, etc.)
+
+```{r}
+#| echo: false
+set.seed(6444)
+tibble(
+  attempt_nr = 1:4,
+  bread = sample(0:1,4,T),
+  lever_pressed = sample(0:1,4,T),
+  plugged_in = sample(0:1,4,T),
+  power_on = plugged_in,
+  toast = ifelse(
+    bread==1 & lever_pressed == 1 & plugged_in==1, 1, 0
+  )
+) |> as.data.frame() |> rbind("...")
+```
+
+
 Several things need to happen in order for me to get my toast. 
 We can draw a picture of how we understand the process to work:
 
-
 ![](images/chimpdag/Slide1.PNG){fig-align="center" width="200px"}
 
-In diagrams like these, the words represent variables - quantifiable attributes in the real-world. 
-The arrows represent how these different real-world attributes relate to one another to produce an outcome (toast).  
+This diagram can serve as a way of communicating our theory about the **data generating process*. We are saying that getting toast depends on: whether there is bread; whether the lever is pressed; and whether there is power to the toaster. In turn, power to the toaster depends on whether I plugged it in!  
+
+In diagrams like these, the words indicate variables - quantifiable attributes in the real-world. The arrows represent how these different real-world attributes relate to one another to produce an outcome (toast).  
 
 :::
 
 In our chimpanzee studies, if we think about out research question in isolation, we can draw it as an arrow going from `EnclosureType` to `PuzzleTime`. 
 
-![](images/chimpdag/Slide2.PNG)
+```{r}
+#| label: fig-rq
+#| fig-cap: "the variables involved in the research question, in isolation"
+#| echo: false
+knitr::include_graphics("images/chimpdag/Slide2.PNG")
+```
 
-In the real world, however, there are lots of other things that influence why a chimpanzee might spend more time engaging with puzzles: its age, sex, genetics, hunger, social status, rearing history, hormones etc., etc.
-To simplify our explanations, let's just pretend there's only one other thing that influences puzzle-engagement in chimpanzees, and that is its age, with older chimpanzees being less curious than younger ones. 
-How `age` relates to other variables in our diagram depends on how the study is designed, as well as what we theorise about the world. 
-For instance, let's suppose that we have good reason to suspect that zoos tend to place younger chimpanzees in paired-enclosures, and older ones in group-enclosures.  
+The `EnclosureType` variable here is our "independent variable" or "focal predictor", and we are asking about what effect changing this has on the `PuzzleTime` variable (the "outcome" or "response"). Sometimes the predictor here might be referred to as the "treatment" or "exposure". This language comes from the idea of investigating the effect of a given drug on some outcome. People are either in a "treated group" (they take the drug), or the "control group" (they don't take the drug), and we measure the outcome (e.g., cholesterol) for both groups.  
 
-Let's consider how this knowledge fits with our understanding of our two studies:  
+In the real world, there are lots of other things that affect `PuzzleTime` - there are lots and lots of things that might influence why a chimpanzee might spend more time engaging with puzzles: its age, sex, genetics, hunger, social status, rearing history, hormones etc., etc.
+To simplify our explanations, for now, let's just consider only one of these things - `age` - and suppose that older chimpanzees are less curious (and spend less time with puzzles) than younger ones. 
+
+How `age` relates to the other variables in our diagram depends on how the study is designed, as well as what we theorise about the world. 
+
+## Confounders
+
+For instance, let's suppose that we have good reason to suspect that if we let zookeepers act as normal, they would tend to place younger chimpanzees in paired-enclosures, and older ones in group-enclosures.  
+
+Let's consider how this would then fit with our understanding of our two studies:  
 
 :::fancyframe
 #### 1. observational study
 
 If our study was simply observing chimpanzees in whatever type of enclosure that we find them in, then we need to understand _how_ that allocation happened. If zoos tend to place younger chimpanzees in paired-enclosures, then we would draw a line from `Age` to `EnclosureType`.  
 
-![](images/chimpdag/Slide3.PNG)
+```{r}
+#| label: fig-obs
+#| fig-cap: "The data generating process for an observational study, where chimps' enclosure type (paired/group) depends on how old they are."
+#| echo: false
+knitr::include_graphics("images/chimpdag/Slide3.PNG")
+```
+
 :::
 
 :::fancyframe
@@ -344,7 +381,13 @@ If our study was simply observing chimpanzees in whatever type of enclosure that
 If our study is instead a randomised experiment, then in our diagram, we know that there is no arrow going from `Age` to `EnclosureType`. 
 In fact, we know that there should be *no* arrows going into `EnclosureType`, because it's just been randomly allocated!  
 
-![](images/chimpdag/Slide4.PNG)
+```{r}
+#| label: fig-exp
+#| fig-cap: "The data generating process for an experimental study, where chimps' enclosure type (paired/group) is randomly allocated"
+#| echo: false
+knitr::include_graphics("images/chimpdag/Slide4.PNG")
+```
+
 :::
 
 In the observational study, because zoos are tending to place younger chimpanzees in paired-enclosures, then our data will likely reflect this: the chimps we observe from paired-enclosures might show greater time spent with puzzles than those we observe from group-enclosures *because* they tend to be younger.  
@@ -361,14 +404,16 @@ In both the cases, we have made it so that being in a group-enclosure makes ever
 In both cases, we have the chimpanzee's ages as a third variable. The question arises of whether to include `age` in our model. 
 Let's compare the models with and without age in both scenarios. 
 We are interested, remember, in "the effect of enclosure type on puzzle-time", which in this case corresponds to the `enclosure_type` coefficient (the difference in time spent on puzzles in `"Paired"` vs `"Group"` enclosures). 
-Remember that in both scenarios, we have made it so that this difference is 3 (`"Group"` vs `"Paired"`) for every chimp (or -3 if for `"Paired"` vs `"Group"`).  
+Remember that in both scenarios, we have made it so that this difference is 3 (`"Group"` vs `"Paired"`) for every chimp.  
 
 :::fancyframe
 #### 1. observational study
 ```{r}
-# TODO
-# chimp_obs <- read.csv("https://uoepsy.github.io/data/chimp_obs.csv")
-
+chimp_obs <- read.csv("https://uoepsy.github.io/data/hhgbm_chimp_obs.csv") |>
+  mutate(
+    enclosure_type = factor(enclosure_type,
+                            levels=c("Paired","Group"))
+  )
 
 m1 <- lm(PUZZLET ~ enclosure_type, chimp_obs) 
 m2 <- lm(PUZZLET ~ age + enclosure_type, chimp_obs)
@@ -377,7 +422,7 @@ m2 <- lm(PUZZLET ~ age + enclosure_type, chimp_obs)
 #| echo: false
 modelsummary(list(m1, m2),
              fmt = 1, 
-             estimate  = "{estimate} [{conf.low}, {conf.high}]",
+             estimate  = "{estimate} [{conf.low}, {conf.high}]{stars}",
              statistic = NULL, 
              gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
 ```
@@ -385,8 +430,11 @@ modelsummary(list(m1, m2),
 :::fancyframe
 #### 2. randomized experiment
 ```{r}
-# TODO
-# chimp_rct <- read.csv("https://uoepsy.github.io/data/chimp_rct.csv")
+chimp_rct <- read.csv("https://uoepsy.github.io/data/hhgbm_chimp_rct.csv") |>
+  mutate(
+    enclosure_type = factor(enclosure_type,
+                            levels=c("Paired","Group"))
+  )
 
 mr1 <- lm(PUZZLET ~ enclosure_type, chimp_rct) 
 mr2 <- lm(PUZZLET ~ age + enclosure_type, chimp_rct)
@@ -396,7 +444,7 @@ mr2 <- lm(PUZZLET ~ age + enclosure_type, chimp_rct)
 #| echo: false
 modelsummary(list(mr1, mr2),
              fmt = 1, 
-             estimate  = "{estimate} [{conf.low}, {conf.high}]",
+             estimate  = "{estimate} [{conf.low}, {conf.high}]{stars}",
              statistic = NULL, 
              gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
 ```
@@ -405,10 +453,11 @@ modelsummary(list(mr1, mr2),
 
 Note that in the randomised experiment, `age` is a significant predictor, but including/excluding it does not change the estimate of the `enclosure_type` coefficient. 
 In this toy example, the `enclosure_type` coefficient doesn't change **at all**, whereas in a real randomised experiment it probably would change just a little bit (this is just because we've made it so that the randomisation has resulted in *exactly* the same ages of chimps in both types of enclosure --- which is what randomisation achieves in the long-run).  
-While including/excluding `age` in the model doesn't *bias* in our estimate of the `enclosure_type` coefficient, its inclusion will increase our *precision* (note the confidence interval gets narrower), because we are explaining more variance in our outcome variable (making the variance explained by enclosure easier to detect^[Think of this as $\frac{\text{signal}}{\text{noise}}$. Including age doesn't change the signal, but it does make the noise smaller.]). 
 
-Contrast this with the observational study, in which it is absolutely necessary to adjust for `age` in order to 'de-confound' the effect of enclosure on puzzle-time. 
-If we fail to include `age` in our model then we might erroneously conclude that smaller enclosures lead to *more* aggression, rather than less!  
+What we are seeing is that including/excluding `age` in the model doesn't *bias* our estimate of the `enclosure_type` coefficient. However, its inclusion will increase our *precision* (note the confidence interval gets narrower), because we are explaining more variance in our outcome variable (making the variance explained by enclosure easier to detect^[Think of this as $\frac{\text{signal}}{\text{noise}}$. Including age doesn't change the signal, but it does make the noise smaller.]). 
+
+Contrast this with the observational study, in which it is absolutely necessary to adjust for `age` in order to 'de-confound' the effect of enclosure on puzzle-time. If we fail to include `age` in our model then we might erroneously conclude that smaller enclosures lead to *more* aggression, rather than less! 
+This makes sense when we think about the model `lm(PUZZLET ~ enclosure_type, chimp_obs)`: we are comparing `PUZZLET` in two sets of chimpanzees, indicated by whether they're in paired or group enclosures. But the chimps in the group enclosures are, on average *older* than the chimps in the paired enclosures. The model comes out saying there is no difference in between the two sets, but this is actually because the differences in `PUZZLET` due to age are acting against any differences due to enclosure type.   
 
 ::: {.callout-caution collapse="true"}
 #### optional note for wizards: exchangeability of potential outcomes
@@ -457,7 +506,8 @@ Randomisation achieves this because there is nothing that influences the allocat
 
 :::{.readingref}
 
-Darren Dahly: *Out of balance* - <https://statsepi.substack.com/p/out-of-balance>
+- [Blog post by Darren Dahly: *Out of balance*](https://statsepi.substack.com/p/out-of-balance){target="_blank"}
+- [Blog post by Stephen Senn: *Randomisation is not about balance, nor about homogeneity but about randomness*](https://errorstatistics.com/2020/04/20/s-senn-randomisation-is-not-about-balance-nor-about-homogeneity-but-about-randomness-guest-post/){target="_blank"}
 
 :::
 
@@ -468,6 +518,8 @@ Indeed, "randomised controlled trials" are generally considered the gold standar
 Remember however, that it may often be unethical or impossible to intervene and force people into a certain condition, and in situations where we *can* intervene, we often do so at the sacrifice of ecological validity.  
 
 More importantly, while randomisation may assist with confounding variables prior to allocation, experiments do not magically allow us to make causal claims, nor do they absolve us from thinking about the data generating process to inform our analytical decisions. 
+
+## Mediators 
 
 Let's suppose that in our two studies of chimpanzees we also record the average number of hours of "enrichment activities" that each chimpanzee receives each week (these are things the zookeeper might do such as scatter-feeding nuts, puzzle feeders, or novel scent trails). 
 Should we include this variable in our analysis in the observational study? What about in the experimental study? Will it matter?  
@@ -480,12 +532,23 @@ In this case, the `Enrichment Hrs` variable fits in our data generating process 
 :::{.column width="50%"}
 __1. an observational study__  
 
-![](images/chimpdag/Slide5.PNG)
+```{r}
+#| label: fig-obs2
+#| fig-cap: "The data generating process for our observational study, with enrichment hours included."
+#| echo: false
+knitr::include_graphics("images/chimpdag/Slide5.PNG")
+```
+
 :::
 :::{.column width="50%"}
 __2. a randomised experiment__  
 
-![](images/chimpdag/Slide6.PNG)
+```{r}
+#| label: fig-exp2
+#| fig-cap: "The data generating process for our randomized experiment, with enrichment hours included."
+#| echo: false
+knitr::include_graphics("images/chimpdag/Slide6.PNG")
+```
 :::
 ::::
 
@@ -496,8 +559,11 @@ Remember, that in both of datasets, we have made it so that chimpanzees spend ex
 :::fancyframe
 #### 1. observational study
 ```{r}
-# TODO
-# chimp_obs <- read.csv("https://uoepsy.github.io/data/chimp_obs.csv")
+chimp_obs <- read.csv("https://uoepsy.github.io/data/hhgbm_chimp_obs.csv") |>
+  mutate(
+    enclosure_type = factor(enclosure_type,
+                            levels=c("Paired","Group"))
+  )
 
 m1 <- lm(PUZZLET ~ enclosure_type, chimp_obs) 
 m2 <- lm(PUZZLET ~ age + enclosure_type, chimp_obs)
@@ -509,7 +575,7 @@ m4 <- lm(PUZZLET ~ age + enrichment_hrs + enclosure_type, chimp_obs)
 #| echo: false
 modelsummary(list(m1, m2, m3, m4),
              fmt = 1, 
-             estimate  = "{estimate} [{conf.low}, {conf.high}]",
+             estimate  = "{estimate} [{conf.low}, {conf.high}]{stars}",
              statistic = NULL, 
              gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
 ```
@@ -518,8 +584,11 @@ modelsummary(list(m1, m2, m3, m4),
 :::fancyframe
 #### 2. randomized experiment
 ```{r}
-# TODO
-# chimp_rct <- read.csv("https://uoepsy.github.io/data/chimp_rct.csv")
+chimp_rct <- read.csv("https://uoepsy.github.io/data/hhgbm_chimp_rct.csv") |>
+  mutate(
+    enclosure_type = factor(enclosure_type,
+                            levels=c("Paired","Group"))
+  )
 
 mr1 <- lm(PUZZLET ~ enclosure_type, chimp_rct) 
 mr2 <- lm(PUZZLET ~ age + enclosure_type, chimp_rct)
@@ -530,7 +599,7 @@ mr4 <- lm(PUZZLET ~ age + enrichment_hrs + enclosure_type, chimp_rct)
 #| echo: false
 modelsummary(list(mr1, mr2, mr3, mr4),
              fmt = 1, 
-             estimate  = "{estimate} [{conf.low}, {conf.high}]",
+             estimate  = "{estimate} [{conf.low}, {conf.high}]{stars}",
              statistic = NULL, 
              gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
 ```
@@ -544,7 +613,12 @@ Note that this may in some cases be an interesting quantity, but it is not the q
 
 Because fire alarms respond to smoke, not fire, when we fit a model of `lm(alarm ~ smoke + fire)`, the coefficient for `fire` would be zero, because the effect of the fire on the alarm is entirely via the increased volume of smoke.  
 
-![](images/chimpdag/Slide7.PNG)
+```{r}
+#| label: fig-fire
+#| fig-cap: "The data generating process for how fire alarms respond to fire. All of the effect goes via smoke. If we condition on presence of smoke, we isolate the green line in the Left hand drawing (which isn't there). If we don't, then we capture the total effect of 'fire' on 'alarm', including its effect via 'smoke'"
+#| echo: false
+knitr::include_graphics("images/chimpdag/Slide7.PNG")
+```
 
 This is because our question was "will lighting a fire set off an alarm?" (all the arrows in green on the right hand side above) and not "will lighting a fire, but (somehow) not changing the volume of smoke in the room, set off an alarm?" (the single green arrow in the left hand below). In this extreme case, the direct arrow from Fire &rarr; Alarm doesn't actually exist!  
 
@@ -569,15 +643,22 @@ To answer our research question in this study, we *don't* want to adjust for `en
 :::
 ::::
 
-Another way in which we might veer off target with out analysis can be demonstrated with the inclusion of a further variable. 
-Suppose that, on reviewing videos of the chimpanzees in our study completing the puzzle-task, we notice that some chimps were simply not engaging much and fell asleep during their 1-hour puzzle session. 
+## Colliders
+
+Another way in which we might veer off target with our analysis can be demonstrated with the inclusion of a further variable. 
+Suppose that, on reviewing videos of the chimpanzees in our study completing the puzzle-task, we notice that some chimps were simply not engaging much at all and fell asleep during their 1-hour puzzle session. 
 We decide to record which chimps fell asleep, and then adjust for that variable in our models. 
 This creates a problem if, according to our DGP, `Asleep` is influenced by both the predictor of interest `EnclosureType` and the outcome `PuzzleTime`. 
-This is a plausible scenario because a) chimpanzees in group-housing might live in more stimulating environments, meaning they take more opportunities to rest, and b) when a chimp stopped engaging with the puzzles, there was not much else for them to do for the rest of the hour. 
+This is a plausible scenario because a) chimpanzees in group enclosures might live in more stimulating environments, meaning they take more opportunities to rest, and b) when a chimp stopped engaging with the puzzles, there was not much else for them to do for the rest of the hour. 
 
-![](images/chimpdag/Slide10.PNG)
+```{r}
+#| label: fig-coll
+#| fig-cap: "A third variable, caused by both our focal predictor, and by our outcome, can create problems for us."
+#| echo: false
+knitr::include_graphics("images/chimpdag/Slide10.PNG")
+```
 
-According to our DGP, chimps are more likely to fall asleep in the study session *either* because they are in group-housing **or** because they have spent less time engaging with the puzzles (or both)
+According to our DGP, chimps are more likely to fall asleep in the study session *either* because they are in group enclosures **or** because they have spent less time engaging with the puzzles (or both)
 
 To see how this causes a problem, suppose that there was **no** effect of `EnclosureType` on `PuzzleTime`, meaning that we shouldn't be able to see any pattern between the two (hence the lack of an arrow between the two in the figure above).
 If we recorded whether or not each chimpanzee fell asleep, and then include this in our model `lm(PUZZLET ~ asleep + enclosure_type)`, then we will actually create a spurious association between `PUZZLET` and `enclosure_type`. 
@@ -593,19 +674,26 @@ For instance, a study which didn't discarded any chimps who fell asleept (meanin
 You can play around with this yourself:  
 
 ```{r}
+chimp_rct <- read.csv("https://uoepsy.github.io/data/hhgbm_chimp_rct.csv") |>
+  mutate(
+    enclosure_type = factor(enclosure_type,
+                            levels=c("Paired","Group"))
+  )
+
 mr1 <- lm(PUZZLET ~ enclosure_type, chimp_rct)
 mr5 <- lm(PUZZLET ~ asleep + enclosure_type, chimp_rct)
 
 # selecting on awake:
 chimp_rct_awake <- chimp_rct |>
   filter(asleep == 0)
+
 mr6 <- lm(PUZZLET ~ enclosure_type, chimp_rct_awake)
 ```
 ```{r}
 #| echo: false
 modelsummary(list(mr1, mr5, mr6),
              fmt = 1, 
-             estimate  = "{estimate} [{conf.low}, {conf.high}]",
+             estimate  = "{estimate} [{conf.low}, {conf.high}]{stars}",
              statistic = NULL, 
              gof_omit = 'DF|F|AIC|BIC|Log|RMSE|Num|Adj')
 ```
@@ -627,7 +715,12 @@ Many questions of interest to us are concerned with estimating "the effect of $X
 Part of the challenge of getting this from a statistical model is ensuring that the specific effect of interest is 'identified' (i.e., under our assumed DGP, the observed data is sufficient to isolate the 'what happens to $Y$ if $X$ changes without being confounded or masked by other variables).
 What we do with other variables will depend on where we see them fitting in the DGP.  
 
-![](images/chimpdag/Slide8.png)
+```{r}
+#| label: fig-3var
+#| fig-cap: "Third variables can take many roles: Confounder (Z, top left), Mediator (M, top right), Collider (C, bottom left), or Descendent (D, bottom right)"
+#| echo: false
+knitr::include_graphics("images/chimpdag/Slide8.PNG")
+```
 
 We can think of information as flowing along the arrows in these diagrams, with flow passing through nodes that have the form &rarr;V&rarr; and &larr;V&rarr; but not &rarr;V&larr;.
 As such, there are three places a third variable might be placed - it could be a 'confounder' (variable $Z$), a 'mediator' (variable $M$) or a 'collider' (variable $C$). It could also be a descendent (variable $D$) of some other variable.  
@@ -641,7 +734,7 @@ In our image above:
 ::::{.columns}
 :::{.column width="50%"}
 
-So if our DGP had all variables included (see the image to the right), then in order to isolate the specific effect of interest $X$&rarr;$Y$, we should:
+So if our DGP had all variables included (see @fig-3var2 to the right), then in order to isolate the specific effect of interest $X$&rarr;$Y$, we should:
 
 - close the back doors paths going into $X$
 - leave open the required front doors paths coming out of $X$ open that capture the causal effect of interest
@@ -651,7 +744,12 @@ Including $M$ would fail to capture the total effect of $X$ on $Y$, and includin
 :::
 :::{.column width="50%"}
 
-![](images/chimpdag/Slide9.PNG)
+```{r}
+#| label: fig-3var2
+#| fig-cap: "A data generating process with additional variables in different roles."
+#| echo: false
+knitr::include_graphics("images/chimpdag/Slide9.PNG")
+```
 
 :::
 ::::
@@ -677,23 +775,24 @@ In the spirit of "let's all try to do better," here is some general advice for a
 
 :::{.readingref}
 
-- Chatton, A., & Rohrer, J. M. (2024). *The causal cookbook: Recipes for propensity scores, g-computation, and doubly robust standardization.* Advances in Methods and Practices in Psychological Science, 7(1)
+- [Chatton, A., & Rohrer, J. M. (2024). *The causal cookbook: Recipes for propensity scores, g-computation, and doubly robust standardization.* Advances in Methods and Practices in Psychological Science, 7(1)](https://journals.sagepub.com/doi/10.1177/25152459241236149){target="_blank"}
 
 :::
 
 :::
 
 The biggest problem for observational studies is that things are rarely as simple as in the toy example we have used here. 
-There are loads and loads of other things that might fit into our data generating process. Figuring out what they are, and how they fit in, is extremely difficult. 
+There are loads and loads of other things that might fit into our data generating process. Figuring out what they are, and how they fit in, and which ones we can safely ignore, is extremely difficult. 
 We may end up with a much more complex diagram,^[ ![](images/chimpdag/nonsense.png) this is just as many things as I could think of in ~10 minutes! I don't know anything about how zoos work, or about primatology, so I don't know how many of these arrows are justified!] and 
-TODO
+with much tricky task of "identifying" the effect of interest.  
 
+TODO fix image
 
 :::{.readingref}
 
-- Wysocki, A. C., Lawson, K. M., & Rhemtulla, M. (2022). *Statistical control requires causal justification*. Advances in Methods and Practices in Psychological Science, 5(2).
-- Rohrer, J. M. (2024). *Causal inference for psychologists who think that causal inference is not for them*. Social and Personality Psychology Compass, 18(3)
-- Cinelli, C., Forney, A., & Pearl, J. (2024). *A crash course in good and bad controls*. Sociological Methods & Research, 53(3), 1071-1104
+- [Wysocki, A. C., Lawson, K. M., & Rhemtulla, M. (2022). *Statistical control requires causal justification*. Advances in Methods and Practices in Psychological Science, 5(2).](https://journals.sagepub.com/doi/pdf/10.1177/25152459221095823){target="_blank"}
+- [Rohrer, J. M. (2024). *Causal inference for psychologists who think that causal inference is not for them*. Social and Personality Psychology Compass, 18(3)](https://compass.onlinelibrary.wiley.com/doi/10.1111/spc3.12948){target="_blank"}
+- [Cinelli, C., Forney, A., & Pearl, J. (2024). *A crash course in good and bad controls*. Sociological Methods & Research, 53(3), 1071-1104](https://journals.sagepub.com/doi/10.1177/00491241221099552){target="_blank"}
 
 :::
 
@@ -722,7 +821,7 @@ If you're excited by observational research, then you've got your work cut out! 
 
 
 ::: {.callout-tip collapse="true"}
-#### TODO What about descriptive work?
+#### What about descriptive work?
 
 ```{r}
 #| include: false
@@ -745,38 +844,41 @@ dep_sample <- dep_fullpop |>
 
 mean(dep_fullpop$status)
 mean(dep_sample$status)
+# write_csv(dep_fullpop, file="C:/Users/jking34/Desktop/uoepsy_courses/data/hhgbm_dep.csv")
 ```
 
 
-The phrase "No causes in, no causes out" (Nancy Cartwright) is a useful reminder that to interpret a statistical estimate as an "effect", we need to make causal assumptions --- assumptions about the data generating process.  
+The phrase "No causes in, no causes out" (Nancy Cartwright) is a useful reminder that to interpret a statistical estimate as an "effect", we need to make causal assumptions (i.e., assumptions about the data generating process).  
 
 What then, if we are not trying to answer an explanatory question, and are sticking with descriptive work? 
 
 __Example__  
 
-Suppose our goal is to estimate the prevalence of severe depression.  
+> Suppose our goal is to estimate the prevalence of severe depression in a population.  
 
 This is purely descriptive: we're aiming to simply summarise the proportion of people with a diagnosis of severe depression. 
 
-To demonstrate, let's see pretend we complete data for the entire population. This is no longer an estimate, it's just the true value we're interested in:   
+To demonstrate, let's pretend that we have data for the **entire** population of interest. This is no longer an "estimate", it's just the true value that we're wanting:   
 ```{r}
+dep_fullpop <- read.csv("https://uoepsy.github.io/data/hhgbm_dep.csv")
+
 table(dep_fullpop$status) |> 
   prop.table()
 ```
 
-With access to the full population, we know that `r round(mean(dep_fullpop$status)*100)`% of the population has severe depression.  
+With access to the full population, we know that `r round(mean(dep_fullpop$status)*100)`% of the population has a diagnosis of severe depression.  
 
-In practice, however, we rarely have the full population data, and so instead we might conduct a survey on a random sample of people. But we still need to think carefully about the data generating process - we should think about the things that might lead people to decide to complete (or not complete) a questionnaire on depression. 
+In practice, however, we rarely have data for the full population, and so instead we might conduct a survey on a random sample of people. But we still need to think carefully about the data generating process - we should think about the things that might lead people to decide to complete (or not complete) a questionnaire on depression. 
 
-Typically, people who are severely depressed a way less likely to ever fill out these surveys. 
+Typically, people who are severely depressed are far less likely to ever fill out these surveys. 
 So we can think of our population as containing people like this: 
 ```{r}
 head(dep_fullpop)
 ```
 
-What that means is, when we take a sample, we are far less likely to see those people who have severe depression, and we are therefore likely to _underestimate_ the prevalence of depression.  
+What that means is that whenever we take a sample we are far less likely to see those people who have severe depression, and we are therefore likely to _underestimate_ the prevalence of depression.  
 
-This code mimics taking a sample of 100 people who 'will complete the survey'
+This code mimics taking a sample of 100 people who 'will complete the survey' (`slice_sample()` takes a sample of a dataframe):  
 `r set.seed(55)`
 ```{r}
 dep_sample <- dep_fullpop |>
@@ -798,43 +900,258 @@ table(dep_sample$status) |>
 ```
 
 The problem here is that we are using statistics in such a way that misrepresents the data generating process. 
-We are assuming that we have the situation in @fig-desc Left, whereas in reality it looks more like @fig-desc Right. 
+We are assuming that we have the situation in in the left hand of the figure below, and whereas in reality it looks more like the drawing on the right. 
 
-TODO figure
+```{r}
+#| label: fig-desc
+#| fig-cap: "Even with a purely descriptive goal, understanding the data generating process is necessary. We never observe peoples true depression scores, or their decisions to complete the survey (we only ever see those who *do* complete it)"
+#| echo: false
+knitr::include_graphics("images/otherdag/Slide1.PNG")
+```
 
-It is clear then, that maintaining that "I'm only describing things" does not absolve us from _thinking_ about the data generating process.  
+It is clear then, that maintaining that "I'm only describing things" does not absolve us from _thinking_ about the data generating process.   
+  
 "No causes in, nothing out" (Richard McElreath)
 
 :::
 
 ::: {.callout-tip collapse="true"}
-#### TODO Can't we just report 'associations'?
+#### Can't we just report 'associations'?
 
 Occasionally, people will appear to avoid engaging with difficult thinking about the data generating process by maintaining that their results are only ever 'associations' or 'correlations'.  
 
-It is true that all our statistics cannot transcend the world of 'associations' - all any of us ever report are associations.  
+It is true that all our statistics cannot transcend the world of 'associations' - all that any of us ever report are statistical associations.  
 
-However, this somewhat misses the key point that we need clarity in our research question in order to decide *which* association it is that we actually want to report.  
+However, this somewhat misses the key point that we need clarity in our research question in order to decide *which* association it is that we are actually wanting to know about.   
 
-An example from Rohrer et al shows a commonly used template for research: 
+An example from [Rohrer et al., 2024](https://compass.onlinelibrary.wiley.com/doi/10.1111/spc3.12948){target="_blank"} shows a commonly used template for research: 
 
-1. Does money bring happiness << implicitly causal question
-2. report associations between income and happiness from a cross-sectional survey << does not target the causal question 
-3.  << implicitly causal answer to 1.
-4. state correlation != causation 
+1. an implicitly causal question 
+    - e.g. "does money bring happiness?"
+2. report associations, adjusting for a few other variables without clear reason why those and not others
+    - does not target the causal question
+3. interpret association linking back to the question in 1. 
+    - gives an answer that doesn't actually answer the implicitly causal question
+4. add the "this is just a correlation" caveat
+    - essentially to cover their backs?
+
+It's not clear what added value this sort of research gives.
+That isn't to say that it's not worth doing research unless you have captured and adjusted for **all** available confounds - this is rarely possible! 
+It is more a cautionary tale that it is better to actively engage with reasoning about the data generating process in order to do the best research that we can, and in order to be more transparent in the limitations of our research. 
+
+:::{.readingref}
+
+- [Talk by Jeremy Labrecque: "Association. You keep using that word. I do not think it means what you think it means"](https://youtu.be/IKdCuY-GjP4?si=XWpr-bHnTYwa7ggs){target="_blank"} 
+- [Grosz, M. P., Rohrer, J. M., & Thoemmes, F. (2020). *The Taboo Against Explicit Causal Inference in Nonexperimental Psychology.* Perspectives on Psychological Science, 15(5), 1243-1255.](https://journals.sagepub.com/doi/10.1177/1745691620921521){target="_blank"}
+- [Rohrer, J. M. (2024). *Causal inference for psychologists who think that causal inference is not for them*. Social and Personality Psychology Compass, 18(3)](https://compass.onlinelibrary.wiley.com/doi/10.1111/spc3.12948){target="_blank"}
+
+:::
+
+:::
+
+::: {.callout-tip collapse="true"}
+#### Do not simply control for *all* available variables
+
+Through the various examples we have covered in this chapter, hopefully it is evident why we should not always just shove *every* available variable in our model.  
+
+If we are interested in "how X affects Y", then a variable that sits on the pathway from X to Y (i.e., X causes M and M causes Y) would, if included in the model, actually remove part of the effect of X on Y from our estimated coefficient --- revisit the [Fire > Smoke > Alarm example above](#mapping-out-the-universe).  
+
+:::
+
+::: {.callout-tip collapse="true"}
+#### Do not just simply control for all 'pre-treatment' variables
+
+```{r}
+#| include: false 
+set.seed(2222)
+mdf <- tibble(
+    u_stress = rnorm(100),
+    u_demands = rnorm(100),
+    caffeine = rnorm(100,3*u_stress+3*u_demands,2),
+    workshop = rbinom(100,1,plogis(2*u_stress)),
+    sleep = rnorm(100,-u_demands,1)
+)
+summary(lm(sleep ~ caffeine + workshop,mdf))
+# write_csv(mdf, file="C:/Users/jking34/Desktop/uoepsy_courses/data/hhgbm_mbias.csv")
+```
 
 
-(see e.g., <https://youtu.be/IKdCuY-GjP4?si=4gX-94YjgieCnygI&t=1618> )
+Perhaps because everybody loves a general "rule-of-thumb", you will sometimes find people who know not to shove *every* variable into the model, and instead opt to put "everything that happens before X" in the model.  
+
+Recall the idea of calling our predictor of interest the "treatment" variable, likening it to trying to evaluate the effect of a drug on some outcome. 
+"Pre-treatment variables" are therefore variables that happen prior to people deciding whether or not to take the drug.   
+
+The temptation from many is to simply control for anything that occurs before the Drug is taken/not-taken. This would be essentially any variable that could be in place of the "pre-treatment variable" here: 
+
+```{r}
+#| label: fig-pret
+#| fig-cap: "pre-treatment variables are things measured prior to the treatment being given (and so they can only ever be a cause, and not a consequence of the treatment)"
+#| echo: false
+knitr::include_graphics("images/otherdag/Slide2.PNG")
+```
+
+The potential problem with this approach is when we fail to consider the full complexity of the paths from the pre-treatment variable to the outcome.  
+
+Consider, for example, a situation where we are interested in evaluating if attending a CBT (cognitive behavioural therapy) workshop results in better sleep quality. 
+We might be inclined to control for people's caffeine consumption, on the premise that highly caffeinated people might be more likely to take the workshop, and have poorer sleep. 
+But if, in reality, there is a different mechanism at play, such that two confounders that we _haven't_ considered (genetic predisposition to stress, demanding job etc), actually both cause people to drink caffeine, then we the `caffeine` variable suddenly is no longer a "confound", but is actually a "collider" (like the `asleep` variable was for our chimps).  
+
+```{r}
+#| label: fig-mbias
+#| fig-cap: "Just because a variable is measured prior to the treatment, it does not mean that it is a straightforward confounder"
+#| echo: false
+knitr::include_graphics("images/otherdag/Slide3.PNG")
+```
+
+This is a tricky idea to get your head round, and it gets called "M-bias" because of the shape of the diagram being vaguely M-shaped. 
+You can play with some data below, where I designed it so that taking the workshop has absolutely no systematic effect on sleep quality. 
+
+```{r}
+#| eval: false
+#| echo: true
+# I've left in the two *unmeasured* variables of stress and job-demands in here:  
+mdat <- read.csv("https://uoepsy.github.io/data/hhgbm_mbias.csv")
+
+# compare these two models, and remember that I created the data so that there is NOT an effect of workshop on sleep quality.
+
+lm(sleep ~ workshop, data = mdat)
+lm(sleep ~ caffeine + workshop, data = mdat)
+```
 
 
 :::
 
 ::: {.callout-tip collapse="true"}
-#### TODO what about moderation/interaction?  
+#### Do not use predictive criteria for an explanatory question 
+  
+The key message here is that if our research goal is to _explain_ something, we never want to use predictive criteria to determine what to include in our model.  
+
+Anything like model comparisons `anova(model1, model2)`, or using criteria like AIC, BIC etc, are only interested in reducing the residual error. 
+It is tempting to think that "this model is the "better model" because it explains more variance/does a better job of predicting the outcome. 
+
+The issue here is that these criteria do not care about the arrows in our data generating process.  
+
+```{r}
+#| include: false
+set.seed(32115)
+ff <- tibble(
+  fire = rbinom(40, 1, .5),
+  smoke = rbinom(40, 1, plogis(3*fire)),
+) |> mutate(
+  smoke=ifelse(fire==1,1,smoke)
+) |>
+  mutate(
+    ALARM = rbinom(40, 1, plogis(4*smoke))
+  )
+
+# write_csv(ff, file="C:/Users/jking34/Desktop/uoepsy_courses/data/hhgbm_fire.csv")
+```
+
+For example, consider the silly [Fire > Smoke > Alarm example](#mapping-out-the-universe) we discussed above. 
+You can find some pretend data below, that shows that according to most predictive criteria, a model with the `smoke` predictor in it does a much better job of predicting if the alarm will go off. 
+But for the exact reasons discussed above, this completely removes our ability to estimate the effect that setting fires has on the alarm going off! the coefficient for `fire` in that model is 0!  
+
+```{r}
+firedat <- read.csv("https://uoepsy.github.io/data/hhgbm_fire.csv")
+
+fm1 <- lm(ALARM ~ fire, data = firedat)
+fm2 <- lm(ALARM ~ smoke + fire, data = firedat)
+
+# the second model is better at predicting:
+anova(fm1, fm2)
+
+# but worse at estimating "does setting fires make the alarm go off":
+summary(fm2)
+```
+
+:::
+
+::: {.callout-tip collapse="true"}
+#### Not all coefficients are the same
+
+```{r}
+#| include: false
+set.seed(346)
+df <- tibble(
+  educ = round(rnorm(100,14,2)),
+  income = 10 + 3.5*(educ-12) + rnorm(100,0,4),
+  happy = 40 + 1.8*income - 1*educ + rnorm(100,0,5)
+)
+# write_csv(df,file="C:/Users/jking34/Desktop/uoepsy_courses/data/hhgbm_tab2.csv")
+```
+
+
+
+Another related trap that people often fall into is to build their model and then treat all their coefficients equally in interpretation.  
+
+In a very simplified toy example, suppose that we want to estimate if greater income leads to greater happiness. We know that people's income typically depends on their level of education, and we suspect that education also impacts happiness. 
+
+So we sensibly include `educ` in the model:  
+
+```{r}
+eddat <- read.csv("https://uoepsy.github.io/data/hhgbm_tab2.csv")
+
+t2mod <- lm(happy ~ educ + income, data = eddat)
+
+summary(t2mod)
+```
+
+Our model coefficients include:
+
+1. the intercept (a point estimate of the happiness level specifically when income = 0 and education = 0)
+2. the coefficient for `educ` (the change in happiness as education increases by 1 and we hold income constant)
+3. the coefficient for income (change in happiness when income increases by 1 and we hold education constant)
+
+It is tempting to see the negative coefficient for `educ` and conclude that education makes people unhappier! But actually the coefficient for `educ` doesn't really reflect *any* situation that we would see in reality. When a person increases their education level, their income typically *doesn't* "stay constant" - it increases! So the coefficient for `educ` is estimating any effect of education on happiness in some counterfactual world where education increases but income doesn't. 
+
+It would therefore be inaccurate to say that education leads to lower happiness, because in fact it is the opposite! More education leads to higher income which leads to more happiness - something we can see when we fit a simple model: 
+
+```{r}
+lm(happy ~ educ, data = eddat) |>
+  coef()
+```
+
+This has become known as "table 2 fallacy", because (especially in medical research) there is a tendency to show the coefficient for the 'treatment'/'exposure'/'focal predictor' in one table, and then put the full model coefficients into "table 2", and interpret them as if they were total effects of each variable on the outcome.  
+
+:::{.readingref}
+
+- [Daniel Westreich, Sander Greenland, The Table 2 Fallacy: Presenting and Interpreting Confounder and Modifier Coefficients, American Journal of Epidemiology, Volume 177, Issue 4, 15 February 2013, Pages 292–298](https://academic.oup.com/aje/article/177/4/292/147738){target="_blank"}
+
+:::
+
+:::
+
+
+::: {.callout-tip collapse="true"}
+#### What about moderation/interaction?  
+
+```{r}
+#| include: false
+set.seed(1794583)
+chimp_mod <- tibble(
+  chimp = paste0("chimp-", 1:300),
+  age = rep(round(runif(150, 13, 29)),2),
+  dominance = scale(rnorm(300, .9*scale(age),2))[,1],
+  treat = rep(0:1,e=150),
+  enclosure_type = ifelse(treat==1,"Group","Paired"),
+)
+nny = residuals(lm(rnorm(300,0,3) ~ chimp_mod$age * chimp_mod$treat))
+chimp_mod <- 
+  chimp_mod |>
+  mutate(
+    Y0 = round(35 - 0.4 * age + 0.5*dominance + nny, 1),
+    Y1 = Y0 + 3 + 0.5* dominance - 0.1*age,
+    # Y0 = round(15 - .4*age + nny,1),
+    # Y1 = Y0 + delta,
+    PUZZLET = ifelse(enclosure_type=="Group",Y1,Y0)
+) 
+# write_csv(chimp_mod, file="C:/Users/jking34/Desktop/uoepsy_courses/data/hhgbm_chimp_mod.csv")
+```
 
 If both variables involved in the interaction can be controlled/manipulated then we can design a randomised experiment accordingly, for instance following a "2x2 factorial design", in which participants are randomly allocated to one of the following rows:
 
 ```{r}
+#| echo: false
 expand_grid(
   predictor_1 = LETTERS[1:2],
   predictor_2 = LETTERS[3:4],
@@ -846,50 +1163,58 @@ Because allocation to both predictors is randomised, we can study the interactio
 
 However, very often there are situations in which researchers wish to study an interaction in which one (or both) of the predictors is an observed attribute (not something they can manipulate).  
 
-For example: 
+For example, we might randomly allocate chimpanzees to paired vs group enclosures, but want to know if the effects of enclosure type differ between dominant and less dominant chimpanzees. 
 
+We might have a question along the lines of:  
 
+> "For adult Chimpanzees, how does the effect of group enclosures (vs paired enclosures) on time-spent engaging with puzzles differ depending on their dominance level?"
 
-https://journals.sagepub.com/doi/10.1177/25152459211007368
+Here we are asking about _if_ a chimpanzee $i$ that has dominance $d$ were placed in a group enclosure vs in a paired enclosure, how would their time-on-puzzles change? and how would that be different if their dominance was $d+1$?  
+There's a lot of counterfactuals there!  
 
-https://datacolada.org/80 
+Even if we randomly allocate the chimpanzees into the type of enclosure (paired/group), we can't allocate them to having different levels of dominance! 
+Which means we want to avoid confounders like age, and will want to adjust for them in our model.  
+
+The temptation is to include it like so:  
+
+```
+lm(PUZZLET ~ age + dominance * enclosure_type)
+```  
+
+But.. including age in the model opens the door for the effect of enclosure type to be different for different ages (which it may be!).  
+
+If such an interaction is present then our model is mis-specified, and so we would ideally want to _also_ let the `enclosure_type` variable interact with `age`:  
+
+```
+lm(PUZZLET ~ (age + dominance) * enclosure_type)
+```  
+
+I find this quite difficult to comprehend, but the issue is neatly presented at <https://datacolada.org/80>, and you can play around with some data where it holds below. 
+
 
 ```{r}
-df <- tibble(
-  w = scale(rnorm(200))[,1],
-  x = rep(0:1,100),
-  z = scale(rnorm(200,.5*w,1))[,1],
-  lp = -w + z + x + x*z + -x*w,
-  y = rnorm(200,lp,.0001)
-) 
-sjPlot::tab_model(
-  lm(y~x,df),
-  lm(y~x*z,df),
-  lm(y~w+x*z,df),
-  lm(y~x*(w + z),df)
-)
+chimp_mod <- read.csv("https://uoepsy.github.io/data/hhgbm_chimp_mod.csv") |>
+  mutate(
+    enclosure_type = factor(enclosure_type,
+                            levels=c("Paired","Group"))
+  )
+
+mm1 <- lm(PUZZLET ~ dominance * enclosure_type, data = chimp_mod)
+mm2 <- lm(PUZZLET ~ age + dominance * enclosure_type, data = chimp_mod)
+mm3 <- lm(PUZZLET ~ (age + dominance) * enclosure_type, data = chimp_mod)
 
 ```
 
-- if you are interested in Y ~ X \* Z
-- if one (or both) of X or Z is not randomised, then it may well be necessary to control for other variables W. 
-- simply controlling for Y~W+X\*Z will not deconfound your X\*Z interaction in the event that the true data generating process involves W interacting with X or Z. 
+The intuition (as best as I can get it) is that age affects both dominance _and_ the effect of the enclosure type (maybe young chimps love group enclosures, while older chimps find it stressful?), then age is both a confounder _and_ a moderator of the effect. 
 
-e.g., suppose we randomly allocate people to X, but are wanting to know if the effect of X differs by Z. 
-- Z and Y share a common cause of W, so we should control for W. 
-- if our target estimate is what a hypothetical intervention on Z would do to the effect on Y of intervening on X, then it may also be necessary to control for X*W, in the event that W also moderates the effect of X.  
-
-
-
+But if we include it as a simple covariate (`... + age`), then we miss its role as a moderator (it assumes the enclosure effect is the same for all ages), and this messes up the other parts of our model (e.g., it could be that we conclude a `dominance*enclosure_type` interaction, when actually it is driven by the `age*enclosure_type` interaction!)
 
 :::
 
 ::: {.callout-tip collapse="true"}
-#### TODO what about longitudinal studies?  
+#### What about longitudinal studies?  
 
 We will get more of this in MSMR, but sometimes people get stuck assuming that anything measured "within participants" avoids any problems with confounding.  
-
-
 For example, let's suppose we do:  
 
 **3. within-chimp study**  
@@ -898,79 +1223,32 @@ Place each chimpanzee in both types of enclosure (counterbalancing the order in 
 
 We have data that looks like this:  
 
-
-
-
 ```{r}
-N = 40
-n_groups = 20
-g = rep(1:n_groups, e = N/n_groups)
-t = rep(rep(0:1,e=N/n_groups/2),n_groups)
-b = rep(0:1,e=n_groups/2)[g]
-x = c(rep(rep(1:0,e=N/n_groups/2),n_groups/2),
-      rep(rep(0:1,e=N/n_groups/2),n_groups/2))
-u = t * 1 * b
-Gcov = Matrix::nearPD(matrix(c(1,0,0,1),nrow=2))$mat
-res = MASS::mvrnorm(n_groups, mu=c(0,0), Sigma=Gcov,empirical=TRUE)
-re  = res[,1][g] 
-re_x  = res[,2][g]
-lp = (0 + re) + .2*u + (1 + re_x)*x
-y = rnorm(N, mean = lp, sd = .001)
-df <- data.frame(x,b,t,u,g=factor(g), y)
-library(lme4)
-lmer(y~1+x+(1|g),df) |> summary()
-lmer(y~1+u+x+(1|g),df) |> summary()
-ggplot(df,aes(x=x,y=y,col=u))+geom_point()+
-  facet_wrap(~g)
-
-
+#| echo: false
+tibble(
+  chimp = rep(paste0("chimp-",letters[1:3]),e=2),
+  time = rep(1:2,3),
+  enclosure_type = c("paired","group","group","paired","paired","group"),
+  PUZZLET = c(23,27,33,30,29,30)
+) |> as.data.frame() |>
+  rbind("...") |> gt::gt()
 ```
 
 
 
-:::
+Because we are comparing each chimp to itself, we are avoiding any confounding *from things that are constant over the course of the study*. So things like chimps' genetics, rearing history, baseline curiosity etc are no longer confounders.
+Even if older chimps are generally less curious than younger ones, chimp-A has the same genetics and roughly the same age when measured at Time 1 and at Time 2.  
 
-::: {.callout-tip collapse="true"}
-#### TODO do not simply control for *all* available variables
+However, measuring within-participants does not magically protect us from things that change over time! 
+Even though we counterbalance the order, what if moving from a group enclosure to a paired enclosure causes stress that lingers into the second time point, whereas moving the other way doesn't? 
+What if chimps simply get bored of the puzzle task the second time they see it? 
+Or what if zookeepers tend to move chimps into the group enclosures more in certain seasons (putting chimps together in winter or something). 
 
+Similarly, all the "post-treatment" variables still behave the same way: if we adjust for things like "Enrichment Hours", or "Falling Asleep", then we will distort our estimate of the effect just like we saw above. 
 
+So longitudinal and within-person designs are great for ruling out the more stable or 'trait like' individual differences, but we still have to draw out our data generating process and pay careful attention to what changes across the timepoints.  
 
-:::
-
-::: {.callout-tip collapse="true"}
-#### TODO do not just simply control for all pre-treatment variables
-
-      - zoo-budget past >> enclosure size
-      - zoo-budget past >> stress
-      - enclosure size >> stress
-      - aggression >> stress
-      - genetic >> aggression
-      - genetic >> stress
-      
-:::
-
-::: {.callout-tip collapse="true"}
-#### TODO do not use predictive criteria for an explanatory question 
-  
-- if your research goal is explanatory do not use predictive criteria to determine what to include in your model
-
-note that if our goal is to explain, then the predictive accuracy of a model is not a good criteria for choosing which model we should use. 
-
-something like a simple model comparison of residual SS (using `anova(mod1, mod2)`) will make us think that X is the "better model", because the addition of XX explains more variance --- it does a better job of predicting Y. 
-The issue is that using model fit criteria (anything like an F test, AIC, BIC, etc) **doesn't care** about the direction of the arrows in your theory. 
-
-for example, we can add in XX to predict Y, but that really doesn't make any sense to do.  
 
 :::
-
-::: {.callout-tip collapse="true"}
-#### TODO not all coefficients are the same
-
-  - we can't interpret coefficients of confounders in the same way as we do the focal predictor (table 2 fallacy)
-
-:::
-
-
-
 
 
